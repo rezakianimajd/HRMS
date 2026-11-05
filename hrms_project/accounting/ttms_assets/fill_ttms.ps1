@@ -300,7 +300,8 @@ foreach ($candidate in @('Microsoft.ACE.OLEDB.16.0', 'Microsoft.ACE.OLEDB.12.0',
     }
 }
 if ($null -eq $cn) {
-    if ($DryRun) { Remove-Item -LiteralPath $workPath -Force -ErrorAction SilentlyContinue }
+    if (-not $InPlace) { Remove-Item -LiteralPath $workPath -Force -ErrorAction SilentlyContinue }
+    $result.output = ''
     Stop-WithError ('هیچ درایور Access (ACE/Jet) در دسترس نیست. Microsoft Access Database Engine 2016 (یا Microsoft Access) را نصب کنید. جزئیات: ' + $lastError) 3
 }
 Write-Host ('درایور: ' + $result.provider) -ForegroundColor DarkGray
@@ -507,6 +508,10 @@ if ($DryRun) {
 }
 
 if ($failure) {
+    if (-not $InPlace -and -not $DryRun) {
+        Remove-Item -LiteralPath $workPath -Force -ErrorAction SilentlyContinue
+        $result.output = ''
+    }
     Stop-WithError ('درج ردیف‌ها ناموفق بود و همهٔ تغییرات بازگردانی شد: ' + $failure) 4
 }
 
@@ -516,6 +521,10 @@ if ($DryRun) {
 } elseif ($inserted -eq 0) {
     $result.status = 'failed'
     $result.errors = @($result.errors) + @('هیچ ردیفی درج نشد.')
+    if (-not $InPlace -and -not $DryRun) {
+        Remove-Item -LiteralPath $workPath -Force -ErrorAction SilentlyContinue
+        $result.output = ''
+    }
     if ($skipped -gt 0) {
         $result.message = 'هیچ ردیف جدیدی درج نشد: همهٔ ' + $skipped + ' ردیف از قبل در فایل وجود داشتند. ' +
             'برای درج دوباره، یا فایل TTMS بدون این ردیف‌ها را انتخاب کنید یا اسکریپت را با -AllowDuplicates اجرا کنید.'
