@@ -296,13 +296,58 @@ const SeasonalTtmsDialog = ({
     setUploading(true);
     try {
       const text = await file.text();
-      const payload = JSON.parse(text);
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        setMessage({
+          severity: 'error',
+          text: 'این فایل JSON معتبر نیست؛ فایل result.json تولیدشده با run_fill.cmd را انتخاب کنید.',
+        });
+        return;
+      }
+      const status = String(payload?.status || '').trim().toLowerCase();
+      if (!status && (payload?.package || payload?.totals)) {
+        setMessage({
+          severity: 'warning',
+          text: 'این فایل manifest.json است؛ فایل result.json را بارگذاری کنید.',
+        });
+        return;
+      }
+      if (!status) {
+        setMessage({
+          severity: 'warning',
+          text: 'این فایل نتیجهٔ اجرا نیست (کلید status ندارد). فایل result.json داخل پوشهٔ بسته را انتخاب کنید.',
+        });
+        return;
+      }
       await axiosInstance.post(
         `${apiBase}/${reportId}/export-runs/${lastRunId}/result/`,
         { result: payload },
       );
-      setMessage({ severity: 'success', text: 'نتیجهٔ اجرا در تاریخچهٔ گزارش ثبت شد.' });
-      onToast?.('نتیجهٔ اجرای TTMS ثبت شد');
+      const inserted = Number(payload?.inserted || 0);
+      const duplicates = Number(payload?.skipped || 0);
+      const outputPath = String(payload?.output || '').trim();
+      if (status === 'failed') {
+        setMessage({
+          severity: 'error',
+          text: payload?.message
+            || 'اجرای اسکریپت با خطا تمام شد؛ جزئیات در result.json و fill_ttms.log است.',
+        });
+      } else if (status === 'dry_run') {
+        setMessage({
+          severity: 'info',
+          text: 'نتیجهٔ اجرای آزمایشی ثبت شد؛ تراکنش بازگردانی شده و فایلی تغییر نکرده است.',
+        });
+      } else {
+        setMessage({
+          severity: 'success',
+          text: `ثبت شد — ${toPersianDigits(inserted)} ردیف درج شد`
+            + (duplicates ? ` و ${toPersianDigits(duplicates)} ردیف تکراری نادیده گرفته شد` : '')
+            + (outputPath ? `؛ فایل پرشده: ${outputPath}` : ''),
+        });
+      }
+      onToast?.(status === 'failed' ? 'اجرای TTMS ناموفق بود' : 'نتیجهٔ اجرای TTMS ثبت شد');
       runsQuery.refetch?.();
     } catch (error) {
       const detail = error?.response?.data?.detail;
@@ -570,8 +615,10 @@ const SeasonalTtmsDialog = ({
         )}
 
         <Alert severity="warning" sx={{ mt: 1.5, fontSize: 11 }}>
-          {'پس از اجرای اسکریپت، فایل result.json را اینجا بارگذاری کنید تا نتیجه در تاریخچه ثبت شود. '
-            + 'پیش‌نیاز اجرا: نصب Microsoft Access Database Engine (ACE) روی ویندوز.'}
+          {'پس از اجرای اسکریپت، فایل result.json را اینجا بارگذاری کنید تا نتیجه در تاریخچه ثبت شود '
+            + '(وضعیت آن یکی از filled / dry_run / failed است؛ manifest.json فایل نتیجه نیست). '
+            + 'اسکریپت ردیف‌ها را در یک کپی «.filled-<زمان>» درج می‌کند؛ فایل اصلی دست‌نخورده می‌ماند '
+            + 'و مسیر کپی در output_path.txt نوشته می‌شود. پیش‌نیاز اجرا: Microsoft Access Database Engine (ACE).'}
         </Alert>
         </>
         ) : null}

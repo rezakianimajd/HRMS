@@ -60,6 +60,7 @@ RUNNER_CMD_CONTENT = (
     'set EXITCODE=%ERRORLEVEL%\r\n'
     'echo.\r\n'
     'echo result.json in this folder can be uploaded back to HRMS.\r\n'
+    'echo Original Access file is unchanged: open the *.filled-* copy (see output_path.txt).\r\n'
     'pause\r\n'
     'exit /b %EXITCODE%\r\n'
 )
@@ -1209,6 +1210,9 @@ def build_readme(manifest):
         *([f"  {manifest['target']['template_file']}   کپی فایل Access ارسال‌شدهٔ شما"]
           if (manifest.get('target') or {}).get('template_file') else []),
         '  README.txt      همین راهنما',
+        '  (بعد از اجرا) result.json     نتیجهٔ اجرا برای بارگذاری در HRMS',
+        '  (بعد از اجرا) fill_ttms.log   گزارش کامل اجرا برای عیب‌یابی',
+        '  (بعد از اجرا) output_path.txt مسیر فایل پر‌شدهٔ Access',
         '',
         'پوشش ستون‌های Kharid_Detail:',
         f"  کل: {coverage.get('total', 0)} ستون | خودکار: {counts.get('auto', 0)}"
@@ -1225,10 +1229,25 @@ def build_readme(manifest):
         '     اجرای آزمایشی (بدون تغییر ماندگار):',
         '       run_fill.cmd -DryRun',
         '  3) اسکریپت یک کپی با پسوند «.filled-<زمان>» می‌سازد و ردیف‌ها را در همان',
-        '     کپی درج می‌کند؛ فایل اصلی تغییر نمی‌کند. برای نوشتن روی خود فایل،',
-        '     سوییچ -InPlace را اضافه کنید (پیش از آن پشتیبان تهیه می‌شود).',
-        '  4) نتیجهٔ اجرا در فایل result.json نوشته می‌شود؛ آن را در HRMS بارگذاری',
-        '     کنید تا در تاریخچهٔ همان گزارش ثبت شود.',
+        '     کپی درج می‌کند؛ فایل اصلی تغییر نمی‌کند. مسیر فایل پرشده در پایان اجرا',
+        '     و همچنین در فایل output_path.txt نوشته می‌شود — همان فایل را در TTMS باز',
+        '     کنید. برای نوشتن روی خود فایل، سوییچ -InPlace را اضافه کنید (پیش از آن',
+        '     پشتیبان تهیه می‌شود).',
+        '  4) نتیجهٔ اجرا در فایل result.json نوشته می‌شود و وضعیت آن یکی از سه مقدار',
+        '     filled (درج موفق)، dry_run (اجرای آزمایشی) یا failed (خطا) است؛ فقط',
+        '     result.json را در HRMS بارگذاری کنید (manifest.json فایل نتیجه نیست).',
+        '     گزارش کامل اجرا نیز در fill_ttms.log ذخیره می‌شود.',
+        '',
+        'عیب‌یابی «فایل پر نشد / خالی است»:',
+        '  - فایل اصلی هرگز تغییر نمی‌کند؛ همیشه نسخهٔ «.filled-<زمان>» را باز کنید',
+        '    (مسیر دقیق: output_path.txt).',
+        '  - اگر در خروجی «ردیف‌های تکراری (درج‌نشده)» بزرگ‌تر از صفر و درج‌شده صفر',
+        '    بود، یعنی همین ردیف‌ها از قبل در فایل بودند؛ برای درج دوباره',
+        '    -AllowDuplicates بدهید یا فایل TTMS بدون این ردیف‌ها را هدف بگیرید.',
+        '  - برای دیدن نام جدول‌ها و ستون‌های واقعی فایل Access (تشخیص ناسازگاری',
+        '    نسخهٔ TTMS): run_fill.cmd -Inspect',
+        '  - هر خطای درج با شمارهٔ ردیف و پیام کامل در result.json (کلید errors) و',
+        '    fill_ttms.log ثبت می‌شود؛ تراکنش در صورت خطا کامل بازگردانی می‌شود.',
         '',
         'جلوگیری از درج تکراری:',
         '  ردیف‌هایی که ترکیب «شمارهٔ فاکتور + شناسهٔ ملی + مبلغ» آن‌ها از قبل در',
@@ -1272,6 +1291,34 @@ def build_readme(manifest):
 def filler_script():
     """محتوای خام اسکریپت PowerShell از پوشهٔ ``ttms_assets`` (با BOM و CRLF)."""
     return (ASSETS_DIR / FILLER_SCRIPT).read_bytes()
+
+
+RESULT_STATUSES = ('filled', 'dry_run', 'failed')
+RESULT_STATUS_ALIASES = {
+    'ok': 'filled', 'success': 'filled', 'done': 'filled', 'completed': 'filled',
+    'error': 'failed', 'failure': 'failed', 'rollback': 'failed',
+    'dryrun': 'dry_run', 'test': 'dry_run',
+}
+
+
+def resolve_result_status(payload):
+    """وضعیت ``result.json`` اسکریپت ویندوز را نرمال می‌کند.
+
+    خروجی: ``(status, error)``؛ اگر ``status`` خالی باشد، ``error`` پیام فارسی
+    قابل نمایش به کاربر است.
+    """
+    data = payload if isinstance(payload, dict) else {}
+    raw = str(data.get('status') or '').strip().lower().replace('-', '_')
+    status = RESULT_STATUS_ALIASES.get(raw, raw)
+    if not status:
+        if 'package' in data or 'totals' in data:
+            return '', ('این فایل manifest.json است؛ فایل result.json تولیدشده توسط '
+                        'run_fill.cmd را بارگذاری کنید.')
+        if 'inserted' in data or 'observed' in data:
+            status = 'filled'
+    if status not in RESULT_STATUSES:
+        return '', 'وضعیت نتیجه باید filled، dry_run یا failed باشد.'
+    return status, ''
 
 
 def build_package(report, rows, options=None, filters=None, overrides=None, defaults=None,

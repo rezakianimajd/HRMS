@@ -646,10 +646,10 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         run = get_object_or_404(SeasonalExportRun, pk=run_id, report=report)
         payload = request.data if isinstance(request.data, dict) else {}
         result = payload.get('result') if isinstance(payload.get('result'), dict) else payload
-        status = str(result.get('status') or '').strip().lower()
-        if status not in ('filled', 'dry_run', 'failed'):
+        status, status_error = seasonal_ttms.resolve_result_status(result)
+        if not status:
             return Response(
-                {'detail': 'وضعیت نتیجه باید filled، dry_run یا failed باشد.'},
+                {'detail': status_error},
                 status=http_status.HTTP_400_BAD_REQUEST,
             )
 
@@ -659,7 +659,12 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         target = str(result.get('target') or '').strip()
         if target:
             run.target_name = target[:200]
-        run.message = str(result.get('message') or '')[:255]
+        message = str(result.get('message') or '').strip()
+        errors = result.get('errors')
+        if status == 'failed' and isinstance(errors, list) and errors:
+            first_error = str(errors[0])[:200]
+            message = message or first_error
+        run.message = message[:255]
         if status == 'filled' and isinstance(result.get('observed'), dict):
             observed = result['observed']
             run.row_count = _int_or(observed.get('rows'), run.row_count)

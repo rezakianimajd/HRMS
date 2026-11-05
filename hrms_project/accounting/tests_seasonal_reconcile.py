@@ -653,7 +653,8 @@ class TtmsPackageTests(SeasonalBaseTest):
     def test_package_layout_and_ttms_mapping(self):
         filename, manifest, files = self._package()
         self.assertEqual(
-            set(files), {'rows.csv', 'manifest.json', 'README.txt', 'fill_ttms.ps1'},
+            set(files),
+            {'rows.csv', 'manifest.json', 'README.txt', 'fill_ttms.ps1', 'run_fill.cmd'},
         )
         self.assertTrue(filename.startswith('ttms-fill-purchase-1405-q1-'))
         self.assertEqual(manifest['target']['hc_year_code'], 1405)
@@ -854,3 +855,64 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertEqual(payload['status_display'], 'روی فایل TTMS درج شد')
         self.assertEqual(payload['filled_rows'], 3)
         self.assertEqual(payload['result']['inserted'], 3)
+
+
+class ResultStatusTests(SimpleTestCase):
+    """نرمال‌سازی وضعیت result.json اسکریپت ویندوز (بدون نیاز به دیتابیس)."""
+
+    def test_accepts_script_statuses(self):
+        from accounting import seasonal_ttms
+
+        for status in ('filled', 'dry_run', 'failed', ' FILLED ', 'Dry-Run'):
+            normalized, error = seasonal_ttms.resolve_result_status({'status': status})
+            self.assertEqual(error, '')
+            self.assertIn(normalized, seasonal_ttms.RESULT_STATUSES)
+
+        self.assertEqual(
+            seasonal_ttms.resolve_result_status({'status': 'Dry-Run'}),
+            ('dry_run', ''),
+        )
+
+    def test_maps_legacy_aliases(self):
+        from accounting import seasonal_ttms
+
+        cases = {'ok': 'filled', 'success': 'filled', 'error': 'failed', 'dryrun': 'dry_run'}
+        for raw, expected in cases.items():
+            self.assertEqual(
+                seasonal_ttms.resolve_result_status({'status': raw}), (expected, ''),
+            )
+
+    def test_infers_filled_from_inserted_and_rejects_manifest(self):
+        from accounting import seasonal_ttms
+
+        status, error = seasonal_ttms.resolve_result_status(
+            {'inserted': 3, 'observed': {'rows': 3}},
+        )
+        self.assertEqual((status, error), ('filled', ''))
+
+        status, error = seasonal_ttms.resolve_result_status(
+            {'package': {'name': 'ttms-fill'}, 'totals': {'rows': 3}},
+        )
+        self.assertEqual(status, '')
+        self.assertIn('manifest.json', error)
+
+        status, error = seasonal_ttms.resolve_result_status({'hello': 'world'})
+        self.assertEqual(status, '')
+        self.assertIn('filled', error)
+
+    def test_filler_script_supports_inspect_and_zero_insert_failure(self):
+        from accounting import seasonal_ttms
+
+        script = seasonal_ttms.filler_script().decode('utf-8-sig')
+        self.assertIn('[switch]$Inspect', script)
+        self.assertIn('output_path.txt', script)
+        self.assertIn('Get-TableNames', script)
+        self.assertIn('fill_ttms.log', script)
+        self.assertIn("$result.status = 'dry_run'", script)
+        self.assertIn("$result.status = 'failed'", script)
+
+    def test_runner_cmd_forwards_arguments(self):
+        from accounting import seasonal_ttms
+
+        self.assertIn('%*', seasonal_ttms.RUNNER_CMD_CONTENT)
+        self.assertIn(seasonal_ttms.FILLER_SCRIPT, seasonal_ttms.RUNNER_CMD_CONTENT)

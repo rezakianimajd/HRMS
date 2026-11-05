@@ -46,7 +46,8 @@ param(
     [switch]$DryRun,
     [switch]$InPlace,
     [switch]$Force,
-    [switch]$AllowDuplicates
+    [switch]$AllowDuplicates,
+    [switch]$Inspect
 )
 
 $ErrorActionPreference = 'Stop'
@@ -56,7 +57,9 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 $manifestPath = Join-Path $PackageDir 'manifest.json'
 $rowsPath = Join-Path $PackageDir 'rows.csv'
 $resultPath = Join-Path $PackageDir 'result.json'
+$logPath = Join-Path $PackageDir 'fill_ttms.log'
 $startedAt = Get-Date
+try { Start-Transcript -LiteralPath $logPath -Force | Out-Null } catch { }
 
 $result = [ordered]@{
     package_version  = ''
@@ -101,7 +104,37 @@ function Stop-WithError {
     Write-Host ''
     Write-Host ('خطا: ' + $Message) -ForegroundColor Red
     Write-Host ('جزئیات در فایل: ' + $resultPath)
+    Write-Host ('گزارش کامل: ' + $logPath)
+    try { Stop-Transcript | Out-Null } catch { }
     exit $Code
+}
+
+function Get-TableNames {
+    param($Connection)
+    $list = New-Object System.Collections.Generic.List[string]
+    try {
+        $schema = $Connection.OpenSchema(20)
+        while (-not $schema.EOF) {
+            $tableType = [string]$schema.Fields.Item('TABLE_TYPE').Value
+            if ($tableType -eq 'TABLE') {
+                $list.Add([string]$schema.Fields.Item('TABLE_NAME').Value)
+            }
+            $schema.MoveNext()
+        }
+        $schema.Close()
+    } catch { }
+    return $list
+}
+
+function Get-ColumnNames {
+    param($Connection, [string]$Table)
+    $list = New-Object System.Collections.Generic.List[string]
+    try {
+        $rs = $Connection.Execute("SELECT TOP 1 * FROM [$Table]")
+        foreach ($field in $rs.Fields) { $list.Add([string]$field.Name) }
+        $rs.Close()
+    } catch { }
+    return $list
 }
 
 function ConvertTo-SqlText {
@@ -215,6 +248,16 @@ $targetFull = (Resolve-Path -LiteralPath $Target).Path
 $result.target = $targetFull
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $baseName = [System.IO.Path]::GetFileNameWithoutExtension($targetFull)
+# اگر فایل داخل بسته (ttms_template.mdb) هدف است، نام خروجی را از نام اصلی TTMS بگیر
+try {
+    $templateName = [string]$manifest.target.template_name
+    if ($bundled -and $templateName) {
+        $bundledFull = [System.IO.Path]::GetFullPath((Join-Path $PackageDir $bundled))
+        if ($bundledFull -eq $targetFull) {
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($templateName)
+        }
+    }
+} catch { }
 $extension = [System.IO.Path]::GetExtension($targetFull)
 
 if ($DryRun) {
@@ -273,12 +316,45 @@ $seasonCode = [int]$manifest.target.hc_fasl_type_code
 $continueRadif = $true
 if ($null -ne $manifest.options.continue_radif) { $continueRadif = [bool]$manifest.options.continue_radif }
 
+# ---------------------------------------------------------------------------
+# ۳.۵) بازبینی ساختار فایل: جدول‌ها و ستون‌ها باید با نسخهٔ TTMS بخوانند
+# ---------------------------------------------------------------------------
+$tableNames = Get-TableNames $cn
+if ($Inspect) {
+    Write-Host ''
+    Write-Host '=== ساختار فایل Access انتخاب‌شده ===' -ForegroundColor Cyan
+    Write-Host ('جدول‌ها (' + $tableNames.Count + '): ' + (($tableNames | Sort-Object) -join ', '))
+    $detailColumnsPreview = Get-ColumnNames $cn $detailTable
+    Write-Host ''
+    Write-Host ('ستون‌های ' + $detailTable + ' (' + $detailColumnsPreview.Count + '):')
+    Write-Host (($detailColumnsPreview | Sort-Object) -join ', ')
+    try { $cn.Close() } catch { }
+    if (-not $InPlace) { Remove-Item -LiteralPath $workPath -Force -ErrorAction SilentlyContinue }
+    try { Stop-Transcript | Out-Null } catch { }
+    exit 0
+}
+
+if ($tableNames.Count -gt 0 -and ($tableNames -notcontains $headerTable -or $tableNames -notcontains $detailTable)) {
+    Stop-WithError ('جدول‌های مورد نیاز در فایل Access پیدا نشد: ' + $headerTable + ' و/یا ' + $detailTable +
+        '. جدول‌های موجود در این فایل: ' + (($tableNames | Select-Object -First 25) -join ', ') +
+        '. احتمالاً فایل/نسخهٔ TTMS متفاوت است یا فایل اشتباه انتخاب شده.') 5
+}
+
+$detailColumns = Get-ColumnNames $cn $detailTable
+$missingColumns = @($columnNames | Where-Object { $detailColumns -notcontains $_ })
+if ($missingColumns.Count -gt 0) {
+    Stop-WithError ('این ستون‌ها در جدول ' + $detailTable + ' وجود ندارند: ' + ($missingColumns -join ', ') +
+        '. ستون‌های موجود: ' + (($detailColumns | Select-Object -First 40) -join ', ') +
+        '. یعنی ساختار این فایل Access با نگاشت بسته نمی‌خواند.') 5
+}
+
 $inserted = 0
 $skipped = 0
 $expectedRows = 0
 $expectedPrice = 0.0
 $expectedVat = 0.0
 $duplicateNotes = New-Object System.Collections.Generic.List[string]
+$rowErrors = New-Object System.Collections.Generic.List[string]
 $failure = $null
 $allVerified = $false
 
@@ -362,12 +438,23 @@ try {
             }
         }
         $sql = "INSERT INTO [$detailTable] ($columnList) VALUES (" + ($values -join ', ') + ')'
-        $cn.Execute($sql) | Out-Null
+        try {
+            $cn.Execute($sql) | Out-Null
+        } catch {
+            $rowErrors.Add('ردیف ' + $radif + ' (فاکتور ' + $rowFactorNo + '): ' + $_.Exception.Message)
+            if ($rowErrors.Count -ge 10) {
+                throw ('درج ردیف‌ها متوقف شد. نمونهٔ خطاها: ' + ($rowErrors -join ' | '))
+            }
+            continue
+        }
         $inserted = $inserted + 1
         $expectedRows = $expectedRows + 1
         $expectedPrice = $expectedPrice + (Get-Number $row.Price)
         $expectedVat = $expectedVat + (Get-Number $row.MaliatArzeshAfzoodeh)
         if ($rowFactorNo -ne '') { $existing[$rowKey] = $true }
+    }
+    if ($rowErrors.Count -gt 0) {
+        throw ('درج بعضی ردیف‌ها ناموفق بود: ' + ($rowErrors -join ' | '))
     }
 
 
@@ -426,17 +513,31 @@ if ($failure) {
 if ($DryRun) {
     $result.status = 'dry_run'
     $result.message = 'اجرای آزمایشی موفق بود؛ تراکنش بازگردانی شد و فایلی تغییر نکرد.'
+} elseif ($inserted -eq 0) {
+    $result.status = 'failed'
+    $result.errors = @($result.errors) + @('هیچ ردیفی درج نشد.')
+    if ($skipped -gt 0) {
+        $result.message = 'هیچ ردیف جدیدی درج نشد: همهٔ ' + $skipped + ' ردیف از قبل در فایل وجود داشتند. ' +
+            'برای درج دوباره، یا فایل TTMS بدون این ردیف‌ها را انتخاب کنید یا اسکریپت را با -AllowDuplicates اجرا کنید.'
+    } else {
+        $result.message = 'هیچ ردیفی درج نشد؛ ستون‌ها/مقادیر CSV با فایل Access نخواند. گزارش fill_ttms.log را ببینید.'
+    }
 } else {
     $result.status = 'filled'
     $result.message = 'ردیف‌ها در فایل کپی‌شده درج و جمع‌ها بازبینی شد.'
 }
-if ($skipped -gt 0) {
+if ($skipped -gt 0 -and $result.status -eq 'filled') {
     $result.message = 'ردیف‌های درج‌شده بازبینی شد؛ ' + $skipped + ' ردیف تکراری (از قبل موجود) درج نشد.'
 }
 
 $result.finished_at = (Get-Date).ToString('s')
 $result.duration_seconds = [math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
 Save-Result
+if (-not $DryRun -and $result.output) {
+    try {
+        Set-Content -LiteralPath (Join-Path $PackageDir 'output_path.txt') -Value ([string]$result.output) -Encoding UTF8
+    } catch { }
+}
 
 Write-Host ''
 Write-Host ('نتیجه: ' + $result.status) -ForegroundColor Green
@@ -448,9 +549,12 @@ if ($skipped -gt 0) {
     }
 }
 Write-Host ('بازبینی تعداد: ' + $result.observed.rows + ' | مبلغ: ' + $result.observed.amount + ' | مالیات: ' + $result.observed.vat)
-if ($result.output) { Write-Host ('فایل پرشده: ' + $result.output) -ForegroundColor Cyan }
+if ($result.output) {
+    Write-Host ''
+    Write-Host ('فایل پرشده (این فایل را در TTMS باز کنید): ' + $result.output) -ForegroundColor Green
+    Write-Host 'توجه: فایل اصلی دست‌نخورده می‌ماند؛ درج‌ها در نسخهٔ کپی‌شدهٔ بالا انجام شده است.'
+}
 Write-Host ('گزارش نتیجه: ' + $resultPath) -ForegroundColor Cyan
 Write-Host 'این فایل result.json را در HRMS بارگذاری کنید تا نتیجه در تاریخچهٔ گزارش ثبت شود.'
+try { Stop-Transcript | Out-Null } catch { }
 exit 0
-
-if ($InPlace) { Write-Host 'حالت: نوشتن روی فایل هدف (پشتیبان تهیه می‌شود)' -ForegroundColor Yellow }
