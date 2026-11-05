@@ -99,6 +99,7 @@ EDITABLE_COLUMNS = [
     'KalaKhadamatName',
     'Price',
     'MaliatArzeshAfzoodeh',
+    'SayerAvarez',
     'TakhfifPrice',
     'MaliatMaksoore',
     'BargashtType',
@@ -121,14 +122,12 @@ EDITABLE_COLUMNS = [
 # «از فصل زمستان ۱۴۰۰ به بعد امکان تفکیک ارزش افزوده و ارسال بخشی تحت عنوان عوارض
 # ارزش افزوده وجود ندارد و باید تنها مالیات ارزش افزوده مقدار داشته باشد. همچنین
 # از درج هرگونه عددی در بخش عوارض ارزش افزوده (ریالی و ارزی) خودداری نمایید.»
+# توجه: «سایر عوارض» منع نشده و در فایل Access فیلد اجباری است (باید ۰ باشد).
 LOCKED_COLUMNS = {
     'AvarezArzeshAfzoodeh': ('عوارض ارزش افزوده باید خالی بماند (الزام TTMS از زمستان ۱۴۰۰)؛ '
                              'فقط مالیات بر ارزش افزوده مقدار می‌گیرد.'),
-    'SayerAvarez': ('سایر عوارض باید خالی بماند (الزام TTMS از زمستان ۱۴۰۰).'),
     'Arz_AvarezArzeshAfzoodeh': 'عوارض ارزش افزودهٔ ارزی باید خالی بماند.',
-    'Arz_SayerAvarez': 'سایر عوارض ارزی باید خالی بماند.',
-    'MoadelRialiAvarezArzeshAfzoodeh': 'معادل ریالی عوارض ارزی هم باید خالی بماند.',
-    'MoadelRialiSayerAvarez': 'معادل ریالی سایر عوارض ارزی هم باید خالی بماند.',
+    'MoadelRialiAvarezArzeshAfzoodeh': 'معادل ریالی عوارض ارزش افزودهٔ ارزی هم باید خالی بماند.',
 }
 
 # حداقل رقم لازم برای «شمارهٔ صورتحساب» در TTMS (خطای «شماره فاکتور کامل نیست»)
@@ -207,7 +206,7 @@ DETAIL_COLUMNS = [
     ('Price', 'int', None, 'مبلغ کالا یا خدمات (ریال)', 'مبلغ ردیف گزارش فصلی'),
     ('MaliatArzeshAfzoodeh', 'int', None, 'مالیات بر ارزش افزوده', 'مالیات ردیف گزارش فصلی'),
     ('AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزش افزوده', 'قفل: باید خالی بماند (الزام TTMS)'),
-    ('SayerAvarez', 'int', None, 'سایر عوارض', 'قفل: باید خالی بماند (الزام TTMS)'),
+    ('SayerAvarez', 'int', None, 'سایر عوارض', 'فیلد اجباری Access؛ پیش‌فرض صفر'),
     ('TakhfifPrice', 'int', None, 'تخفیف', 'پیش‌فرض صفر؛ قابل اصلاح'),
     ('MaliatMaksoore', 'int', None, 'مالیات مکسوره', 'پیش‌فرض صفر؛ قابل اصلاح'),
     ('HCForoushandeTypeCode', 'int', None, 'نوع فروشنده (۱ حقیقی / ۲ حقوقی)', 'خودکار از نوع شخص'),
@@ -594,8 +593,9 @@ def ttms_reference():
             'کد استان/شهر از جدول Zone همان فایل TTMS خوانده و از نام استان/شهر طرف معامله تشخیص داده می‌شود؛ در پیش‌نمایش قابل اصلاح است.',
             'کد اقتصادی فروشنده طبق دستور کارفرما ارسال نمی‌شود.',
             'همهٔ ردیف‌ها با نوع کالای «سایر» و «مشمول معاملات فصلی» گزارش می‌شوند.',
-            'ستون‌های «عوارض ارزش افزوده» و «سایر عوارض» (ریالی و ارزی) همیشه خالی ارسال می‌شوند؛ '
-            'طبق اعلام سازمان از زمستان ۱۴۰۰ فقط مالیات بر ارزش افزوده مقدار می‌گیرد.',
+            'ستون «عوارض ارزش افزوده» (ریالی و ارزی) همیشه خالی ارسال می‌شود؛ طبق اعلام سازمان '
+            'از زمستان ۱۴۰۰ فقط مالیات بر ارزش افزوده مقدار می‌گیرد. «سایر عوارض» صفر ارسال '
+            'می‌شود چون در فایل Access فیلد اجباری است.',
             f'شمارهٔ فاکتور باید حداقل {INVOICE_MIN_DIGITS} رقم باشد؛ در غیر این صورت TTMS پیام '
             '«شماره فاکتور کامل نیست» می‌دهد (گزینهٔ تکمیل با صفر در تنظیمات بسته موجود است).',
             'وضعیت مؤدی ۶/۷ فقط برای اشخاص حقیقی مجاز است؛ برای حقوقی/خارجی/تجمیعی وضعیت ۵ بگذارید.',
@@ -648,7 +648,7 @@ def row_payload(row, options=None, fallback_date=None):
         'Price': _to_int(getattr(row, 'amount', 0)),
         'MaliatArzeshAfzoodeh': _to_int(getattr(row, 'vat', 0)),
         'AvarezArzeshAfzoodeh': None,             # قفل: طبق الزام TTMS خالی می‌ماند
-        'SayerAvarez': None,                      # قفل: طبق الزام TTMS خالی می‌ماند
+        'SayerAvarez': 0,                          # فیلد اجباری Access؛ عدد ۰ مجاز است
         'TakhfifPrice': 0,
         'MaliatMaksoore': 0,
         'HCForoushandeTypeCode': type_code,
@@ -931,8 +931,11 @@ def _apply_currency_defaults(payloads):
         if not payload.get('ArzType'):
             continue
         for arz_column, moadel_column, rial_column in CURRENCY_PAIRS:
-            if payload.get(moadel_column) in (None, ''):
-                payload[moadel_column] = payload.get(rial_column) or 0
+            if payload.get(moadel_column) not in (None, ''):
+                continue
+            rial_value = payload.get(rial_column)
+            # جزء‌های قفل‌شده (عوارض ارزش افزوده) خالی می‌مانند، نه صفر
+            payload[moadel_column] = None if rial_value in (None, '') else rial_value
     return payloads
 
 
@@ -1429,8 +1432,12 @@ def build_readme(manifest):
         '  برای درج اجباری همهٔ ردیف‌ها، سوییچ -AllowDuplicates را اضافه کنید.',
         '',
         'اجبارهای پذیرش TTMS که خود اسکریپت اعمال می‌کند:',
-        '  - «عوارض ارزش افزوده» و «سایر عوارض» (ریالی و ارزی) هنگام درج خالی می‌شوند،',
-        '    حتی اگر در rows.csv عدد داشته باشند (الزام سامانه از زمستان ۱۴۰۰).',
+        '  - «عوارض ارزش افزوده» (ریالی و ارزی) هنگام درج خالی می‌شود، حتی اگر در',
+        '    rows.csv عدد داشته باشد (الزام سامانه از زمستان ۱۴۰۰). «سایر عوارض» چون در',
+        '    فایل Access فیلد اجباری است با عدد ۰ ارسال می‌شود.',
+        '  - اگر Access فیلد اجباری دیگری را نام برد (You must enter a value in ...)،',
+        '    اسکریپت همان فیلد را با مقدار پیش‌فرض نوعش پر می‌کند، درج را ادامه می‌دهد و',
+        '    فهرست این فیلدها را در result.json (کلید auto_filled_fields) ثبت می‌کند.',
         '  - با سوییچ -PadInvoiceNo شمارهٔ فاکتورهای کوتاه عددی با صفر به ۱۰ رقم تکمیل',
         '    و ارقام فارسی/عربی به لاتین تبدیل می‌شوند (رفع «شماره فاکتور کامل نیست»).',
         '    مثال: run_fill.cmd -PadInvoiceNo',

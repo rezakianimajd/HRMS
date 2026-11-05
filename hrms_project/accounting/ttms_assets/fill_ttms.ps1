@@ -74,6 +74,7 @@ $result = [ordered]@{
     inserted         = 0
     skipped          = 0
     duplicates       = @()
+    auto_filled_fields = [ordered]@{}
     allow_duplicates = [bool]$AllowDuplicates
     expected         = [ordered]@{ rows = 0; amount = 0; vat = 0 }
     observed         = [ordered]@{ rows = 0; amount = 0; vat = 0 }
@@ -191,14 +192,13 @@ function Format-InvoiceNo {
     return $text
 }
 
-# ستون‌هایی که طبق الزام TTMS (از زمستان ۱۴۰۰) باید خالی بمانند
+# ستون‌هایی که طبق الزام TTMS (از زمستان ۱۴۰۰) باید خالی بمانند.
+# توجه: «سایر عوارض» (SayerAvarez) در فایل Access فیلد اجباری است و باید عدد (۰)
+# داشته باشد؛ پیام بازبینی TTMS فقط «عوارض ارزش افزوده» را منع می‌کند.
 $LOCKED_DUTY_COLUMNS = @(
     'AvarezArzeshAfzoodeh',
-    'SayerAvarez',
     'Arz_AvarezArzeshAfzoodeh',
-    'Arz_SayerAvarez',
-    'MoadelRialiAvarezArzeshAfzoodeh',
-    'MoadelRialiSayerAvarez'
+    'MoadelRialiAvarezArzeshAfzoodeh'
 )
 
 Write-Host '=== درج ردیف‌های صورت معاملات فصلی در فایل TTMS ===' -ForegroundColor Cyan
@@ -314,7 +314,7 @@ foreach ($row in $rows) {
     }
 }
 if ($forcedDutyValues -gt 0) {
-    Write-Host ('توجه: ' + $forcedDutyValues + ' مقدار «عوارض ارزش افزوده/سایر عوارض» خالی شد (الزام TTMS).') -ForegroundColor Yellow
+    Write-Host ('توجه: ' + $forcedDutyValues + ' مقدار «عوارض ارزش افزوده» خالی شد (الزام TTMS).') -ForegroundColor Yellow
 }
 if ($paddedInvoices -gt 0) {
     Write-Host ('شمارهٔ فاکتور ' + $paddedInvoices + ' ردیف با صفر تکمیل شد (حداقل ۱۰ رقم).') -ForegroundColor Yellow
@@ -440,6 +440,8 @@ $expectedPrice = 0.0
 $expectedVat = 0.0
 $duplicateNotes = New-Object System.Collections.Generic.List[string]
 $rowErrors = New-Object System.Collections.Generic.List[string]
+$autoFillFields = @{}      # فیلد اجباری → مقداری که Access می‌پذیرد
+$autoFillReport = @{}      # فیلد اجباری → تعداد ردیف‌هایی که با آن درج شدند
 $failure = $null
 $allVerified = $false
 
@@ -500,35 +502,71 @@ try {
         }
 
         $radif = $radif + 1
-        $values = New-Object System.Collections.Generic.List[string]
+        $valueMap = @{}
         foreach ($name in $columnNames) {
             $raw = [string]$row.$name
             if ($name -eq 'Radif') {
-                if ($continueRadif) { $values.Add([string]$radif) } else { $values.Add([string]([int]$raw)) }
+                if ($continueRadif) { $valueMap[$name] = [string]$radif } else { $valueMap[$name] = [string]([int]$raw) }
                 continue
             }
             $kind = $kindOf[$name]
             if ($kind -eq 'int') {
                 $text = $raw.Trim()
-                if ($text -eq '') { $values.Add('NULL') } else { $values.Add($text) }
+                if ($text -eq '') { $valueMap[$name] = 'NULL' } else { $valueMap[$name] = $text }
             } elseif ($kind -eq 'bool') {
                 $flag = $raw.Trim().ToLowerInvariant()
                 if ($flag -eq 'true' -or $flag -eq '1' -or $flag -eq 'بله') {
-                    $values.Add('True')
+                    $valueMap[$name] = 'True'
                 } else {
-                    $values.Add('False')
+                    $valueMap[$name] = 'False'
                 }
             } elseif ($kind -eq 'guid') {
-                $values.Add('NULL')
+                $valueMap[$name] = 'NULL'
             } else {
-                $values.Add((ConvertTo-SqlText $raw))
+                $valueMap[$name] = (ConvertTo-SqlText $raw)
             }
         }
-        $sql = "INSERT INTO [$detailTable] ($columnList) VALUES (" + ($values -join ', ') + ')'
-        try {
-            $cn.Execute($sql) | Out-Null
-        } catch {
-            $rowErrors.Add('ردیف ' + $radif + ' (فاکتور ' + $rowFactorNo + '): ' + $_.Exception.Message)
+
+        # درج با «تکمیل خودکار فیلدهای اجباری»: اگر Access بگوید فیلدی خالی
+        # نمی‌پذیرد (You must enter a value in the '...' field)، همان فیلد با
+        # مقدار پیش‌فرض نوعش پر می‌شود و درج دوباره تلاش می‌شود؛ این اصلاح برای
+        # ردیف‌های بعدی هم به‌خاطر سپرده می‌شود.
+        $insertOk = $false
+        $rowFailure = ''
+        for ($attempt = 1; $attempt -le 8; $attempt++) {
+            foreach ($fixedField in $autoFillFields.Keys) {
+                if ($valueMap.ContainsKey($fixedField)) { $valueMap[$fixedField] = $autoFillFields[$fixedField] }
+            }
+            $values = @($columnNames | ForEach-Object { $valueMap[$_] })
+            $sql = "INSERT INTO [$detailTable] ($columnList) VALUES (" + ($values -join ', ') + ')'
+            try {
+                $cn.Execute($sql) | Out-Null
+                $insertOk = $true
+                break
+            } catch {
+                $rowFailure = $_.Exception.Message
+                $match = [regex]::Match($rowFailure, "in the '(?:[^'.]+\.)?([A-Za-z0-9_]+)' field")
+                if ($match.Success -and ($columnNames -contains $match.Groups[1].Value)) {
+                    $field = $match.Groups[1].Value
+                    $default = '0'
+                    $fieldKind = $kindOf[$field]
+                    if ($fieldKind -eq 'bool') { $default = 'False' }
+                    elseif ($fieldKind -eq 'text') { $default = "''" }
+                    elseif ($fieldKind -eq 'guid') { $default = 'NULL' }
+                    $autoFillFields[$field] = $default
+                    if ($autoFillReport.ContainsKey($field)) {
+                        $autoFillReport[$field] = $autoFillReport[$field] + 1
+                    } else {
+                        $autoFillReport[$field] = 1
+                    }
+                    Write-Host ('فیلد اجباری خالی بود و با ' + $default + ' پر شد: ' + $field) -ForegroundColor Yellow
+                    continue
+                }
+                break
+            }
+        }
+        if (-not $insertOk) {
+            $rowErrors.Add('ردیف ' + $radif + ' (فاکتور ' + $rowFactorNo + '): ' + $rowFailure)
             if ($rowErrors.Count -ge 10) {
                 throw ('درج ردیف‌ها متوقف شد. نمونهٔ خطاها: ' + ($rowErrors -join ' | '))
             }
@@ -556,6 +594,7 @@ try {
     $result.inserted = $inserted
     $result.skipped = $skipped
     $result.duplicates = @($duplicateNotes)
+    $result.auto_filled_fields = $autoFillReport
     $result.expected.rows = $expectedRows
     $result.expected.amount = $expectedPrice
     $result.expected.vat = $expectedVat
@@ -644,6 +683,12 @@ if ($skipped -gt 0) {
     }
 }
 Write-Host ('بازبینی تعداد: ' + $result.observed.rows + ' | مبلغ: ' + $result.observed.amount + ' | مالیات: ' + $result.observed.vat)
+if ($autoFillReport.Count -gt 0) {
+    Write-Host 'فیلدهای اجباری که خودکار پر شدند (Access):' -ForegroundColor Yellow
+    foreach ($fieldName in $autoFillReport.Keys) {
+        Write-Host ('  - ' + $fieldName + ' → ' + $autoFillFields[$fieldName]) -ForegroundColor DarkYellow
+    }
+}
 if ($result.output) {
     Write-Host ''
     Write-Host ('فایل پرشده (این فایل را در TTMS باز کنید): ' + $result.output) -ForegroundColor Green

@@ -763,7 +763,7 @@ class TtmsPackageTests(SeasonalBaseTest):
         payload = seasonal_ttms.preview(self.report, rows)
         for item in payload['rows']:
             self.assertIsNone(item['values']['AvarezArzeshAfzoodeh'])
-            self.assertIsNone(item['values']['SayerAvarez'])
+            self.assertEqual(item['values']['SayerAvarez'], 0)
 
         codes = {item['code'] for item in payload['warnings']}
         self.assertNotIn('duties_not_empty', codes)
@@ -902,17 +902,21 @@ class TtmsPolicyHelperTests(SimpleTestCase):
         from accounting import seasonal_ttms
 
         for column in (
-            'AvarezArzeshAfzoodeh', 'SayerAvarez',
-            'Arz_AvarezArzeshAfzoodeh', 'Arz_SayerAvarez',
+            'AvarezArzeshAfzoodeh', 'Arz_AvarezArzeshAfzoodeh',
+            'MoadelRialiAvarezArzeshAfzoodeh',
         ):
             self.assertIn(column, seasonal_ttms.LOCKED_COLUMNS)
             self.assertNotIn(column, seasonal_ttms.EDITABLE_COLUMNS)
+
+        # «سایر عوارض» منع نشده و فیلد اجباری Access است → قابل ویرایش و عددی
+        self.assertNotIn('SayerAvarez', seasonal_ttms.LOCKED_COLUMNS)
+        self.assertIn('SayerAvarez', seasonal_ttms.EDITABLE_COLUMNS)
 
         _, errors = seasonal_ttms.normalize_defaults({'AvarezArzeshAfzoodeh': 5000})
         self.assertTrue(errors)
         self.assertIn('قابل ویرایش نیست', errors[0]['message'])
 
-        _, errors = seasonal_ttms.normalize_overrides({'1': {'SayerAvarez': 10}}, ['1'])
+        _, errors = seasonal_ttms.normalize_overrides({'1': {'Arz_AvarezArzeshAfzoodeh': 10}}, ['1'])
         self.assertTrue(errors)
 
     def test_national_id_checksum(self):
@@ -953,7 +957,8 @@ class TtmsPolicyHelperTests(SimpleTestCase):
         )
         payload = seasonal_ttms.row_payload(row, {'pad_invoice_no': True})
         self.assertEqual(payload['AvarezArzeshAfzoodeh'], None)
-        self.assertEqual(payload['SayerAvarez'], None)
+        self.assertEqual(payload['SayerAvarez'], 0)      # فیلد اجباری Access
+        self.assertEqual(payload['Arz_AvarezArzeshAfzoodeh'], None)
         self.assertEqual(payload['FactorNo'], '0000000012')
         self.assertEqual(payload['MaliatArzeshAfzoodeh'], 100000)
 
@@ -1022,6 +1027,12 @@ class ResultStatusTests(SimpleTestCase):
         self.assertIn('[switch]$PadInvoiceNo', script)
         self.assertIn('$LOCKED_DUTY_COLUMNS', script)
         self.assertIn('function Format-InvoiceNo', script)
+        # «سایر عوارض» نباید خالی شود (فیلد اجباری Access) و فیلدهای اجباری خودکار پر می‌شوند
+        self.assertIn("You must enter a value", script)
+        self.assertIn('$autoFillFields', script)
+        locked_block = script.split('$LOCKED_DUTY_COLUMNS = @(')[1].split(')')[0]
+        self.assertIn('AvarezArzeshAfzoodeh', locked_block)
+        self.assertNotIn('SayerAvarez', locked_block)
 
     def test_runner_cmd_forwards_arguments(self):
         from accounting import seasonal_ttms
