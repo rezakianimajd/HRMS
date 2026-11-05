@@ -73,7 +73,15 @@ _*.txt
 _*.log
 _*.json
 _*.tgz
+_*.tar
+_*.ps1
+_*.cmd
+_*.sh
+_pilot*.sh
+_pipeline_runner.py
 _letters_pack/
+_letters_pack_full/
+_letters_pack*/
 # بسته‌های به‌روزرسانی محلی
 updates/
 
