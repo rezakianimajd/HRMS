@@ -320,6 +320,47 @@ class NameMappingTests(SimpleTestCase):
         self.assertIsNone(resolver.employee_id('referral', 'نام ناشناس'))
         self.assertIsNone(resolver.employee_id('referral', ''))
 
+    def test_parse_link_variants(self):
+        from correspondences import attachment_import as importer
+
+        kind, value, name = importer.parse_link('file:///C:/scans/letter-1.pdf')
+        self.assertEqual((kind, name), ('file', 'letter-1.pdf'))
+        self.assertTrue(value.startswith('C:') or value.startswith('/C:'))
+
+        kind, value, name = importer.parse_link(
+            'file://fileserver/share/نامه.pdf',
+        )
+        self.assertEqual(kind, 'file')
+        self.assertEqual(name, 'نامه.pdf')
+
+        kind, _value, name = importer.parse_link(
+            'https://example.test/docs/a%20b.pdf?v=2',
+        )
+        self.assertEqual((kind, name), ('url', 'a b.pdf'))
+
+        kind, value, _name = importer.parse_link('sub/folder/scan.jpg', r'D:\letters')
+        self.assertEqual(kind, 'file')
+        self.assertIn('letters', value)
+
+        self.assertEqual(importer.parse_link('')[0], 'none')
+        self.assertEqual(importer.parse_link('   ')[0], 'none')
+
+    def test_safe_filename_and_kind(self):
+        from correspondences import attachment_import as importer
+
+        self.assertEqual(importer.safe_filename('C:\\temp\\a.pdf'), 'a.pdf')
+        self.assertEqual(importer.safe_filename('bad:name?.pdf'), 'bad_name_.pdf')
+        self.assertTrue(importer.safe_filename('').startswith('attachment'))
+        self.assertEqual(importer.guess_kind('scan.PDF'), 'letter')
+        self.assertEqual(importer.guess_kind('doc.docx'), 'attachment')
+        self.assertEqual(importer.guess_kind('x.bin', 'receipt'), 'receipt')
+
+    def test_read_bytes_reports_missing_file(self):
+        from correspondences import attachment_import as importer
+
+        with self.assertRaises(RuntimeError):
+            importer.read_bytes('file', r'C:\definitely-not-here\x.pdf')
+
     def test_my_name_variants_cover_user_and_employee(self):
         from types import SimpleNamespace
 
