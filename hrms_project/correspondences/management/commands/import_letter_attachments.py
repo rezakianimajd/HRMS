@@ -53,6 +53,8 @@ class Command(BaseCommand):
         parser.add_argument('--sheet', default=None, help='نام شیت (پیش‌فرض: اولین شیت)')
         parser.add_argument('--sheet-code', default=None, dest='sheet_code',
                             help='کد شیت برای تطبیق شناسهٔ منبع (پیش‌فرض از نام شیت حدس زده می‌شود)')
+        parser.add_argument('--schema', default=None,
+                            help='نام اسکیمای شرکت (پیش‌فرض: همهٔ اسکیماها)')
         parser.add_argument('--fallback-dir', default=None, dest='fallback_dir',
                             help='پوشهٔ جانشین برای لینک‌های شکسته (چند مقدار با کاما)')
         parser.add_argument('--base-dir', default=None,
@@ -110,18 +112,53 @@ class Command(BaseCommand):
         canonical = str(title or '').strip()
         return legacy.SHEET_CODES.get(canonical, canonical.replace(' ', '-') or 'sheet')
 
+    def _tenant_contexts(self, options):
+        """لیست ``(schema_name, context)`` برای اجرای دستور در هر شرکت."""
+        from contextlib import nullcontext
+
+        try:
+            from django.db import connection
+            from django_tenants.utils import schema_context
+        except Exception:  # noqa: BLE001 — نصب نبودن django-tenants
+            return [(None, nullcontext())]
+
+        if getattr(connection, 'schema_name', 'public') != 'public':
+            return [(None, nullcontext())]
+
+        wanted = (options.get('schema') or '').strip()
+        if wanted:
+            return [(wanted, schema_context(wanted))]
+        from django_tenants.utils import get_tenant_model
+
+        try:
+            names = list(
+                get_tenant_model().objects.exclude(schema_name='public')
+                .values_list('schema_name', flat=True),
+            )
+        except Exception:  # noqa: BLE001
+            names = []
+        return [(name, schema_context(name)) for name in names] or [(None, nullcontext())]
+
     def handle(self, *args, **options):
         raw_dirs = options.get('fallback_dir') or ''
         options['fallback_dirs'] = [item.strip() for item in str(raw_dirs).split(',') if item.strip()]
         if options.get('manifest'):
             if options.get('file'):
                 raise CommandError('فقط یکی از --file یا --manifest را بدهید.')
-            return self._handle_manifest(options)
-        if not options.get('file'):
+        elif not options.get('file'):
             raise CommandError('یکی از --file یا --manifest الزامی است.')
-        return self._handle_excel(options)
 
-    def _handle_manifest(self, options):
+        company = self._company(options)
+        for schema_name, context in self._tenant_contexts(options):
+            if schema_name:
+                self.stdout.write(self.style.MIGRATE_HEADING(f'--- اسکیما {schema_name} ---'))
+            with context:
+                if options.get('manifest'):
+                    self._handle_manifest(options, company)
+                else:
+                    self._handle_excel(options, company)
+
+    def _handle_manifest(self, options, company):
         """اجرای درون‌ریزی از فهرست آماده‌شده (JSON) بدون نیاز به اکسل."""
         import json
 
@@ -135,8 +172,8 @@ class Command(BaseCommand):
         if not items:
             raise CommandError('فهرست خالی است.')
 
-        company = self._company(options)
         base_dir = path.parent
+
         stats = {'items': 0, 'linked': 0, 'created': 0, 'skipped': 0,
                  'missing': 0, 'failed': 0, 'no_file': 0, 'dry_run': bool(options['dry_run'])}
         limit = options.get('limit')
@@ -214,7 +251,7 @@ class Command(BaseCommand):
             + ('  (اجرای آزمایشی: چیزی ذخیره نشد)' if stats['dry_run'] else ''),
         ))
 
-    def _handle_excel(self, options):
+    def _handle_excel(self, options, company):
         from openpyxl import load_workbook
 
         from correspondences.models import LetterAttachment
@@ -231,7 +268,6 @@ class Command(BaseCommand):
             (item for item in workbook.worksheets if item.title.strip() == wanted),
             workbook.worksheets[0],
         ) if wanted else workbook.worksheets[0]
-        company = self._company(options)
         sheet_code = (options.get('sheet_code') or '').strip() or self._sheet_code(sheet.title)
 
         header_row = None
