@@ -320,6 +320,28 @@ class NameMappingTests(SimpleTestCase):
         self.assertIsNone(resolver.employee_id('referral', 'نام ناشناس'))
         self.assertIsNone(resolver.employee_id('referral', ''))
 
+    def test_alias_resolver_resolves_party_correspondent_organization(self):
+        from types import SimpleNamespace
+
+        from correspondences.mapping import AliasResolver
+
+        def alias(kind, **ids):
+            data = {'employee_id': None, 'party_id': None,
+                    'correspondent_id': None, 'organization_id': None}
+            data.update(ids)
+            return SimpleNamespace(target_kind=kind, **data)
+
+        resolver = AliasResolver({
+            ('counterparty', 'شرکت الفا'): [alias('party', party_id=7)],
+            ('contact', 'شرکت الفا'): [alias('correspondent', correspondent_id=9)],
+            ('organization', 'شرکت الفا'): [alias('organization', organization_id=5)],
+        })
+        self.assertEqual(resolver.party_id('counterparty', 'شركت آلفا'), 7)
+        self.assertEqual(resolver.correspondent_id('contact', 'شرکت الفا'), 9)
+        self.assertEqual(resolver.organization_id('organization', 'شرکت الفا'), 5)
+        # دامنهٔ نامرتبط → هیچ مقصدی
+        self.assertIsNone(resolver.party_id('organization', 'شرکت الفا'))
+
 
 class NameMappingHandlerTests(SimpleTestCase):
     """محافظ رگرسیون: هر هندلر اعمال نگاشت باید شمارنده برگرداند (وگرنه ۵۰۰ می‌دهد)."""
@@ -329,7 +351,8 @@ class NameMappingHandlerTests(SimpleTestCase):
 
         from correspondences import mapping
 
-        for name in ('_apply_employee', '_apply_party', '_apply_correspondent'):
+        for name in ('_apply_employee', '_apply_party', '_apply_correspondent',
+                     '_apply_organization'):
             handler = getattr(mapping, name)
             lines = [line for line in inspect.getsource(handler).splitlines() if line.strip()]
             self.assertTrue(

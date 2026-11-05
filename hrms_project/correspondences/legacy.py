@@ -570,8 +570,11 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
         party_account_id = (resolver.party_id('counterparty', sender_name)
                             or resolver.party_id('counterparty', receiver_name))
         correspondent_id = resolver.correspondent_id('sender', sender_name)
+        sender_organization_id = resolver.organization_id('sender', sender_name)
+        organization_id = resolver.organization_id('receiver', receiver_name)
         if any((sender_employee_id, receiver_employee_id, delivered_by_id,
-                sender_party_id, party_account_id, correspondent_id)):
+                sender_party_id, party_account_id, correspondent_id,
+                sender_organization_id, organization_id)):
             stats['aliases_applied'] += 1
         letter = Letter(
             company=company,
@@ -586,6 +589,7 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
             entry_time=row.get('entry_time'),
             entered_by_name=(row.get('entered_by_name') or '')[:200],
             organization=org,
+            sender_organization_id=sender_organization_id,
             sender_name=sender_name,
             receiver_name=receiver_name,
             delivered_by_name=delivered_by_name,
@@ -610,6 +614,8 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
             tags=row.get('tags') or [],
             archived_at=now if row.get('status') == 'archived' else None,
         )
+        if not letter.organization_id and organization_id:
+            letter.organization_id = organization_id
         batch.append(letter)
         if len(batch) >= 250:
             flush()

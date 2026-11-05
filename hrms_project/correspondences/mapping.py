@@ -6,18 +6,46 @@ from correspondences.matching import normalize_name
 # دامنه‌هایی که هر مقصد را تحت تأثیر قرار می‌دهند
 EMPLOYEE_SCOPES = {
     'referral': ('referral',),
+    'referral_target': (),
     'sender': ('sender',),
     'receiver': ('receiver',),
     'delivery': ('delivery',),
     'counterparty': ('sender', 'receiver'),
+    'contact': (),
+    'organization': (),
     'any': ('referral', 'sender', 'receiver', 'delivery'),
 }
 PARTY_SCOPES = {
     'referral': (),
+    'referral_target': (),
     'sender': ('sender',),
     'receiver': ('receiver',),
     'delivery': (),
     'counterparty': ('sender', 'receiver'),
+    'contact': (),
+    'organization': (),
+    'any': ('sender', 'receiver'),
+}
+CORRESPONDENT_SCOPES = {
+    'referral': (),
+    'referral_target': (),
+    'sender': ('sender',),
+    'receiver': ('receiver',),
+    'delivery': (),
+    'counterparty': ('sender', 'receiver'),
+    'contact': ('sender',),
+    'organization': (),
+    'any': ('sender', 'receiver'),
+}
+ORGANIZATION_SCOPES = {
+    'referral': (),
+    'referral_target': (),
+    'sender': ('sender',),
+    'receiver': ('receiver',),
+    'delivery': (),
+    'counterparty': ('sender', 'receiver'),
+    'contact': (),
+    'organization': ('sender', 'receiver'),
     'any': ('sender', 'receiver'),
 }
 LETTER_FIELDS = {
@@ -144,6 +172,30 @@ def _apply_party(alias, dry_run=False):
                 row.party_account = party
             Letter.objects.bulk_update(matched, ['party_account'], batch_size=300)
         counts['letters'] += len(matched)
+
+    if alias.scope == 'referral_target':
+        # گیرندهٔ ارجاع یک طرف حساب خارج از سامانه است → طرف حساب نامه هم ثبت شود
+        from correspondences.models import LetterReferral
+
+        referral_rows = LetterReferral.objects.filter(
+            company=company,
+        ).exclude(to_name='').values_list('letter_id', 'to_name')
+        matching_letters = {
+            letter_id for letter_id, to_name in referral_rows
+            if _matches(to_name, normalized)
+        }
+        if matching_letters:
+            rows = list(
+                Letter.objects.filter(
+                    company=company, party_account__isnull=True,
+                    id__in=matching_letters,
+                ),
+            )
+            if rows and not dry_run:
+                for row in rows:
+                    row.party_account = party
+                Letter.objects.bulk_update(rows, ['party_account'], batch_size=300)
+            counts['letters'] += len(rows)
     return counts
 
 
@@ -154,17 +206,74 @@ def _apply_correspondent(alias, dry_run=False):
     correspondent = alias.correspondent
     normalized = alias.normalized
     company = alias.company
-    rows = list(
-        Letter.objects.filter(company=company, correspondent__isnull=True).exclude(
-            sender_name='',
-        ),
-    )
-    matched = [row for row in rows if _matches(row.sender_name, normalized)]
-    if matched and not dry_run:
-        for row in matched:
-            row.correspondent = correspondent
-        Letter.objects.bulk_update(matched, ['correspondent'], batch_size=300)
-    return {'referrals': 0, 'letters': len(matched)}
+    scopes = CORRESPONDENT_SCOPES.get(alias.scope, CORRESPONDENT_SCOPES['any'])
+    counts = {'referrals': 0, 'letters': 0}
+    field_map = {'sender': 'sender_name', 'receiver': 'receiver_name'}
+    for scope in scopes:
+        name_field = field_map.get(scope)
+        if not name_field:
+            continue
+        rows = list(
+            Letter.objects.filter(
+                company=company, correspondent__isnull=True,
+            ).exclude(**{name_field: ''}),
+        )
+        matched = [row for row in rows if _matches(getattr(row, name_field), normalized)]
+        if matched and not dry_run:
+            for row in matched:
+                row.correspondent = correspondent
+            Letter.objects.bulk_update(matched, ['correspondent'], batch_size=300)
+        counts['letters'] += len(matched)
+    return counts
+
+
+def _apply_organization(alias, dry_run=False):
+    """اتصال سازمان طرف نامه (و سازمان مخاطبین) به سازمان نگاشت‌شده."""
+    from correspondences.models import Correspondent, Letter
+
+    organization = alias.organization
+    normalized = alias.normalized
+    company = alias.company
+    scopes = ORGANIZATION_SCOPES.get(alias.scope, ORGANIZATION_SCOPES['any'])
+    counts = {'referrals': 0, 'letters': 0}
+
+    if 'sender' in scopes:
+        rows = list(
+            Letter.objects.filter(
+                company=company, sender_organization__isnull=True,
+            ).exclude(sender_name=''),
+        )
+        matched = [row for row in rows if _matches(row.sender_name, normalized)]
+        if matched and not dry_run:
+            for row in matched:
+                row.sender_organization = organization
+            Letter.objects.bulk_update(matched, ['sender_organization'], batch_size=300)
+        counts['letters'] += len(matched)
+
+    if 'receiver' in scopes:
+        rows = list(
+            Letter.objects.filter(
+                company=company, organization__isnull=True, direction='outgoing',
+            ).exclude(receiver_name=''),
+        )
+        matched = [row for row in rows if _matches(row.receiver_name, normalized)]
+        if matched and not dry_run:
+            for row in matched:
+                row.organization = organization
+            Letter.objects.bulk_update(matched, ['organization'], batch_size=300)
+        counts['letters'] += len(matched)
+
+    if alias.scope in ('organization', 'contact', 'any'):
+        rows = list(
+            Correspondent.objects.filter(company=company, organization__isnull=True),
+        )
+        matched = [row for row in rows if _matches(row.name, normalized)]
+        if matched and not dry_run:
+            for row in matched:
+                row.organization = organization
+            Correspondent.objects.bulk_update(matched, ['organization'], batch_size=300)
+        counts['letters'] += len(matched)
+    return counts
 
 
 
@@ -174,6 +283,7 @@ def apply_alias(alias, dry_run=False):
         'employee': _apply_employee,
         'party': _apply_party,
         'correspondent': _apply_correspondent,
+        'organization': _apply_organization,
     }
     handler = handlers.get(alias.target_kind)
     counts = handler(alias, dry_run=dry_run) if handler else None
@@ -255,7 +365,8 @@ class AliasResolver:
             if alias.target_kind != kind:
                 continue
             target = {'employee': alias.employee_id, 'party': alias.party_id,
-                      'correspondent': alias.correspondent_id}.get(kind)
+                      'correspondent': alias.correspondent_id,
+                      'organization': getattr(alias, 'organization_id', None)}.get(kind)
             if target and target not in ids:
                 ids.append(target)
         return ids
@@ -276,6 +387,9 @@ class AliasResolver:
 
     def correspondent_id(self, scope, raw_name):
         return self._target_id('correspondent', scope, raw_name)
+
+    def organization_id(self, scope, raw_name):
+        return self._target_id('organization', scope, raw_name)
 
 
 def build_resolver(company):

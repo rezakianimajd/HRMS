@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, FormControlLabel, IconButton, MenuItem, Paper, Stack, Switch,
-  TextField, Tooltip, Typography,
+  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, Divider, FormControlLabel, IconButton, MenuItem, Paper,
+  Stack, Switch, TextField, Tooltip, Typography,
 } from '@mui/material';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
@@ -22,24 +22,53 @@ const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results
 
 const SCOPES = [
   { value: 'any', label: 'همهٔ فیلدها' },
-  { value: 'referral', label: 'گیرندهٔ ارجاع' },
-  { value: 'sender', label: 'فرستنده' },
+  { value: 'referral', label: 'گیرندهٔ ارجاع (پرسنل)' },
+  { value: 'referral_target', label: 'گیرندهٔ ارجاع (طرف حساب)' },
+  { value: 'sender', label: 'فرستنده / ارسال‌کننده' },
   { value: 'receiver', label: 'گیرنده' },
   { value: 'delivery', label: 'تحویل‌دهنده' },
-  { value: 'counterparty', label: 'طرف نامه (وارده/صادره)' },
+  { value: 'counterparty', label: 'طرف حساب نامه (وارده/صادره)' },
+  { value: 'contact', label: 'مخاطب نامه' },
+  { value: 'organization', label: 'سازمان طرف نامه' },
 ];
 const TARGET_KINDS = [
   { value: 'employee', label: 'پرسنل (منابع انسانی)' },
   { value: 'party', label: 'طرف حساب (قراردادها)' },
   { value: 'correspondent', label: 'مخاطب مکاتبات' },
+  { value: 'organization', label: 'سازمان (تعاریف مکاتبات)' },
 ];
 const scopeLabel = (value) => SCOPES.find((item) => item.value === value)?.label || value;
 
-const EMPTY_FORM = {
-  id: null, raw_name: '', scope: 'any', target_kind: 'employee',
-  employee: null, party: null, correspondent: '', note: '', apply_now: true,
+/** پیشنهاد نوع مقصد بر اساس دامنهٔ همان نام در داده‌ها. */
+const kindForScope = (scope) => {
+  if (scope === 'organization') return 'organization';
+  if (scope === 'contact') return 'correspondent';
+  if (scope === 'counterparty' || scope === 'referral_target') return 'party';
+  return 'employee';
 };
 
+const EMPTY_FORM = {
+  id: null, raw_name: '', scope: 'any', target_kind: 'employee',
+  employee: null, party: null, correspondent: '', organization: null,
+  note: '', apply_now: true,
+};
+
+
+const OrganizationPicker = ({ value, onChange, organizations = [], size = 'small' }) => (
+  <Autocomplete
+    size={size}
+    options={organizations}
+    value={value || null}
+    onChange={(_event, option) => onChange?.(option || null)}
+    getOptionLabel={(option) => option?.name || option?.label || ''}
+    isOptionEqualToValue={(a, b) => a?.id === b?.id}
+    noOptionsText="سازمانی یافت نشد"
+    renderInput={(params) => (
+      <TextField {...params} label="سازمان مقصد"
+        helperText="از سازمان‌های تعریف‌شده در مکاتبات انتخاب کنید." />
+    )}
+  />
+);
 
 const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
   const theme = useModuleTheme();
@@ -67,10 +96,16 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
     queryFn: () => axiosInstance.get('/correspondents/', { params: { page_size: 300 } })
       .then((r) => r.data),
   });
+  const organizationsQuery = useQuery({
+    queryKey: ['correspondence-organizations'],
+    queryFn: () => axiosInstance.get('/organizations/', { params: { page_size: 300 } })
+      .then((r) => r.data),
+  });
 
   const aliases = asList(aliasesQuery.data);
   const unmapped = asList(unmappedQuery.data);
   const contacts = asList(contactsQuery.data);
+  const organizations = asList(organizationsQuery.data);
   const summary = summaryQuery.data || {};
 
   const query = search.trim().toLowerCase();
@@ -116,8 +151,14 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
     qc.invalidateQueries({ queryKey: ['correspondence-meta'] });
   }, [qc]);
 
-  const openCreate = useCallback((rawName = '') => {
-    setDialog({ ...EMPTY_FORM, raw_name: rawName, open: true });
+  const openCreate = useCallback((rawName = '', scope = '', targetKind = '') => {
+    setDialog({
+      ...EMPTY_FORM,
+      raw_name: rawName,
+      scope: scope || EMPTY_FORM.scope,
+      target_kind: targetKind || (scope ? kindForScope(scope) : EMPTY_FORM.target_kind),
+      open: true,
+    });
     setError('');
   }, []);
 
@@ -131,6 +172,8 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
       employee: row.employee ? personValue(row.employee, row.employee_name) : null,
       party: row.party ? partyValue(row.party, row.party_name) : null,
       correspondent: row.correspondent || '',
+      organization: row.organization
+        ? { id: row.organization, name: row.organization_name || '' } : null,
       note: row.note || '',
       apply_now: true,
     });
@@ -144,6 +187,7 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
       open: true,
       raw_name: group.raw_name,
       scope: group.scope,
+      target_kind: kindForScope(group.scope),
       note: '',
     });
     setError('');
@@ -160,6 +204,7 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
       if (dialog.target_kind === 'employee') payload.employee = dialog.employee?.id;
       if (dialog.target_kind === 'party') payload.party = dialog.party?.id;
       if (dialog.target_kind === 'correspondent') payload.correspondent = dialog.correspondent;
+      if (dialog.target_kind === 'organization') payload.organization = dialog.organization?.id;
       const response = dialog.id
         ? await axiosInstance.patch(`${API}${dialog.id}/`, payload)
         : await axiosInstance.post(API, payload);
@@ -351,28 +396,38 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
                     <Chip size="small" label={toPersianDigits(row.count)} sx={chipSx(SLATE)} />
                     <Tooltip title="تعیین نگاشت">
                       <IconButton size="small" aria-label="تعیین نگاشت"
-                        onClick={() => openCreate(row.raw_name)}>
+                        onClick={() => openCreate(row.raw_name, (row.scopes || [])[0] || '')}>
                         <AddLinkIcon sx={{ fontSize: 15, color: ACCENT }} />
                       </IconButton>
                     </Tooltip>
                   </Stack>
+                  <Stack direction="row" spacing={0.3} flexWrap="wrap" useFlexGap sx={{ mt: 0.25 }}>
+                    {(row.scopes || []).map((scope) => (
+                      <Chip key={scope} size="small" variant="outlined"
+                        label={scopeLabel(scope)} sx={{ fontSize: 9, height: 18 }} />
+                    ))}
+                  </Stack>
                   <Stack direction="row" spacing={0.4} flexWrap="wrap" useFlexGap sx={{ mt: 0.3 }}>
-                    {(row.suggestions || []).slice(0, 3).map((item) => (
+                    {(row.suggestions || []).slice(0, 4).map((item) => (
                       <Chip
                         key={`${item.kind}-${item.id}`}
                         size="small"
                         variant="outlined"
                         label={`${item.label} (${Math.round((item.score || 0) * 100)}٪)`}
                         onClick={() => {
+                          const scope = (row.scopes || [])[0] || 'any';
                           setDialog({
                             ...EMPTY_FORM,
                             open: true,
                             raw_name: row.raw_name,
+                            scope,
                             target_kind: item.kind,
                             employee: item.kind === 'employee'
                               ? personValue(item.id, item.label) : null,
                             party: item.kind === 'party'
                               ? partyValue(item.id, item.label) : null,
+                            organization: item.kind === 'organization'
+                              ? { id: item.id, name: item.label } : null,
                           });
                           setError('');
                         }}
@@ -447,6 +502,13 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
                   <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
                 ))}
               </TextField>
+            ) : null}
+            {dialog.target_kind === 'organization' ? (
+              <OrganizationPicker
+                value={dialog.organization}
+                organizations={organizations}
+                onChange={(option) => setDialog((prev) => ({ ...prev, organization: option }))}
+              />
             ) : null}
             <TextField size="small" label="یادداشت" value={dialog.note || ''} multiline minRows={2}
               onChange={(event) => setDialog((prev) => ({ ...prev, note: event.target.value }))} />

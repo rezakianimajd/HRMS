@@ -270,14 +270,18 @@ class CorrespondenceNameAlias(BaseModel):
         ('employee', _('پرسنل (منابع انسانی)')),
         ('party', _('طرف حساب (مدیریت قراردادها)')),
         ('correspondent', _('مخاطب مکاتبات')),
+        ('organization', _('سازمان (تعاریف مکاتبات)')),
     ]
     SCOPES = [
         ('any', _('همهٔ فیلدها')),
         ('referral', _('گیرندهٔ ارجاع')),
-        ('sender', _('فرستنده')),
+        ('sender', _('فرستنده / ارسال‌کننده')),
         ('receiver', _('گیرنده')),
         ('delivery', _('تحویل‌دهنده')),
-        ('counterparty', _('طرف نامه (فرستندهٔ وارده / گیرندهٔ صادره)')),
+        ('counterparty', _('طرف حساب نامه (وارده/صادره)')),
+        ('referral_target', _('گیرندهٔ ارجاع (طرف حساب)')),
+        ('contact', _('مخاطب نامه')),
+        ('organization', _('سازمان طرف نامه')),
     ]
 
     raw_name = models.CharField(max_length=200, verbose_name=_('نام خام (واردشده)'))
@@ -300,6 +304,10 @@ class CorrespondenceNameAlias(BaseModel):
     correspondent = models.ForeignKey(
         Correspondent, on_delete=models.CASCADE, null=True, blank=True,
         related_name='name_aliases', verbose_name=_('مخاطب'),
+    )
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='name_aliases', verbose_name=_('سازمان'),
     )
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
     order = models.PositiveSmallIntegerField(
@@ -331,6 +339,7 @@ class CorrespondenceNameAlias(BaseModel):
             'employee': self.employee_id,
             'party': self.party_id,
             'correspondent': self.correspondent_id,
+            'organization': self.organization_id,
         }
         if not targets.get(self.target_kind):
             raise ValidationError({'target_kind': _('مقصد نگاشت را انتخاب کنید.')})
@@ -341,6 +350,7 @@ class CorrespondenceNameAlias(BaseModel):
             'employee': self.employee_id,
             'party': self.party_id,
             'correspondent': self.correspondent_id,
+            'organization': self.organization_id,
         }
 
     def save(self, *args, **kwargs):
@@ -348,7 +358,8 @@ class CorrespondenceNameAlias(BaseModel):
 
         self.normalized = normalize_name(self.raw_name)
         for kind, field in (('employee', 'employee'), ('party', 'party'),
-                            ('correspondent', 'correspondent')):
+                            ('correspondent', 'correspondent'),
+                            ('organization', 'organization')):
             if self.target_kind != kind:
                 setattr(self, f'{field}_id', None)
         if self._state.adding and not self.order and self.company_id and self.normalized:
@@ -368,6 +379,8 @@ class CorrespondenceNameAlias(BaseModel):
             return self.party.name
         if self.target_kind == 'correspondent' and self.correspondent_id:
             return self.correspondent.name
+        if self.target_kind == 'organization' and self.organization_id:
+            return self.organization.name
         return '—'
 
 

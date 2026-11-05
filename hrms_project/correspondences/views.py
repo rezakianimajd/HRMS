@@ -1221,7 +1221,9 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
     ordering = ['-applied_count', 'raw_name']
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('employee', 'party', 'correspondent')
+        qs = super().get_queryset().select_related(
+            'employee', 'party', 'correspondent', 'organization',
+        )
         params = self.request.query_params
         if params.get('target_kind'):
             qs = qs.filter(target_kind=params['target_kind'])
@@ -1252,7 +1254,14 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
 
         return list(ContractParty.objects.filter(company=company, is_active=True))
 
-    def _suggestions_for(self, raw, kind=None, employees=None, parties=None, limit=4):
+    def _organization_candidates(self, company):
+        return list(Organization.objects.filter(company=company, is_active=True))
+
+    def _correspondent_candidates(self, company):
+        return list(Correspondent.objects.filter(company=company, is_active=True))
+
+    def _suggestions_for(self, raw, kind=None, employees=None, parties=None,
+                         organizations=None, correspondents=None, limit=4):
         """کاندیدهای پیشنهادی برای یک نام خام."""
         from correspondences import matching
 
@@ -1288,6 +1297,34 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
                     'secondary': party.get_party_type_display(),
                     'score': match['score'],
                 })
+        if kind in (None, '', 'organization'):
+            pool = (organizations if organizations is not None
+                    else self._organization_candidates(company))
+            for match in matching.best_matches(
+                raw, pool, limit=limit, key=lambda org: org.name,
+            ):
+                organization = match['item']
+                rows.append({
+                    'kind': 'organization',
+                    'id': organization.id,
+                    'label': organization.name,
+                    'secondary': organization.get_type_display(),
+                    'score': match['score'],
+                })
+        if kind in (None, '', 'correspondent'):
+            pool = (correspondents if correspondents is not None
+                    else self._correspondent_candidates(company))
+            for match in matching.best_matches(
+                raw, pool, limit=limit, key=lambda item: item.name,
+            ):
+                correspondent = match['item']
+                rows.append({
+                    'kind': 'correspondent',
+                    'id': correspondent.id,
+                    'label': correspondent.name,
+                    'secondary': correspondent.get_kind_display(),
+                    'score': match['score'],
+                })
         rows.sort(key=lambda item: item['score'], reverse=True)
         return rows[:limit]
 
@@ -1313,7 +1350,7 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
             'aliases': len(rows),
             'by_kind': {
                 kind: sum(1 for row in rows if row['target_kind'] == kind)
-                for kind in ('employee', 'party', 'correspondent')
+                for kind in ('employee', 'party', 'correspondent', 'organization')
             },
             'applied': sum(row['applied_count'] or 0 for row in rows),
             'names': len(keys),
@@ -1340,6 +1377,8 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
 
         employees = self._employee_candidates(company)
         parties = self._party_candidates(company)
+        organizations = self._organization_candidates(company)
+        correspondents = self._correspondent_candidates(company)
         aggregated = {}
         for sample in matching.iter_name_samples(company):
             key = (sample['scope'], sample['normalized'])
@@ -1356,6 +1395,8 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
         for row in ordered[:limit]:
             row['suggestions'] = self._suggestions_for(
                 row['raw_name'], None, employees=employees, parties=parties,
+                organizations=organizations, correspondents=correspondents,
+                limit=6,
             )
         return Response(ordered[:limit])
 
@@ -1380,8 +1421,17 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
             party for party in self._party_candidates(company)
             if not query or query in matching.normalize_name(party.name)
         ][:80]
+        organizations = [
+            org for org in self._organization_candidates(company)
+            if not query or query in matching.normalize_name(org.name)
+        ][:80]
+        correspondents = [
+            item for item in self._correspondent_candidates(company)
+            if not query or query in matching.normalize_name(item.name)
+        ][:80]
         return Response(self._suggestions_for(
-            raw, kind or None, employees=employees, parties=parties, limit=8,
+            raw, kind or None, employees=employees, parties=parties,
+            organizations=organizations, correspondents=correspondents, limit=8,
         ))
 
     @action(detail=True, methods=['post'])

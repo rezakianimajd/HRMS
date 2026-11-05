@@ -150,21 +150,39 @@ def best_matches(raw, candidates, limit=5, threshold=0.6, key=None):
 # نمونه‌های موجود در داده‌ها (برای فهرست «نام‌های نگاشت‌نشده»)
 # ---------------------------------------------------------------------------
 def iter_name_samples(company):
-    """نام‌های خام موجود در داده‌های مکاتبات → ``[{'scope','raw','count'}]``."""
+    """نام‌های خام موجود در داده‌های مکاتبات → ``[{'scope','raw','count'}]``.
+
+    برای هر فیلد نامه، هر «اتصال خالی» یک دامنهٔ جداگانه است؛ مثلاً فرستندهٔ یک
+    نامهٔ وارده می‌تواند هم‌زمان به پرسنل (sender)، طرف حساب (counterparty)،
+    سازمان (organization) و مخاطب (contact) نگاشت شود.
+    """
     from django.db.models import Count
 
-    from correspondences.models import Letter, LetterReferral
+    from correspondences.models import Correspondent, Letter, LetterReferral
 
     sources = [
-        ('referral', LetterReferral, 'to_name', 'to_employee'),
-        ('sender', Letter, 'sender_name', 'sender_employee'),
-        ('receiver', Letter, 'receiver_name', 'receiver_employee'),
-        ('delivery', Letter, 'delivered_by_name', 'delivered_by'),
+        # ارجاعات
+        ('referral', LetterReferral, 'to_name', {'to_employee__isnull': True}),
+        # پرسنل نامه‌ها
+        ('sender', Letter, 'sender_name', {'sender_employee__isnull': True}),
+        ('receiver', Letter, 'receiver_name', {'receiver_employee__isnull': True}),
+        ('delivery', Letter, 'delivered_by_name', {'delivered_by__isnull': True}),
+        # طرف حساب نامه (وارده از فرستنده / صادره از گیرنده)
+        ('counterparty', Letter, 'sender_name', {'party_account__isnull': True}),
+        ('counterparty', Letter, 'receiver_name', {'party_account__isnull': True}),
+        # سازمان طرف نامه
+        ('organization', Letter, 'sender_name', {'sender_organization__isnull': True}),
+        ('organization', Letter, 'receiver_name', {'organization__isnull': True}),
+        # مخاطب نامه
+        ('contact', Letter, 'sender_name', {'correspondent__isnull': True}),
+        # سازمان مخاطبین
+        ('organization', Correspondent, 'name', {'organization__isnull': True}),
     ]
     samples = []
-    for scope, model, name_field, link_field in sources:
+    for scope, model, name_field, link_filter in sources:
         qs = model.objects.filter(company=company).exclude(**{f'{name_field}': ''})
-        qs = qs.filter(**{f'{link_field}__isnull': True})
+        if link_filter:
+            qs = qs.filter(**link_filter)
         rows = qs.values(name_field).annotate(count=Count('id')).order_by('-count')
         for row in rows:
             raw = (row[name_field] or '').strip()

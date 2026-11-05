@@ -176,6 +176,7 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
     party_name = serializers.SerializerMethodField()
     correspondent_name = serializers.SerializerMethodField()
+    organization_name = serializers.SerializerMethodField()
     target_label = serializers.CharField(read_only=True)
     target_kind_display = serializers.CharField(source='get_target_kind_display', read_only=True)
     scope_display = serializers.CharField(source='get_scope_display', read_only=True)
@@ -203,12 +204,18 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
     def get_correspondent_name(self, obj):
         return obj.correspondent.name if obj.correspondent_id else ''
 
+    def get_organization_name(self, obj):
+        return obj.organization.name if obj.organization_id else ''
+
     def validate(self, attrs):
         target_kind = attrs.get('target_kind') or getattr(self.instance, 'target_kind', '')
         employee = attrs.get('employee', getattr(self.instance, 'employee', None))
         party = attrs.get('party', getattr(self.instance, 'party', None))
         correspondent = attrs.get(
             'correspondent', getattr(self.instance, 'correspondent', None),
+        )
+        organization = attrs.get(
+            'organization', getattr(self.instance, 'organization', None),
         )
         if target_kind == 'employee' and not employee:
             raise serializers.ValidationError({'employee': 'پرسنل مقصد را انتخاب کنید.'})
@@ -217,6 +224,10 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
         if target_kind == 'correspondent' and not correspondent:
             raise serializers.ValidationError(
                 {'correspondent': 'مخاطب مقصد را انتخاب کنید.'},
+            )
+        if target_kind == 'organization' and not organization:
+            raise serializers.ValidationError(
+                {'organization': 'سازمان مقصد را انتخاب کنید.'},
             )
         raw_name = attrs.get('raw_name') or getattr(self.instance, 'raw_name', '')
         normalized = normalize_name(raw_name)
@@ -239,6 +250,8 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
                 duplicates = duplicates.filter(party=party)
             elif correspondent:
                 duplicates = duplicates.filter(correspondent=correspondent)
+            elif organization:
+                duplicates = duplicates.filter(organization=organization)
             if self.instance:
                 duplicates = duplicates.exclude(pk=self.instance.pk)
             if duplicates.exists():
