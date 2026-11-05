@@ -33,6 +33,7 @@ const contract = {
   id: 1,
   number: 'C-EUR-1',
   subject: 'قرارداد ارزی نمونه',
+  party: 9,
   party_name: 'شرکت طرف قرارداد',
   status: 'active',
   status_display: 'در حال اجرا',
@@ -93,7 +94,7 @@ beforeEach(() => {
     matches: false, addListener: () => {}, removeListener: () => {},
     addEventListener: () => {}, removeEventListener: () => {},
   }));
-  axiosInstance.get.mockImplementation((url) => {
+  axiosInstance.get.mockImplementation((url, options) => {
     if (String(url).includes('guarantees-status')) {
       return Promise.resolve({
         data: {
@@ -124,6 +125,29 @@ beforeEach(() => {
     }
     if (String(url).includes('/external-contracts/1/')) return Promise.resolve({ data: contract });
     if (String(url).includes('/external-contracts/')) return Promise.resolve({ data: [contract] });
+    if (String(url).includes('/letters/') && options?.params?.party) {
+      return Promise.resolve({
+        data: {
+          results: [{
+            id: 71, number: 'IN-1405-1', subject: 'نامهٔ طرف قرارداد', direction: 'incoming',
+            direction_display: 'وارده', status: 'registered', status_display: 'ثبت‌شده',
+            letter_date: '2026-05-02', external_number: '778', indicator_no: '155',
+            category_title: 'نامهٔ وارده', priority_display: 'عادی', sender_name: 'شرکت طرف قرارداد',
+            party_account_name: 'شرکت طرف قرارداد', attachment_count: 1, referral_count: 1,
+            referrals: [{
+              id: 5, target_label: 'مدیر بازرگانی', status: 'done',
+              status_display: 'اقدام شد', referred_on: '2026-05-03',
+            }],
+            attachments: [{
+              id: 12, title: 'اسکن نامه', kind_display: 'اسکن', size: 2048,
+              uploaded_by_name: 'کاربر نمونه', created_at: '2026-05-02T09:00:00Z',
+              file_url: 'https://example.test/letter.pdf',
+            }],
+          }],
+          count: 1,
+        },
+      });
+    }
     return Promise.resolve({ data: {} });
   });
 });
@@ -233,6 +257,18 @@ test('contract profile shows the compact card, single-row quick access and the a
 
   await openTab('پرداخت‌ها');
   expect(container.textContent).toContain('فهرست پرداخت‌ها');
+
+  const corrTab = Array.from(container.querySelectorAll('.MuiTab-root'))
+    .find((item) => item.textContent.trim() === 'مکاتبات');
+  expect(corrTab).toBeTruthy();
+  await act(async () => {
+    corrTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(400);
+  });
+  // تب مکاتبات باید نامه‌های همین طرف حساب را از API بخواهد
+  expect(axiosInstance.get.mock.calls.some(([url, options]) => (
+    String(url).includes('/letters/') && options?.params?.party === 9
+  ))).toBe(true);
 
   await openTab('مدارک');
   expect(container.textContent).toContain('مدارک قرارداد');

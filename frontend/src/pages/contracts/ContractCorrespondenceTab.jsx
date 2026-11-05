@@ -34,9 +34,12 @@ const ContractCorrespondenceTab = ({ ctx }) => {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['contract-correspondence', partyId],
     enabled: Boolean(partyId),
-    queryFn: () => axiosInstance
-      .get('/letters/', { params: { party: partyId, page_size: 200 } })
-      .then((response) => response.data),
+    queryFn: async () => {
+      const response = await axiosInstance.get('/letters/', {
+        params: { party: partyId, page_size: 200 },
+      });
+      return response?.data ?? {};
+    },
   });
 
   const rows = useMemo(() => {
@@ -96,7 +99,7 @@ const ContractCorrespondenceTab = ({ ctx }) => {
 
       <SectionCard
         title={`مکاتبات طرف حساب${contract.party_name ? ` — ${contract.party_name}` : ''}`}
-        icon={<MailOutlineIcon sx={{ fontSize: 16 }} />}
+        icon={MailOutlineIcon}
       >
         {rows.length === 0 ? (
           <Box sx={{
