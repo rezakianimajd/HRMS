@@ -71,6 +71,9 @@ def _apply_employee(alias, dry_run=False):
             for row in matched:
                 setattr(row, link_field, employee)
                 setattr(row, name_field, full_name[:200])
+            Letter.objects.bulk_update(matched, [link_field, name_field], batch_size=300)
+        counts['letters'] += len(matched)
+    return counts
 
 
 def _apply_party(alias, dry_run=False):
@@ -155,8 +158,10 @@ def apply_alias(alias, dry_run=False):
         'correspondent': _apply_correspondent,
     }
     handler = handlers.get(alias.target_kind)
-    counts = handler(alias, dry_run=dry_run) if handler else {'referrals': 0, 'letters': 0}
-    total = counts['referrals'] + counts['letters']
+    counts = handler(alias, dry_run=dry_run) if handler else None
+    if not isinstance(counts, dict):
+        counts = {'referrals': 0, 'letters': 0}
+    total = counts.get('referrals', 0) + counts.get('letters', 0)
     if not dry_run and total:
         alias.applied_count = (alias.applied_count or 0) + total
         alias.last_applied_at = timezone.now()

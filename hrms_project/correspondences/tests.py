@@ -317,6 +317,37 @@ class NameMappingTests(SimpleTestCase):
         self.assertIsNone(resolver.employee_id('referral', ''))
 
 
+class NameMappingHandlerTests(SimpleTestCase):
+    """محافظ رگرسیون: هر هندلر اعمال نگاشت باید شمارنده برگرداند (وگرنه ۵۰۰ می‌دهد)."""
+
+    def test_apply_handlers_return_counters(self):
+        import inspect
+
+        from correspondences import mapping
+
+        for name in ('_apply_employee', '_apply_party', '_apply_correspondent'):
+            handler = getattr(mapping, name)
+            lines = [line for line in inspect.getsource(handler).splitlines() if line.strip()]
+            self.assertTrue(
+                lines[-1].strip().startswith('return'),
+                f'{name} باید در پایان مقدار برگرداند (counts)',
+            )
+
+    def test_apply_alias_tolerates_missing_handler(self):
+        from types import SimpleNamespace
+
+        from correspondences import mapping
+
+        alias = SimpleNamespace(
+            target_kind='unknown', employee=None, party=None, correspondent=None,
+            normalized='x', raw_name='x', scope='any', applied_count=0,
+            last_applied_at=None, id=1, target_label='—', company_id=1,
+        )
+        result = mapping.apply_alias(alias, dry_run=True)
+        self.assertEqual(result['total'], 0)
+        self.assertTrue(result['dry_run'])
+
+
 class IncomingLetterSpecializationTests(SimpleTestCase):
     """فیلدهای تخصصی دفتر وارده: نحوهٔ ورود، دو شمارهٔ ثبت و ارجاع کامل."""
 
