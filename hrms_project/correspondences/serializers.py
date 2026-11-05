@@ -1,5 +1,6 @@
 """Serializers for the Correspondences module."""
 from rest_framework import serializers
+from correspondences.matching import normalize_name
 from correspondences.models import IncomingLetter, OutgoingLetter, Announcement, Form, Organization, OrganizationalLetter
 
 
@@ -167,6 +168,76 @@ class CorrespondentSerializer(serializers.ModelSerializer):
 
     def get_letter_count(self, obj):
         return getattr(obj, 'letter_count', None) or obj.letters.count()
+
+
+class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
+    """نگاشت نام خام به پرسنل / طرف حساب / مخاطب (برای صفحهٔ تعاریف و مخاطبین)."""
+
+    employee_name = serializers.SerializerMethodField()
+    party_name = serializers.SerializerMethodField()
+    correspondent_name = serializers.SerializerMethodField()
+    target_label = serializers.CharField(read_only=True)
+    target_kind_display = serializers.CharField(source='get_target_kind_display', read_only=True)
+    scope_display = serializers.CharField(source='get_scope_display', read_only=True)
+
+    class Meta:
+        from correspondences.models import CorrespondenceNameAlias
+
+        model = CorrespondenceNameAlias
+        fields = '__all__'
+        read_only_fields = [
+            'id', 'company', 'normalized', 'applied_count', 'last_applied_at',
+            'is_active', 'created_at', 'updated_at',
+        ]
+
+    def get_employee_name(self, obj):
+        if not obj.employee_id:
+            return ''
+        return getattr(obj.employee, 'employee_id', '') and (
+            f"{obj.employee.full_name} ({obj.employee.employee_id})"
+        ) or obj.employee.full_name
+
+    def get_party_name(self, obj):
+        return obj.party.name if obj.party_id else ''
+
+    def get_correspondent_name(self, obj):
+        return obj.correspondent.name if obj.correspondent_id else ''
+
+    def validate(self, attrs):
+        target_kind = attrs.get('target_kind') or getattr(self.instance, 'target_kind', '')
+        employee = attrs.get('employee', getattr(self.instance, 'employee', None))
+        party = attrs.get('party', getattr(self.instance, 'party', None))
+        correspondent = attrs.get(
+            'correspondent', getattr(self.instance, 'correspondent', None),
+        )
+        if target_kind == 'employee' and not employee:
+            raise serializers.ValidationError({'employee': 'پرسنل مقصد را انتخاب کنید.'})
+        if target_kind == 'party' and not party:
+            raise serializers.ValidationError({'party': 'طرف حساب مقصد را انتخاب کنید.'})
+        if target_kind == 'correspondent' and not correspondent:
+            raise serializers.ValidationError(
+                {'correspondent': 'مخاطب مقصد را انتخاب کنید.'},
+            )
+        raw_name = attrs.get('raw_name') or getattr(self.instance, 'raw_name', '')
+        if not normalize_name(raw_name):
+            raise serializers.ValidationError({'raw_name': 'نام خام معتبر نیست.'})
+
+        # یکتایی (شرکت، کلید نرمال‌شده، دامنه)
+        from correspondences.models import CorrespondenceNameAlias
+
+        company = getattr(self.instance, 'company', None) or self.context.get('company')
+        scope = attrs.get('scope') or getattr(self.instance, 'scope', 'any')
+        if company:
+            duplicates = CorrespondenceNameAlias.objects.filter(
+                company=company, scope=scope, normalized=normalize_name(raw_name),
+            )
+            if self.instance:
+                duplicates = duplicates.exclude(pk=self.instance.pk)
+            if duplicates.exists():
+                raise serializers.ValidationError({
+                    'raw_name': 'برای این نام در همین دامنه قبلاً نگاشت ثبت شده است.',
+                })
+        return attrs
 
 
 class LetterAttachmentSerializer(serializers.ModelSerializer):

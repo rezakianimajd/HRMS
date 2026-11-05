@@ -522,10 +522,12 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
     from django.utils import timezone
 
     from correspondences.models import Letter, LetterEvent, LetterReferral
+    from correspondences.mapping import build_resolver
 
     rows = list(rows)
     stats = summarize(rows)
-    stats.update({'created': 0, 'skipped': 0, 'referrals_created': 0, 'events_created': 0})
+    stats.update({'created': 0, 'skipped': 0, 'referrals_created': 0, 'events_created': 0,
+                  'aliases_applied': 0})
     if dry_run:
         if logger:
             logger(f'[dry-run] {stats["total"]} ردیف آمادهٔ ورود: {stats["by_sheet"]}')
@@ -534,6 +536,7 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
         return stats
 
     categories = _ensure_categories(company)
+    resolver = build_resolver(company)
     existing_refs = set(
         Letter.objects.filter(company=company).values_list('source_ref', flat=True)
     )
@@ -557,6 +560,19 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
 
     for row in pending:
         org = org_cache.get(clean_text(row.get('organization_name'))) if row.get('organization_name') else None
+        sender_name = (row.get('sender_name') or '')[:200]
+        receiver_name = (row.get('receiver_name') or '')[:200]
+        delivered_by_name = (row.get('delivered_by_name') or '')[:200]
+        sender_employee_id = resolver.employee_id('sender', sender_name)
+        receiver_employee_id = resolver.employee_id('receiver', receiver_name)
+        delivered_by_id = resolver.employee_id('delivery', delivered_by_name)
+        sender_party_id = resolver.party_id('sender', sender_name)
+        party_account_id = (resolver.party_id('counterparty', sender_name)
+                            or resolver.party_id('counterparty', receiver_name))
+        correspondent_id = resolver.correspondent_id('sender', sender_name)
+        if any((sender_employee_id, receiver_employee_id, delivered_by_id,
+                sender_party_id, party_account_id, correspondent_id)):
+            stats['aliases_applied'] += 1
         letter = Letter(
             company=company,
             direction=row['direction'],
@@ -570,8 +586,15 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
             entry_time=row.get('entry_time'),
             entered_by_name=(row.get('entered_by_name') or '')[:200],
             organization=org,
-            sender_name=(row.get('sender_name') or '')[:200],
-            receiver_name=(row.get('receiver_name') or '')[:200],
+            sender_name=sender_name,
+            receiver_name=receiver_name,
+            delivered_by_name=delivered_by_name,
+            delivered_by_id=delivered_by_id,
+            sender_employee_id=sender_employee_id,
+            receiver_employee_id=receiver_employee_id,
+            sender_party_id=sender_party_id,
+            party_account_id=party_account_id,
+            correspondent_id=correspondent_id,
             drafter_name=(row.get('drafter_name') or '')[:200],
             transmittal_no=(row.get('transmittal_no') or '')[:60],
             indicator_no=(row.get('indicator_no') or '')[:60],
@@ -603,9 +626,12 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
         if not letter:
             continue
         for index, referral in enumerate(row.get('referrals') or [], start=1):
+            to_name = (referral.get('to_name') or '')[:200]
+            to_employee_id = resolver.employee_id('referral', to_name)
             referrals.append(LetterReferral(
                 company=company, letter=letter, seq=index,
-                to_name=(referral.get('to_name') or '')[:200],
+                to_name=to_name,
+                to_employee_id=to_employee_id,
                 referred_on=referral.get('referred_on') or letter.letter_date,
                 status='done',
                 result_note='ارجاع تاریخی (واردشده از فایل اکسل)',

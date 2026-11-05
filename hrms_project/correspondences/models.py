@@ -258,6 +258,104 @@ class Correspondent(BaseModel):
 
 
 
+class CorrespondenceNameAlias(BaseModel):
+    """نگاشت نام خام (مثلاً از اکسل) به پرسنل / طرف حساب / مخاطب.
+
+    مثال: «خ.حسینی» → پرسنل «سیده زهرا حسینی». پس از ثبت، هنگام ورود داده‌های
+    اکسل خودکار اعمال می‌شود و با دکمهٔ «اعمال روی داده‌های موجود» ردیف‌های قبلی
+    هم اصلاح و به پرسنل/طرف حساب متصل می‌شوند.
+    """
+
+    TARGET_KINDS = [
+        ('employee', _('پرسنل (منابع انسانی)')),
+        ('party', _('طرف حساب (مدیریت قراردادها)')),
+        ('correspondent', _('مخاطب مکاتبات')),
+    ]
+    SCOPES = [
+        ('any', _('همهٔ فیلدها')),
+        ('referral', _('گیرندهٔ ارجاع')),
+        ('sender', _('فرستنده')),
+        ('receiver', _('گیرنده')),
+        ('delivery', _('تحویل‌دهنده')),
+        ('counterparty', _('طرف نامه (فرستندهٔ وارده / گیرندهٔ صادره)')),
+    ]
+
+    raw_name = models.CharField(max_length=200, verbose_name=_('نام خام (واردشده)'))
+    normalized = models.CharField(max_length=200, blank=True, db_index=True,
+                                  verbose_name=_('کلید نرمال‌شده'))
+    scope = models.CharField(max_length=20, default='any', choices=SCOPES,
+                             verbose_name=_('دامنهٔ کاربرد'))
+    target_kind = models.CharField(max_length=20, choices=TARGET_KINDS,
+                                   verbose_name=_('نوع مقصد'))
+    employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='correspondence_aliases', db_constraint=False,
+        verbose_name=_('پرسنل'),
+    )
+    party = models.ForeignKey(
+        'contracts.ContractParty', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='correspondence_aliases', db_constraint=False,
+        verbose_name=_('طرف حساب'),
+    )
+    correspondent = models.ForeignKey(
+        Correspondent, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='name_aliases', verbose_name=_('مخاطب'),
+    )
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
+    applied_count = models.PositiveIntegerField(default=0, verbose_name=_('تعداد اصلاح‌شده'))
+    last_applied_at = models.DateTimeField(null=True, blank=True, verbose_name=_('آخرین اعمال'))
+
+    class Meta:
+        verbose_name = _('نگاشت نام مکاتبات')
+        verbose_name_plural = _('نگاشت نام‌های مکاتبات')
+        ordering = ['-applied_count', 'raw_name']
+        unique_together = [('company', 'normalized', 'scope')]
+        indexes = [models.Index(fields=['company', 'scope', 'normalized'])]
+
+    def __str__(self):
+        return f'{self.raw_name} → {self.target_label}'
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        from correspondences.matching import normalize_name
+
+        super().clean()
+        self.normalized = normalize_name(self.raw_name)
+        if not self.normalized:
+            raise ValidationError({'raw_name': _('نام خام معتبر نیست.')})
+        targets = {
+            'employee': self.employee_id,
+            'party': self.party_id,
+            'correspondent': self.correspondent_id,
+        }
+        if not targets.get(self.target_kind):
+            raise ValidationError({'target_kind': _('مقصد نگاشت را انتخاب کنید.')})
+
+    def save(self, *args, **kwargs):
+        from correspondences.matching import normalize_name
+
+        self.normalized = normalize_name(self.raw_name)
+        for kind, field in (('employee', 'employee'), ('party', 'party'),
+                            ('correspondent', 'correspondent')):
+            if self.target_kind != kind:
+                setattr(self, f'{field}_id', None)
+        return super().save(*args, **kwargs)
+
+    @property
+    def target_label(self):
+        """برچسب خوانا برای مقصد نگاشت."""
+        if self.target_kind == 'employee' and self.employee_id:
+            name = getattr(self.employee, 'full_name', '') or ''
+            code = getattr(self.employee, 'employee_id', '') or ''
+            return f'{name} ({code})' if code else name
+        if self.target_kind == 'party' and self.party_id:
+            return self.party.name
+        if self.target_kind == 'correspondent' and self.correspondent_id:
+            return self.correspondent.name
+        return '—'
+
+
 class Letter(BaseModel):
     """مکاتبهٔ اداری (وارده / صادره / داخلی) با ارجاع، پیوست و تاریخچه."""
 

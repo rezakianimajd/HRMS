@@ -251,6 +251,72 @@ class LegacyExcelParsingTests(SimpleTestCase):
 
 
 
+class NameMappingTests(SimpleTestCase):
+    """نرمال‌سازی و تطبیق نام‌های واردشده از اکسل (بدون دیتابیس)."""
+
+    def test_normalize_name_strips_honorifics_and_normalizes_letters(self):
+        from correspondences import matching
+
+        self.assertEqual(matching.normalize_name('خ.حسینی'), 'حسینی')
+        self.assertEqual(matching.normalize_name('خانم حسینی'), 'حسینی')
+        self.assertEqual(matching.normalize_name('حسيني'), 'حسینی')
+        self.assertEqual(matching.normalize_name('آقای دکتر رضایی'), 'رضایی')
+        self.assertEqual(matching.normalize_name('شركت آلفا'), 'شرکت الفا')
+        self.assertEqual(matching.normalize_name('سیده زهرا حسینی'), 'سیده زهرا حسینی')
+        self.assertEqual(matching.normalize_name('مدیرعامل'), '')
+        self.assertEqual(matching.normalize_name('  '), '')
+
+    def test_similarity_matches_employee_shortcuts(self):
+        from correspondences import matching
+
+        self.assertEqual(matching.similarity('سیده زهرا حسینی', 'سیده زهرا حسینی'), 1.0)
+        self.assertGreaterEqual(matching.similarity('خ.حسینی', 'سیده زهرا حسینی'), 0.85)
+        self.assertGreaterEqual(matching.similarity('ز.حسینی', 'سیده زهرا حسینی'), 0.85)
+        self.assertGreaterEqual(matching.similarity('حسيني', 'سیده زهرا حسینی'), 0.85)
+        self.assertGreaterEqual(matching.similarity('رضایی محمد', 'محمد رضایی'), 0.85)
+        # نام غیرمرتبط نباید تطبیق داده شود
+        self.assertLess(matching.similarity('خ.حسینی', 'محمد رضایی'), 0.5)
+
+    def test_generic_company_words_are_not_strong_evidence(self):
+        from correspondences import matching
+
+        self.assertLess(matching.similarity('شرکت بتا', 'شرکت آلفا تجارت'), 0.6)
+        self.assertEqual(matching.similarity('شركت آلفا تجارت', 'شرکت آلفا تجارت'), 1.0)
+
+    def test_best_matches_ranks_and_filters(self):
+        from correspondences import matching
+
+        candidates = ['سیده زهرا حسینی', 'محمد رضایی', 'اکبر اکبری']
+        rows = matching.best_matches('خ.حسینی', candidates)
+        self.assertTrue(rows)
+        self.assertEqual(rows[0]['item'], 'سیده زهرا حسینی')
+        self.assertGreaterEqual(rows[0]['score'], 0.85)
+        self.assertEqual([row['item'] for row in rows[1:]], [])
+
+    def test_alias_resolver_prefers_scope_then_any(self):
+        from decimal import Decimal
+        from types import SimpleNamespace
+
+        from correspondences.mapping import AliasResolver
+
+        referral_alias = SimpleNamespace(
+            target_kind='employee', employee_id=11, party_id=None, correspondent_id=None,
+        )
+        any_alias = SimpleNamespace(
+            target_kind='party', employee_id=None, party_id=22, correspondent_id=None,
+        )
+        resolver = AliasResolver({
+            ('referral', 'حسینی'): referral_alias,
+            ('any', 'حسینی'): any_alias,
+        })
+        self.assertEqual(resolver.employee_id('referral', 'خ.حسینی'), 11)
+        # در دامنهٔ دیگر، نگاشت «همه» استفاده می‌شود
+        self.assertEqual(resolver.party_id('sender', 'حسینی'), 22)
+        self.assertIsNone(resolver.employee_id('sender', 'حسینی'))
+        self.assertIsNone(resolver.employee_id('referral', 'نام ناشناس'))
+        self.assertIsNone(resolver.employee_id('referral', ''))
+
+
 class IncomingLetterSpecializationTests(SimpleTestCase):
     """فیلدهای تخصصی دفتر وارده: نحوهٔ ورود، دو شمارهٔ ثبت و ارجاع کامل."""
 

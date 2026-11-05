@@ -14,6 +14,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
+import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -1574,6 +1575,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               </span>
             </Tooltip>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}>خروجی اکسل</Button>
+            <Tooltip title="نگاشت نام‌های واردشده از اکسل به پرسنل و طرف‌های حساب">
+              <Button variant="outlined" startIcon={<SyncAltIcon />}
+                onClick={() => { window.location.assign('/correspondence/settings?tab=mapping'); }}>
+                نگاشت نام‌ها
+              </Button>
+            </Tooltip>
             {mode === 'all' ? (
               <>
                 <Button variant="outlined" startIcon={<InboxIcon />}

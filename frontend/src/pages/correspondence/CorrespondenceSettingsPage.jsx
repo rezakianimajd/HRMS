@@ -13,6 +13,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import NumbersIcon from '@mui/icons-material/Numbers';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { MUTED } from '../accounting/AccountingDashboardUI';
@@ -20,6 +21,7 @@ import { ModuleTable, useModuleTheme, useRowHeight } from '../contracts/contract
 import {
   ACCENT, DIRECTION_META, INCOMING, INTERNAL, SLATE, WARN, chipSx, MetaChip,
 } from './correspondenceUi';
+import CorrespondenceNameMappingTab from './CorrespondenceNameMappingTab';
 
 const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
 
@@ -56,7 +58,10 @@ const CorrespondenceSettingsPage = () => {
   const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState(searchParams.get('tab') === 'contacts' ? 'contacts' : 'categories');
+  const [tab, setTab] = useState(
+    searchParams.get('tab') === 'contacts' ? 'contacts'
+      : searchParams.get('tab') === 'mapping' ? 'mapping' : 'categories',
+  );
   const [dialog, setDialog] = useState({ open: false, type: 'category', row: null });
   const [form, setForm] = useState(ENTITY_CONFIG.category.defaults);
   const [error, setError] = useState('');
@@ -64,7 +69,9 @@ const CorrespondenceSettingsPage = () => {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    if (searchParams.get('tab') === 'contacts') setTab('contacts');
+    const requested = searchParams.get('tab');
+    if (requested === 'contacts') setTab('contacts');
+    if (requested === 'mapping') setTab('mapping');
   }, [searchParams]);
 
   const categoriesQuery = useQuery({
@@ -307,7 +314,7 @@ const CorrespondenceSettingsPage = () => {
               sx={{ height: 23, fontWeight: 800, bgcolor: chipSx(SLATE).bgcolor, color: SLATE }} />
           </Stack>
         )}
-        actions={(
+        actions={tab === 'mapping' ? null : (
           <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
             sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#0284c7' } }}>
             افزودن {ENTITY_CONFIG[activeType].title}
@@ -350,23 +357,29 @@ const CorrespondenceSettingsPage = () => {
               label={`شماره‌گذاری (${formatPersianNumber(series.length)})`} />
             <Tab value="contacts" icon={<ContactPhoneIcon sx={{ fontSize: 16 }} />} iconPosition="start"
               label={`مخاطبین (${formatPersianNumber(contacts.length)})`} />
+            <Tab value="mapping" icon={<SyncAltIcon sx={{ fontSize: 16 }} />} iconPosition="start"
+              label="نگاشت نام‌ها" />
           </Tabs>
           <TextField size="small" label="جستجو" value={search}
             onChange={(event) => setSearch(event.target.value)}
             sx={{ width: { xs: '100%', sm: 240 } }} />
         </Stack>
 
-        <ModuleTable
-          tableTheme={moduleTheme.tableTheme}
-          ariaLabel="فهرست تعاریف مکاتبات"
-          containerRef={tableRef}
-          tableHeight={tableHeight}
-          rowHeight={rowHeight}
-          rows={visibleRows}
-          rowKey={(row) => row.id}
-          emptyText="ردیفی ثبت نشده است."
-          columns={columnsFor(activeType)}
-        />
+        {tab === 'mapping' ? (
+          <CorrespondenceNameMappingTab search={search} onToast={setToast} />
+        ) : (
+          <ModuleTable
+            tableTheme={moduleTheme.tableTheme}
+            ariaLabel="فهرست تعاریف مکاتبات"
+            containerRef={tableRef}
+            tableHeight={tableHeight}
+            rowHeight={rowHeight}
+            rows={visibleRows}
+            rowKey={(row) => row.id}
+            emptyText="ردیفی ثبت نشده است."
+            columns={columnsFor(activeType)}
+          />
+        )}
       </Paper>
 
 

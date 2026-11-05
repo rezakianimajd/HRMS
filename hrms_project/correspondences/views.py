@@ -132,14 +132,16 @@ from rest_framework.decorators import action  # noqa: E402
 from rest_framework.response import Response  # noqa: E402
 
 from correspondences.models import (  # noqa: E402
-    Correspondent, Letter, LetterAttachment, LetterCategory, LetterEvent, LetterReferral,
-    LetterRequest, LetterRequestEvent, LetterRequestType, LetterSeries,
+    CorrespondenceNameAlias, Correspondent, Letter, LetterAttachment, LetterCategory,
+    LetterEvent, LetterReferral, LetterRequest, LetterRequestEvent, LetterRequestType,
+    LetterSeries,
 )
 from correspondences.numbering import allocate_number, preview_number, request_number  # noqa: E402
 from correspondences.serializers import (  # noqa: E402
-    CorrespondentSerializer, LetterAttachmentSerializer, LetterCategorySerializer,
-    LetterEventSerializer, LetterReferralSerializer, LetterRequestSerializer,
-    LetterRequestTypeSerializer, LetterSeriesSerializer, LetterSerializer,
+    CorrespondenceNameAliasSerializer, CorrespondentSerializer, LetterAttachmentSerializer,
+    LetterCategorySerializer, LetterEventSerializer, LetterReferralSerializer,
+    LetterRequestSerializer, LetterRequestTypeSerializer, LetterSeriesSerializer,
+    LetterSerializer,
 )
 from rest_framework import status as http_status  # noqa: E402,F401
 
@@ -1173,7 +1175,207 @@ class LetterReferralViewSet(BaseLetterViewSet):
         return Response(LetterReferralSerializer(referral, context={'request': request}).data)
 
 
+class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
+    """نگاشت نام‌های خام (اکسل) به پرسنل / طرف حساب / مخاطب."""
+
+    serializer_class = CorrespondenceNameAliasSerializer
+    queryset = CorrespondenceNameAlias.objects.all()
+    search_fields = ['raw_name', 'normalized', 'note']
+    ordering = ['-applied_count', 'raw_name']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('employee', 'party', 'correspondent')
+        params = self.request.query_params
+        if params.get('target_kind'):
+            qs = qs.filter(target_kind=params['target_kind'])
+        if params.get('scope'):
+            qs = qs.filter(scope=params['scope'])
+        return qs
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['company'] = _get_company(self.request)
+        return context
+
+    # ------------------------------------------------------------------ ابزار
+    def _company(self):
+        return _get_company(self.request)
+
+    def _employee_candidates(self, company):
+        from employees.models import Employee
+
+        return list(
+            Employee.objects.filter(company=company, is_active=True).select_related(
+                'department', 'job_title',
+            ),
+        )
+
+    def _party_candidates(self, company):
+        from contracts.models import ContractParty
+
+        return list(ContractParty.objects.filter(company=company, is_active=True))
+
+    def _suggestions_for(self, raw, kind=None, employees=None, parties=None, limit=4):
+        """کاندیدهای پیشنهادی برای یک نام خام."""
+        from correspondences import matching
+
+        company = self._company()
+        rows = []
+        if kind in (None, '', 'employee'):
+            pool = employees if employees is not None else self._employee_candidates(company)
+            for match in matching.best_matches(
+                raw, pool, limit=limit, key=lambda emp: emp.full_name,
+            ):
+                employee = match['item']
+                rows.append({
+                    'kind': 'employee',
+                    'id': employee.id,
+                    'label': employee.full_name
+                             + (f' ({employee.employee_id})' if employee.employee_id else ''),
+                    'secondary': ' · '.join(filter(None, [
+                        getattr(employee.department, 'name', ''),
+                        getattr(employee.job_title, 'name', ''),
+                    ])),
+                    'score': match['score'],
+                })
+        if kind in (None, '', 'party'):
+            pool = parties if parties is not None else self._party_candidates(company)
+            for match in matching.best_matches(
+                raw, pool, limit=limit, key=lambda party: party.name,
+            ):
+                party = match['item']
+                rows.append({
+                    'kind': 'party',
+                    'id': party.id,
+                    'label': party.name,
+                    'secondary': party.get_party_type_display(),
+                    'score': match['score'],
+                })
+        rows.sort(key=lambda item: item['score'], reverse=True)
+        return rows[:limit]
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        """خلاصهٔ وضعیت نگاشت: تعداد نگاشت‌ها و نام‌های باقی‌مانده."""
+        from correspondences import matching
+
+        company = self._company()
+        if not company:
+            return Response({'aliases': 0, 'unmapped': 0, 'applied': 0, 'names': 0})
+        qs = CorrespondenceNameAlias.objects.filter(company=company, is_active=True)
+        rows = list(qs.values('target_kind', 'scope', 'normalized', 'applied_count'))
+        covered = {(row['scope'], row['normalized']) for row in rows}
+        any_covered = {row['normalized'] for row in rows if row['scope'] == 'any'}
+        samples = matching.iter_name_samples(company)
+        keys = {(sample['scope'], sample['normalized']) for sample in samples}
+        remaining = {
+            key for key in keys
+            if key not in covered and key[1] not in any_covered
+        }
+        return Response({
+            'aliases': len(rows),
+            'by_kind': {
+                kind: sum(1 for row in rows if row['target_kind'] == kind)
+                for kind in ('employee', 'party', 'correspondent')
+            },
+            'applied': sum(row['applied_count'] or 0 for row in rows),
+            'names': len(keys),
+            'unmapped': len(remaining),
+        })
+
+    @action(detail=False, methods=['get'])
+    def unmapped(self, request):
+        """نام‌های موجود در داده‌ها که هنوز نگاشت نشده‌اند + پیشنهاد."""
+        from correspondences import matching
+
+        company = self._company()
+        if not company:
+            return Response([])
+        rows = list(CorrespondenceNameAlias.objects.filter(
+            company=company, is_active=True,
+        ).values('scope', 'normalized'))
+        covered = {(row['scope'], row['normalized']) for row in rows}
+        any_covered = {row['normalized'] for row in rows if row['scope'] == 'any'}
+        try:
+            limit = min(200, max(1, int(request.query_params.get('limit') or 60)))
+        except (TypeError, ValueError):
+            limit = 60
+
+        employees = self._employee_candidates(company)
+        parties = self._party_candidates(company)
+        aggregated = {}
+        for sample in matching.iter_name_samples(company):
+            key = (sample['scope'], sample['normalized'])
+            if key in covered or sample['normalized'] in any_covered:
+                continue
+            entry = aggregated.setdefault(sample['normalized'], {
+                'raw_name': sample['raw'], 'normalized': sample['normalized'],
+                'count': 0, 'scopes': [],
+            })
+            entry['count'] += sample['count']
+            if sample['scope'] not in entry['scopes']:
+                entry['scopes'].append(sample['scope'])
+        ordered = sorted(aggregated.values(), key=lambda item: item['count'], reverse=True)
+        for row in ordered[:limit]:
+            row['suggestions'] = self._suggestions_for(
+                row['raw_name'], None, employees=employees, parties=parties,
+            )
+        return Response(ordered[:limit])
+
+    @action(detail=False, methods=['get'])
+    def suggestions(self, request):
+        """پیشنهاد پرسنل/طرف حساب برای یک نام (اتوکامپلیت)."""
+        from correspondences import matching
+
+        company = self._company()
+        raw = (request.query_params.get('q') or '').strip()
+        kind = request.query_params.get('kind') or ''
+        if not company or not raw:
+            return Response([])
+        query = matching.normalize_name(raw)
+        employees = [
+            emp for emp in self._employee_candidates(company)
+            if not query or query in matching.normalize_name(emp.full_name)
+            or any(query in matching.normalize_name(part)
+                   for part in (emp.first_name, emp.last_name, emp.employee_id))
+        ][:80]
+        parties = [
+            party for party in self._party_candidates(company)
+            if not query or query in matching.normalize_name(party.name)
+        ][:80]
+        return Response(self._suggestions_for(
+            raw, kind or None, employees=employees, parties=parties, limit=8,
+        ))
+
+    @action(detail=True, methods=['post'])
+    def apply(self, request, pk=None):
+        """اعمال یک نگاشت روی داده‌های موجود (با پشتیبانی از dry-run)."""
+        from correspondences import mapping
+
+        alias = self.get_object()
+        dry_run = str(request.data.get('dry_run') or '').lower() in ('1', 'true', 'yes')
+        result = mapping.apply_alias(alias, dry_run=dry_run)
+        alias.refresh_from_db()
+        result['alias_data'] = CorrespondenceNameAliasSerializer(
+            alias, context=self.get_serializer_context(),
+        ).data
+        return Response(result)
+
+    @action(detail=False, methods=['post'], url_path='apply-all')
+    def apply_all(self, request):
+        """اعمال همهٔ نگاشت‌ها روی داده‌های موجود."""
+        from correspondences import mapping
+
+        company = self._company()
+        if not company:
+            return Response({'detail': 'شرکت مشخص نیست.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        dry_run = str(request.data.get('dry_run') or '').lower() in ('1', 'true', 'yes')
+        return Response(mapping.apply_all(company, dry_run=dry_run))
+
+
 class LetterAttachmentViewSet(BaseLetterViewSet):
+
     serializer_class = LetterAttachmentSerializer
     queryset = LetterAttachment.objects.all()
     ordering = ['-created_at']
