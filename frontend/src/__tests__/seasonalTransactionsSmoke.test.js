@@ -552,29 +552,26 @@ test('purchase grid shows seller type, vat total and required markers', async ()
   container.remove();
 });
 
-test('ttms draft export asks for confirmation and downloads the unverified bundle', async () => {
+test('ttms export downloads the access-fill package with filtered rows', async () => {
   currentReport = apiReport([API_ROW]);
   const { root, container } = await renderPage();
 
   const created = [];
   window.URL.createObjectURL = jest.fn((blob) => { created.push(blob); return 'blob:ttms'; });
   window.URL.revokeObjectURL = jest.fn();
-  const confirmSpy = jest.spyOn(window, 'confirm').mockImplementation(() => true);
   const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(function noop() {});
 
   const ttmsButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.includes('خروجی TTMS'));
   await act(async () => { ttmsButton.click(); await wait(320); });
 
-  expect(confirmSpy).toHaveBeenCalledTimes(1);
-  expect(String(confirmSpy.mock.calls[0][0])).toContain('آزمایش‌نشده');
   const exportCalls = axiosInstance.get.mock.calls.filter(([url]) => url.endsWith('/export-ttms/'));
   expect(exportCalls.length).toBe(1);
   expect(exportCalls[0][1]).toMatchObject({ responseType: 'blob' });
   expect(clickSpy).toHaveBeenCalledTimes(1);
-  expect(clickSpy.mock.instances[0].download).toBe('ttms-draft-purchase-7-q1.zip');
+  expect(clickSpy.mock.instances[0].download).toBe('ttms-fill-purchase-7-q1.zip');
+  expect(created.length).toBe(1);
 
-  confirmSpy.mockRestore();
   clickSpy.mockRestore();
   root.unmount();
   container.remove();

@@ -4,7 +4,7 @@
 - ``rows``: ذخیرهٔ گروهی اتمیک ردیف‌های خرید (سایر جهت‌ها دست‌نخورده).
 - ``validate``: اعتبارسنجی قواعدِ خرید از ``seasonal_rules`` (سرور مرجع نهایی).
 - ``export``: اکسل مدیریتی سه‌شیتی خرید.
-- ``export_ttms``: بستهٔ «پیش‌نویس آزمایش‌نشده» TTMS (zip: csv + README).
+- ``export_ttms``: بستهٔ کامل «درج در فایل Access نسخهٔ TTMS» برای ردیف‌های فیلترشده.
 - ``ttms_package``: بستهٔ «درج در فایل Access نسخهٔ TTMS» (zip: rows.csv + manifest + اسکریپت).
 - ``export_runs`` / ``export_run_result``: تاریخچهٔ بسته‌ها و ثبت نتیجهٔ اجرای ویندوز.
 - ``ttms_reference``: نگاشت ستون‌های TTMS، نوع کالا و کدهای وضعیت فروشنده.
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
 from django.db.models import F
 from django.http import HttpResponse
@@ -30,8 +31,7 @@ from accounting.models import (
     FiscalYear, SeasonalExportRun, SeasonalReconciliation, SeasonalReport, SeasonalSavedView,
 )
 from accounting.seasonal import (
-    DIRECTION_PURCHASE, build_ttms_draft, build_workbook, control_totals,
-    sync_rows, validate_report,
+    DIRECTION_PURCHASE, build_workbook, control_totals, sync_rows, validate_report,
 )
 from accounting.serializers import (
     SeasonalExportRunSerializer, SeasonalReportSerializer, SeasonalRowsWriteSerializer,
@@ -397,17 +397,46 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
 
     @action(detail=True, methods=['get'], url_path='export-ttms')
     def export_ttms(self, request, pk=None):
-        """بستهٔ «پیش‌نویس آزمایش‌نشده» TTMS برای خرید (zip: csv + README).
+        """بستهٔ کامل «درج در فایل Access نسخهٔ TTMS» برای ردیف‌های فیلترشده.
 
-        هشدار: قالب رسمی/Access نسخهٔ TTMS هدف در دسترس نیست؛ این خروجی
-        تأییدشده نیست و باید با نسخهٔ مشخص TTMS آزمایش شود.
+        همان خروجی ``ttms-package`` (rows.csv + manifest + fill_ttms.ps1 +
+        run_fill.cmd + README) با فیلترهای querystring (``expression``) و بدون
+        اصلاح‌های دستی؛ بنابراین دکمهٔ «خروجی TTMS» هم دقیقاً ردیف‌های فیلترشدهٔ
+        جدول را به فایل Access می‌دهد.
         """
         report = self.get_object()
-        content, filename, warnings = build_ttms_draft(report, DIRECTION_PURCHASE)
+        filters = seasonal_reconcile.filters_from_query(request.query_params)
+        rows = seasonal_reconcile.filtered_rows(report, DIRECTION_PURCHASE, filters)
+        if not rows:
+            return Response(
+                {'detail': 'با فیلترهای انتخابی هیچ ردیفی برای خروجی باقی نمی‌ماند.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        content, filename, manifest = seasonal_ttms.build_package(
+            report, rows, None, filters,
+        )
+        totals = manifest['totals']
+        run = SeasonalExportRun.objects.create(
+            company=_company(request),
+            report=report,
+            kind=SeasonalExportRun.Kind.TTMS_ACCESS,
+            status=SeasonalExportRun.Status.GENERATED,
+            mapping_version=seasonal_ttms.PACKAGE_VERSION,
+            package_name=filename,
+            target_name='',
+            filters=filters,
+            options=manifest.get('options') or {},
+            row_count=totals['rows'],
+            amount_total=totals['amount'],
+            vat_total=totals['vat'],
+            created_by_name=_user_name(request),
+        )
         response = HttpResponse(content, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        response['X-TTMS-Status'] = seasonal_rules.RULESET_STATUS
-        response['X-TTMS-Warnings'] = ' | '.join(warnings).encode('ascii', 'ignore').decode() or 'unverified'
+        response['X-Export-Run'] = str(run.pk)
+        response['X-Export-Rows'] = str(totals['rows'])
+        response['X-TTMS-Status'] = seasonal_ttms.TEMPLATE_STATUS
+        response['X-TTMS-Mapping'] = seasonal_ttms.PACKAGE_VERSION
         return response
 
 
@@ -454,8 +483,23 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         })
 
     def _package_params(self, request):
-        """ادغام فیلترهای querystring و بدنهٔ درخواست + گزینه‌ها و اصلاح‌های کاربر."""
-        body = request.data if isinstance(request.data, dict) else {}
+        """ادغام فیلترهای querystring و بدنهٔ درخواست + گزینه‌ها و اصلاح‌های کاربر.
+
+        بدنه می‌تواند JSON باشد یا multipart (وقتی فایل Access هم ارسال می‌شود)؛
+        در حالت multipart، فیلدهای ``expression``/``options``/``overrides``/``defaults``
+        به‌صورت رشتهٔ JSON می‌آیند و اینجا تبدیل می‌شوند.
+        """
+        body = {}
+        data = getattr(request, 'data', None)
+        if hasattr(data, 'keys'):
+            body = {key: data.get(key) for key in data.keys()}
+        for key in ('expression', 'options', 'overrides', 'defaults'):
+            value = body.get(key)
+            if isinstance(value, str) and value.strip()[:1] in ('{', '['):
+                try:
+                    body[key] = json.loads(value)
+                except ValueError:
+                    pass
         params = request.query_params.dict() if hasattr(request.query_params, 'dict') else {}
         for key in ('expression', 'filters', 'kind', 'moadian_status', 'person_type', 'search'):
             value = body.get(key)
@@ -465,6 +509,19 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
                            if isinstance(value, (dict, list)) else value)
         filters = seasonal_reconcile.filters_from_query(params)
         return body, filters
+
+    @staticmethod
+    def _access_template(upload):
+        """اعتبارسنجی فایل Access ارسالی → ``{'name', 'content'}`` یا ``(None, error)``."""
+        if upload is None:
+            return None, None
+        name = str(getattr(upload, 'name', '') or '')
+        extension = Path(name).suffix.lower()
+        if extension not in seasonal_ttms.ACCESS_EXTENSIONS:
+            return None, 'فایل قالب باید Access باشد (پسوند mdb یا accdb).'
+        if getattr(upload, 'size', 0) > seasonal_ttms.MAX_TEMPLATE_BYTES:
+            return None, 'حجم فایل Access بیش از حد مجاز (۳۰۰ مگابایت) است.'
+        return {'name': name, 'content': upload.read()}, None
 
     @action(detail=True, methods=['post'], url_path='ttms-preview')
     def ttms_preview(self, request, pk=None):
@@ -511,16 +568,23 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         return Response(payload)
 
 
-    @action(detail=True, methods=['post'], url_path='ttms-package')
+    @action(detail=True, methods=['post'], url_path='ttms-package',
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
     def ttms_package(self, request, pk=None):
         """ساخت بستهٔ درج در فایل Access نسخهٔ TTMS برای ردیف‌های فیلترشده.
 
-        بدنهٔ درخواست: ``{'expression': {...}, 'options': {...}, 'target_name': '...'}``.
-        فیلتر می‌تواند در querystring هم بیاید (همان قالب گزارش تحلیلی و پیوت).
-        خروجی: zip شامل rows.csv + manifest.json + fill_ttms.ps1 + README.txt.
+        بدنهٔ درخواست: ``{'expression': {...}, 'options': {...}, 'target_name': '...'}``
+        و به‌صورت اختیاری فایل ``template`` (همان فایل Access نسخهٔ TTMS مشتری) که
+        داخل بسته قرار می‌گیرد تا با اجرای ``run_fill.cmd`` همان فایل پر شود.
+        خروجی: zip شامل rows.csv + manifest.json + fill_ttms.ps1 + run_fill.cmd + README.
         """
         report = self.get_object()
         body, filters = self._package_params(request)
+        template, template_error = self._access_template(
+            request.FILES.get('template') if hasattr(request, 'FILES') else None,
+        )
+        if template_error:
+            return Response({'detail': template_error}, status=http_status.HTTP_400_BAD_REQUEST)
 
         rows = seasonal_reconcile.filtered_rows(report, DIRECTION_PURCHASE, filters)
         if not rows:
@@ -534,6 +598,7 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
             content, filename, manifest = seasonal_ttms.build_package(
                 report, rows, options, filters,
                 overrides=body.get('overrides'), defaults=body.get('defaults'),
+                template=template,
             )
         except seasonal_ttms.OverridesError as error:
             return Response(

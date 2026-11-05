@@ -481,6 +481,38 @@ class PurchaseExportTests(SeasonalBaseTest):
         self.assertNotIn('مشتری فروش', csv_text)
         self.assertEqual(len(csv_text.strip().splitlines()), 4)   # سرستون + ۳ ردیف خرید
 
+    def test_ttms_package_uses_filtered_rows_and_bundles_access_template(self):
+        """بستهٔ TTMS فقط ردیف‌های فیلترشده را می‌گیرد و فایل Access مشتری را همراه دارد."""
+        from accounting import seasonal_reconcile, seasonal_ttms
+
+        filters = seasonal_reconcile._clean_filters({'kind': 2})
+        rows = seasonal_reconcile.filtered_rows(self.report, 'purchase', filters)
+        self.assertEqual([row.invoice_no for row in rows], ['P-2'])
+
+        content, filename, manifest = seasonal_ttms.build_package(
+            self.report, rows, None, filters,
+            template={'name': 'TTMS_96_New.mdb', 'content': b'access-bytes'},
+        )
+        self.assertTrue(filename.startswith('ttms-fill-purchase-'))
+        self.assertEqual(manifest['totals']['rows'], 1)
+        self.assertEqual(manifest['target']['template_file'], 'ttms_template.mdb')
+        self.assertEqual(manifest['target']['template_name'], 'TTMS_96_New.mdb')
+
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            names = set(archive.namelist())
+            self.assertTrue({
+                'rows.csv', 'manifest.json', 'README.txt',
+                'fill_ttms.ps1', 'run_fill.cmd', 'ttms_template.mdb',
+            } <= names)
+            self.assertEqual(archive.read('ttms_template.mdb'), b'access-bytes')
+            csv_text = archive.read('rows.csv').decode('utf-8-sig')
+            readme = archive.read('README.txt').decode('utf-8-sig')
+
+        self.assertIn('P-2', csv_text)
+        self.assertNotIn('P-1', csv_text)
+        self.assertIn('run_fill.cmd', readme)
+        self.assertIn('ttms_template.mdb', readme)
+
     def test_reference_payload_matches_ruleset(self):
         reference = seasonal_rules.build_reference()
         self.assertEqual(reference['direction'], 'purchase')

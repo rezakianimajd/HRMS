@@ -55,6 +55,8 @@ const SeasonalTtmsDialog = ({
   const [continueRadif, setContinueRadif] = useState(true);
   const [dryRun, setDryRun] = useState(false);
   const [targetName, setTargetName] = useState('');
+  const [templateFile, setTemplateFile] = useState(null);
+  const templateInputRef = useRef(null);
   const [building, setBuilding] = useState(false);
   const [message, setMessage] = useState(null);
   const [lastRunId, setLastRunId] = useState('');
@@ -107,6 +109,8 @@ const SeasonalTtmsDialog = ({
     if (!open) {
       setMessage(null);
       setTargetName('');
+      setTemplateFile(null);
+      if (templateInputRef.current) templateInputRef.current.value = '';
     }
   }, [open]);
 
@@ -229,15 +233,26 @@ const SeasonalTtmsDialog = ({
         });
         return;
       }
+      const basePayload = {
+        ...params,
+        target_name: targetName,
+        options: optionsPayload(),
+        overrides,
+        defaults,
+      };
+      let requestBody = basePayload;
+      if (templateFile) {
+        const form = new FormData();
+        Object.entries(basePayload).forEach(([key, value]) => {
+          if (value === null || value === undefined) return;
+          form.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+        });
+        form.append('template', templateFile);
+        requestBody = form;
+      }
       const response = await axiosInstance.post(
         `${apiBase}/${reportId}/ttms-package/`,
-        {
-          ...params,
-          target_name: targetName,
-          options: optionsPayload(),
-          overrides,
-          defaults,
-        },
+        requestBody,
         { responseType: 'blob' },
       );
       const runId = response.headers?.['x-export-run'] || '';
@@ -250,7 +265,11 @@ const SeasonalTtmsDialog = ({
       setLastRunId(runId);
       setMessage({
         severity: 'success',
-        text: `بسته ساخته شد (${toPersianDigits(rows)} ردیف). فایل zip را در ویندوز از حالت فشرده خارج و fill_ttms.ps1 را اجرا کنید.`,
+        text: `بسته ساخته شد (${toPersianDigits(rows)} ردیف فیلترشده). فایل zip را از حالت فشرده خارج کنید و `
+          + (templateFile
+            ? 'روی run_fill.cmd دابل‌کلیک کنید تا همان فایل Access شما پر شود.'
+            : 'fill_ttms.ps1 را با مسیر فایل Access اجرا کنید (یا فایل را کنار اسکریپت بگذارید و run_fill.cmd را اجرا کنید).')
+          + ' نتیجه در result.json نوشته می‌شود.',
       });
       onToast?.('بستهٔ درج TTMS ساخته شد');
       runsQuery.refetch?.();
@@ -265,7 +284,7 @@ const SeasonalTtmsDialog = ({
     }
   }, [
     apiBase, defaults, loadPreview, onToast, optionsPayload, overrides, params,
-    prepare, reportId, runsQuery, targetName,
+    prepare, reportId, runsQuery, targetName, templateFile,
   ]);
 
   const registerResult = useCallback(async (file) => {
@@ -449,6 +468,47 @@ const SeasonalTtmsDialog = ({
             label={<Typography sx={{ fontSize: 11.5 }}>اجرای آزمایشی (Dry-run)</Typography>}
           />
         </Stack>
+
+        {/* فایل Access مشتری: داخل بسته قرار می‌گیرد و با دابل‌کلیک پر می‌شود */}
+        <Box sx={{
+          display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center',
+          p: 1, mb: 1, borderRadius: '10px',
+          border: '1px dashed', borderColor: templateFile ? '#16a34a' : 'divider',
+          bgcolor: templateFile ? 'rgba(22,163,74,0.05)' : 'transparent',
+        }}>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>فایل Access نسخهٔ TTMS:</Typography>
+          <input
+            ref={templateInputRef}
+            type="file"
+            accept=".mdb,.accdb"
+            style={{ display: 'none' }}
+            aria-label="فایل Access نسخهٔ TTMS"
+            onChange={(event) => setTemplateFile(event.target.files?.[0] || null)}
+          />
+          <Button size="small" variant="outlined"
+            startIcon={<CloudUploadOutlinedIcon sx={{ fontSize: 16 }} />}
+            onClick={() => templateInputRef.current?.click()} sx={{ fontSize: 11 }}>
+            {templateFile ? 'تغییر فایل' : 'انتخاب فایل mdb / accdb'}
+          </Button>
+          {templateFile ? (
+            <>
+              <Chip size="small" color="success" variant="outlined"
+                label={`${templateFile.name} (${toPersianDigits(Math.round((templateFile.size || 0) / 1024))} KB)`}
+                onDelete={() => {
+                  setTemplateFile(null);
+                  if (templateInputRef.current) templateInputRef.current.value = '';
+                }}
+                sx={{ fontSize: 10, height: 22, maxWidth: 320 }} />
+              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                این فایل داخل بسته قرار می‌گیرد و اجرای run_fill.cmd همان را پر می‌کند (فایل اصلی دست‌نخورده می‌ماند).
+              </Typography>
+            </>
+          ) : (
+            <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+              اگر انتخاب نشود، بسته فقط اسکریپت و CSV دارد و هنگام اجرا مسیر فایل Access را می‌پرسد.
+            </Typography>
+          )}
+        </Box>
 
         <Divider sx={{ my: 1.5 }} />
 

@@ -1732,32 +1732,35 @@ const SeasonalReportPage = () => {
   /* خروجی TTMS: فقط از سرور و با هشدار «آزمایش‌نشده» */
   const exportTtms = () => {
     if (mode !== 'api' || !reportId) {
-      setToast('خروجی TTMS فقط در حالت اتصال به سرور و پس از استقرار بک‌اند در دسترس است.');
+      setToast('خروجی TTMS فقط در حالت اتصال به سرور در دسترس است.');
       return;
     }
-    const confirmed = typeof window.confirm === 'function'
-      ? window.confirm(
-        'خروجی TTMS «آزمایش‌نشده» است: قالب رسمی نسخهٔ هدف در دسترس نبود.\n'
-        + 'این فایل پیش‌نویس ساختاری است و پیش از ارسال رسمی باید با نسخهٔ TTMS آزمون شود.\n\n'
-        + 'ادامه می‌دهید؟',
-      )
-      : true;
-    if (!confirmed) return;
 
+    const params = gridExpression.items.length
+      ? { expression: JSON.stringify(gridExpression) }
+      : {};
     flushSave()
-      .then(() => axiosInstance.get(`${API_BASE}/${reportId}/export-ttms/`, { responseType: 'blob' }))
+      .then(() => axiosInstance.get(`${API_BASE}/${reportId}/export-ttms/`, {
+        params,
+        responseType: 'blob',
+      }))
       .then((response) => {
+        const rowsHeader = response.headers?.['x-export-rows'];
         const blob = new Blob([response.data], { type: 'application/zip' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `ttms-draft-purchase-${yearKey || 'year'}-q${quarter}.zip`;
+        link.download = `ttms-fill-purchase-${yearKey || 'year'}-q${quarter}.zip`;
         document.body.appendChild(link);
         link.click();
         link.remove();
         URL.revokeObjectURL(link.href);
-        setToast('بستهٔ پیش‌نویس TTMS ساخته شد (آزمایش‌نشده).');
+        setToast(rowsHeader
+          ? `بستهٔ درج TTMS با ${toPersianDigits(rowsHeader)} ردیف فیلترشده ساخته شد (zip را خارج و run_fill.cmd را اجرا کنید).`
+          : 'بستهٔ درج TTMS ساخته شد (zip را خارج و run_fill.cmd را اجرا کنید).');
       })
-      .catch(() => setToast('خروجی TTMS در دسترس نیست.'));
+      .catch((error) => {
+        setToast(error?.response?.data?.detail || 'خروجی TTMS در دسترس نیست.');
+      });
   };
 
   /* چاپ / PDF مرورگر */

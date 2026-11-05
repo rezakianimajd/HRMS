@@ -43,10 +43,26 @@ DETAIL_TABLE = 'Kharid_Detail'
 
 ASSETS_DIR = Path(__file__).resolve().parent / 'ttms_assets'
 FILLER_SCRIPT = 'fill_ttms.ps1'
+RUNNER_CMD = 'run_fill.cmd'
 ZONE_ASSET = 'zone_codes.json'
 ARZ_ASSET = 'arz_codes.json'
 TAX_OFFICE_ASSET = 'edarekoll_codes.json'
 COUNTRY_ASSET = 'country_names.json'
+ACCESS_EXTENSIONS = ('.mdb', '.accdb')
+MAX_TEMPLATE_BYTES = 300 * 1024 * 1024
+
+RUNNER_CMD_CONTENT = (
+    '@echo off\r\n'
+    'chcp 65001 >nul\r\n'
+    'setlocal\r\n'
+    'echo === TTMS fill ===\r\n'
+    'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0fill_ttms.ps1" %*\r\n'
+    'set EXITCODE=%ERRORLEVEL%\r\n'
+    'echo.\r\n'
+    'echo result.json in this folder can be uploaded back to HRMS.\r\n'
+    'pause\r\n'
+    'exit /b %EXITCODE%\r\n'
+)
 
 # ستون‌هایی که کاربر می‌تواند در «پیش‌نمایش» اصلاح کند (بقیه فقط نمایشی است)
 EDITABLE_COLUMNS = [
@@ -1089,7 +1105,7 @@ def preview_csv(report, rows, options=None, overrides=None, defaults=None):
 
 
 
-def build_manifest(report, payloads, options=None, filters=None, package_name=''):
+def build_manifest(report, payloads, options=None, filters=None, package_name='', template=None):
     """فایل ``manifest.json``: مشخصات دوره، نگاشت، جمع‌های کنترلی و ستون‌ها."""
     options = normalize_options(options)
     totals = _totals(payloads)
@@ -1136,6 +1152,8 @@ def build_manifest(report, payloads, options=None, filters=None, package_name=''
             'is_sent': False,
             'tax_office_code': options.get('tax_office_code'),
             'commission_header_table': 'HagholAmalKari',
+            'template_file': (template or {}).get('file') or '',
+            'template_name': (template or {}).get('name') or '',
         },
         'company_profile': {
             **company_profile(report),
@@ -1187,6 +1205,9 @@ def build_readme(manifest):
         '  rows.csv        مقادیر آمادهٔ درج (ستون‌های Kharid_Detail)',
         '  manifest.json   مشخصات دوره، نگاشت و جمع‌های کنترلی',
         '  fill_ttms.ps1   اسکریپت درج در کپی فایل Access',
+        '  run_fill.cmd    اجراکنندهٔ آماده برای ویندوز (دابل‌کلیک)',
+        *([f"  {manifest['target']['template_file']}   کپی فایل Access ارسال‌شدهٔ شما"]
+          if (manifest.get('target') or {}).get('template_file') else []),
         '  README.txt      همین راهنما',
         '',
         'پوشش ستون‌های Kharid_Detail:',
@@ -1197,10 +1218,12 @@ def build_readme(manifest):
         '',
         'اجرا (روی ویندوز، در PowerShell):',
         '  1) فایل‌های بسته را در یک پوشه از حالت فشرده خارج کنید.',
-        '  2) پنجرهٔ PowerShell را در همان پوشه باز کنید و اجرا کنید:',
+        '  2) اگر فایل Access خودتان داخل بسته است، کافی است run_fill.cmd را دابل‌کلیک کنید.',
+        '     در غیر این صورت فایل Access را در همین پوشه بگذارید و باز هم run_fill.cmd را',
+        '     اجرا کنید (اسکریپت فایل را خودکار پیدا می‌کند) یا مسیر را صریح بدهید:',
         '       .\\fill_ttms.ps1 -Target "C:\\مسیر\\TTMS_96_New.mdb"',
         '     اجرای آزمایشی (بدون تغییر ماندگار):',
-        '       .\\fill_ttms.ps1 -Target "C:\\مسیر\\TTMS_96_New.mdb" -DryRun',
+        '       run_fill.cmd -DryRun',
         '  3) اسکریپت یک کپی با پسوند «.filled-<زمان>» می‌سازد و ردیف‌ها را در همان',
         '     کپی درج می‌کند؛ فایل اصلی تغییر نمی‌کند. برای نوشتن روی خود فایل،',
         '     سوییچ -InPlace را اضافه کنید (پیش از آن پشتیبان تهیه می‌شود).',
@@ -1251,11 +1274,16 @@ def filler_script():
     return (ASSETS_DIR / FILLER_SCRIPT).read_bytes()
 
 
-def build_package(report, rows, options=None, filters=None, overrides=None, defaults=None):
+def build_package(report, rows, options=None, filters=None, overrides=None, defaults=None,
+                  template=None):
     """بستهٔ zip درج در فایل Access → ``(zip_bytes, filename, manifest)``.
 
     ``overrides`` (اصلاح‌های سطری پیش‌نمایش) و ``defaults`` (اعمال به همه) پیش از
     نوشتن CSV روی مقادیر نگاشت‌شده اعمال می‌شوند؛ مقدار نامعتبر → ``OverridesError``.
+
+    ``template``: ``{'name': 'TTMS.mdb', 'content': b'...'}`` — اگر کاربر فایل
+    Access نسخهٔ TTMS خودش را بفرستد، همان فایل داخل بسته قرار می‌گیرد و اسکریپت
+    به‌طور پیش‌فرض روی کپی همان فایل کار می‌کند.
     """
     options = normalize_options(options)
     rows = list(rows)
@@ -1270,12 +1298,25 @@ def build_package(report, rows, options=None, filters=None, overrides=None, defa
 
     csv_bytes = _csv_text(payloads).encode('utf-8')
 
+    template_meta = None
+    if template and template.get('content'):
+        raw_name = str(template.get('name') or '')
+        extension = Path(raw_name).suffix.lower()
+        if extension not in ACCESS_EXTENSIONS:
+            extension = '.accdb'
+        template_meta = {
+            'name': raw_name,
+            'file': f'ttms_template{extension}',
+            'content': template['content'],
+        }
+
     stamp = datetime.now().strftime('%Y%m%d-%H%M')
     year_key = _jalali_year(report) or 'year'
     quarter = getattr(report, 'quarter', '') or ''
     package_name = f'ttms-fill-purchase-{year_key}-q{quarter}-{stamp}.zip'
 
-    manifest = build_manifest(report, payloads, options, filters, package_name=package_name)
+    manifest = build_manifest(report, payloads, options, filters, package_name=package_name,
+                              template=template_meta)
     manifest['checksum'] = {'rows_file_sha256': hashlib.sha256(csv_bytes).hexdigest()}
     manifest['overrides'] = {
         'rows': len(clean_overrides),
@@ -1293,6 +1334,9 @@ def build_package(report, rows, options=None, filters=None, overrides=None, defa
         archive.writestr('rows.csv', csv_bytes)
         archive.writestr('manifest.json', manifest_text.encode('utf-8'))
         archive.writestr('README.txt', readme_text.encode('utf-8-sig'))
+        archive.writestr(RUNNER_CMD, RUNNER_CMD_CONTENT.encode('utf-8'))
+        if template_meta:
+            archive.writestr(template_meta['file'], template_meta['content'])
         try:
             script_bytes = filler_script()
         except OSError:

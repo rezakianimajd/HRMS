@@ -13,7 +13,9 @@
     پوشهٔ بستهٔ دریافتی از HRMS (شامل manifest.json و rows.csv). پیش‌فرض: پوشهٔ این اسکریپت.
 
 .PARAMETER Target
-    مسیر فایل Access نسخهٔ TTMS (مثلاً C:\TTMS\TTMS_96_New.mdb).
+    مسیر فایل Access نسخهٔ TTMS (مثلاً C:\TTMS\TTMS_96_New.mdb). اگر خالی بماند،
+    فایل Access همراه بسته (که هنگام ساخت بسته ارسال شده) یا تنها فایل mdb/accdb
+    کنار اسکریپت به‌طور خودکار انتخاب می‌شود.
 
 .PARAMETER OutputDir
     پوشهٔ فایل پرشده. پیش‌فرض: پوشهٔ فایل هدف.
@@ -39,7 +41,7 @@
 #>
 param(
     [string]$PackageDir = $PSScriptRoot,
-    [Parameter(Mandatory = $true)][string]$Target,
+    [string]$Target = '',
     [string]$OutputDir = '',
     [switch]$DryRun,
     [switch]$InPlace,
@@ -127,7 +129,6 @@ function Get-Number {
 
 Write-Host '=== درج ردیف‌های صورت معاملات فصلی در فایل TTMS ===' -ForegroundColor Cyan
 Write-Host ('پوشهٔ بسته: ' + $PackageDir)
-Write-Host ('فایل هدف : ' + $Target)
 if ($DryRun) { Write-Host 'حالت: اجرای آزمایشی (بدون تغییر ماندگار)' -ForegroundColor Yellow }
 
 # ---------------------------------------------------------------------------
@@ -143,6 +144,29 @@ if (-not (Test-Path -LiteralPath $rowsPath)) {
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $result.package_version = [string]$manifest.package.version
 $result.package_name = [string]$manifest.package.name
+
+# ---------------------------------------------------------------------------
+# ۰) تعیین فایل هدف: اگر -Target داده نشده باشد، فایل Access همراه بسته یا
+#    تنها فایل mdb/accdb کنار اسکریپت به‌طور خودکار انتخاب می‌شود.
+# ---------------------------------------------------------------------------
+if (-not $Target) {
+    $bundled = [string]$manifest.target.template_file
+    if ($bundled) {
+        $candidate = Join-Path $PackageDir $bundled
+        if (Test-Path -LiteralPath $candidate) { $Target = $candidate }
+    }
+}
+if (-not $Target) {
+    $found = Get-ChildItem -LiteralPath $PackageDir -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Extension -in '.mdb', '.accdb' -and $_.Name -notlike '*.filled-*' } |
+        Select-Object -First 1
+    if ($found) { $Target = $found.FullName }
+}
+if (-not $Target) {
+    Stop-WithError 'فایل Access پیدا نشد. فایل TTMS را کنار همین اسکریپت بگذارید یا مسیر را با -Target بدهید (مثال: -Target "C:\TTMS\TTMS_96_New.mdb").' 2
+}
+Write-Host ('فایل هدف : ' + $Target)
+
 $result.target = $Target
 $result.expected.rows = [int]$manifest.totals.rows
 $result.expected.amount = [double]$manifest.totals.amount
