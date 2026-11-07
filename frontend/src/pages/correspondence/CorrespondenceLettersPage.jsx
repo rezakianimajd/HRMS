@@ -983,7 +983,13 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [entryMethodFilter, setEntryMethodFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [attachmentFilter, setAttachmentFilter] = useState(() => {
+    const value = searchParams.get('has_attachments');
+    if (value === '0') return 'without';
+    if (value === '1') return 'with';
+    return 'all';
+  });
   const [sortBy, setSortBy] = useState('newest');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerLetter, setDrawerLetter] = useState(null);
@@ -1022,6 +1028,16 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     }
   }, [searchParams]);
 
+  // پارامترهای ورودی از داشبورد/میان‌بُرها (جست‌وجو و وضعیت پیوست)
+  const incomingQuery = searchParams.get('q');
+  const incomingAttachments = searchParams.get('has_attachments');
+  useEffect(() => {
+    if (incomingQuery !== null) setSearch(incomingQuery);
+    setAttachmentFilter(
+      incomingAttachments === '0' ? 'without' : incomingAttachments === '1' ? 'with' : 'all',
+    );
+  }, [incomingQuery, incomingAttachments]);
+
   useEffect(() => {
     setDrawerTab('info');
   }, [drawerLetter?.id]);
@@ -1057,10 +1073,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     if (categoryFilter !== 'all') params.category = categoryFilter;
     if (priorityFilter !== 'all') params.priority = priorityFilter;
     if (entryMethodFilter !== 'all') params.entry_method = entryMethodFilter;
+    if (attachmentFilter !== 'all') params.has_attachments = attachmentFilter === 'with' ? '1' : '0';
     if (debouncedSearch) params.search = debouncedSearch;
     return params;
   }, [page, pageSize, sortBy, direction, statusFilter, scope, overdueOnly, archivedOnly,
-    categoryFilter, priorityFilter, entryMethodFilter, debouncedSearch]);
+    categoryFilter, priorityFilter, entryMethodFilter, attachmentFilter, debouncedSearch]);
 
   const { data: rawLetters, isLoading, isFetching, refetch } = useQuery({
     queryKey: [...LETTERS_KEY, listParams],
@@ -1451,6 +1468,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     setCategoryFilter('all');
     setPriorityFilter('all');
     setEntryMethodFilter('all');
+    setAttachmentFilter('all');
     setSortBy('newest');
   };
 
@@ -1459,6 +1477,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     !preset.status && statusFilter !== 'all',
     categoryFilter !== 'all', priorityFilter !== 'all',
     ['incoming', 'all'].includes(mode) && entryMethodFilter !== 'all',
+    attachmentFilter !== 'all',
   ].filter(Boolean).length;
 
   const activeChips = [
@@ -1485,6 +1504,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       key: 'entry_method',
       label: `نحوهٔ ورود: ${ENTRY_METHOD_META[entryMethodFilter]?.label || entryMethodFilter}`,
       clear: () => setEntryMethodFilter('all'),
+    },
+    attachmentFilter !== 'all' && {
+      key: 'attachments',
+      label: attachmentFilter === 'with' ? 'فقط دارای پیوست' : 'فقط بدون پیوست',
+      clear: () => setAttachmentFilter('all'),
     },
   ].filter(Boolean);
 
@@ -1539,6 +1563,16 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       ...Object.entries(PRIORITY_META).map(([value, item]) => ({ value, label: item.label })),
     ],
     onChange: setPriorityFilter,
+  });
+  pageFilters.push({
+    label: 'پیوست',
+    value: attachmentFilter,
+    options: [
+      { value: 'all', label: 'همه' },
+      { value: 'with', label: 'دارای پیوست' },
+      { value: 'without', label: 'بدون پیوست' },
+    ],
+    onChange: setAttachmentFilter,
   });
 
   const pageAccent = preset.accent || ACCENT;

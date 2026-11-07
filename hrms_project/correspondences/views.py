@@ -515,6 +515,8 @@ class LetterViewSet(BaseLetterViewSet):
 
         if _truthy(params.get('has_attachments')):
             qs = qs.filter(attachments__isnull=False)
+        elif str(params.get('has_attachments', '')).lower() in ('0', 'false', 'no', 'off'):
+            qs = qs.filter(attachments__isnull=True)
 
         scope = params.get('scope')
         if scope == 'mine' and user and user.is_authenticated:
@@ -782,6 +784,32 @@ class LetterViewSet(BaseLetterViewSet):
             .order_by('-c')[:5]
         )
 
+        # --- آمار کاربردی داشبورد -------------------------------------------
+        next_week = today + timedelta(days=7)
+        due_soon_qs = open_qs.filter(due_date__gte=today, due_date__lte=next_week)
+        with_attachments = qs.filter(attachments__isnull=False).distinct().count()
+        incoming_letters = qs.filter(direction='incoming')
+        without_attachments = incoming_letters.filter(attachments__isnull=True).count()
+        by_category = list(
+            qs.exclude(category__isnull=True)
+            .values('category_id', 'category__name')
+            .annotate(c=Count('id'))
+            .order_by('-c')[:5]
+        )
+        referral_counts = {}
+        referral_overdue = 0
+        if company:
+            referral_qs = LetterReferral.objects.filter(
+                company=company, letter__is_active=True,
+            )
+            referral_counts = {
+                row['status']: row['c']
+                for row in referral_qs.values('status').annotate(c=Count('id'))
+            }
+            referral_overdue = referral_qs.filter(
+                due_date__lt=today,
+            ).exclude(status__in=('done', 'canceled', 'returned')).count()
+
         return Response({
             'totals': {
                 'all': qs.count(),
@@ -790,6 +818,7 @@ class LetterViewSet(BaseLetterViewSet):
                 'internal': by_direction.get('internal', 0),
                 'open': open_qs.count(),
                 'overdue': overdue_qs.count(),
+                'due_soon': due_soon_qs.count(),
                 'drafts': by_status.get('draft', 0),
                 'archived': by_status.get('archived', 0),
                 'incoming_this_month': qs.filter(
@@ -799,12 +828,23 @@ class LetterViewSet(BaseLetterViewSet):
                     direction='outgoing', letter_date__gte=month_start,
                 ).count(),
                 'urgent': by_priority.get('urgent', 0) + by_priority.get('high', 0),
+                'with_attachments': with_attachments,
+                'without_attachments': without_attachments,
                 'my_referrals': my_referrals.count(),
                 'my_overdue_referrals': my_referrals.filter(due_date__lt=today).count(),
             },
             'by_status': by_status,
             'by_direction': by_direction,
             'by_priority': by_priority,
+            'by_category': by_category,
+            'referrals': {
+                'by_status': referral_counts,
+                'overdue': referral_overdue,
+                'open': sum(
+                    count for status, count in referral_counts.items()
+                    if status not in ('done', 'canceled', 'returned')
+                ),
+            },
             'trend': trend,
             'top_organizations': top_organizations,
             'recent': {

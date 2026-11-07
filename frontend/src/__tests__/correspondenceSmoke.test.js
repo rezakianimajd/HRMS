@@ -9,6 +9,7 @@ import CorrespondenceDashboardPage from '../pages/correspondence/CorrespondenceD
 import CorrespondenceWorkdeskPage from '../pages/correspondence/CorrespondenceWorkdeskPage';
 import { getModuleLandingPath, MODULE_ICONS } from '../core/constants/moduleIcons';
 import { toJalali } from '../core/utils/dateUtils';
+import { deltaPercent } from '../pages/correspondence/correspondenceStudioUi';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -226,8 +227,24 @@ test('dashboard page shows KPI tiles, trend and follow-up sections', async () =>
   expect(container.textContent).toContain('آخرین نامه‌های صادره');
   expect(container.textContent).toContain('ارسال الحاقیه شماره ۳');
 
+  // ویجت‌های کاربردی و استودیویی داشبورد
+  expect(container.textContent).toContain('صف اقدام امروز');
+  expect(container.textContent).toContain('دسترسی سریع');
+  expect(container.textContent).toContain('نسبت مکاتبات اسکن‌شده');
+  expect(container.textContent).toContain('وضعیت پرونده‌ها');
+  expect(container.textContent).toContain('نوع مکاتبه');
+  expect(container.textContent).toContain('طرف حساب‌های فعال');
+  expect(container.textContent).toContain('نامه‌های وارده بدون اسکن');
+
   root.unmount();
   container.remove();
+});
+
+test('dashboard month-over-month deltas and scanned ratio are computed from stats', () => {
+  expect(deltaPercent(10, 15)).toBe(50);
+  expect(deltaPercent(0, 4)).toBe(100);
+  expect(deltaPercent(0, 0)).toBe(0);
+  expect(deltaPercent(8, 6)).toBe(-25);
 });
 
 
