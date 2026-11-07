@@ -55,6 +55,8 @@ def main(argv=None):
     parser.add_argument('--fallback-dir', action='append', default=[],
                         help='پوشهٔ جانشین برای لینک‌های شکسته (قابل تکرار)')
     parser.add_argument('--limit', type=int, default=None, help='حداکثر تعداد ردیف')
+    parser.add_argument('--rows', default=None,
+                        help='فقط ردیف‌های مشخص (مثلاً 95,319,320)')
     parser.add_argument('--dry-run', action='store_true', help='فقط گزارش، بدون کپی فایل')
     args = parser.parse_args(argv)
 
@@ -91,6 +93,9 @@ def main(argv=None):
         return ''
 
     items = []
+    only_rows = {
+        int(part) for part in str(args.rows or '').replace(' ', '').split(',') if part.strip().isdigit()
+    }
     stats = {'rows': 0, 'files_ok': 0, 'files_missing': 0, 'bytes': 0, 'no_key': 0}
     if not args.dry_run:
         files_dir.mkdir(parents=True, exist_ok=True)
@@ -99,6 +104,8 @@ def main(argv=None):
     for row_index in range(header_row + 1, sheet.max_row + 1):
         if args.limit and stats['rows'] >= args.limit:
             break
+        if only_rows and row_index not in only_rows:
+            continue
         cells = list(next(sheet.iter_rows(min_row=row_index, max_row=row_index, max_col=MAX_COL)))
         if not any(cell.value not in (None, '') for cell in cells):
             continue
