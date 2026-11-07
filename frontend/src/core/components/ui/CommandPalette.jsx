@@ -25,6 +25,7 @@ import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlin
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import HistoryIcon from '@mui/icons-material/History';
+import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import { useApplication } from '../../context/ApplicationContext';
 import { useDesignTokens } from '../../context/DesignTokenContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
@@ -89,6 +90,7 @@ const RESULT_ICONS = {
   mail: MailOutlineIcon,
   announcement: MailOutlineIcon,
   building: BusinessOutlinedIcon,
+  sync: SyncAltIcon,
   leave: EventBusyOutlinedIcon,
 };
 

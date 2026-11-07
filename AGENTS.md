@@ -438,7 +438,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 - **Last commit:** `fa44809d5 perf(correspondence): light list payload, no N+1 and comprehensive search`
 - **Live:** frontend `main.eb4fb4b4.js` (HTTP 200) · backend deployed، gunicorn active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
-- ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، نگاشت نام‌ها، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
+- ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
+- **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
+  (ارجاع / ارجاع برون‌سازمانی / فرستنده / گیرنده / طرف حساب / تحویل‌دهنده / مخاطب / سازمان / **موضوع → نوع مکاتبه** / همهٔ فیلدها)،
+  «نگاشت دو مسیره» (sender ↔ receiver، فقط برای این دو دامنه)، چند مقصد برای یک نام با برچسب خط‌تیره‌ای،
+  اندپوینت‌های `groups/` (گروه‌بندی سمت سرور، ۱ کوئری) و `meta/` (فراداده + شمارش سبک) و `summary/` (با اسکن نام‌های بدون نگاشت).
+  تب قدیمی `?tab=mapping` در تنظیمات به این صفحه هدایت می‌شود.
 
 ---
 
@@ -469,6 +474,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 | scan / scanned ratio | اسکن / نسبت اسکن‌شده |
 | archive profile / archive folder | پروفایل بایگانی / پوشهٔ بایگانی |
 | name mapping | نگاشت نام‌ها |
+| name mapping purpose / scope | کاربرد نگاشت / دامنهٔ کاربرد |
+| dual (two-way) mapping | نگاشت دو مسیره |
+| multi-target mapping | نگاشت چند مقصده |
 | theme studio / appearance | استودیو تم / ظاهر و پوسته |
 | quick actions / action queue | دسترسی سریع / صف اقدام |
 

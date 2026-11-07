@@ -1654,7 +1654,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}>خروجی اکسل</Button>
             <Tooltip title="نگاشت نام‌های واردشده از اکسل به پرسنل و طرف‌های حساب">
               <Button variant="outlined" startIcon={<SyncAltIcon />}
-                onClick={() => { window.location.assign('/correspondence/settings?tab=mapping'); }}>
+                onClick={() => { window.location.assign('/correspondence/name-mapping'); }}>
                 نگاشت نام‌ها
               </Button>
             </Tooltip>

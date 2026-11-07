@@ -171,15 +171,17 @@ class CorrespondentSerializer(serializers.ModelSerializer):
 
 
 class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
-    """نگاشت نام خام به پرسنل / طرف حساب / مخاطب (برای صفحهٔ تعاریف و مخاطبین)."""
+    """نگاشت نام خام به پرسنل / طرف حساب / مخاطب / سازمان / نوع مکاتبه."""
 
     employee_name = serializers.SerializerMethodField()
     party_name = serializers.SerializerMethodField()
     correspondent_name = serializers.SerializerMethodField()
     organization_name = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
     target_label = serializers.CharField(read_only=True)
     target_kind_display = serializers.CharField(source='get_target_kind_display', read_only=True)
     scope_display = serializers.CharField(source='get_scope_display', read_only=True)
+    applied_scopes = serializers.ReadOnlyField()
 
     class Meta:
         from correspondences.models import CorrespondenceNameAlias
@@ -207,7 +209,12 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
     def get_organization_name(self, obj):
         return obj.organization.name if obj.organization_id else ''
 
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category_id else ''
+
     def validate(self, attrs):
+        from correspondences.alias_purposes import can_be_bidirectional
+
         target_kind = attrs.get('target_kind') or getattr(self.instance, 'target_kind', '')
         employee = attrs.get('employee', getattr(self.instance, 'employee', None))
         party = attrs.get('party', getattr(self.instance, 'party', None))
@@ -217,6 +224,7 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
         organization = attrs.get(
             'organization', getattr(self.instance, 'organization', None),
         )
+        category = attrs.get('category', getattr(self.instance, 'category', None))
         if target_kind == 'employee' and not employee:
             raise serializers.ValidationError({'employee': 'پرسنل مقصد را انتخاب کنید.'})
         if target_kind == 'party' and not party:
@@ -229,6 +237,19 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {'organization': 'سازمان مقصد را انتخاب کنید.'},
             )
+        if target_kind == 'category' and not category:
+            raise serializers.ValidationError(
+                {'category': 'نوع مکاتبهٔ مقصد را انتخاب کنید.'},
+            )
+        scope = attrs.get('scope') or getattr(self.instance, 'scope', 'any')
+        bidirectional = attrs.get(
+            'bidirectional', getattr(self.instance, 'bidirectional', False),
+        )
+        if bidirectional and not can_be_bidirectional(scope):
+            raise serializers.ValidationError({
+                'bidirectional': 'این نگاشت دو مسیره معنا ندارد؛ '
+                                 'دامنهٔ فرستنده یا گیرنده را انتخاب کنید.',
+            })
         raw_name = attrs.get('raw_name') or getattr(self.instance, 'raw_name', '')
         normalized = normalize_name(raw_name)
         if not normalized:
@@ -238,7 +259,6 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
         from correspondences.models import CorrespondenceNameAlias
 
         company = getattr(self.instance, 'company', None) or self.context.get('company')
-        scope = attrs.get('scope') or getattr(self.instance, 'scope', 'any')
         if company:
             duplicates = CorrespondenceNameAlias.objects.filter(
                 company=company, scope=scope, normalized=normalized,
@@ -252,6 +272,8 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
                 duplicates = duplicates.filter(correspondent=correspondent)
             elif organization:
                 duplicates = duplicates.filter(organization=organization)
+            elif category:
+                duplicates = duplicates.filter(category=category)
             if self.instance:
                 duplicates = duplicates.exclude(pk=self.instance.pk)
             if duplicates.exists():
@@ -259,6 +281,29 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
                     'raw_name': 'این مقصد برای همین نام قبلاً ثبت شده است؛ مقصد دیگری انتخاب کنید.',
                 })
         return attrs
+
+
+class CorrespondenceNameAliasListSerializer(serializers.ModelSerializer):
+    """نسخهٔ سبک فهرست نگاشت‌ها (بدون یادداشت و فیلدهای محاسباتی سنگین).
+
+    همهٔ FKهای برچسب‌ساز در ``get_queryset`` با ``select_related`` خوانده
+    می‌شوند؛ بنابراین هر ردیف کوئری اضافه نمی‌زند.
+    """
+
+    target_label = serializers.CharField(read_only=True)
+    target_kind_display = serializers.CharField(source='get_target_kind_display', read_only=True)
+    scope_display = serializers.CharField(source='get_scope_display', read_only=True)
+    applied_scopes = serializers.ReadOnlyField()
+
+    class Meta:
+        from correspondences.models import CorrespondenceNameAlias
+
+        model = CorrespondenceNameAlias
+        fields = [
+            'id', 'raw_name', 'normalized', 'scope', 'scope_display', 'target_kind',
+            'target_kind_display', 'target_label', 'applied_scopes', 'bidirectional',
+            'order', 'applied_count', 'last_applied_at', 'is_active',
+        ]
 
 
 class LetterAttachmentSerializer(serializers.ModelSerializer):

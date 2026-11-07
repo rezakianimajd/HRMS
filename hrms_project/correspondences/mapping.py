@@ -1,6 +1,7 @@
 """اعمال نگاشت نام‌ها روی داده‌های مکاتبات و استفاده از آن‌ها در ورود اکسل."""
 from django.utils import timezone
 
+from correspondences.alias_purposes import paired_scope, resolve_scopes
 from correspondences.matching import normalize_name
 
 # دامنه‌هایی که هر مقصد را تحت تأثیر قرار می‌دهند
@@ -13,6 +14,7 @@ EMPLOYEE_SCOPES = {
     'counterparty': ('sender', 'receiver'),
     'contact': (),
     'organization': (),
+    'subject': (),
     'any': ('referral', 'sender', 'receiver', 'delivery'),
 }
 PARTY_SCOPES = {
@@ -24,6 +26,7 @@ PARTY_SCOPES = {
     'counterparty': ('sender', 'receiver'),
     'contact': (),
     'organization': (),
+    'subject': (),
     'any': ('sender', 'receiver'),
 }
 CORRESPONDENT_SCOPES = {
@@ -35,6 +38,7 @@ CORRESPONDENT_SCOPES = {
     'counterparty': ('sender', 'receiver'),
     'contact': ('sender',),
     'organization': (),
+    'subject': (),
     'any': ('sender', 'receiver'),
 }
 ORGANIZATION_SCOPES = {
@@ -46,13 +50,36 @@ ORGANIZATION_SCOPES = {
     'counterparty': ('sender', 'receiver'),
     'contact': (),
     'organization': ('sender', 'receiver'),
+    'subject': (),
     'any': ('sender', 'receiver'),
+}
+# نگاشت «موضوع نامه» روی نوع مکاتبهٔ نامه‌های هم‌موضوع اعمال می‌شود
+CATEGORY_SCOPES = {
+    'referral': (),
+    'referral_target': (),
+    'sender': (),
+    'receiver': (),
+    'delivery': (),
+    'counterparty': (),
+    'contact': (),
+    'organization': (),
+    'subject': ('subject',),
+    'any': ('subject',),
 }
 LETTER_FIELDS = {
     'sender': ('sender_employee', 'sender_name'),
     'receiver': ('receiver_employee', 'receiver_name'),
     'delivery': ('delivered_by', 'delivered_by_name'),
 }
+
+
+def effective_scopes(alias, scope_map):
+    """دامنه‌های مؤثر نگاشت (با در نظر گرفتن «نگاشت دو مسیره»)."""
+    return resolve_scopes(
+        getattr(alias, 'scope', 'any'),
+        getattr(alias, 'bidirectional', False),
+        scope_map,
+    )
 
 
 def _matches(value, normalized):
@@ -65,7 +92,7 @@ def _apply_employee(alias, dry_run=False):
 
     employee = alias.employee
     full_name = getattr(employee, 'full_name', '') or alias.raw_name
-    scopes = EMPLOYEE_SCOPES.get(alias.scope, EMPLOYEE_SCOPES['any'])
+    scopes = effective_scopes(alias, EMPLOYEE_SCOPES)
     normalized = alias.normalized
     company = alias.company
     counts = {'referrals': 0, 'letters': 0}
@@ -127,7 +154,7 @@ def _apply_party(alias, dry_run=False):
     from correspondences.models import Letter
 
     party = alias.party
-    scopes = PARTY_SCOPES.get(alias.scope, PARTY_SCOPES['any'])
+    scopes = effective_scopes(alias, PARTY_SCOPES)
     normalized = alias.normalized
     company = alias.company
     counts = {'referrals': 0, 'letters': 0}
@@ -206,7 +233,7 @@ def _apply_correspondent(alias, dry_run=False):
     correspondent = alias.correspondent
     normalized = alias.normalized
     company = alias.company
-    scopes = CORRESPONDENT_SCOPES.get(alias.scope, CORRESPONDENT_SCOPES['any'])
+    scopes = effective_scopes(alias, CORRESPONDENT_SCOPES)
     counts = {'referrals': 0, 'letters': 0}
     field_map = {'sender': 'sender_name', 'receiver': 'receiver_name'}
     for scope in scopes:
@@ -234,7 +261,7 @@ def _apply_organization(alias, dry_run=False):
     organization = alias.organization
     normalized = alias.normalized
     company = alias.company
-    scopes = ORGANIZATION_SCOPES.get(alias.scope, ORGANIZATION_SCOPES['any'])
+    scopes = effective_scopes(alias, ORGANIZATION_SCOPES)
     counts = {'referrals': 0, 'letters': 0}
 
     if 'sender' in scopes:
@@ -276,6 +303,29 @@ def _apply_organization(alias, dry_run=False):
     return counts
 
 
+def _apply_category(alias, dry_run=False):
+    """اتصال نامه‌های هم‌موضوع به «نوع مکاتبه» نگاشت‌شده (نگاشت موضوع نامه)."""
+    from correspondences.models import Letter
+
+    category = alias.category
+    normalized = alias.normalized
+    company = alias.company
+    scopes = effective_scopes(alias, CATEGORY_SCOPES)
+    counts = {'referrals': 0, 'letters': 0}
+    if category is None or 'subject' not in scopes:
+        return counts
+
+    rows = list(
+        Letter.objects.filter(company=company, category__isnull=True).exclude(subject=''),
+    )
+    matched = [row for row in rows if _matches(row.subject, normalized)]
+    if matched and not dry_run:
+        for row in matched:
+            row.category = category
+        Letter.objects.bulk_update(matched, ['category'], batch_size=300)
+    counts['letters'] += len(matched)
+    return counts
+
 
 def apply_alias(alias, dry_run=False):
     """یک نگاشت را روی داده‌های موجود اعمال می‌کند و آمار را برمی‌گرداند."""
@@ -284,6 +334,7 @@ def apply_alias(alias, dry_run=False):
         'party': _apply_party,
         'correspondent': _apply_correspondent,
         'organization': _apply_organization,
+        'category': _apply_category,
     }
     handler = handlers.get(alias.target_kind)
     counts = handler(alias, dry_run=dry_run) if handler else None
@@ -314,7 +365,7 @@ def apply_all(company, dry_run=False, aliases=None):
     rows = list(aliases) if aliases is not None else list(
         CorrespondenceNameAlias.objects.filter(
             company=company, is_active=True,
-        ).select_related('employee', 'party', 'correspondent')
+        ).select_related('employee', 'party', 'correspondent', 'organization', 'category')
     )
     results = [apply_alias(alias, dry_run=dry_run) for alias in rows]
     return {
@@ -328,15 +379,25 @@ def apply_all(company, dry_run=False, aliases=None):
 
 
 def load_alias_map(company):
-    """نگاشت‌های فعال شرکت به‌صورت ``{(scope, normalized): [alias, ...]}``."""
+    """نگاشت‌های فعال شرکت به‌صورت ``{(scope, normalized): [alias, ...]}``.
+
+    نگاشت‌های «دو مسیره» (مثل فرستنده) زیر دامنهٔ طرف مقابل هم ثبت می‌شوند تا
+    هنگام ورود داده‌های اکسل در هر دو جهت پیدا شوند.
+    """
     from correspondences.models import CorrespondenceNameAlias
 
     mapping = {}
     rows = CorrespondenceNameAlias.objects.filter(
         company=company, is_active=True,
-    ).select_related('employee', 'party', 'correspondent').order_by('order', 'id')
+    ).select_related(
+        'employee', 'party', 'correspondent', 'organization', 'category',
+    ).order_by('order', 'id')
     for alias in rows:
         mapping.setdefault((alias.scope, alias.normalized), []).append(alias)
+        if alias.bidirectional:
+            pair = paired_scope(alias.scope)
+            if pair:
+                mapping.setdefault((pair, alias.normalized), []).append(alias)
     return mapping
 
 

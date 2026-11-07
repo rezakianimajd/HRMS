@@ -321,6 +321,7 @@ class CorrespondenceNameAlias(BaseModel):
         ('party', _('طرف حساب (مدیریت قراردادها)')),
         ('correspondent', _('مخاطب مکاتبات')),
         ('organization', _('سازمان (تعاریف مکاتبات)')),
+        ('category', _('نوع مکاتبه (تعاریف مکاتبات)')),
     ]
     SCOPES = [
         ('any', _('همهٔ فیلدها')),
@@ -332,6 +333,7 @@ class CorrespondenceNameAlias(BaseModel):
         ('referral_target', _('گیرندهٔ ارجاع (طرف حساب)')),
         ('contact', _('مخاطب نامه')),
         ('organization', _('سازمان طرف نامه')),
+        ('subject', _('موضوع نامه / نوع مکاتبه')),
     ]
 
     raw_name = models.CharField(max_length=200, verbose_name=_('نام خام (واردشده)'))
@@ -359,6 +361,16 @@ class CorrespondenceNameAlias(BaseModel):
         Organization, on_delete=models.CASCADE, null=True, blank=True,
         related_name='name_aliases', verbose_name=_('سازمان'),
     )
+    category = models.ForeignKey(
+        'correspondences.LetterCategory', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='name_aliases', verbose_name=_('نوع مکاتبه'),
+        help_text=_('برای نگاشت «موضوع نامه»: نوع مکاتبه‌ای که به نامه‌ها متصل می‌شود.'),
+    )
+    bidirectional = models.BooleanField(
+        default=False, verbose_name=_('نگاشت دو مسیره'),
+        help_text=_('هم روی نامه‌های ارسالی و هم دریافتی اعمال شود '
+                    '(فقط برای دامنه‌های فرستنده/گیرنده).'),
+    )
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
     order = models.PositiveSmallIntegerField(
         default=0, verbose_name=_('ترتیب'),
@@ -379,6 +391,7 @@ class CorrespondenceNameAlias(BaseModel):
     def clean(self):
         from django.core.exceptions import ValidationError
 
+        from correspondences.alias_purposes import can_be_bidirectional
         from correspondences.matching import normalize_name
 
         super().clean()
@@ -390,9 +403,26 @@ class CorrespondenceNameAlias(BaseModel):
             'party': self.party_id,
             'correspondent': self.correspondent_id,
             'organization': self.organization_id,
+            'category': self.category_id,
         }
         if not targets.get(self.target_kind):
             raise ValidationError({'target_kind': _('مقصد نگاشت را انتخاب کنید.')})
+        if self.bidirectional and not can_be_bidirectional(self.scope):
+            raise ValidationError({
+                'bidirectional': _('«نگاشت دو مسیره» فقط برای فرستنده و گیرندهٔ نامه معنا دارد.'),
+            })
+
+    @property
+    def applied_scopes(self):
+        """دامنه‌هایی که این نگاشت روی آن‌ها اثر می‌گذارد (با احتساب دو مسیره)."""
+        from correspondences.alias_purposes import paired_scope
+
+        scopes = [self.scope]
+        if self.bidirectional:
+            pair = paired_scope(self.scope)
+            if pair and pair not in scopes:
+                scopes.append(pair)
+        return scopes
 
     @property
     def target_ids(self):
@@ -401,6 +431,7 @@ class CorrespondenceNameAlias(BaseModel):
             'party': self.party_id,
             'correspondent': self.correspondent_id,
             'organization': self.organization_id,
+            'category': self.category_id,
         }
 
     def save(self, *args, **kwargs):
@@ -409,7 +440,8 @@ class CorrespondenceNameAlias(BaseModel):
         self.normalized = normalize_name(self.raw_name)
         for kind, field in (('employee', 'employee'), ('party', 'party'),
                             ('correspondent', 'correspondent'),
-                            ('organization', 'organization')):
+                            ('organization', 'organization'),
+                            ('category', 'category')):
             if self.target_kind != kind:
                 setattr(self, f'{field}_id', None)
         if self._state.adding and not self.order and self.company_id and self.normalized:
@@ -431,6 +463,8 @@ class CorrespondenceNameAlias(BaseModel):
             return self.correspondent.name
         if self.target_kind == 'organization' and self.organization_id:
             return self.organization.name
+        if self.target_kind == 'category' and self.category_id:
+            return self.category.name
         return '—'
 
 

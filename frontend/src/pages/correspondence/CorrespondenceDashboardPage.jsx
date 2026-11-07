@@ -245,8 +245,8 @@ const CorrespondenceDashboardPage = () => {
               description="مرور مکاتبات بسته‌شده" color={OK}
               onClick={() => go('/correspondence/letters', 'status=answered')} />
             <QuickAction icon={SettingsSuggestIcon} label="نگاشت نام‌ها"
-              description="قواعد تطبیق نام در ورود داده" color={SLATE}
-              onClick={() => go('/correspondence/settings')} />
+              description="قواعد تخصصی تطبیق نام در ورود داده" color={SLATE}
+              onClick={() => go('/correspondence/name-mapping')} />
           </Stack>
         </StudioCard>
       </Box>

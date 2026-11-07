@@ -36,6 +36,7 @@ import CorrespondencesPage from './pages/CorrespondencesPage';
 import CorrespondenceDashboardPage from './pages/correspondence/CorrespondenceDashboardPage';
 import CorrespondenceLettersPage from './pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceSettingsPage from './pages/correspondence/CorrespondenceSettingsPage';
+import CorrespondenceNameMappingPage from './pages/correspondence/CorrespondenceNameMappingPage';
 import CorrespondenceWorkdeskPage from './pages/correspondence/CorrespondenceWorkdeskPage';
 import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
@@ -236,6 +237,7 @@ const AppRoutes = () => {
       <Route path="/correspondence/overdue" element={<ProtectedLayout><CorrespondenceLettersPage mode="overdue" /></ProtectedLayout>} />
       <Route path="/correspondence/archive" element={<ProtectedLayout><CorrespondenceLettersPage mode="archive" /></ProtectedLayout>} />
       <Route path="/correspondence/settings" element={<ProtectedLayout><CorrespondenceSettingsPage /></ProtectedLayout>} />
+      <Route path="/correspondence/name-mapping" element={<ProtectedLayout><CorrespondenceNameMappingPage /></ProtectedLayout>} />
       <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
       <Route path="/scoring" element={<ProtectedLayout><ScoringPage /></ProtectedLayout>} />
       <Route path="/employees" element={<ProtectedLayout><EmployeeListPage /></ProtectedLayout>} />

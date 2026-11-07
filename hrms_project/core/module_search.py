@@ -593,6 +593,23 @@ PROVIDERS['correspondence'] = [
         title_fields=('name', 'code'), subtitle_fields=('phone',),
         icon='building', color='#8b5cf6',
     ),
+    SearchProvider(
+        'correspondences.CorrespondenceNameAlias',
+        ('raw_name', 'normalized', 'note'),
+        path=lambda obj: f'/correspondence/name-mapping?q={_q(obj.raw_name)}',
+        title_fields=('raw_name',), subtitle_fields=('normalized',),
+        subtitle_display='scope', icon='sync', color='#8b5cf6',
+        select_related=('employee', 'party', 'correspondent', 'organization', 'category'),
+        extra_q=lambda term: (
+            Q(employee__first_name__icontains=term)
+            | Q(employee__last_name__icontains=term)
+            | Q(party__name__icontains=term)
+            | Q(correspondent__name__icontains=term)
+            | Q(organization__name__icontains=term)
+            | Q(category__name__icontains=term)
+        ),
+        distinct=True,
+    ),
 ]
 
 def _hr_results(query: str, company) -> list:

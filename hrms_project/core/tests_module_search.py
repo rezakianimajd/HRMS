@@ -82,3 +82,17 @@ class CorrespondenceSearchProviderTests(SimpleTestCase):
             SimpleNamespace(number='1404/1', subject='موضوع آزمایشی'),
         )
         self.assertIn('/correspondence/letters?q=', path)
+
+    def test_name_mapping_provider_opens_the_standalone_page(self):
+        provider = next(
+            provider for provider in module_search.PROVIDERS['correspondence']
+            if provider.model == 'correspondences.CorrespondenceNameAlias'
+        )
+        self.assertTrue(provider.distinct)
+        self.assertIn('raw_name', provider.fields)
+        path = provider.path(SimpleNamespace(raw_name='خ.حسینی'))
+        self.assertTrue(path.startswith('/correspondence/name-mapping?q='), path)
+        condition = str(provider.extra_q('حسینی'))
+        for field in ('employee__last_name', 'party__name', 'correspondent__name',
+                      'organization__name', 'category__name'):
+            self.assertIn(field, condition)

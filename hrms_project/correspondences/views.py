@@ -138,7 +138,8 @@ from correspondences.models import (  # noqa: E402
 )
 from correspondences.numbering import allocate_number, preview_number, request_number  # noqa: E402
 from correspondences.serializers import (  # noqa: E402
-    CorrespondenceNameAliasSerializer, CorrespondentSerializer, LetterAttachmentSerializer,
+    CorrespondenceNameAliasListSerializer, CorrespondenceNameAliasSerializer,
+    CorrespondentSerializer, LetterAttachmentSerializer,
     LetterCategorySerializer, LetterEventSerializer, LetterListSerializer,
     LetterReferralSerializer,
     LetterRequestSerializer, LetterRequestTypeSerializer, LetterSeriesSerializer,
@@ -1415,28 +1416,59 @@ class LetterReferralViewSet(BaseLetterViewSet):
 
 
 class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
-    """نگاشت نام‌های خام (اکسل) به پرسنل / طرف حساب / مخاطب."""
+    """نگاشت نام‌های خام (اکسل) به پرسنل / طرف حساب / مخاطب / سازمان / نوع مکاتبه.
+
+    - ``list``   فهرست سبک (سریالایزر بدون یادداشت) برای جدول
+    - ``groups`` یک ردیف برای هر نام، همراه همهٔ مقصدها («نگاشت چند مقصده»)
+    - ``meta``   فرادادهٔ کاربردهای تخصصی + شمارش‌ها (بدون اسکن سنگین)
+    - ``summary``/``unmapped``/``suggestions``/``apply``/``apply-all`` مطابق قبل
+    """
 
     serializer_class = CorrespondenceNameAliasSerializer
     queryset = CorrespondenceNameAlias.objects.all()
-    search_fields = ['raw_name', 'normalized', 'note']
+    search_fields = [
+        'raw_name', 'normalized', 'note',
+        'employee__first_name', 'employee__last_name', 'employee__employee_id',
+        'party__name', 'correspondent__name', 'organization__name', 'category__name',
+    ]
+    ordering_fields = ['raw_name', 'scope', 'target_kind', 'applied_count',
+                       'last_applied_at', 'created_at']
     ordering = ['-applied_count', 'raw_name']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CorrespondenceNameAliasListSerializer
+        return CorrespondenceNameAliasSerializer
 
     def get_queryset(self):
         qs = super().get_queryset().select_related(
-            'employee', 'party', 'correspondent', 'organization',
+            'employee', 'party', 'correspondent', 'organization', 'category',
         )
         params = self.request.query_params
-        if params.get('target_kind'):
+        # در ``groups`` فیلتر نوع مقصد باید روی «همهٔ مقصدهای یک نام» اعمال شود،
+        # نه روی ردیف‌ها؛ وگرنه برچسب خط‌تیره‌ای ناقص می‌شود.
+        if params.get('target_kind') and self.action != 'groups':
             qs = qs.filter(target_kind=params['target_kind'])
         if params.get('scope'):
             qs = qs.filter(scope=params['scope'])
+        mode = params.get('mode')
+        if mode == 'dual':
+            qs = qs.filter(bidirectional=True)
+        elif mode == 'single':
+            qs = qs.filter(bidirectional=False)
         return qs
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['company'] = _get_company(self.request)
         return context
+
+    def filter_queryset(self, queryset):
+        """جست‌وجوی DRF روی روابط، ردیف تکراری می‌سازد؛ در حالت جست‌وجو distinct می‌کنیم."""
+        filtered = super().filter_queryset(queryset)
+        if (self.request.query_params.get('search') or '').strip():
+            return filtered.distinct()
+        return filtered
 
     # ------------------------------------------------------------------ ابزار
     def _company(self):
@@ -1462,8 +1494,12 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
     def _correspondent_candidates(self, company):
         return list(Correspondent.objects.filter(company=company, is_active=True))
 
+    def _category_candidates(self, company):
+        return list(LetterCategory.objects.filter(company=company, is_active=True))
+
     def _suggestions_for(self, raw, kind=None, employees=None, parties=None,
-                         organizations=None, correspondents=None, limit=4):
+                         organizations=None, correspondents=None, categories=None,
+                         limit=4):
         """کاندیدهای پیشنهادی برای یک نام خام."""
         from correspondences import matching
 
@@ -1527,37 +1563,186 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
                     'secondary': correspondent.get_kind_display(),
                     'score': match['score'],
                 })
+        if kind in (None, '', 'category'):
+            pool = categories if categories is not None else self._category_candidates(company)
+            for match in matching.best_matches(
+                raw, pool, limit=limit, key=lambda item: item.name,
+            ):
+                category = match['item']
+                rows.append({
+                    'kind': 'category',
+                    'id': category.id,
+                    'label': category.name,
+                    'secondary': category.get_direction_display(),
+                    'score': match['score'],
+                })
         rows.sort(key=lambda item: item['score'], reverse=True)
         return rows[:limit]
+
+    # ------------------------------------------------------------------ خلاصه
+    def _summary_payload(self, company, with_unmapped=False):
+        """شمارش‌های سبک نگاشت‌ها (یک کوئری) + در صورت نیاز «نام‌های بدون نگاشت»."""
+        empty = {
+            'aliases': 0, 'names': 0, 'multi': 0, 'bidirectional': 0, 'applied': 0,
+            'unmapped': 0, 'by_kind': {}, 'by_scope': {},
+        }
+        if not company:
+            return empty
+        rows = list(CorrespondenceNameAlias.objects.filter(
+            company=company, is_active=True,
+        ).values('target_kind', 'scope', 'normalized', 'applied_count', 'bidirectional'))
+
+        groups = {}
+        for row in rows:
+            key = (row['normalized'], row['scope'])
+            groups[key] = groups.get(key, 0) + 1
+        by_kind = {}
+        by_scope = {}
+        for row in rows:
+            by_kind[row['target_kind']] = by_kind.get(row['target_kind'], 0) + 1
+            by_scope[row['scope']] = by_scope.get(row['scope'], 0) + 1
+
+        payload = {
+            'aliases': len(rows),
+            'names': len(groups),
+            'multi': sum(1 for count in groups.values() if count > 1),
+            'bidirectional': sum(1 for row in rows if row['bidirectional']),
+            'applied': sum(row['applied_count'] or 0 for row in rows),
+            'unmapped': 0,
+            'by_kind': by_kind,
+            'by_scope': by_scope,
+        }
+        if with_unmapped:
+            from correspondences import matching
+
+            covered = {(row['scope'], row['normalized']) for row in rows}
+            any_covered = {row['normalized'] for row in rows if row['scope'] == 'any'}
+            keys = {
+                (sample['scope'], sample['normalized'])
+                for sample in matching.iter_name_samples(company)
+            }
+            payload['unmapped'] = len({
+                key for key in keys
+                if key not in covered and key[1] not in any_covered
+            })
+        return payload
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """خلاصهٔ وضعیت نگاشت: تعداد نگاشت‌ها و نام‌های باقی‌مانده."""
-        from correspondences import matching
+        return Response(self._summary_payload(self._company(), with_unmapped=True))
 
-        company = self._company()
-        if not company:
-            return Response({'aliases': 0, 'unmapped': 0, 'applied': 0, 'names': 0})
-        qs = CorrespondenceNameAlias.objects.filter(company=company, is_active=True)
-        rows = list(qs.values('target_kind', 'scope', 'normalized', 'applied_count'))
-        covered = {(row['scope'], row['normalized']) for row in rows}
-        any_covered = {row['normalized'] for row in rows if row['scope'] == 'any'}
-        samples = matching.iter_name_samples(company)
-        keys = {(sample['scope'], sample['normalized']) for sample in samples}
-        remaining = {
-            key for key in keys
-            if key not in covered and key[1] not in any_covered
-        }
+    @action(detail=False, methods=['get'])
+    def meta(self, request):
+        """فرادادهٔ کاربردهای تخصصی نگاشت + شمارش‌ها (صفحهٔ مستقل نگاشت نام‌ها)."""
+        from correspondences import alias_purposes
+
+        summary = self._summary_payload(self._company())
+        scope_labels = dict(CorrespondenceNameAlias.SCOPES)
         return Response({
-            'aliases': len(rows),
-            'by_kind': {
-                kind: sum(1 for row in rows if row['target_kind'] == kind)
-                for kind in ('employee', 'party', 'correspondent', 'organization')
+            'purposes': alias_purposes.purposes_payload(summary['by_scope'], scope_labels),
+            'purpose_groups': alias_purposes.purpose_groups(),
+            'target_kinds': [
+                {'key': key, 'label': str(label)}
+                for key, label in CorrespondenceNameAlias.TARGET_KINDS
+            ],
+            'paired_scopes': {
+                scope: alias_purposes.paired_scope(scope)
+                for scope in scope_labels
+                if alias_purposes.paired_scope(scope)
             },
-            'applied': sum(row['applied_count'] or 0 for row in rows),
-            'names': len(keys),
-            'unmapped': len(remaining),
+            'summary': summary,
         })
+    @action(detail=False, methods=['get'])
+    def groups(self, request):
+        """یک ردیف برای هر نام، همراه همهٔ مقصدها (نمایش خط‌تیره‌ای مقصدهای چندگانه)."""
+        from correspondences import alias_purposes
+
+        params = request.query_params
+        queryset = self.get_queryset()
+        search = (params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(raw_name__icontains=search)
+                | Q(normalized__icontains=search)
+                | Q(employee__first_name__icontains=search)
+                | Q(employee__last_name__icontains=search)
+                | Q(employee__employee_id__icontains=search)
+                | Q(party__name__icontains=search)
+                | Q(correspondent__name__icontains=search)
+                | Q(organization__name__icontains=search)
+                | Q(category__name__icontains=search)
+            )
+        try:
+            limit = min(500, max(1, int(params.get('limit') or 200)))
+        except (TypeError, ValueError):
+            limit = 200
+
+        rows = list(
+            queryset.order_by('normalized', 'scope', 'order', 'id')[: limit * 4],
+        )
+        grouped = {}
+        for alias in rows:
+            key = f'{alias.normalized}|{alias.scope}'
+            entry = grouped.get(key)
+            if entry is None:
+                entry = {
+                    'key': key,
+                    'raw_name': alias.raw_name,
+                    'normalized': alias.normalized,
+                    'scope': alias.scope,
+                    'scope_label': alias.get_scope_display(),
+                    'bidirectional': bool(alias.bidirectional),
+                    'applied_scopes': [],
+                    'targets': [],
+                    'applied_count': 0,
+                    'last_applied_at': None,
+                }
+                grouped[key] = entry
+            entry['targets'].append({
+                'id': alias.id,
+                'target_kind': alias.target_kind,
+                'target_kind_display': alias.get_target_kind_display(),
+                'target_id': alias.target_ids.get(alias.target_kind),
+                'label': alias.target_label or alias_purposes.EMPTY_LABEL,
+                'order': alias.order,
+                'applied_count': alias.applied_count or 0,
+                'last_applied_at': alias.last_applied_at,
+            })
+            entry['applied_count'] += alias.applied_count or 0
+            entry['bidirectional'] = entry['bidirectional'] or bool(alias.bidirectional)
+            for scope in alias.applied_scopes:
+                if scope not in entry['applied_scopes']:
+                    entry['applied_scopes'].append(scope)
+            if alias.last_applied_at and (
+                entry['last_applied_at'] is None
+                or alias.last_applied_at > entry['last_applied_at']
+            ):
+                entry['last_applied_at'] = alias.last_applied_at
+
+        results = []
+        for entry in grouped.values():
+            entry['targets'].sort(key=lambda item: (item['order'] or 0, item['id']))
+            entry['target_count'] = len(entry['targets'])
+            entry['targets_label'] = alias_purposes.join_target_labels(
+                [item['label'] for item in entry['targets']],
+            )
+            entry['target_kinds'] = list(dict.fromkeys(
+                item['target_kind'] for item in entry['targets']
+            ))
+            results.append(entry)
+
+        scope = params.get('scope')
+        if scope:
+            results = [row for row in results if row['scope'] == scope]
+        target_kind = params.get('target_kind')
+        if target_kind:
+            results = [row for row in results if target_kind in row['target_kinds']]
+        if str(params.get('multi') or '').lower() in ('1', 'true', 'yes'):
+            results = [row for row in results if row['target_count'] > 1]
+
+        results.sort(key=lambda row: (-row['applied_count'], row['raw_name']))
+        return Response({'count': len(results), 'results': results[:limit]})
 
     @action(detail=False, methods=['get'])
     def unmapped(self, request):
@@ -1581,6 +1766,7 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
         parties = self._party_candidates(company)
         organizations = self._organization_candidates(company)
         correspondents = self._correspondent_candidates(company)
+        categories = self._category_candidates(company)
         aggregated = {}
         for sample in matching.iter_name_samples(company):
             key = (sample['scope'], sample['normalized'])
@@ -1598,7 +1784,7 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
             row['suggestions'] = self._suggestions_for(
                 row['raw_name'], None, employees=employees, parties=parties,
                 organizations=organizations, correspondents=correspondents,
-                limit=6,
+                categories=categories, limit=6,
             )
         return Response(ordered[:limit])
 
@@ -1631,9 +1817,14 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
             item for item in self._correspondent_candidates(company)
             if not query or query in matching.normalize_name(item.name)
         ][:80]
+        categories = [
+            item for item in self._category_candidates(company)
+            if not query or query in matching.normalize_name(item.name)
+        ][:80]
         return Response(self._suggestions_for(
             raw, kind or None, employees=employees, parties=parties,
-            organizations=organizations, correspondents=correspondents, limit=8,
+            organizations=organizations, correspondents=correspondents,
+            categories=categories, limit=8,
         ))
 
     @action(detail=True, methods=['post'])

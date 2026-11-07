@@ -37,6 +37,7 @@ import InboxIcon from '@mui/icons-material/MoveToInbox';
 import SendIcon from '@mui/icons-material/Send';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
 import ContactsIcon from '@mui/icons-material/Contacts';
+import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import BackupIcon from '@mui/icons-material/Backup';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -848,6 +849,7 @@ const correspondenceMenu = [
     title: 'تعاریف و مخاطبین',
     color: '#8b5cf6',
     items: [
+      { id: 'correspondence-name-mapping', title: 'نگاشت نام‌ها', icon: <SyncAltIcon />, path: '/correspondence/name-mapping', color: '#8b5cf6', primary: false, ready: true },
       { id: 'correspondence-directory', title: 'مخاطبین و سازمان‌ها', icon: <ContactsIcon />, path: '/correspondence/settings?tab=contacts', color: '#8b5cf6', primary: false, ready: true },
       { id: 'correspondence-settings', title: 'تنظیمات مکاتبات', icon: <SettingsIcon />, path: '/correspondence/settings', color: '#64748b', primary: false, ready: true },
     ],

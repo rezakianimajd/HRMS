@@ -447,7 +447,7 @@ class NameMappingHandlerTests(SimpleTestCase):
         from correspondences import mapping
 
         for name in ('_apply_employee', '_apply_party', '_apply_correspondent',
-                     '_apply_organization'):
+                     '_apply_organization', '_apply_category'):
             handler = getattr(mapping, name)
             lines = [line for line in inspect.getsource(handler).splitlines() if line.strip()]
             self.assertTrue(
@@ -610,6 +610,196 @@ class LetterArchiveStorageTests(SimpleTestCase):
         from correspondences.models import letter_archive_year
 
         self.assertEqual(letter_archive_year(self._instance().letter), '1404')
+
+
+class NameAliasPurposeTests(SimpleTestCase):
+    """کاربردهای تخصصی نگاشت نام: فراداده، دامنه‌ها و «نگاشت دو مسیره»."""
+
+    def test_every_model_scope_has_a_purpose(self):
+        from correspondences import alias_purposes
+        from correspondences.models import CorrespondenceNameAlias
+
+        scope_keys = {key for key, _label in CorrespondenceNameAlias.SCOPES}
+        self.assertEqual(set(alias_purposes.PURPOSE_BY_KEY), scope_keys)
+        self.assertEqual(len(alias_purposes.PURPOSES), len(scope_keys))
+
+    def test_purposes_expose_labels_descriptions_and_valid_target_kinds(self):
+        from correspondences import alias_purposes
+        from correspondences.models import CorrespondenceNameAlias
+
+        target_keys = {key for key, _label in CorrespondenceNameAlias.TARGET_KINDS}
+        labels = dict(CorrespondenceNameAlias.SCOPES)
+        payload = alias_purposes.purposes_payload({'referral': 3}, labels)
+        by_key = {row['key']: row for row in payload}
+
+        self.assertEqual(by_key['referral']['count'], 3)
+        self.assertEqual(by_key['sender']['count'], 0)
+        self.assertEqual(by_key['referral']['label'], labels['referral'])
+        self.assertEqual(by_key['referral']['target_kinds'], ['employee'])
+        self.assertEqual(by_key['subject']['target_kinds'], ['category'])
+        for row in payload:
+            self.assertTrue(row['label'], 'برچسب کاربرد خالی است')
+            self.assertTrue(row['description'], 'توضیح کاربرد خالی است')
+            self.assertTrue(row['group'], 'گروه کاربرد خالی است')
+            self.assertTrue(set(row['target_kinds']).issubset(target_keys))
+
+    def test_purpose_groups_cover_every_purpose(self):
+        from correspondences import alias_purposes
+
+        grouped = [
+            key for group in alias_purposes.purpose_groups() for key in group['keys']
+        ]
+        self.assertEqual(sorted(grouped), sorted(alias_purposes.PURPOSE_BY_KEY))
+
+    def test_bidirectional_is_only_for_letter_sides(self):
+        from correspondences import alias_purposes
+
+        self.assertEqual(alias_purposes.paired_scope('sender'), 'receiver')
+        self.assertEqual(alias_purposes.paired_scope('receiver'), 'sender')
+        self.assertIsNone(alias_purposes.paired_scope('referral'))
+        self.assertTrue(alias_purposes.can_be_bidirectional('sender'))
+        self.assertFalse(alias_purposes.can_be_bidirectional('subject'))
+        for scope, pair in alias_purposes.PAIRED_SCOPES.items():
+            self.assertEqual(alias_purposes.PAIRED_SCOPES.get(pair), scope)
+
+    def test_resolve_scopes_expands_dual_mappings(self):
+        from correspondences import alias_purposes, mapping
+
+        self.assertEqual(
+            alias_purposes.resolve_scopes('sender', False, mapping.PARTY_SCOPES),
+            ('sender',),
+        )
+        self.assertEqual(
+            alias_purposes.resolve_scopes('sender', True, mapping.PARTY_SCOPES),
+            ('sender', 'receiver'),
+        )
+        self.assertEqual(
+            alias_purposes.resolve_scopes('receiver', True, mapping.EMPLOYEE_SCOPES),
+            ('receiver', 'sender'),
+        )
+        # دامنه‌ای که طرف مقابل ندارد، با فعال‌کردن فلگ هم تغییر نمی‌کند
+        self.assertEqual(
+            alias_purposes.resolve_scopes('referral', True, mapping.EMPLOYEE_SCOPES),
+            ('referral',),
+        )
+        # دامنهٔ ناشناخته → نگاشت عمومی
+        self.assertEqual(
+            alias_purposes.resolve_scopes('unknown', False, mapping.EMPLOYEE_SCOPES),
+            ('referral', 'sender', 'receiver', 'delivery'),
+        )
+        # نگاشت «موضوع نامه» فقط روی نوع مکاتبه اثر می‌گذارد
+        self.assertEqual(
+            alias_purposes.resolve_scopes('subject', False, mapping.CATEGORY_SCOPES),
+            ('subject',),
+        )
+        self.assertEqual(
+            alias_purposes.resolve_scopes('sender', False, mapping.CATEGORY_SCOPES),
+            (),
+        )
+
+
+    def test_join_target_labels_put_a_dash_between_people(self):
+        from correspondences import alias_purposes
+
+        self.assertEqual(
+            alias_purposes.join_target_labels(['سیده زهرا حسینی', 'مریم رضایی']),
+            'سیده زهرا حسینی — مریم رضایی',
+        )
+        self.assertEqual(alias_purposes.join_target_labels(['آ', 'آ', ' ب ']), 'آ — ب')
+        self.assertEqual(alias_purposes.join_target_labels([]), '—')
+        self.assertEqual(alias_purposes.join_target_labels(['', None]), '—')
+
+    def test_effective_scopes_helper_reads_the_model_flag(self):
+        from types import SimpleNamespace
+
+        from correspondences import mapping
+
+        single = SimpleNamespace(scope='sender', bidirectional=False)
+        dual = SimpleNamespace(scope='sender', bidirectional=True)
+        legacy = SimpleNamespace(scope='sender')
+
+        self.assertEqual(
+            mapping.effective_scopes(single, mapping.ORGANIZATION_SCOPES), ('sender',),
+        )
+        self.assertEqual(
+            mapping.effective_scopes(dual, mapping.ORGANIZATION_SCOPES),
+            ('sender', 'receiver'),
+        )
+        # نگاشت‌های قدیمی که فیلد bidirectional ندارند خطا نمی‌دهند
+        self.assertEqual(
+            mapping.effective_scopes(legacy, mapping.PARTY_SCOPES), ('sender',),
+        )
+
+
+class NameAliasSpecializationTests(SimpleTestCase):
+    """فیلدهای تخصصی مدل و سریالایزر نگاشت (نوع مکاتبه + نگاشت دو مسیره)."""
+
+    def test_model_has_bidirectional_and_category_target(self):
+        from correspondences.models import CorrespondenceNameAlias
+
+        field_names = {field.name for field in CorrespondenceNameAlias._meta.get_fields()}
+        for name in ('bidirectional', 'category', 'scope', 'target_kind', 'order'):
+            self.assertIn(name, field_names)
+        self.assertFalse(
+            CorrespondenceNameAlias._meta.get_field('bidirectional').default,
+        )
+        self.assertIn('category', dict(CorrespondenceNameAlias.TARGET_KINDS))
+        self.assertIn('subject', dict(CorrespondenceNameAlias.SCOPES))
+
+    def test_applied_scopes_property(self):
+        from correspondences.models import CorrespondenceNameAlias
+
+        alias = CorrespondenceNameAlias(raw_name='خ.حسینی', scope='sender', bidirectional=True)
+        self.assertEqual(alias.applied_scopes, ['sender', 'receiver'])
+        alias.scope = 'subject'
+        self.assertEqual(alias.applied_scopes, ['subject'])
+
+    def test_serializers_expose_specialized_fields(self):
+        from correspondences.serializers import (
+            CorrespondenceNameAliasListSerializer, CorrespondenceNameAliasSerializer,
+        )
+
+        fields = CorrespondenceNameAliasSerializer().fields
+        for name in ('bidirectional', 'category', 'category_name', 'applied_scopes',
+                     'target_label', 'scope_display', 'target_kind_display'):
+            self.assertIn(name, fields)
+
+        light = CorrespondenceNameAliasListSerializer().fields
+        for name in ('target_label', 'applied_scopes', 'bidirectional', 'scope_display'):
+            self.assertIn(name, light)
+        self.assertNotIn('note', light, 'فهرست نگاشت‌ها باید سبک باشد')
+
+    def test_category_handler_returns_counters(self):
+        import inspect
+
+        from correspondences import mapping
+
+        for name in ('_apply_employee', '_apply_party', '_apply_correspondent',
+                     '_apply_organization', '_apply_category'):
+            handler = getattr(mapping, name)
+            lines = [line for line in inspect.getsource(handler).splitlines() if line.strip()]
+            self.assertTrue(
+                lines[-1].strip().startswith('return'),
+                f'{name} باید در پایان مقدار برگرداند (counts)',
+            )
+
+
+class LetterArchivePathTests(SimpleTestCase):
+    """ادامهٔ تست‌های مسیر ذخیرهٔ پیوست نامه در بایگانی مکاتبات."""
+
+    def _instance(self, **kwargs):
+        from datetime import date
+        from types import SimpleNamespace
+
+        letter = SimpleNamespace(
+            pk=kwargs.get('pk', 12),
+            company_id=kwargs.get('company_id', 3),
+            number=kwargs.get('number', '1404/م پ/067'),
+            subject=kwargs.get('subject', 'صورت‌وضعیت شماره ۴'),
+            letter_date=kwargs.get('letter_date', date(2025, 10, 11)),
+            received_date=None, sent_date=None,
+        )
+        return SimpleNamespace(letter=letter, company_id=kwargs.get('company_id', 3))
 
     def test_year_falls_back_when_letter_has_no_date(self):
         from correspondences.models import letter_archive_year
