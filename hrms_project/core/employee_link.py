@@ -46,9 +46,14 @@ def _resolve_employee(employee_pk, company):
 
     schema_name = getattr(company, 'schema_name', None)
     if schema_name:
+        # select_related تا FKها (عنوان شغلی/دپارتمان) داخل همان اسکیما لود شوند
         with schema_context(schema_name):
-            return Employee.objects.filter(id=employee_pk).first()
-    return Employee.objects.filter(id=employee_pk).first()
+            return Employee.objects.select_related(
+                'job_title', 'department',
+            ).filter(id=employee_pk).first()
+    return Employee.objects.select_related(
+        'job_title', 'department',
+    ).filter(id=employee_pk).first()
 
 
 def employee_for_profile(profile):
@@ -98,5 +103,25 @@ def employee_link_payload(profile, request=None):
         'employee_photo': photo,
         'employee_gender': getattr(employee, 'gender', '') or '',
         'employee_gender_display': employee.get_gender_display() if employee.gender else '',
+        'employee_position': _employee_position(employee),
+        'employee_department': _employee_department(employee),
     })
     return payload
+
+
+def _employee_position(employee):
+    """عنوان شغلی پرسنل (برای نمایش به‌عنوان نقش سازمانی)."""
+    job_title = getattr(employee, 'job_title', None)
+    if job_title is not None and not isinstance(job_title, str):
+        return getattr(job_title, 'title', '') or getattr(job_title, 'name', '') or ''
+    if isinstance(job_title, str) and job_title:
+        return job_title
+    return getattr(employee, 'position', '') or getattr(employee, 'title', '') or ''
+
+
+def _employee_department(employee):
+    """دپارتمان/واحد سازمانی پرسنل."""
+    department = getattr(employee, 'department', None)
+    if department is not None:
+        return getattr(department, 'name', '') or ''
+    return ''

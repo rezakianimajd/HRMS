@@ -1,0 +1,1723 @@
+[
+ {
+  "slug": "hrms",
+  "name": "منابع انسانی",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "dashboard",
+      "title": "داشبورد",
+      "path": "/dashboard"
+     }
+    ]
+   },
+   {
+    "title": "مدیریت پرسنل",
+    "items": [
+     {
+      "id": "employees",
+      "title": "پرونده‌های پرسنلی",
+      "path": "/employees"
+     },
+     {
+      "id": "employee-new",
+      "title": "افزودن پرسنل",
+      "path": "/employees/new"
+     },
+     {
+      "id": "phonebook",
+      "title": "دفترچه تلفن",
+      "path": "/phonebook"
+     },
+     {
+      "id": "advanced-search",
+      "title": "جستجوی پیشرفته",
+      "path": "/search"
+     },
+     {
+      "id": "contracts",
+      "title": "قراردادها",
+      "path": "/contracts"
+     },
+     {
+      "id": "recruitment",
+      "title": "جذب و استخدام",
+      "path": "/recruitment"
+     }
+    ]
+   },
+   {
+    "title": "چرخه عملیات و کارکنان",
+    "items": [
+     {
+      "id": "org-chart",
+      "title": "چارت سازمانی",
+      "path": "/org-chart"
+     },
+     {
+      "id": "data-import",
+      "title": "درون‌ریزی داده",
+      "path": "/data-import"
+     },
+     {
+      "id": "attendance",
+      "title": "حضور و غیاب",
+      "path": "/attendance"
+     },
+     {
+      "id": "leaves",
+      "title": "مرخصی و مأموریت",
+      "path": "/leaves"
+     },
+     {
+      "id": "requests",
+      "title": "درخواست‌های اداری",
+      "path": "/requests"
+     },
+     {
+      "id": "calendar",
+      "title": "تقویم سازمانی",
+      "path": "/calendar"
+     },
+     {
+      "id": "assets",
+      "title": "اموال و تجهیزات",
+      "path": "/assets"
+     },
+     {
+      "id": "lifecycle",
+      "title": "ورود و خروج",
+      "path": "/lifecycle"
+     }
+    ]
+   },
+   {
+    "title": "مالی",
+    "items": [
+     {
+      "id": "payslips",
+      "title": "فیش حقوق",
+      "path": "/payslips"
+     },
+     {
+      "id": "benefits",
+      "title": "مزایا و کارانه",
+      "path": "/benefits"
+     },
+     {
+      "id": "benefit-payments",
+      "title": "پرداخت مزایا",
+      "path": "/benefit-payments"
+     },
+     {
+      "id": "deductions",
+      "title": "کسورات",
+      "path": "/deductions"
+     },
+     {
+      "id": "finance-reports",
+      "title": "گزارش مالی",
+      "path": "/finance-reports"
+     }
+    ]
+   },
+   {
+    "title": "رفاهی و تسهیلات",
+    "items": [
+     {
+      "id": "insurance",
+      "title": "بیمه تکمیلی",
+      "path": "/insurance"
+     },
+     {
+      "id": "loans",
+      "title": "وام و تسهیلات",
+      "path": "/loans"
+     }
+    ]
+   },
+   {
+    "title": "گزارشات",
+    "items": [
+     {
+      "id": "family-report",
+      "title": "گزارش خانواده پرسنل",
+      "path": "/reports/family"
+     }
+    ]
+   },
+   {
+    "title": "مدارک و مکاتبات",
+    "items": [
+     {
+      "id": "correspondences",
+      "title": "مکاتبات اداری",
+      "path": "/correspondences"
+     },
+     {
+      "id": "bale-messaging",
+      "title": "اطلاع‌رسانی و پیام بله",
+      "path": "/bale-messaging"
+     }
+    ]
+   },
+   {
+    "title": "بینش و دستیار هوشمند",
+    "items": [
+     {
+      "id": "scoring",
+      "title": "امتیازدهی و ارزیابی",
+      "path": "/scoring"
+     },
+     {
+      "id": "appraisal",
+      "title": "ارزیابی عملکرد",
+      "path": "/appraisal"
+     },
+     {
+      "id": "assistant",
+      "title": "دستیار هوشمند",
+      "path": "/assistant"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "settings",
+  "name": "تنظیمات و تعاریف",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": []
+   },
+   {
+    "title": "تنظیمات عمومی",
+    "items": [
+     {
+      "id": "settings",
+      "title": "تنظیمات عمومی",
+      "path": "/settings"
+     },
+     {
+      "id": "company-profile",
+      "title": "مشخصات شرکت",
+      "path": "/company-profile"
+     },
+     {
+      "id": "users",
+      "title": "کاربران و نقش‌ها",
+      "path": "/users"
+     },
+     {
+      "id": "appearance",
+      "title": "ظاهر و پوسته",
+      "path": "/appearance"
+     },
+     {
+      "id": "audit",
+      "title": "دفترچه فعالیت",
+      "path": "/audit"
+     },
+     {
+      "id": "settings-backup",
+      "title": "پشتیبان‌گیری و بازیابی",
+      "path": "/settings?tab=backup"
+     },
+     {
+      "id": "settings-management",
+      "title": "تنظیمات مدیریتی",
+      "path": "/settings?tab=management"
+     },
+     {
+      "id": "settings-notifications",
+      "title": "اطلاع‌رسانی",
+      "path": "/settings?tab=notifications"
+     },
+     {
+      "id": "settings-updates",
+      "title": "به‌روزرسانی سیستم",
+      "path": "/settings?tab=updates"
+     }
+    ]
+   },
+   {
+    "title": "مدیریت پروژه",
+    "items": [
+     {
+      "id": "settings-projects-definitions",
+      "title": "تعاریف اولیه",
+      "path": "/projects/definitions"
+     }
+    ]
+   },
+   {
+    "title": "انبار و موجودی",
+    "items": []
+   },
+   {
+    "title": "حسابداری",
+    "items": [
+     {
+      "id": "settings-accounting-definitions",
+      "title": "تعاریف اولیه",
+      "path": "/settings?tab=accounting"
+     }
+    ]
+   },
+   {
+    "title": "تنخواه",
+    "items": [
+     {
+      "id": "settings-pettycash-definitions",
+      "title": "تعاریف اولیه",
+      "path": "/petty-cash/definitions"
+     },
+     {
+      "id": "settings-pettycash-settings",
+      "title": "تنظیمات تنخواه",
+      "path": "/petty-cash/settings"
+     },
+     {
+      "id": "settings-pettycash-approval",
+      "title": "سیاست تأیید",
+      "path": "/petty-cash/policies"
+     }
+    ]
+   },
+   {
+    "title": "اموال و دارایی",
+    "items": []
+   },
+   {
+    "title": "CRM",
+    "items": []
+   },
+   {
+    "title": "فروش",
+    "items": []
+   },
+   {
+    "title": "تولید و برنامه‌ریزی",
+    "items": []
+   },
+   {
+    "title": "مدیریت منابع انسانی",
+    "items": [
+     {
+      "id": "definitions",
+      "title": "تعاریف اولیه",
+      "path": "/definitions"
+     }
+    ]
+   },
+   {
+    "title": "مدیریت قراردادها",
+    "items": [
+     {
+      "id": "contracts-definitions",
+      "title": "تعاریف اولیه",
+      "path": "/contracts-definitions"
+     },
+     {
+      "id": "contracts-account-mapping-menu",
+      "title": "نگاشت و کنترل",
+      "path": "/contracts-accounting-mapping"
+     },
+     {
+      "id": "contracts-settings-menu",
+      "title": "انواع قرارداد و ارزیابی",
+      "path": "/contracts-settings"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "pettycash",
+  "name": "تنخواه",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "petty-cash-dashboard",
+      "title": "داشبورد",
+      "path": "/petty-cash/dashboard"
+     }
+    ]
+   },
+   {
+    "title": "عملیات",
+    "items": [
+     {
+      "id": "petty-cash-expense-new",
+      "title": "صورت هزینه جدید",
+      "path": "/petty-cash/expenses/new"
+     },
+     {
+      "id": "petty-cash-expenses",
+      "title": "صورت ریز هزینه‌ها",
+      "path": "/petty-cash/expenses"
+     },
+     {
+      "id": "petty-cash-ledger",
+      "title": "دفتر تنخواه",
+      "path": "/petty-cash/ledger"
+     },
+     {
+      "id": "petty-cash-requests",
+      "title": "درخواست‌ها",
+      "path": "/petty-cash/requests"
+     },
+     {
+      "id": "petty-cash-settlements",
+      "title": "تسویه‌ها",
+      "path": "/petty-cash/settlements"
+     }
+    ]
+   },
+   {
+    "title": "گزارشات",
+    "items": [
+     {
+      "id": "petty-cash-report-details",
+      "title": "گزارش دهی جزئیات",
+      "path": "/petty-cash/reports/details"
+     },
+     {
+      "id": "petty-cash-report-summary",
+      "title": "وضعیت تنخواه‌ها",
+      "path": "/petty-cash/reports/summary"
+     },
+     {
+      "id": "petty-cash-report-cashflow",
+      "title": "گردش دریافت و پرداخت",
+      "path": "/petty-cash/reports/cashflow"
+     },
+     {
+      "id": "petty-cash-report-category",
+      "title": "هزینه به تفکیک سرفصل",
+      "path": "/petty-cash/reports/by-category"
+     },
+     {
+      "id": "petty-cash-report-project",
+      "title": "هزینه به تفکیک پروژه",
+      "path": "/petty-cash/reports/by-project"
+     },
+     {
+      "id": "petty-cash-report-custodians",
+      "title": "عملکرد تنخواه‌داران",
+      "path": "/petty-cash/reports/custodians"
+     },
+     {
+      "id": "petty-cash-report-credit",
+      "title": "اعتبار در برابر مصرف",
+      "path": "/petty-cash/reports/credit-vs-usage"
+     },
+     {
+      "id": "petty-cash-report-overdue",
+      "title": "تسویه‌های معوق",
+      "path": "/petty-cash/reports/overdue"
+     },
+     {
+      "id": "petty-cash-report-settlements",
+      "title": "تاریخچهٔ تسویه‌ها",
+      "path": "/petty-cash/reports/settlements"
+     },
+     {
+      "id": "petty-cash-report-compliance",
+      "title": "کنترل مستندات",
+      "path": "/petty-cash/reports/compliance"
+     },
+     {
+      "id": "petty-cash-calendar",
+      "title": "تقویم هزینه‌ها",
+      "path": "/petty-cash/calendar"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "accounting",
+  "name": "حسابداری و مالی",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "accounting-dashboard",
+      "title": "داشبورد",
+      "path": "/accounting"
+     }
+    ]
+   },
+   {
+    "title": "تعاریف حسابداری",
+    "items": [
+     {
+      "id": "acc-tree",
+      "title": "درخت حساب‌ها",
+      "path": "/accounting/accounts-tree"
+     },
+     {
+      "id": "acc-groups",
+      "title": "گروه حساب‌ها",
+      "path": "/accounting/groups"
+     },
+     {
+      "id": "acc-general",
+      "title": "حساب‌های کل",
+      "path": "/accounting/accounts/general"
+     },
+     {
+      "id": "acc-subsidiary",
+      "title": "حساب‌های معین",
+      "path": "/accounting/accounts/subsidiary"
+     },
+     {
+      "id": "acc-auxiliary",
+      "title": "حساب‌های تفصیلی",
+      "path": "/accounting/auxiliary"
+     },
+     {
+      "id": "acc-cost-centers",
+      "title": "مراکز هزینه",
+      "path": "/accounting/codings/costcenters"
+     }
+    ]
+   },
+   {
+    "title": "عملیات",
+    "items": [
+     {
+      "id": "accounting-document-new",
+      "title": "سند جدید",
+      "path": "/accounting/document-new"
+     },
+     {
+      "id": "accounting-documents",
+      "title": "اسناد حسابداری",
+      "path": "/accounting/documents"
+     },
+     {
+      "id": "accounting-document-search",
+      "title": "جستجو در اسناد",
+      "path": "/accounting/documents/search"
+     },
+     {
+      "id": "accounting-sequences",
+      "title": "شماره‌گذاری اسناد",
+      "path": "/accounting/sequences"
+     },
+     {
+      "id": "accounting-document-finalize",
+      "title": "قطعی کردن اسناد",
+      "path": "/accounting/documents/finalize"
+     },
+     {
+      "id": "accounting-document-control",
+      "title": "کنترل اسناد",
+      "path": "/accounting/documents/control"
+     }
+    ]
+   },
+   {
+    "title": "ابزارهای مالی",
+    "items": [
+     {
+      "id": "accounting-reconciliation",
+      "title": "مغایرت‌گیری بانکی",
+      "path": "/accounting/reconciliation"
+     },
+     {
+      "id": "accounting-approval-policies",
+      "title": "سیاست تأیید اسناد",
+      "path": "/accounting/approval-policies"
+     },
+     {
+      "id": "accounting-datamapping",
+      "title": "نگاشت و ایمپورت داده",
+      "path": "/accounting/datamapping"
+     }
+    ]
+   },
+   {
+    "title": "ارتباط با ماژول‌ها",
+    "items": [
+     {
+      "id": "accounting-integration",
+      "title": "قالب‌ها و صف ثبت",
+      "path": "/accounting/integration"
+     }
+    ]
+   },
+   {
+    "title": "دوره مالی",
+    "items": [
+     {
+      "id": "accounting-fiscal",
+      "title": "دوره مالی",
+      "path": "/accounting/fiscal"
+     }
+    ]
+   },
+   {
+    "title": "عملیات سالانه",
+    "items": [
+     {
+      "id": "acc-annual-opening",
+      "title": "سند افتتاحیه",
+      "path": "/accounting/annual/opening-document"
+     },
+     {
+      "id": "acc-annual-close-accounts",
+      "title": "بستن حساب‌ها",
+      "path": "/accounting/annual/close-accounts"
+     },
+     {
+      "id": "acc-annual-closing",
+      "title": "سند اختتامیه",
+      "path": "/accounting/annual/closing-document"
+     },
+     {
+      "id": "acc-annual-legal-books",
+      "title": "ساخت دفاتر قانونی",
+      "path": "/accounting/annual/legal-books"
+     }
+    ]
+   },
+   {
+    "title": "گزارش‌ها",
+    "items": [
+     {
+      "id": "acc-report-matrix",
+      "title": "مرور ترکیبی (ماتریس)",
+      "path": "/accounting/reports/matrix"
+     },
+     {
+      "id": "acc-report-tree-tb",
+      "title": "تراز درختی حساب‌ها",
+      "path": "/accounting/reports/tree-trial-balance"
+     },
+     {
+      "id": "acc-report-ledger-review",
+      "title": "مرور پله‌ای دفاتر",
+      "path": "/accounting/reports/ledger-review"
+     },
+     {
+      "id": "acc-report-balance-sheet",
+      "title": "ترازنامه",
+      "path": "/accounting/reports/balance-sheet"
+     },
+     {
+      "id": "acc-report-income-statement",
+      "title": "سود و زیان",
+      "path": "/accounting/reports/income-statement"
+     },
+     {
+      "id": "acc-report-cash-flow",
+      "title": "جریان وجوه نقد",
+      "path": "/accounting/reports/cash-flow"
+     },
+     {
+      "id": "acc-report-financial-statements",
+      "title": "صورت‌های مالی",
+      "path": "/accounting/reports/financial-statements"
+     }
+    ]
+   },
+   {
+    "title": "مالیات و اظهارنامه",
+    "items": [
+     {
+      "id": "acc-tax-vat",
+      "title": "گزارش ارزش افزوده",
+      "path": "/accounting/tax/vat-ledger"
+     },
+     {
+      "id": "acc-tax-seasonal",
+      "title": "معاملات فصلی خرید",
+      "path": "/accounting/tax/seasonal"
+     },
+     {
+      "id": "acc-tax-official",
+      "title": "دفاتر رسمی مالیاتی",
+      "path": "/accounting/tax/official-ledger"
+     },
+     {
+      "id": "acc-tax-bi",
+      "title": "داشبورد هوش مالی",
+      "path": "/accounting/tax/bi-dashboard"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "treasury",
+  "name": "خزانه‌داری",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": []
+   },
+   {
+    "title": "داشبورد خزانه",
+    "items": []
+   },
+   {
+    "title": "دریافت و پرداخت",
+    "items": [
+     {
+      "id": "treasury-transactions",
+      "title": "همه عملیات",
+      "path": "/treasury/transactions"
+     },
+     {
+      "id": "treasury-receipts",
+      "title": "دریافت‌ها",
+      "path": "/treasury/receipts"
+     },
+     {
+      "id": "treasury-payments-list",
+      "title": "پرداخت‌ها",
+      "path": "/treasury/transactions?direction=payment"
+     },
+     {
+      "id": "treasury-transfers",
+      "title": "انتقال وجوه",
+      "path": "/treasury/transfers"
+     },
+     {
+      "id": "treasury-voucher-book",
+      "title": "فیش‌ها و رسیدها",
+      "path": "/treasury/voucher-book"
+     }
+    ]
+   },
+   {
+    "title": "درخواست و دستور پرداخت",
+    "items": [
+     {
+      "id": "treasury-payment-requests",
+      "title": "درخواست‌های پرداخت",
+      "path": "/treasury/payment-requests"
+     },
+     {
+      "id": "treasury-payment-orders",
+      "title": "دستورهای پرداخت",
+      "path": "/treasury/payment-orders"
+     },
+     {
+      "id": "treasury-pending-approval",
+      "title": "در انتظار تأیید",
+      "path": "/treasury/payment-requests?status=submitted,under_review"
+     },
+     {
+      "id": "treasury-pending-payment",
+      "title": "در انتظار پرداخت",
+      "path": "/treasury/payment-requests?status=approved,scheduled,payment_ordered"
+     },
+     {
+      "id": "treasury-paid-requests",
+      "title": "پرداخت‌شده",
+      "path": "/treasury/payment-requests?status=paid"
+     }
+    ]
+   },
+   {
+    "title": "بانک و حساب‌ها",
+    "items": [
+     {
+      "id": "treasury-banks",
+      "title": "بانک‌ها",
+      "path": "/treasury/banks"
+     },
+     {
+      "id": "treasury-bank-branches",
+      "title": "شعب",
+      "path": "/treasury/bank-branches"
+     },
+     {
+      "id": "treasury-accounts",
+      "title": "حساب‌های بانکی",
+      "path": "/treasury/accounts"
+     },
+     {
+      "id": "treasury-statement",
+      "title": "گردش حساب",
+      "path": "/treasury/transactions"
+     },
+     {
+      "id": "treasury-bank-orders",
+      "title": "عملیات بانکی",
+      "path": "/treasury/bank-orders"
+     }
+    ]
+   },
+   {
+    "title": "کارت‌خوان و درگاه",
+    "items": [
+     {
+      "id": "treasury-terminals",
+      "title": "پایانه‌ها",
+      "path": "/treasury/terminals"
+     },
+     {
+      "id": "treasury-pos-transactions",
+      "title": "تراکنش‌ها",
+      "path": "/treasury/receipts?method=pos"
+     },
+     {
+      "id": "treasury-pos-settlements",
+      "title": "تسویه‌ها",
+      "path": "/treasury/receipts?method=pos&status=cleared"
+     },
+     {
+      "id": "treasury-pos-mismatches",
+      "title": "مغایرت‌ها",
+      "path": "/treasury/reconciliation"
+     }
+    ]
+   },
+   {
+    "title": "اسناد دریافتنی",
+    "items": [
+     {
+      "id": "treasury-received-checks",
+      "title": "چک‌های دریافتی",
+      "path": "/treasury/received-checks"
+     },
+     {
+      "id": "treasury-checks-clearing",
+      "title": "در جریان وصول",
+      "path": "/treasury/received-checks?status=deposited,clearing"
+     },
+     {
+      "id": "treasury-checks-cleared",
+      "title": "وصول‌شده",
+      "path": "/treasury/received-checks?status=cleared"
+     },
+     {
+      "id": "treasury-checks-bounced",
+      "title": "برگشتی",
+      "path": "/treasury/received-checks?status=bounced"
+     },
+     {
+      "id": "treasury-checks-returned",
+      "title": "عودتی",
+      "path": "/treasury/received-checks?status=returned_to_customer"
+     }
+    ]
+   },
+   {
+    "title": "اسناد پرداختنی",
+    "items": [
+     {
+      "id": "treasury-issued-checks",
+      "title": "چک‌های پرداختی",
+      "path": "/treasury/issued-checks"
+     },
+     {
+      "id": "treasury-issued-checks-issued",
+      "title": "صادرشده",
+      "path": "/treasury/issued-checks?status=issued"
+     },
+     {
+      "id": "treasury-issued-checks-delivered",
+      "title": "تحویل‌شده",
+      "path": "/treasury/issued-checks?status=delivered"
+     },
+     {
+      "id": "treasury-issued-checks-cleared",
+      "title": "وصول‌شده",
+      "path": "/treasury/issued-checks?status=cleared"
+     },
+     {
+      "id": "treasury-issued-checks-bounced",
+      "title": "برگشتی",
+      "path": "/treasury/issued-checks?status=bounced"
+     }
+    ]
+   },
+   {
+    "title": "عملیات چک",
+    "items": [
+     {
+      "id": "treasury-check-register",
+      "title": "ثبت چک",
+      "path": "/treasury/received-checks?status=registered"
+     },
+     {
+      "id": "treasury-check-assign",
+      "title": "واگذاری",
+      "path": "/treasury/received-checks?status=deposited"
+     },
+     {
+      "id": "treasury-check-transfer",
+      "title": "انتقال",
+      "path": "/treasury/received-checks?status=transferred"
+     },
+     {
+      "id": "treasury-check-collect",
+      "title": "وصول",
+      "path": "/treasury/received-checks?status=cleared"
+     },
+     {
+      "id": "treasury-check-bounce",
+      "title": "برگشت",
+      "path": "/treasury/received-checks?status=bounced"
+     },
+     {
+      "id": "treasury-check-return",
+      "title": "عودت",
+      "path": "/treasury/received-checks?status=returned_to_customer"
+     },
+     {
+      "id": "treasury-check-cancel",
+      "title": "ابطال",
+      "path": "/treasury/received-checks?status=cancelled"
+     }
+    ]
+   },
+   {
+    "title": "صندوق و وجوه نقد",
+    "items": [
+     {
+      "id": "treasury-cashboxes",
+      "title": "صندوق‌ها",
+      "path": "/treasury/cashboxes"
+     },
+     {
+      "id": "treasury-cash-receipts",
+      "title": "دریافت نقدی",
+      "path": "/treasury/receipts?method=cash"
+     },
+     {
+      "id": "treasury-cash-payments",
+      "title": "پرداخت نقدی",
+      "path": "/treasury/transactions?direction=payment&instrument_kind=cash"
+     },
+     {
+      "id": "treasury-cash-count",
+      "title": "شمارش صندوق",
+      "path": "/treasury/cashboxes"
+     },
+     {
+      "id": "treasury-cash-mismatch",
+      "title": "مغایرت صندوق",
+      "path": "/treasury/reconciliation"
+     }
+    ]
+   },
+   {
+    "title": "تعهدات و سررسیدها",
+    "items": [
+     {
+      "id": "treasury-commitments",
+      "title": "تعهدات پرداخت",
+      "path": "/treasury/payment-commitments"
+     },
+     {
+      "id": "treasury-commitments-open",
+      "title": "پرداخت‌های آتی",
+      "path": "/treasury/payment-commitments?status=open"
+     },
+     {
+      "id": "treasury-future-receipts",
+      "title": "دریافت‌های آتی",
+      "path": "/treasury/receipts?status=expected"
+     },
+     {
+      "id": "treasury-checks-due",
+      "title": "چک‌های سررسید",
+      "path": "/treasury/issued-checks?due_soon=1"
+     },
+     {
+      "id": "treasury-due-calendar",
+      "title": "تقویم سررسید",
+      "path": "/treasury/forecast"
+     }
+    ]
+   },
+   {
+    "title": "مدیریت نقدینگی",
+    "items": [
+     {
+      "id": "treasury-cash-flow",
+      "title": "جریان نقدی",
+      "path": "/treasury/reports?kind=daily"
+     },
+     {
+      "id": "treasury-sources-uses",
+      "title": "منابع و مصارف",
+      "path": "/treasury/reports?kind=cash_flow"
+     },
+     {
+      "id": "treasury-forecast",
+      "title": "پیش‌بینی نقدینگی",
+      "path": "/treasury/forecast"
+     },
+     {
+      "id": "treasury-liquidity-gap",
+      "title": "شکاف نقدینگی",
+      "path": "/treasury"
+     },
+     {
+      "id": "treasury-liquidity-scenarios",
+      "title": "سناریوهای نقدینگی",
+      "path": "/treasury/forecast"
+     }
+    ]
+   },
+   {
+    "title": "مغایرت بانکی",
+    "items": [
+     {
+      "id": "treasury-reconciliation",
+      "title": "دوره‌های مغایرت",
+      "path": "/treasury/reconciliation"
+     },
+     {
+      "id": "treasury-statement-lines",
+      "title": "صورت‌حساب بانک",
+      "path": "/treasury/reconciliation"
+     },
+     {
+      "id": "treasury-recon-auto",
+      "title": "تطبیق خودکار",
+      "path": "/treasury/reconciliation"
+     },
+     {
+      "id": "treasury-recon-manual",
+      "title": "تطبیق دستی",
+      "path": "/treasury/reconciliation"
+     },
+     {
+      "id": "treasury-recon-open",
+      "title": "موارد مغایر",
+      "path": "/treasury/reconciliation"
+     }
+    ]
+   },
+   {
+    "title": "عملیات ارزی",
+    "items": [
+     {
+      "id": "treasury-currencies",
+      "title": "ارزها",
+      "path": "/treasury/accounts"
+     },
+     {
+      "id": "treasury-fx-accounts",
+      "title": "حساب‌های ارزی",
+      "path": "/treasury/accounts"
+     },
+     {
+      "id": "treasury-fx-receipts",
+      "title": "دریافت ارزی",
+      "path": "/treasury/receipts?method=foreign_currency"
+     },
+     {
+      "id": "treasury-fx-payments",
+      "title": "پرداخت ارزی",
+      "path": "/treasury/transactions?direction=payment"
+     },
+     {
+      "id": "treasury-fx-revaluation",
+      "title": "تسعیر ارز",
+      "path": "/treasury/reports"
+     }
+    ]
+   },
+   {
+    "title": "گزارش‌ها",
+    "items": [
+     {
+      "id": "treasury-reports-main",
+      "title": "دریافت و پرداخت",
+      "path": "/treasury/reports"
+     },
+     {
+      "id": "treasury-reports-bank",
+      "title": "بانک",
+      "path": "/treasury/reports?kind=cash_flow"
+     },
+     {
+      "id": "treasury-reports-cash",
+      "title": "صندوق",
+      "path": "/treasury/reports?kind=cash_flow"
+     },
+     {
+      "id": "treasury-reports-cheque",
+      "title": "چک",
+      "path": "/treasury/reports?kind=receivables_due"
+     },
+     {
+      "id": "treasury-reports-pos",
+      "title": "کارت‌خوان",
+      "path": "/treasury/reports?kind=daily"
+     },
+     {
+      "id": "treasury-reports-commitments",
+      "title": "تعهدات",
+      "path": "/treasury/reports?kind=by_party"
+     },
+     {
+      "id": "treasury-reports-liquidity",
+      "title": "نقدینگی",
+      "path": "/treasury/reports?kind=daily"
+     }
+    ]
+   },
+   {
+    "title": "اسناد و چاپ",
+    "items": [
+     {
+      "id": "treasury-print-receipt",
+      "title": "فیش دریافت",
+      "path": "/treasury/receipts"
+     },
+     {
+      "id": "treasury-print-payment",
+      "title": "فیش پرداخت",
+      "path": "/treasury/payment-orders"
+     },
+     {
+      "id": "treasury-print-slips",
+      "title": "رسیدها",
+      "path": "/treasury/voucher-book"
+     },
+     {
+      "id": "treasury-print-notices",
+      "title": "اعلامیه‌ها",
+      "path": "/treasury/bank-orders"
+     },
+     {
+      "id": "treasury-print-order",
+      "title": "دستور پرداخت",
+      "path": "/treasury/payment-orders"
+     },
+     {
+      "id": "treasury-print-templates",
+      "title": "قالب‌های چاپ",
+      "path": "/treasury/print-templates"
+     }
+    ]
+   },
+   {
+    "title": "تعاریف",
+    "items": [
+     {
+      "id": "treasury-banks-master",
+      "title": "بانک‌ها و شعب",
+      "path": "/treasury/banks"
+     },
+     {
+      "id": "treasury-accounts-master",
+      "title": "حساب‌های بانکی",
+      "path": "/treasury/accounts"
+     },
+     {
+      "id": "treasury-cashboxes-master",
+      "title": "صندوق‌ها",
+      "path": "/treasury/cashboxes"
+     },
+     {
+      "id": "treasury-payment-methods",
+      "title": "روش‌های دریافت و پرداخت",
+      "path": "/treasury/payment-methods"
+     },
+     {
+      "id": "treasury-document-types",
+      "title": "انواع اسناد",
+      "path": "/treasury/voucher-book"
+     },
+     {
+      "id": "treasury-numbering",
+      "title": "شماره‌گذاری",
+      "path": "/treasury/numbering"
+     },
+     {
+      "id": "treasury-approval-rules",
+      "title": "سطوح تأیید",
+      "path": "/treasury/approval-rules"
+     },
+     {
+      "id": "treasury-print-templates-master",
+      "title": "قالب چاپ",
+      "path": "/treasury/print-templates"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "procurement",
+  "name": "تدارکات و انبار",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "procurement",
+      "title": "داشبورد تدارکات",
+      "path": "/procurement"
+     }
+    ]
+   },
+   {
+    "title": "اطلاعات پایه",
+    "items": [
+     {
+      "id": "procurement-suppliers",
+      "title": "تأمین‌کنندگان",
+      "path": "/procurement/suppliers"
+     },
+     {
+      "id": "procurement-items",
+      "title": "کالاها و خدمات",
+      "path": "/procurement/items"
+     }
+    ]
+   },
+   {
+    "title": "چرخهٔ خرید",
+    "items": [
+     {
+      "id": "procurement-requests",
+      "title": "درخواست‌های خرید",
+      "path": "/procurement/requests"
+     },
+     {
+      "id": "procurement-orders",
+      "title": "سفارش‌های خرید",
+      "path": "/procurement/orders"
+     },
+     {
+      "id": "procurement-receipts",
+      "title": "رسید کالا",
+      "path": "/procurement/receipts"
+     },
+     {
+      "id": "procurement-invoices",
+      "title": "صورتحساب‌ها",
+      "path": "/procurement/invoices"
+     },
+     {
+      "id": "procurement-payments",
+      "title": "پرداخت‌ها",
+      "path": "/procurement/payments"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "projects",
+  "name": "پروژه‌ها",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "projects-dashboard",
+      "title": "داشبورد",
+      "path": "/projects/dashboard"
+     }
+    ]
+   },
+   {
+    "title": "مدیریت پروژه",
+    "items": [
+     {
+      "id": "projects",
+      "title": "پروژه‌ها",
+      "path": "/projects"
+     },
+     {
+      "id": "projects-types",
+      "title": "انواع پروژه",
+      "path": "/projects/types"
+     },
+     {
+      "id": "projects-definitions",
+      "title": "تعاریف اولیه",
+      "path": "/projects/definitions"
+     },
+     {
+      "id": "projects-calendar",
+      "title": "تقویم پروژه‌ها",
+      "path": "/projects/calendar"
+     },
+     {
+      "id": "projects-schedule",
+      "title": "زمان‌بندی و EVM",
+      "path": "/projects/schedule"
+     },
+     {
+      "id": "projects-risks",
+      "title": "رجیستر ریسک",
+      "path": "/projects/risks"
+     },
+     {
+      "id": "projects-quality",
+      "title": "کیفیت و HSE",
+      "path": "/projects/quality"
+     },
+     {
+      "id": "projects-structure",
+      "title": "ساختار (WBS / CBS)",
+      "path": "/projects/structure"
+     },
+     {
+      "id": "projects-resources",
+      "title": "منابع (RBS)",
+      "path": "/projects/resources"
+     },
+     {
+      "id": "projects-cost-sources",
+      "title": "منشأ هزینه",
+      "path": "/projects/cost-sources"
+     },
+     {
+      "id": "projects-obs",
+      "title": "OBS",
+      "path": "/projects/obs"
+     }
+    ]
+   },
+   {
+    "title": "تجاری و قراردادها",
+    "items": [
+     {
+      "id": "projects-price-lists",
+      "title": "فهرست‌بها",
+      "path": "/projects/price-lists"
+     },
+     {
+      "id": "projects-contracts",
+      "title": "قراردادها و تجاری",
+      "path": "/projects/commercial"
+     },
+     {
+      "id": "projects-change-orders",
+      "title": "تغییرات پروژه",
+      "path": "/projects/change-orders"
+     },
+     {
+      "id": "projects-certification",
+      "title": "صورتجلسه و گواهی پرداخت",
+      "path": "/projects/certification"
+     }
+    ]
+   },
+   {
+    "title": "بهای تمام‌شده",
+    "items": [
+     {
+      "id": "projects-cost-dashboard",
+      "title": "کنترل هزینه",
+      "path": "/projects/cost"
+     }
+    ]
+   },
+   {
+    "title": "کنترل پروژه",
+    "items": [
+     {
+      "id": "projects-reports",
+      "title": "گزارش‌ها",
+      "path": "/projects/reports"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "contracts",
+  "name": "قراردادها",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "contracts-dashboard",
+      "title": "داشبورد قراردادها",
+      "path": "/contracts-dashboard"
+     }
+    ]
+   },
+   {
+    "title": "قراردادها",
+    "items": [
+     {
+      "id": "external-contracts",
+      "title": "قراردادهای من",
+      "path": "/external-contracts"
+     },
+     {
+      "id": "contracts-new",
+      "title": "قرارداد جدید",
+      "path": "/contracts/new"
+     },
+     {
+      "id": "contracts-templates",
+      "title": "قالب‌ها و پیش‌نویس‌ها",
+      "path": "/contracts-templates"
+     },
+     {
+      "id": "contracts-drafts",
+      "title": "پیش‌نویس‌ها",
+      "path": "/contracts-drafts"
+     },
+     {
+      "id": "contracts-approvals",
+      "title": "در انتظار تأیید",
+      "path": "/contracts-approvals"
+     },
+     {
+      "id": "contracts-calendar",
+      "title": "تقویم قراردادها",
+      "path": "/contracts-calendar"
+     }
+    ]
+   },
+   {
+    "title": "مالی قرارداد",
+    "items": [
+     {
+      "id": "contracts-finance-page",
+      "title": "تحلیل مالی قرارداد",
+      "path": "/contracts-finance"
+     },
+     {
+      "id": "contracts-invoices",
+      "title": "فاکتورها",
+      "path": "/contracts-invoices"
+     },
+     {
+      "id": "contracts-statements",
+      "title": "صورت‌وضعیت‌ها",
+      "path": "/contracts-statements"
+     },
+     {
+      "id": "contracts-payments",
+      "title": "پرداخت‌ها",
+      "path": "/contracts-payments"
+     },
+     {
+      "id": "contracts-addendums",
+      "title": "الحاقیه‌ها",
+      "path": "/contracts-addendums"
+     },
+     {
+      "id": "contracts-guarantees",
+      "title": "تضامین",
+      "path": "/contracts-guarantees"
+     }
+    ]
+   },
+   {
+    "title": "طرف‌های قرارداد",
+    "items": [
+     {
+      "id": "contract-parties-list",
+      "title": "پیمانکاران و فروشندگان",
+      "path": "/contract-parties"
+     },
+     {
+      "id": "contract-parties-eval",
+      "title": "ارزیابی تأمین‌کنندگان",
+      "path": "/contracts-evaluations"
+     }
+    ]
+   },
+   {
+    "title": "پایش قراردادها",
+    "items": [
+     {
+      "id": "contracts-expiring",
+      "title": "قراردادهای رو به انقضا",
+      "path": "/contracts-expiring"
+     },
+     {
+      "id": "contracts-guarantees-monitor",
+      "title": "پایش تضامین",
+      "path": "/contracts-guarantees-monitor"
+     },
+     {
+      "id": "contracts-disputes",
+      "title": "اختلافات و دعاوی",
+      "path": "/contracts-disputes"
+     }
+    ]
+   },
+   {
+    "title": "پیکربندی",
+    "items": [
+     {
+      "id": "contracts-types",
+      "title": "انواع قرارداد",
+      "path": "/contracts-settings"
+     },
+     {
+      "id": "contracts-account-mapping",
+      "title": "نگاشت و کنترل",
+      "path": "/contracts-accounting-mapping"
+     },
+     {
+      "id": "contracts-evaluations",
+      "title": "ارزیابی تأمین‌کنندگان",
+      "path": "/contracts-evaluations"
+     },
+     {
+      "id": "contracts-workflow",
+      "title": "گردشکار تأیید",
+      "path": "/contracts-workflow"
+     }
+    ]
+   },
+   {
+    "title": "ارتباطات و اسناد",
+    "items": [
+     {
+      "id": "correspondences-c",
+      "title": "مکاتبات",
+      "path": "/correspondences"
+     },
+     {
+      "id": "contracts-docs",
+      "title": "بایگانی اسناد قرارداد",
+      "path": "/contracts-documents"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "documents",
+  "name": "مدیریت اسناد",
+  "groups": [
+   {
+    "title": "خانه",
+    "items": [
+     {
+      "id": "documents-dashboard",
+      "title": "داشبورد اسناد",
+      "path": "/document-management"
+     }
+    ]
+   },
+   {
+    "title": "نمای کلی",
+    "items": [
+     {
+      "id": "documents-all",
+      "title": "همه اسناد",
+      "path": "/document-management/library?scope=all"
+     },
+     {
+      "id": "documents-drafts",
+      "title": "پیش‌نویس‌ها",
+      "path": "/document-management/library?workflow=draft"
+     },
+     {
+      "id": "documents-mine",
+      "title": "اسناد من",
+      "path": "/document-management/library?scope=mine"
+     },
+     {
+      "id": "documents-confidential",
+      "title": "اسناد محرمانه",
+      "path": "/document-management/library?confidentiality=confidential"
+     }
+    ]
+   },
+   {
+    "title": "کتابخانه اسناد",
+    "items": []
+   },
+   {
+    "title": "گردش‌کار اسناد",
+    "items": [
+     {
+      "id": "documents-workflow-review",
+      "title": "در حال بررسی",
+      "path": "/document-management/library?workflow=in_review"
+     },
+     {
+      "id": "documents-workflow-approved",
+      "title": "تأییدشده",
+      "path": "/document-management/library?workflow=approved"
+     },
+     {
+      "id": "documents-workflow-published",
+      "title": "منتشرشده و لازم‌الاجرا",
+      "path": "/document-management/library?workflow=published"
+     },
+     {
+      "id": "documents-workflow-rejected",
+      "title": "ردشده / بازگشتی",
+      "path": "/document-management/library?workflow=rejected"
+     },
+     {
+      "id": "documents-workflow-withdrawn",
+      "title": "لغوشده",
+      "path": "/document-management/library?workflow=withdrawn"
+     },
+     {
+      "id": "documents-workflow-superseded",
+      "title": "جایگزین‌شده",
+      "path": "/document-management/library?workflow=superseded"
+     }
+    ]
+   },
+   {
+    "title": "پایش و بایگانی",
+    "items": [
+     {
+      "id": "documents-archived",
+      "title": "بایگانی اسناد",
+      "path": "/document-management/library?status=archived"
+     },
+     {
+      "id": "documents-expiring",
+      "title": "اسناد نزدیک انقضا",
+      "path": "/document-management/library?scope=expiring"
+     },
+     {
+      "id": "documents-review-due",
+      "title": "بازنگری سررسیدشده",
+      "path": "/document-management/library?review=due"
+     },
+     {
+      "id": "documents-expired",
+      "title": "اسناد منقضی",
+      "path": "/document-management/library?scope=expired"
+     }
+    ]
+   },
+   {
+    "title": "ساختار و مدیریت",
+    "items": [
+     {
+      "id": "documents-folders",
+      "title": "پوشه‌ها و ماژول‌ها",
+      "path": "/document-management/folders"
+     }
+    ]
+   },
+   {
+    "title": "گزارش‌ها و تاریخچه",
+    "items": [
+     {
+      "id": "documents-report",
+      "title": "گزارش جامع اسناد",
+      "path": "/document-management/reports"
+     },
+     {
+      "id": "documents-activity",
+      "title": "تاریخچه فعالیت",
+      "path": "/document-management/activity"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "correspondence",
+  "name": "مکاتبات",
+  "groups": [
+   {
+    "title": "میزکار مکاتبات",
+    "items": [
+     {
+      "id": "correspondence-dashboard",
+      "title": "داشبورد مکاتبات",
+      "path": "/correspondence"
+     }
+    ]
+   },
+   {
+    "title": "دفتر وارده و صادره",
+    "items": [
+     {
+      "id": "correspondence-all",
+      "title": "همه مکاتبات",
+      "path": "/correspondence/letters"
+     },
+     {
+      "id": "correspondence-incoming",
+      "title": "نامه‌های وارده",
+      "path": "/correspondence/incoming"
+     },
+     {
+      "id": "correspondence-outgoing",
+      "title": "نامه‌های صادره",
+      "path": "/correspondence/outgoing"
+     },
+     {
+      "id": "correspondence-internal",
+      "title": "مکاتبات داخلی",
+      "path": "/correspondence/internal"
+     },
+     {
+      "id": "correspondence-new",
+      "title": "ثبت نامه جدید",
+      "path": "/correspondence/incoming?new=1"
+     },
+     {
+      "id": "correspondence-drafts",
+      "title": "پیش‌نویس‌ها",
+      "path": "/correspondence/drafts"
+     }
+    ]
+   },
+   {
+    "title": "ارجاع و پیگیری",
+    "items": [
+     {
+      "id": "correspondence-referrals",
+      "title": "ارجاعات من",
+      "path": "/correspondence/referrals"
+     },
+     {
+      "id": "correspondence-overdue",
+      "title": "پیگیری معوقات",
+      "path": "/correspondence/overdue"
+     },
+     {
+      "id": "correspondence-archive",
+      "title": "بایگانی مکاتبات",
+      "path": "/correspondence/archive"
+     }
+    ]
+   },
+   {
+    "title": "تعاریف و مخاطبین",
+    "items": [
+     {
+      "id": "correspondence-name-mapping",
+      "title": "نگاشت نام‌ها",
+      "path": "/correspondence/name-mapping"
+     },
+     {
+      "id": "correspondence-directory",
+      "title": "مخاطبین و سازمان‌ها",
+      "path": "/correspondence/settings?tab=contacts"
+     },
+     {
+      "id": "correspondence-settings",
+      "title": "تنظیمات مکاتبات",
+      "path": "/correspondence/settings"
+     }
+    ]
+   }
+  ]
+ }
+]

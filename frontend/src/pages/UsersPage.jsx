@@ -1,670 +1,1040 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox,
+  Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
+  FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
+  Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Tooltip, Typography, alpha,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
+import BusinessIcon from '@mui/icons-material/Business';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import GroupsIcon from '@mui/icons-material/Groups';
+import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
+import SearchIcon from '@mui/icons-material/Search';
+import SecurityIcon from '@mui/icons-material/Security';
+import SaveIcon from '@mui/icons-material/Save';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, Chip, FormControl, InputLabel,
-  Select, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Alert, Stack, Button, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, IconButton, Tooltip, CircularProgress, Switch,
-  Grid, Divider,
-} from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import SecurityIcon from '@mui/icons-material/Security';
-import PersonIcon from '@mui/icons-material/Person';
-import SaveIcon from '@mui/icons-material/Save';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import EditIcon from '@mui/icons-material/Edit';
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
-import { formatPersianNumber } from '../core/utils/numberUtils';
-import { PageHeader, TabsCard, SURFACE, SOFT } from '../core/components/settings/settingsUi';
-import { useDesignTokens } from '../core/context/DesignTokenContext';
-import { useModulePalette } from '../core/context/ModulePaletteContext';
+  PageHeader, StatGrid, SURFACE, SOFT, TabsCard,
+} from '../core/components/settings/settingsUi';
 import EmployeePicker from '../core/components/ui/EmployeePicker';
 import UserAvatar from '../core/components/ui/UserAvatar';
+import { formatPersianNumber } from '../core/utils/numberUtils';
+import { toJalali } from '../core/utils/dateUtils';
 
-const ROLE_LABELS = {
-  super_admin: 'مدیر ارشد سیستم',
-  hr_manager: 'مدیر منابع انسانی',
-  hr_specialist: 'کارشناس منابع انسانی',
-  department_head: 'مدیر دپارتمان',
-  employee: 'کارمند',
+const USERS_API = '/users/';
+const ROLES_API = '/users/roles/';
+const APPS_API = '/applications/catalog/';
+const EMPLOYEES_API = '/employees/';
+
+const ACTION_TONE = {
+  view: SOFT.blue,
+  create: SOFT.green,
+  edit: SOFT.amber,
+  delete: SOFT.pink,
+  approve: SOFT.violet,
+  export: SOFT.teal,
 };
-const ROLE_COLORS = {
-  super_admin: SOFT.violet,
-  hr_manager: SOFT.indigo,
-  hr_specialist: SOFT.blue,
-  department_head: SOFT.amber,
-  employee: SOFT.slate,
+
+const roleColor = (role) => role?.color || SOFT.indigo;
+
+const employeeLine = (user) => {
+  const position = user.employee_position || '';
+  const department = user.employee_department || '';
+  if (position && department) return `${position} · ${department}`;
+  return position || department || '';
 };
 
-const PERM_LABELS = {
-  can_view_all_employees: 'مشاهده همه پرسنل',
-  can_add_employee: 'افزودن پرسنل',
-  can_change_employee: 'ویرایش پرسنل',
-  can_delete_employee: 'حذف پرسنل',
-  can_view_sensitive_data: 'مشاهده اطلاعات حساس',
-  can_manage_documents: 'مدیریت مدارک',
-  can_delete_documents: 'حذف مدارک',
-  can_approve_documents: 'تأیید و رد اسناد',
-  can_publish_documents: 'انتشار و لغو انتشار اسناد',
-  can_approve_leaves: 'تأیید مرخصی',
-  can_edit_settings: 'ویرایش تنظیمات',
-  can_manage_users: 'مدیریت کاربران',
-  can_manage_roles: 'مدیریت نقش‌ها',
-  can_manage_companies: 'مدیریت شرکت‌ها',
-  can_view_audit_logs: 'مشاهده لاگ فعالیت',
-};
-const ROLE_KEYS = Object.keys(ROLE_LABELS);
+const lastLogin = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
 
-const glass = { ...SURFACE };
-
-// A single selectable module card.
-const ModuleCard = ({ app, checked, disabled, onToggle }) => (
-  <Paper
-    onClick={() => !disabled && onToggle(app)}
+const RoleChip = ({ role }) => (
+  <Chip
+    size="small"
+    label={role?.name || role?.role_name || '—'}
     sx={{
-      p: 1.25, cursor: disabled ? 'default' : 'pointer', borderRadius: '12px',
-      display: 'flex', alignItems: 'center', gap: 1, height: '100%',
-      border: '1px solid', borderColor: checked ? `${app.color || SOFT.indigo}66` : 'divider',
-      bgcolor: checked ? `${app.color || SOFT.indigo}12` : 'background.paper',
-      opacity: disabled ? 0.45 : 1,
-      transition: 'all .18s ease',
+      height: 22,
+      fontSize: 10.5,
+      fontWeight: 800,
+      bgcolor: alpha(roleColor(role), 0.14),
+      color: roleColor(role),
+      border: `1px solid ${alpha(roleColor(role), 0.3)}`,
+      '& .MuiChip-label': { px: 0.9 },
     }}
-  >
-    <Avatar variant="rounded" sx={{ width: 30, height: 30, borderRadius: '9px', bgcolor: `${app.color || SOFT.indigo}1f`, color: app.color || SOFT.indigo, fontSize: 15, flexShrink: 0 }}>
-      {app.icon || '📦'}
-    </Avatar>
-    <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ fontSize: 12, fontWeight: 800 }} noWrap>{app.title}</Typography>
-      <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>
-        {app.is_coming_soon ? 'به‌زودی' : (app.description || app.slug)}
-      </Typography>
-    </Box>
-    {checked ? <CheckCircleIcon sx={{ fontSize: 17, color: app.color || SOFT.indigo }} /> : <RadioButtonUncheckedIcon sx={{ fontSize: 17, color: 'rgba(100,116,139,0.4)' }} />}
-  </Paper>
+  />
 );
 
-const UsersPage = () => {
+const StatPill = ({ icon, label, value, color = SOFT.indigo }) => (
+  <Stack direction="row" spacing={0.75} alignItems="center"
+    sx={{ px: 1, py: 0.5, borderRadius: '10px', bgcolor: alpha(color, 0.08), color }}>
+    {icon}
+    <Typography sx={{ fontSize: 10.5, fontWeight: 800 }}>{label}</Typography>
+    <Typography sx={{ fontSize: 11.5, fontWeight: 900 }}>{value}</Typography>
+  </Stack>
+);
+
+/* ─────────────────────────── تب کاربران ─────────────────────────── */
+const EMPTY_USER = {
+  username: '', first_name: '', last_name: '', email: '', password: '',
+  role: 'employee', employee_id: null, application_ids: [],
+};
+
+const UserEditDialog = ({
+  open, onClose, user, roles, apps, employees, employeesLoading, onCreate, onUpdate,
+}) => {
+  const [form, setForm] = useState(EMPTY_USER);
+  const accent = SOFT.indigo;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setForm(user ? {
+      username: user.username || '',
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
+      email: user.email || '',
+      password: '',
+      role: user.role || 'employee',
+      employee_id: user.employee_id || null,
+      application_ids: user.applications || [],
+    } : EMPTY_USER);
+  }, [open, user]);
+
+  const set = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+  const saving = onCreate.isPending || onUpdate.isPending;
+  const linkedEmployee = employees.find((row) => row.id === form.employee_id);
+
+  const submit = () => {
+    const body = { ...form };
+    if (!body.password) delete body.password;
+    if (user) onUpdate.mutate({ id: user.id, body });
+    else onCreate.mutate(body);
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ fontSize: 14, fontWeight: 900 }}>
+        {user ? 'ویرایش کاربر' : 'کاربر جدید'}
+      </DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+          <Grid container spacing={1}>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth size="small" label="نام کاربری *" value={form.username}
+                onChange={(event) => set('username', event.target.value)} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth size="small" label="ایمیل" value={form.email}
+                onChange={(event) => set('email', event.target.value)} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth size="small" label="نام" value={form.first_name}
+                onChange={(event) => set('first_name', event.target.value)} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth size="small" label="نام خانوادگی" value={form.last_name}
+                onChange={(event) => set('last_name', event.target.value)} />
+            </Grid>
+            {!user ? (
+              <Grid item xs={12}>
+                <TextField fullWidth size="small" label="گذرواژه *" type="password"
+                  value={form.password}
+                  onChange={(event) => set('password', event.target.value)} />
+              </Grid>
+            ) : null}
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small">
+                <InputLabel>نقش دسترسی</InputLabel>
+                <Select value={form.role} label="نقش دسترسی"
+                  onChange={(event) => set('role', event.target.value)}>
+                  {roles.map((role) => (
+                    <MenuItem key={role.code} value={role.code} sx={{ fontSize: 12 }}>
+                      {`${role.name} — ${formatPersianNumber(role.employees || 0)} کاربر`}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+
+
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <UserAvatar
+              user={{
+                employee_photo: linkedEmployee?.photo_url,
+                employee_name: linkedEmployee?.full_name,
+                first_name: form.first_name,
+                last_name: form.last_name,
+                username: form.username,
+              }}
+              size={44}
+              sx={{ bgcolor: alpha(accent, 0.12), color: accent, flexShrink: 0 }}
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                اتصال به پروندهٔ پرسنلی (عنوان شغلی = نقش سازمانی)
+              </Typography>
+              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                با انتخاب پرسنل، عنوان شغلی و دپارتمان او کنار نام کاربر نمایش داده می‌شود.
+              </Typography>
+            </Box>
+          </Stack>
+          <EmployeePicker
+            employees={employees}
+            value={form.employee_id}
+            onChange={(employeeId) => set('employee_id', employeeId)}
+            accent={accent}
+            loading={employeesLoading}
+          />
+
+          <Divider />
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.secondary' }}>
+            ماژول‌های مجاز (خالی یعنی طبق نقش)
+          </Typography>
+          <Grid container spacing={1}>
+            {apps.map((app) => {
+              const checked = form.application_ids.includes(app.id);
+              return (
+                <Grid item xs={12} sm={6} key={app.id}>
+                  <Paper
+                    onClick={() => set(
+                      'application_ids',
+                      checked
+                        ? form.application_ids.filter((id) => id !== app.id)
+                        : [...form.application_ids, app.id],
+                    )}
+                    sx={{
+                      p: 1, borderRadius: '12px', cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', gap: 1, border: '1px solid',
+                      borderColor: checked ? `${app.color || accent}66` : 'divider',
+                      bgcolor: checked ? `${app.color || accent}12` : 'background.paper',
+                    }}
+                  >
+                    <Avatar variant="rounded" sx={{
+                      width: 26, height: 26, borderRadius: '8px', fontSize: 13,
+                      bgcolor: `${app.color || accent}1f`, color: app.color || accent,
+                    }}>
+                      {app.icon || <BusinessIcon sx={{ fontSize: 14 }} />}
+                    </Avatar>
+                    <Typography sx={{ fontSize: 11, fontWeight: 700 }} noWrap>
+                      {app.label || app.name}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>انصراف</Button>
+        <Button variant="contained" startIcon={<SaveIcon />} disabled={saving}
+          onClick={submit}
+          sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}>
+          {user ? 'ذخیره تغییرات' : 'ساخت کاربر'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+
+const UsersTab = ({ roles, apps, onMessage }) => {
   const qc = useQueryClient();
-  const theme = useTheme();
-  const { tokens } = useDesignTokens();
-  const { getPalette } = useModulePalette();
-  const modulePalette = typeof getPalette === 'function' ? getPalette('hrms') : null;
-  /* رنگ لهجه از تم ماژول (استودیو تم) و در نبود آن رنگ پیش‌فرض تنظیمات */
-  const accent = tokens?.colors?.moduleAccent || modulePalette?.accent || modulePalette?.primary || SOFT.slate;
-  const dialogRadius = tokens?.surfaces?.dialog?.radius ?? tokens?.shape?.large ?? 18;
-  const isDark = theme.palette.mode === 'dark';
-  const dialogPaperSx = {
-    borderRadius: `${dialogRadius}px`,
-    border: `1px solid ${alpha(accent, isDark ? 0.3 : 0.18)}`,
-    bgcolor: tokens?.surfaces?.dialog?.background || 'background.paper',
-    boxShadow: isDark ? `0 26px 80px ${alpha('#000000', 0.55)}` : `0 26px 70px ${alpha(accent, 0.2)}`,
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const usersQuery = useQuery({
+    queryKey: ['access-users'],
+    queryFn: () => axiosInstance.get(USERS_API).then((response) => response.data),
+  });
+  const employeesQuery = useQuery({
+    queryKey: ['employees-lite'],
+    queryFn: () => axiosInstance.get(EMPLOYEES_API, { params: { page_size: 500 } })
+      .then((response) => response.data),
+    staleTime: 300_000,
+  });
+
+  const rawUsers = usersQuery.data;
+  const users = Array.isArray(rawUsers) ? rawUsers : (rawUsers?.results || []);
+  const employees = Array.isArray(employeesQuery.data)
+    ? employeesQuery.data
+    : (employeesQuery.data?.results || []);
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['access-users'] });
+    qc.invalidateQueries({ queryKey: ['role-access'] });
   };
-  const fieldSx = {
-    '& .MuiOutlinedInput-root': { borderRadius: `${tokens?.shape?.medium ?? 10}px` },
-    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: accent, borderWidth: 1.5,
-    },
-    '& .MuiInputLabel-root.Mui-focused': { color: accent },
-  };
-  const [tab, setTab] = useState(0);
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-  const [openAdd, setOpenAdd] = useState(false);
-  const [draft, setDraft] = useState({
-    username: '', email: '', password: '', first_name: '', last_name: '',
-    role: 'employee', application_ids: [], employee_id: null,
-  });
-  const [permEdits, setPermEdits] = useState({});
-  const [viewUser, setViewUser] = useState(null);
-  const [editUser, setEditUser] = useState(null);
-  const [editForm, setEditForm] = useState({
-    username: '', first_name: '', last_name: '', email: '',
-    role: 'employee', application_ids: [], employee_id: null,
-  });
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ['users-list'],
-    queryFn: () => axiosInstance.get('/users/').then(r => r.data),
-  });
-  /* پرسنل‌های منابع انسانی برای اتصال کاربر به پروندهٔ پرسنلی */
-  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useQuery({
-    queryKey: ['users-employees-picker'],
-    queryFn: () => axiosInstance.get('/employees/', { params: { page_size: 500 } }).then(r => r.data),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: roles, isLoading: rolesLoading } = useQuery({
-    queryKey: ['users-roles'],
-    queryFn: () => axiosInstance.get('/users/roles/').then(r => r.data),
-  });
-  const { data: catalog } = useQuery({
-    queryKey: ['apps-catalog'],
-    queryFn: () => axiosInstance.get('/applications/catalog/').then(r => r.data),
-  });
-  const userList = Array.isArray(users) ? users : [];
-  const roleList = Array.isArray(roles) ? roles : [];
-  const appList = Array.isArray(catalog) ? catalog : [];
-  const employeeList = Array.isArray(employees) ? employees : (employees?.results || []);
-  const employeeById = (id) => employeeList.find((item) => String(item.id) === String(id ?? '')) || null;
-
-  const setRoleMutation = useMutation({
-    mutationFn: ({ id, role }) => axiosInstance.post(`/users/${id}/role/`, { role }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users-list'] }),
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در تغییر نقش'),
-  });
-  const deleteMutation = useMutation({
-    mutationFn: (id) => axiosInstance.post(`/users/${id}/delete/`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users-list'] });
-      setMsg('کاربر غیرفعال شد.');
-      setTimeout(() => setMsg(''), 2500);
-    },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در حذف کاربر'),
-  });
-  const createMutation = useMutation({
+  const create = useMutation({
     mutationFn: (body) => axiosInstance.post('/users/create/', body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users-list'] });
-      setOpenAdd(false);
-      setDraft({
-        username: '', email: '', password: '', first_name: '', last_name: '',
-        role: 'employee', application_ids: [], employee_id: null,
-      });
-      setMsg('کاربر ساخته شد.');
-      setTimeout(() => setMsg(''), 2500);
+      refresh();
+      setDialogOpen(false);
+      onMessage({ type: 'success', text: 'کاربر جدید ساخته شد.' });
     },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در ساخت کاربر'),
+    onError: (error) => onMessage({
+      type: 'error', text: error?.response?.data?.error || 'ساخت کاربر انجام نشد.',
+    }),
   });
-  const updateMutation = useMutation({
+
+  const update = useMutation({
     mutationFn: ({ id, body }) => axiosInstance.post(`/users/${id}/update/`, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users-list'] });
-      qc.invalidateQueries({ queryKey: ['users-roles'] });
-      setEditUser(null);
-      setMsg('اطلاعات کاربر به‌روزرسانی شد.');
-      setTimeout(() => setMsg(''), 2500);
+      refresh();
+      setDialogOpen(false);
+      onMessage({ type: 'success', text: 'اطلاعات کاربر ذخیره شد.' });
     },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در ویرایش کاربر'),
+    onError: (error) => onMessage({
+      type: 'error', text: error?.response?.data?.error || 'ذخیره انجام نشد.',
+    }),
   });
 
-  const openEditUser = (u) => {
-    setEditUser(u);
-    setEditForm({
-      username: u.username || '',
-      first_name: u.first_name || '',
-      last_name: u.last_name || '',
-      email: u.email || '',
-      role: u.role || 'employee',
-      application_ids: [...(u.applications || [])],
-      employee_id: u.employee_id ?? null,
+  const remove = useMutation({
+    mutationFn: (id) => axiosInstance.post(`/users/${id}/delete/`),
+    onSuccess: () => {
+      refresh();
+      onMessage({ type: 'success', text: 'کاربر غیرفعال شد.' });
+    },
+    onError: (error) => onMessage({
+      type: 'error', text: error?.response?.data?.error || 'غیرفعال‌سازی انجام نشد.',
+    }),
+  });
+
+  const roleByCode = useMemo(
+    () => Object.fromEntries(roles.map((role) => [role.code, role])),
+    [roles],
+  );
+
+  const filtered = users.filter((user) => {
+    const term = search.trim().toLowerCase();
+    const haystack = [
+      user.username, user.full_name, user.first_name, user.last_name,
+      user.email, user.employee_position, user.employee_department,
+    ].filter(Boolean).join(' ').toLowerCase();
+    const matchesSearch = !term || haystack.includes(term);
+    const matchesRole = !roleFilter || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+
+  return (
+    <Box>
+      <Paper elevation={0} sx={{ ...SURFACE, p: 1.25, mb: 1.5 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems="center"
+          useFlexGap flexWrap="wrap">
+          <TextField
+            size="small"
+            placeholder="جست‌وجوی نام، نام کاربری، عنوان شغلی…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16 }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ minWidth: { xs: '100%', md: 280 } }}
+          />
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>نقش</InputLabel>
+            <Select value={roleFilter} label="نقش"
+              onChange={(event) => setRoleFilter(event.target.value)}>
+              <MenuItem value="" sx={{ fontSize: 12 }}>همهٔ نقش‌ها</MenuItem>
+              {roles.map((role) => (
+                <MenuItem key={role.code} value={role.code} sx={{ fontSize: 12 }}>
+                  {role.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Box sx={{ flex: 1 }} />
+          <StatPill icon={<GroupsIcon sx={{ fontSize: 14 }} />} label="کاربران"
+            value={formatPersianNumber(users.length)} color={SOFT.indigo} />
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+            onClick={() => { setEditing(null); setDialogOpen(true); }}
+            sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: SOFT.indigo } }}
+          >
+            کاربر جدید
+          </Button>
+        </Stack>
+      </Paper>
+
+      <Paper elevation={0} sx={{ ...SURFACE, overflow: 'hidden' }}>
+        {usersQuery.isLoading ? (
+          <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={22} /></Box>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{
+                  '& th': { fontWeight: 800, fontSize: 11, bgcolor: alpha(SOFT.slate, 0.06) },
+                }}>
+                  <TableCell>کاربر</TableCell>
+                  <TableCell>عنوان سازمانی (پرسنل)</TableCell>
+                  <TableCell>نقش دسترسی</TableCell>
+                  <TableCell align="center">مجوزهای ریز</TableCell>
+                  <TableCell align="center">ماژول‌ها</TableCell>
+                  <TableCell align="center">آخرین ورود</TableCell>
+                  <TableCell align="center" width={96}>عملیات</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+
+                {filtered.map((user) => {
+                  const role = roleByCode[user.role] || { name: user.role_name, color: SOFT.slate };
+                  const position = employeeLine(user);
+                  return (
+                    <TableRow key={user.id} hover>
+                      <TableCell>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <UserAvatar user={user} size={34} />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>
+                              {user.full_name || user.username}
+                            </Typography>
+                            <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                              {`@${user.username}`}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        {position ? (
+                          <Stack direction="row" spacing={0.5} alignItems="center">
+                            <BadgeOutlinedIcon sx={{ fontSize: 14, color: SOFT.blue }} />
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                              {position}
+                            </Typography>
+                          </Stack>
+                        ) : (
+                          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                            به پروندهٔ پرسنلی وصل نیست
+                          </Typography>
+                        )}
+                        {user.employee_code ? (
+                          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
+                            {`کد پرسنلی: ${user.employee_code}`}
+                          </Typography>
+                        ) : null}
+                      </TableCell>
+                      <TableCell><RoleChip role={role} /></TableCell>
+                      <TableCell align="center">
+                        <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                          {user.is_superuser
+                            ? 'همه'
+                            : formatPersianNumber(user.permissions_granted || 0)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography sx={{ fontSize: 11.5 }}>
+                          {formatPersianNumber((user.applications || []).length)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography sx={{ fontSize: 11 }}>{lastLogin(user.last_login)}</Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Stack direction="row" spacing={0.25} justifyContent="center">
+                          <Tooltip title="ویرایش">
+                            <IconButton size="small"
+                              onClick={() => { setEditing(user); setDialogOpen(true); }}>
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="غیرفعال‌سازی">
+                            <span>
+                              <IconButton size="small" color="error"
+                                disabled={remove.isPending}
+                                onClick={() => {
+                                  if (window.confirm(`کاربر «${user.username}» غیرفعال شود؟`)) {
+                                    remove.mutate(user.id);
+                                  }
+                                }}>
+                                <DeleteIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {!filtered.length ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                        کاربری با این فیلترها پیدا نشد.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+
+      <UserEditDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        user={editing}
+        roles={roles}
+        apps={apps}
+        employees={employees}
+        employeesLoading={employeesQuery.isLoading}
+        onCreate={create}
+        onUpdate={update}
+      />
+    </Box>
+  );
+};
+
+
+/* ─────────────────── تب نقش‌ها و مجوزهای ریز ─────────────────── */
+const BASE_ROLES = [
+  { value: 'super_admin', label: 'مدیر ارشد سیستم' },
+  { value: 'hr_manager', label: 'مدیر منابع انسانی' },
+  { value: 'hr_specialist', label: 'کارشناس منابع انسانی' },
+  { value: 'department_head', label: 'مدیر دپارتمان' },
+  { value: 'employee', label: 'کارمند' },
+];
+
+const moduleCodes = (module) => module.groups.flatMap(
+  (group) => group.items.flatMap((item) => Object.values(item.codes)),
+);
+
+const RoleCreateDialog = ({ open, onClose, onCreate, saving }) => {
+  const [form, setForm] = useState({
+    code: '', name: '', description: '', base_role: 'employee', color: '#64748b',
+  });
+  React.useEffect(() => {
+    if (open) {
+      setForm({ code: '', name: '', description: '', base_role: 'employee', color: '#64748b' });
+    }
+  }, [open]);
+  const set = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ fontSize: 14, fontWeight: 900 }}>نقش سفارشی جدید</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={1.25} sx={{ pt: 0.5 }}>
+          <TextField size="small" label="نام نقش *" value={form.name}
+            onChange={(event) => set('name', event.target.value)} />
+          <TextField size="small" label="کد یکتا (انگلیسی) *" value={form.code}
+            onChange={(event) => set('code', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
+            inputProps={{ dir: 'ltr' }} helperText="مثال: treasury_manager" />
+          <TextField size="small" label="توضیح" value={form.description}
+            onChange={(event) => set('description', event.target.value)} />
+          <FormControl size="small">
+            <InputLabel>نقش پایه (ارث‌بری)</InputLabel>
+            <Select value={form.base_role} label="نقش پایه (ارث‌بری)"
+              onChange={(event) => set('base_role', event.target.value)}>
+              {BASE_ROLES.map((row) => (
+                <MenuItem key={row.value} value={row.value} sx={{ fontSize: 12 }}>
+                  {row.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField size="small" label="رنگ" value={form.color}
+            onChange={(event) => set('color', event.target.value)} inputProps={{ dir: 'ltr' }} />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>انصراف</Button>
+        <Button variant="contained" disabled={saving || !form.code || !form.name}
+          onClick={() => onCreate.mutate(form)}
+          sx={{ bgcolor: SOFT.violet, boxShadow: 'none', '&:hover': { bgcolor: SOFT.violet } }}>
+          ساخت نقش
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+
+const PermissionMatrix = ({ role, catalog, actions, draft, onToggleCodes, search }) => {
+  const term = search.trim().toLowerCase();
+  return (
+    <Stack spacing={0.75}>
+      {catalog.map((module) => {
+        const moduleCodeList = moduleCodes(module);
+        const grantedCount = moduleCodeList.filter((code) => draft[code]).length;
+        const groups = module.groups
+          .map((group) => ({
+            ...group,
+            items: group.items.filter((item) => (
+              !term
+              || item.title.toLowerCase().includes(term)
+              || item.path.toLowerCase().includes(term)
+              || group.title.toLowerCase().includes(term)
+            )),
+          }))
+          .filter((group) => group.items.length);
+        if (!groups.length) return null;
+        return (
+          <Accordion key={module.slug} disableGutters elevation={0}
+            sx={{
+              border: '1px solid', borderColor: 'divider', borderRadius: '12px !important',
+              '&:before': { display: 'none' },
+            }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1, minWidth: 0 }}
+                useFlexGap flexWrap="wrap">
+                <Box sx={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  bgcolor: module.color || roleColor(role),
+                }} />
+                <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>{module.name}</Typography>
+                <Chip
+                  size="small"
+                  label={`${formatPersianNumber(grantedCount)} از ${formatPersianNumber(moduleCodeList.length)}`}
+                  sx={{
+                    height: 20, fontSize: 10, fontWeight: 800,
+                    bgcolor: alpha(SOFT.green, 0.12), color: SOFT.green,
+                  }}
+                />
+                <Box sx={{ flex: 1 }} />
+                <Button size="small" sx={{ fontSize: 10.5, minWidth: 0 }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleCodes(moduleCodeList, true);
+                  }}>
+                  انتخاب همه
+                </Button>
+                <Button size="small" color="inherit" sx={{ fontSize: 10.5, minWidth: 0 }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleCodes(moduleCodeList, false);
+                  }}>
+                  هیچ‌کدام
+                </Button>
+              </Stack>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0.5 }}>
+
+              {groups.map((group) => (
+                <Box key={`${module.slug}-${group.title}`} sx={{ mb: 1 }}>
+                  <Typography sx={{
+                    fontSize: 10.5, fontWeight: 800, color: 'text.secondary', mb: 0.35,
+                  }}>
+                    {group.title}
+                  </Typography>
+                  <Table size="small" sx={{ '& td, & th': { py: 0.25, px: 0.75 } }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ fontSize: 10, fontWeight: 800 }}>منو</TableCell>
+                        {actions.map((action) => (
+                          <TableCell key={action.key} align="center"
+                            sx={{ fontSize: 10, fontWeight: 800, width: 62 }}>
+                            {action.label}
+                          </TableCell>
+                        ))}
+                        <TableCell align="center"
+                          sx={{ fontSize: 10, fontWeight: 800, width: 54 }}>
+                          همه
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {group.items.map((item) => {
+                        const codes = Object.values(item.codes);
+                        const allChecked = codes.every((code) => draft[code]);
+                        return (
+                          <TableRow key={item.id} hover>
+                            <TableCell>
+                              <Typography sx={{ fontSize: 11, fontWeight: 700 }}>
+                                {item.title}
+                              </Typography>
+                              <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }} noWrap>
+                                {item.path}
+                              </Typography>
+                            </TableCell>
+                            {actions.map((action) => {
+                              const code = item.codes[action.key];
+                              if (!code) {
+                                return <TableCell key={action.key} align="center">—</TableCell>;
+                              }
+                              return (
+                                <TableCell key={action.key} align="center">
+                                  <Checkbox
+                                    size="small"
+                                    checked={Boolean(draft[code])}
+                                    onChange={(event) => onToggleCodes([code], event.target.checked)}
+                                    inputProps={{ 'aria-label': `${item.title} ${action.label}` }}
+                                    sx={{
+                                      p: 0.25,
+                                      color: alpha(ACTION_TONE[action.key] || SOFT.slate, 0.55),
+                                      '&.Mui-checked': {
+                                        color: ACTION_TONE[action.key] || SOFT.slate,
+                                      },
+                                    }}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell align="center">
+                              <Checkbox size="small" checked={allChecked}
+                                indeterminate={!allChecked && codes.some((code) => draft[code])}
+                                onChange={(event) => onToggleCodes(codes, event.target.checked)}
+                                sx={{ p: 0.25 }} />
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Box>
+              ))}
+            </AccordionDetails>
+          </Accordion>
+        );
+      })}
+    </Stack>
+  );
+};
+
+
+const RolesTab = ({ roles, catalog, actions, onMessage, onRefresh }) => {
+  const [selected, setSelected] = useState(roles[0]?.code || '');
+  const [draft, setDraft] = useState({});
+  const [search, setSearch] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const role = roles.find((row) => row.code === selected) || roles[0];
+
+  React.useEffect(() => {
+    if (!role) return;
+    setDraft({ ...(role.permissions || {}) });
+  }, [role?.code]); // eslint-disable-line
+
+  const granted = Object.values(draft).filter(Boolean).length;
+  const totalCodes = useMemo(
+    () => catalog.reduce((sum, module) => sum + moduleCodes(module).length, 0),
+    [catalog],
+  );
+
+  const toggleCodes = (codes, value) => {
+    setDraft((previous) => {
+      const next = { ...previous };
+      codes.forEach((code) => { next[code] = value; });
+      return next;
     });
-    setErr('');
   };
 
-  const openAddUser = () => {
-    setErr('');
-    setDraft({
-      username: '', email: '', password: '', first_name: '', last_name: '',
-      role: 'employee', application_ids: [], employee_id: null,
-    });
-    setOpenAdd(true);
-  };
+  const save = useMutation({
+    mutationFn: () => axiosInstance.post(
+      `${ROLES_API}${role.code}/permissions/`,
+      { permissions: draft },
+    ),
+    onSuccess: () => {
+      onRefresh();
+      onMessage({ type: 'success', text: `مجوزهای نقش «${role.name}» ذخیره شد.` });
+    },
+    onError: (error) => onMessage({
+      type: 'error', text: error?.response?.data?.error || 'ذخیرهٔ مجوزها انجام نشد.',
+    }),
+  });
+
+  const create = useMutation({
+    mutationFn: (body) => axiosInstance.post(`${ROLES_API}create/`, body),
+    onSuccess: () => {
+      onRefresh();
+      setCreateOpen(false);
+      onMessage({ type: 'success', text: 'نقش سفارشی ساخته شد.' });
+    },
+    onError: (error) => onMessage({
+      type: 'error', text: error?.response?.data?.error || 'ساخت نقش انجام نشد.',
+    }),
+  });
+
+  const remove = useMutation({
+    mutationFn: (code) => axiosInstance.post(`${ROLES_API}${code}/delete/`),
+    onSuccess: () => {
+      onRefresh();
+      onMessage({ type: 'success', text: 'نقش حذف شد.' });
+    },
+    onError: (error) => onMessage({
+      type: 'error', text: error?.response?.data?.error || 'حذف نقش انجام نشد.',
+    }),
+  });
+
+  return (
+    <Grid container spacing={1.5}>
+      <Grid item xs={12} lg={4}>
+        <Paper elevation={0} sx={{ ...SURFACE, p: 1.25 }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+            <ShieldOutlinedIcon sx={{ fontSize: 18, color: SOFT.violet }} />
+            <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>
+              نقش‌ها ({formatPersianNumber(roles.length)})
+            </Typography>
+            <Box sx={{ flex: 1 }} />
+            <Button size="small" startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+              onClick={() => setCreateOpen(true)} sx={{ fontSize: 11 }}>
+              نقش جدید
+            </Button>
+          </Stack>
+          <Stack spacing={0.75}>
+            {roles.map((row) => {
+              const active = row.code === role?.code;
+              return (
+                <Paper
+                  key={row.code}
+                  onClick={() => setSelected(row.code)}
+                  elevation={0}
+                  sx={{
+                    p: 1, cursor: 'pointer', borderRadius: '12px',
+                    border: '1px solid',
+                    borderColor: active ? alpha(roleColor(row), 0.55) : 'divider',
+                    bgcolor: active ? alpha(roleColor(row), 0.07) : 'background.paper',
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Avatar variant="rounded" sx={{
+                      width: 28, height: 28, borderRadius: '9px', fontSize: 13,
+                      bgcolor: alpha(roleColor(row), 0.16), color: roleColor(row),
+                    }}>
+                      <SecurityIcon sx={{ fontSize: 15 }} />
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>
+                        {row.name}
+                      </Typography>
+                      <Typography noWrap sx={{ fontSize: 10, color: 'text.secondary' }}>
+                        {row.description || row.code}
+                      </Typography>
+                    </Box>
+                    {row.is_system ? (
+                      <Chip size="small" label="سیستمی"
+                        sx={{ height: 18, fontSize: 9.5, bgcolor: alpha(SOFT.slate, 0.14) }} />
+                    ) : (
+                      <Tooltip title="حذف نقش">
+                        <IconButton size="small" color="error"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (window.confirm(`نقش «${row.name}» حذف شود؟`)) {
+                              remove.mutate(row.code);
+                            }
+                          }}>
+                          <DeleteIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Stack>
+                  <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }} useFlexGap flexWrap="wrap">
+                    <Chip size="small" icon={<GroupsIcon sx={{ fontSize: 12 }} />}
+                      label={`${formatPersianNumber(row.employees || 0)} کاربر`}
+                      sx={{ height: 18, fontSize: 9.5 }} />
+                    <Chip size="small" icon={<KeyOutlinedIcon sx={{ fontSize: 12 }} />}
+                      label={`${formatPersianNumber(row.permissions_total || 0)} مجوز`}
+                      sx={{
+                        height: 18, fontSize: 9.5,
+                        bgcolor: alpha(roleColor(row), 0.1), color: roleColor(row),
+                      }} />
+                  </Stack>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </Paper>
+      </Grid>
+
+
+      <Grid item xs={12} lg={8}>
+        <Paper elevation={0} sx={{ ...SURFACE, p: 1.25 }}>
+          {role ? (
+            <>
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}
+                alignItems={{ xs: 'stretch', md: 'center' }} useFlexGap flexWrap="wrap">
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <RoleChip role={role} />
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                    {`نقش پایه: ${BASE_ROLES.find((row) => row.value === role.base_role)?.label || role.base_role}`}
+                  </Typography>
+                </Stack>
+                <Box sx={{ flex: 1 }} />
+                <StatPill icon={<KeyOutlinedIcon sx={{ fontSize: 14 }} />} label="مجوز فعال"
+                  value={`${formatPersianNumber(granted)} از ${formatPersianNumber(totalCodes)}`}
+                  color={SOFT.green} />
+                <TextField
+                  size="small"
+                  placeholder="جست‌وجوی منو…"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ fontSize: 16 }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ minWidth: 200 }}
+                />
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<SaveIcon sx={{ fontSize: 16 }} />}
+                  disabled={save.isPending || role.code === 'super_admin'}
+                  onClick={() => save.mutate()}
+                  sx={{
+                    bgcolor: roleColor(role), boxShadow: 'none',
+                    '&:hover': { bgcolor: roleColor(role) },
+                  }}
+                >
+                  ذخیرهٔ مجوزها
+                </Button>
+              </Stack>
+
+              {role.code === 'super_admin' ? (
+                <Alert severity="info" sx={{ mt: 1, fontSize: 11.5 }}>
+                  نقش «مدیر ارشد سیستم» همیشه به همهٔ منوها و عملیات دسترسی دارد و قابل محدودسازی نیست.
+                </Alert>
+              ) : null}
+
+              <Divider sx={{ my: 1 }} />
+              <Box sx={{ maxHeight: { xs: 'none', md: 'calc(100vh - 320px)' }, overflow: 'auto', pr: 0.5 }}>
+                <PermissionMatrix
+                  role={role}
+                  catalog={catalog}
+                  actions={actions}
+                  draft={draft}
+                  onToggleCodes={toggleCodes}
+                  search={search}
+                />
+              </Box>
+            </>
+          ) : (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                نقش‌ای برای نمایش وجود ندارد.
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      </Grid>
+
+      <RoleCreateDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={create}
+        saving={create.isPending}
+      />
+    </Grid>
+  );
+};
+
+
+
+/* ──────────────────────────── صفحهٔ اصلی ──────────────────────────── */
+const UsersPage = () => {
+  const qc = useQueryClient();
+  const [tab, setTab] = useState(0);
+  const [message, setMessage] = useState(null);
+
+  const rolesQuery = useQuery({
+    queryKey: ['role-access'],
+    queryFn: () => axiosInstance.get(ROLES_API).then((response) => response.data),
+    staleTime: 60_000,
+  });
+  const appsQuery = useQuery({
+    queryKey: ['applications-catalog'],
+    queryFn: () => axiosInstance.get(APPS_API).then((response) => response.data),
+    staleTime: 300_000,
+  });
+
+  const roles = rolesQuery.data?.roles || [];
+  const catalog = rolesQuery.data?.catalog || [];
+  const actions = rolesQuery.data?.actions || [];
+  const stats = rolesQuery.data?.stats || { modules: 0, groups: 0, menus: 0, codes: 0 };
+  const appsData = appsQuery.data;
+  const apps = appsData?.applications || (Array.isArray(appsData) ? appsData : []);
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ['role-access'] });
+
+  const cards = [
+    {
+      label: 'نقش‌های دسترسی', value: formatPersianNumber(roles.length),
+      sub: 'سیستمی و سفارشی', color: SOFT.violet, icon: <ShieldOutlinedIcon />,
+    },
+    {
+      label: 'ماژول‌های برنامه', value: formatPersianNumber(stats.modules),
+      sub: `${formatPersianNumber(stats.groups)} گروه منو`, color: SOFT.blue,
+      icon: <BusinessIcon />,
+    },
+    {
+      label: 'منوهای تحت کنترل', value: formatPersianNumber(stats.menus),
+      sub: 'دسترسی تک‌تک منوها', color: SOFT.teal, icon: <GroupsIcon />,
+    },
+    {
+      label: 'مجوزهای ریز', value: formatPersianNumber(stats.codes),
+      sub: 'مشاهده/ایجاد/ویرایش/حذف/تأیید/خروجی',
+      color: SOFT.amber, icon: <KeyOutlinedIcon />,
+    },
+  ];
 
   return (
     <Box>
       <PageHeader
-        icon={<AdminPanelSettingsIcon />}
-        title="کاربران، نقش‌ها و ماژول‌ها"
-        color={SOFT.slate}
+        icon={<SecurityIcon />}
+        title="کاربران، نقش‌ها و مجوزها"
+        color={SOFT.violet}
         actions={(
-          <Button
-            variant="contained" startIcon={<AddIcon />}
-            onClick={openAddUser}
-            sx={{
-              bgcolor: SOFT.slate, borderRadius: '9px', boxShadow: 'none',
-              fontSize: 12, '&:hover': { bgcolor: '#8494a8' },
-            }}
-          >
-            افزودن کاربر
-          </Button>
+          <Chip
+            size="small"
+            label={`${formatPersianNumber(stats.codes)} مجوز در ${formatPersianNumber(stats.modules)} ماژول`}
+            sx={{ bgcolor: alpha(SOFT.violet, 0.14), color: SOFT.violet, fontWeight: 800 }}
+          />
         )}
       />
 
-      {(msg || err) && (
-        <Alert severity={err ? 'error' : 'success'} sx={{ mb: 2 }} onClose={() => { setMsg(''); setErr(''); }}>
-          {err || msg}
+      {rolesQuery.isError ? (
+        <Alert severity="error" sx={{ mb: 1.5 }}>
+          دسترسی به فهرست نقش‌ها ممکن نشد (مدیر ارشد یا مدیر منابع انسانی لازم است).
         </Alert>
-      )}
+      ) : null}
+      {message ? (
+        <Alert severity={message.type} sx={{ mb: 1.5 }} onClose={() => setMessage(null)}>
+          {message.text}
+        </Alert>
+      ) : null}
+
+      <StatGrid stats={cards} />
 
       <TabsCard
         tabs={[
-          { key: 'users', label: 'کاربران', icon: <PersonIcon /> },
-          { key: 'perms', label: 'مجوزهای ریز', icon: <SecurityIcon /> },
+          { label: 'کاربران', icon: <GroupsIcon sx={{ fontSize: 16 }} /> },
+          { label: 'نقش‌ها و مجوزهای ریز', icon: <ShieldOutlinedIcon sx={{ fontSize: 16 }} /> },
         ]}
         value={tab}
         onChange={setTab}
-        activeColor={SOFT.slate}
+        activeColor={SOFT.violet}
       />
 
-      {/* ---------- TAB USERS ---------- */}
-      {tab === 0 && (
-        <>
-          <Paper variant="outlined" sx={{ ...SURFACE, overflow: 'hidden' }}>
-            <Box sx={{
-              px: 1.75, py: 1.25,
-              borderBottom: '1px solid', borderColor: 'divider',
-              background: `linear-gradient(135deg, ${SOFT.slate}14, transparent)`,
-            }}>
-              <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap>
-                <Avatar variant="rounded" sx={{
-                  width: 30, height: 30, borderRadius: '9px',
-                  bgcolor: `${SOFT.slate}24`, color: SOFT.slate,
-                }}>
-                  <PersonIcon sx={{ fontSize: 17 }} />
-                </Avatar>
-                <Typography variant="h6">کاربران</Typography>
-                <Chip
-                  size="small"
-                  label={`${formatPersianNumber(userList.length)} کاربر`}
-                  sx={{
-                    height: 20, fontSize: 12, fontWeight: 800,
-                    bgcolor: `${SOFT.slate}1f`, color: SOFT.slate,
-                  }}
-                />
-              </Stack>
-            </Box>
-            {isLoading ? (
-              <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
-            ) : userList.length === 0 ? (
-              <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">کاربری یافت نشد</Typography></Box>
-            ) : (
-              <TableContainer>
-                <Table size="small" sx={{ '& td': { fontSize: 12, py: 1 } }}>
-                  <TableHead>
-                    <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 12, fontWeight: 800, textAlign: 'center' } }}>
-                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>کاربر</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>نام کاربری</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>نقش</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>دسترسی ماژول‌ها</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>عملیات</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {userList.map(u => (
-                      <TableRow key={u.id} hover>
-                        <TableCell>
-                          <Stack direction="row" alignItems="center" spacing={1.25} useFlexGap>
-                            <UserAvatar
-                              user={u}
-                              size={30}
-                              sx={{
-                                bgcolor: alpha(ROLE_COLORS[u.role] || SOFT.slate, 0.12),
-                                color: ROLE_COLORS[u.role] || SOFT.slate,
-                              }}
-                            />
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography noWrap sx={{ fontSize: 12, fontWeight: 700 }}>
-                                {`${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username}
-                              </Typography>
-                              <Typography noWrap sx={{ fontSize: 10, color: 'text.secondary' }}>
-                                {u.employee_name
-                                  ? `پرسنل: ${u.employee_name}`
-                                  : 'بدون ارتباط با پرسنل'}
-                              </Typography>
-                            </Box>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>{u.username}</TableCell>
-                        <TableCell align="center" sx={{ width: 150 }}>
-                          <FormControl size="small" sx={{
-                            width: 128,
-                            '& .MuiInputLabel-root': { fontSize: 12 },
-                            '& .MuiSelect-select': { fontSize: 12, py: 0.75 },
-                          }}>
-                            <InputLabel>نقش</InputLabel>
-                            <Select value={u.role} label="نقش" onChange={e => setRoleMutation.mutate({ id: u.id, role: e.target.value })}>
-                              {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
-                            </Select>
-                          </FormControl>
-                        </TableCell>
-                        <TableCell align="center">
-                          {u.is_superuser ? (
-                            <Chip size="small" label="همهٔ ماژول‌ها"
-                              sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: `${SOFT.violet}1f`, color: SOFT.violet }} />
-                          ) : (u.applications || []).length > 0 ? (
-                            <Chip size="small" label={`${formatPersianNumber((u.applications || []).length)} ماژول`}
-                              sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: `${SOFT.indigo}1f`, color: SOFT.indigo }} />
-                          ) : (
-                            <Chip size="small" label="طبق نقش" variant="outlined"
-                              sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
-                          )}
-                        </TableCell>
-                        <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-                          <Tooltip title="مشاهدهٔ مشخصات">
-                            <IconButton size="small" onClick={() => setViewUser(u)}
-                              sx={{ color: SOFT.blue, '&:hover': { bgcolor: `${SOFT.blue}14` } }}>
-                              <VisibilityIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="ویرایش کاربر">
-                            <IconButton size="small" onClick={() => openEditUser(u)}
-                              sx={{ color: SOFT.indigo, '&:hover': { bgcolor: `${SOFT.indigo}14` } }}>
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="غیرفعال کردن">
-                            <IconButton size="small" color="error" onClick={() => {
-                              if (window.confirm(`کاربر «${u.username}» غیرفعال شود؟`)) deleteMutation.mutate(u.id);
-                            }}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Paper>
-        </>
+      {rolesQuery.isLoading ? (
+        <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress size={24} /></Box>
+      ) : tab === 0 ? (
+        <UsersTab roles={roles} apps={apps} onMessage={setMessage} />
+      ) : (
+        <RolesTab
+          roles={roles}
+          catalog={catalog}
+          actions={actions}
+          onMessage={setMessage}
+          onRefresh={refresh}
+        />
       )}
-
-      {/* ---------- TAB FINE PERMISSIONS ---------- */}
-      {tab === 1 && (
-        <Box>
-          {rolesLoading ? (
-            <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : (
-            <Stack spacing={2}>
-              {roleList.map(role => (
-                <Paper key={role.role} variant="outlined" sx={{ ...SURFACE, p: 1.75 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                    <Avatar sx={{ width: 28, height: 28, mr: 1, fontSize: 12, fontWeight: 800, bgcolor: `${ROLE_COLORS[role.role] || SOFT.slate}1f`, color: ROLE_COLORS[role.role] || SOFT.slate }}>
-                      {role.label.charAt(0)}
-                    </Avatar>
-                    <Typography sx={{ fontSize: 12.5, fontWeight: 800, flex: 1 }}>{role.label}</Typography>
-                    <Button size="small" variant="contained" startIcon={<SaveIcon fontSize="small" />}
-                      sx={{ bgcolor: ROLE_COLORS[role.role] || SOFT.slate, boxShadow: 'none', fontSize: 12 }}
-                      onClick={() => {
-                        const perms = (permEdits[role.role] && Object.keys(permEdits[role.role]).length)
-                          ? permEdits[role.role] : role.permissions;
-                        const apps = role.applications;
-                        axiosInstance.post(`/users/roles/${role.role}/save/`, { permissions: perms, applications: apps }).then(() => {
-                          qc.invalidateQueries({ queryKey: ['users-roles'] });
-                          setMsg('مجوزها ذخیره شد.');
-                          setTimeout(() => setMsg(''), 2500);
-                        }).catch(e => setErr(e.response?.data?.error || 'خطا در ذخیره مجوزها'));
-                      }}>
-                      ذخیره
-                    </Button>
-                  </Box>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 1 }}>
-                    {Object.keys(role.permissions).map(key => (
-                      <Box key={key} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 0.5 }}>
-                        <Typography sx={{ fontSize: 12 }}>{PERM_LABELS[key] || key}</Typography>
-                        <Switch
-                          size="small"
-                          checked={permEdits[role.role]?.[key] ?? role.permissions[key]}
-                          onChange={(_, v) =>
-                            setPermEdits(p => ({ ...p, [role.role]: { ...(p[role.role] || role.permissions), [key]: v } }))
-                          }
-                        />
-                      </Box>
-                    ))}
-                  </Box>
-                </Paper>
-              ))}
-            </Stack>
-          )}
-        </Box>
-      )}
-
-      {/* Dialog add user */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: dialogPaperSx }}>
-        <DialogTitle sx={{
-          fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 0.75,
-          color: accent, borderBottom: '1px solid', borderColor: alpha(accent, 0.16),
-          bgcolor: alpha(accent, 0.05), py: 1.25,
-        }}>
-          <PersonIcon sx={{ fontSize: 18 }} /> افزودن کاربر جدید
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="نام کاربری *" value={draft.username} sx={fieldSx}
-            onChange={e => setDraft(p => ({ ...p, username: e.target.value }))} />
-          <TextField fullWidth size="small" label="ایمیل" value={draft.email} sx={fieldSx}
-            onChange={e => setDraft(p => ({ ...p, email: e.target.value }))} />
-          <TextField fullWidth size="small" label="رمز عبور *" type="password" value={draft.password} sx={fieldSx}
-            onChange={e => setDraft(p => ({ ...p, password: e.target.value }))} />
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="نام" value={draft.first_name} sx={fieldSx}
-              onChange={e => setDraft(p => ({ ...p, first_name: e.target.value }))} />
-            <TextField fullWidth size="small" label="نام خانوادگی" value={draft.last_name} sx={fieldSx}
-              onChange={e => setDraft(p => ({ ...p, last_name: e.target.value }))} />
-          </Stack>
-          <Divider sx={{ my: 0.25 }} />
-          <Stack direction="row" spacing={1.25} alignItems="center">
-            <UserAvatar
-              user={{
-                employee_photo: employeeById(draft.employee_id)?.photo_url,
-                employee_gender: employeeById(draft.employee_id)?.gender,
-                employee_name: employeeById(draft.employee_id)?.full_name,
-                first_name: draft.first_name,
-                last_name: draft.last_name,
-                username: draft.username,
-              }}
-              size={44}
-              sx={{ bgcolor: alpha(accent, 0.12), color: accent, flexShrink: 0 }}
-            />
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.primary' }}>
-                {employeeById(draft.employee_id)
-                  ? 'آواتار از پروندهٔ پرسنلی خوانده می‌شود'
-                  : 'بدون ارتباط با پرسنل — آواتار از نام یا جنسیت ساخته می‌شود'}
-              </Typography>
-              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                ارتباط کاربر با پرسنل منابع انسانی، عکس و جنسیت او را در کل سامانه نمایش می‌دهد.
-              </Typography>
-            </Box>
-          </Stack>
-          <EmployeePicker
-            employees={employeeList}
-            value={draft.employee_id}
-            onChange={(employeeId) => setDraft(p => ({ ...p, employee_id: employeeId }))}
-            accent={accent}
-            loading={employeesLoading}
-            disabled={employeesError}
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel>نقش</InputLabel>
-            <Select value={draft.role} label="نقش" sx={fieldSx} onChange={e => setDraft(p => ({ ...p, role: e.target.value }))}>
-              {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <Divider sx={{ my: 0.5 }} />
-          <Typography variant="body2" fontWeight={700} color="textSecondary">دسترسی ماژول‌ها (اختیاری — خالی یعنی طبق نقش)</Typography>
-          <Grid container spacing={1}>
-            {appList.map(app => {
-              const checked = draft.application_ids.includes(app.id);
-              return (
-                <Grid item xs={6} key={app.id}>
-                  <ModuleCard app={app} checked={checked} onToggle={() => setDraft(p => ({
-                    ...p,
-                    application_ids: checked ? p.application_ids.filter(i => i !== app.id) : [...p.application_ids, app.id],
-                  }))} />
-                </Grid>
-              );
-            })}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>انصراف</Button>
-          <Button variant="contained" sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}
-            disabled={!draft.username || !draft.password}
-            onClick={() => createMutation.mutate(draft)}>
-            ساخت کاربر
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog view user */}
-      <Dialog open={!!viewUser} onClose={() => setViewUser(null)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: dialogPaperSx }}>
-        <DialogTitle sx={{
-          fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 0.75,
-          color: accent, borderBottom: '1px solid', borderColor: alpha(accent, 0.16),
-          bgcolor: alpha(accent, 0.05), py: 1.25,
-        }}>
-          <BadgeOutlinedIcon sx={{ fontSize: 18 }} /> مشخصات کاربر
-        </DialogTitle>
-        <DialogContent dividers>
-          {viewUser && (
-            <Stack spacing={1.25}>
-              <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap sx={{ mb: 1 }}>
-                <UserAvatar
-                  user={viewUser}
-                  size={42}
-                  sx={{
-                    bgcolor: alpha(ROLE_COLORS[viewUser.role] || SOFT.slate, 0.12),
-                    color: ROLE_COLORS[viewUser.role] || SOFT.slate,
-                  }}
-                />
-                <Box>
-                  <Typography variant="h6">
-                    {`${viewUser.first_name || ''} ${viewUser.last_name || ''}`.trim() || viewUser.username}
-                  </Typography>
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>@{viewUser.username}</Typography>
-                </Box>
-              </Stack>
-              {[
-                ['نام کاربری', viewUser.username],
-                ['ایمیل', viewUser.email || '—'],
-                ['نقش', ROLE_LABELS[viewUser.role] || viewUser.role || '—'],
-                ['دسترسی ماژول‌ها', viewUser.is_superuser
-                  ? 'همهٔ ماژول‌ها'
-                  : `${formatPersianNumber((viewUser.applications || []).length)} ماژول`],
-                ['وضعیت', viewUser.is_active ? 'فعال' : 'غیرفعال'],
-                ['پروندهٔ پرسنلی', viewUser.employee_name
-                  ? `${viewUser.employee_name}${viewUser.employee_code ? ` · کد ${formatPersianNumber(viewUser.employee_code)}` : ''}`
-                  : 'متصل نشده'],
-                ['جنسیت پرسنل', viewUser.employee_gender_display || '—'],
-              ].map(([key, value]) => (
-                <Stack key={key} direction="row" justifyContent="space-between"
-                  sx={{ py: 0.5, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{key}</Typography>
-                  <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{value}</Typography>
-                </Stack>
-              ))}
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewUser(null)}>بستن</Button>
-          <Button variant="contained" startIcon={<EditIcon />}
-            sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}
-            onClick={() => { const current = viewUser; setViewUser(null); openEditUser(current); }}>
-            ویرایش
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog edit user */}
-      <Dialog open={!!editUser} onClose={() => setEditUser(null)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: dialogPaperSx }}>
-        <DialogTitle sx={{
-          fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 0.75,
-          color: accent, borderBottom: '1px solid', borderColor: alpha(accent, 0.16),
-          bgcolor: alpha(accent, 0.05), py: 1.25,
-        }}>
-          <EditIcon sx={{ fontSize: 18 }} /> ویرایش کاربر
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="نام کاربری *" value={editForm.username} sx={fieldSx}
-            onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))} />
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="نام" value={editForm.first_name} sx={fieldSx}
-              onChange={e => setEditForm(p => ({ ...p, first_name: e.target.value }))} />
-            <TextField fullWidth size="small" label="نام خانوادگی" value={editForm.last_name} sx={fieldSx}
-              onChange={e => setEditForm(p => ({ ...p, last_name: e.target.value }))} />
-          </Stack>
-          <TextField fullWidth size="small" label="ایمیل" value={editForm.email} sx={fieldSx}
-            onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
-          <FormControl fullWidth size="small">
-            <InputLabel>نقش</InputLabel>
-            <Select value={editForm.role} label="نقش" sx={fieldSx}
-              onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}>
-              {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <Divider sx={{ my: 0.25 }} />
-          <Stack direction="row" spacing={1.25} alignItems="center">
-            <UserAvatar
-              user={{
-                employee_photo: employeeById(editForm.employee_id)?.photo_url || editUser?.employee_photo,
-                employee_gender: employeeById(editForm.employee_id)?.gender || editUser?.employee_gender,
-                employee_name: employeeById(editForm.employee_id)?.full_name || editUser?.employee_name,
-                first_name: editForm.first_name,
-                last_name: editForm.last_name,
-                username: editForm.username,
-              }}
-              size={44}
-              sx={{ bgcolor: alpha(accent, 0.12), color: accent, flexShrink: 0 }}
-            />
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.primary' }}>
-                {employeeById(editForm.employee_id) ? 'آواتار از پروندهٔ پرسنلی خوانده می‌شود' : 'آواتار بر اساس نام یا جنسیت'}
-              </Typography>
-              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                با قطع ارتباط، آواتار به حالت پیش‌فرض (آقا/خانم یا حرف اول نام) برمی‌گردد.
-              </Typography>
-            </Box>
-          </Stack>
-          <EmployeePicker
-            employees={employeeList}
-            value={editForm.employee_id}
-            onChange={(employeeId) => setEditForm(p => ({ ...p, employee_id: employeeId }))}
-            accent={accent}
-            loading={employeesLoading}
-            disabled={employeesError}
-          />
-          <Divider sx={{ my: 0.25 }} />
-          <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.secondary' }}>
-            دسترسی ماژول‌ها (خالی یعنی طبق نقش)
-          </Typography>
-          <Grid container spacing={1}>
-            {appList.map(app => {
-              const checked = editForm.application_ids.includes(app.id);
-              return (
-                <Grid item xs={12} sm={6} key={app.id}>
-                  <ModuleCard app={app} checked={checked} onToggle={() => setEditForm(p => ({
-                    ...p,
-                    application_ids: checked
-                      ? p.application_ids.filter(i => i !== app.id)
-                      : [...p.application_ids, app.id],
-                  }))} />
-                </Grid>
-              );
-            })}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditUser(null)}>انصراف</Button>
-          <Button variant="contained" startIcon={<SaveIcon />}
-            disabled={!editForm.username || updateMutation.isLoading}
-            sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}
-            onClick={() => updateMutation.mutate({ id: editUser.id, body: editForm })}>
-            ذخیره تغییرات
-          </Button>
-        </DialogActions>
-      </Dialog>
-
     </Box>
   );
 };
