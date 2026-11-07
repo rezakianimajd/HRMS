@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, FormControlLabel, IconButton, Menu, MenuItem, Paper, Stack, Switch,
-  Tab, Table, TableBody, TableCell, TableRow, Tabs, TextField, Tooltip, Typography,
+  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, Divider, FormControlLabel, IconButton, Menu, MenuItem,
+  Paper, Stack, Switch, Tab, Table, TableBody, TableCell, TableRow, Tabs, TextField,
+  Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
@@ -56,19 +57,13 @@ const CONTACTS_KEY = ['correspondence-contacts'];
 const EMPTY_LETTER = {
   direction: 'incoming',
   category: '',
-  series: '',
   number: '',
-  indicator_no: '',
-  transmittal_no: '',
-  external_number: '',
   letter_date: new Date().toISOString().slice(0, 10),
   received_date: '',
   sent_date: '',
   due_date: '',
   entry_method: 'manual',
   entry_time: '',
-  entered_by: '',
-  entered_by_name: '',
   company_reg_no: '',
   company_reg_date: '',
   unit_reg_no: '',
@@ -78,26 +73,48 @@ const EMPTY_LETTER = {
   correspondent: '',
   sender_organization: '',
   sender_name: '',
-  sender_title: '',
   receiver_name: '',
   sender_employee: '',
   receiver_employee: '',
   sender_party: '',
+  sender_party_name: '',
+  sender_kind: 'employee',
   party_account: '',
+  party_account_name: '',
   delivery_type: 'in_person',
   delivered_by: '',
   delivered_by_name: '',
-  drafter: '',
-  drafter_name: '',
   priority: 'normal',
   confidentiality: 'normal',
   subject: '',
   summary: '',
   body: '',
   amount: '',
+  contract: '',
+  contract_title: '',
   contract_number: '',
-  archive_ref: '',
   register: false,
+};
+
+const DATE_KEYS = ['letter_date', 'received_date', 'sent_date', 'due_date',
+  'company_reg_date', 'unit_reg_date'];
+
+const isIncomingDirection = (direction) => direction !== 'outgoing' && direction !== 'internal';
+
+/** پیش‌فرض واحدهای مالی/اداری برای نامه‌های وارده */
+const DEFAULT_RECEIVER_NAME = 'مهدیه جمشیدنیا';
+const DEFAULT_CORRESPONDENT_NAME = 'مرتضی اسدنژاد';
+let pendingCorrespondentRequest = null;
+
+const ensureDefaultCorrespondent = async () => {
+  if (!pendingCorrespondentRequest) {
+    pendingCorrespondentRequest = axiosInstance
+      .post('/correspondents/', { name: DEFAULT_CORRESPONDENT_NAME, kind: 'person' })
+      .then((response) => response.data?.id || '')
+      .catch(() => '')
+      .finally(() => { pendingCorrespondentRequest = null; });
+  }
+  return pendingCorrespondentRequest;
 };
 
 const ENTRY_METHOD_META = {
@@ -181,18 +198,16 @@ export const LETTER_PAGE_PRESETS = {
   },
 };
 
-const userLabel = (row) => {
-  if (!row) return '';
-  const full = [row.first_name, row.last_name].filter(Boolean).join(' ').trim();
-  return row.full_name || full || row.username || row.name || String(row.id || '');
-};
-
 const safeDate = (value) => (value ? String(value).slice(0, 10) : '');
+
+const UI_ONLY_KEYS = new Set([
+  'register', 'sender_kind', 'contract_title', 'sender_party_name', 'party_account_name',
+]);
 
 const cleanPayload = (form) => {
   const payload = {};
   Object.entries(form).forEach(([key, value]) => {
-    if (key === 'register') return;
+    if (UI_ONLY_KEYS.has(key)) return;
     if (value === '' || value === null || value === undefined) return;
     payload[key] = value;
   });
@@ -477,46 +492,15 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
     setError('');
     setFiles([]);
     if (initial) {
-      setForm({
-        ...EMPTY_LETTER,
-        direction: initial.direction || 'incoming',
-        category: initial.category || '',
-        series: initial.series || '',
-        number: initial.number || '',
-        indicator_no: initial.indicator_no || '',
-        transmittal_no: initial.transmittal_no || '',
-        external_number: initial.external_number || '',
-        letter_date: safeDate(initial.letter_date),
-        received_date: safeDate(initial.received_date),
-        sent_date: safeDate(initial.sent_date),
-        due_date: safeDate(initial.due_date),
-        entry_method: initial.entry_method || 'manual',
-        entry_time: initial.entry_time || '',
-        entered_by: initial.entered_by || '',
-        entered_by_name: initial.entered_by_name || '',
-        company_reg_no: initial.company_reg_no || '',
-        company_reg_date: safeDate(initial.company_reg_date),
-        unit_reg_no: initial.unit_reg_no || '',
-        unit_reg_date: safeDate(initial.unit_reg_date),
-        unit_name: initial.unit_name || '',
-        organization: initial.organization || '',
-        correspondent: initial.correspondent || '',
-        sender_organization: initial.sender_organization || '',
-        sender_name: initial.sender_name || '',
-        sender_title: initial.sender_title || '',
-        receiver_name: initial.receiver_name || '',
-        drafter: initial.drafter || '',
-        drafter_name: initial.drafter_name || '',
-        priority: initial.priority || 'normal',
-        confidentiality: initial.confidentiality || 'normal',
-        subject: initial.subject || '',
-        summary: initial.summary || '',
-        body: initial.body || '',
-        amount: initial.amount || '',
-        contract_number: initial.contract_number || '',
-        archive_ref: initial.archive_ref || '',
-        register: false,
+      const next = { ...EMPTY_LETTER };
+      Object.keys(EMPTY_LETTER).forEach((key) => {
+        if (initial[key] !== undefined && initial[key] !== null) next[key] = initial[key];
       });
+      DATE_KEYS.forEach((key) => { next[key] = safeDate(initial[key]); });
+      next.direction = initial.direction || 'incoming';
+      next.sender_kind = initial.sender_party ? 'party' : 'employee';
+      next.register = false;
+      setForm(next);
     } else {
       setForm({ ...EMPTY_LETTER, direction: presetDirection || 'incoming' });
     }
@@ -562,7 +546,75 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
   const categories = (meta?.categories || []).filter(
     (row) => !row.direction || row.direction === 'both' || row.direction === form.direction,
   );
-  const seriesOptions = (meta?.series || []).filter((row) => row.direction === form.direction);
+
+  /* قرارداد مرتبط از «مدیریت قراردادها» */
+  const contractsQuery = useQuery({
+    queryKey: ['letter-contracts'],
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 200 } })
+      .then((response) => asList(response.data)),
+    enabled: open,
+    staleTime: 300_000,
+  });
+  const contractOptions = contractsQuery.data || [];
+  const contractLabel = (row) => [row.number, row.subject].filter(Boolean).join(' — ') || `#${row.id}`;
+
+  /* گیرنده/مخاطب پیش‌فرض واحدهای مالی و اداری */
+  const receiverDefaults = useQuery({
+    queryKey: ['letter-default-receiver'],
+    queryFn: () => axiosInstance.get('/letters/personnel/', { params: { q: 'مهدیه', limit: 5 } })
+      .then((response) => asList(response.data)[0] || null),
+    enabled: open && isIncomingDirection(form.direction),
+    staleTime: 600_000,
+  });
+  const defaultsApplied = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      defaultsApplied.current = false;
+      return;
+    }
+    if (defaultsApplied.current) return;
+    if (!isIncomingDirection(form.direction)) return;
+
+    const receiver = receiverDefaults.data;
+    let cancelled = false;
+
+    const applyDefaults = async () => {
+      let correspondentId = form.correspondent;
+      if (!correspondentId) {
+        const match = (contacts || []).find((row) => {
+          const name = String(row.name || '').replace(/[\s\u200c]/g, '');
+          return name.includes('مرتضی') && name.includes('اسد');
+        });
+        correspondentId = match?.id || '';
+        if (!correspondentId) {
+          correspondentId = await ensureDefaultCorrespondent();
+          if (correspondentId) qc.invalidateQueries({ queryKey: CONTACTS_KEY });
+        }
+      }
+      if (cancelled) return;
+
+      setForm((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        if (receiver && !prev.receiver_employee) {
+          next.receiver_employee = receiver.id;
+          next.receiver_name = receiver.full_name || receiver.label || DEFAULT_RECEIVER_NAME;
+          changed = true;
+        }
+        if (correspondentId && !prev.correspondent) {
+          next.correspondent = correspondentId;
+          changed = true;
+        }
+        return changed ? next : prev;
+      });
+
+      if (receiver || correspondentId) defaultsApplied.current = true;
+    };
+
+    applyDefaults();
+    return () => { cancelled = true; };
+  }, [open, form.direction, receiverDefaults.data, contacts]); // eslint-disable-line
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth
@@ -620,15 +672,6 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
                 ...prev,
                 [form.direction === 'outgoing' ? 'sent_date' : 'received_date']: value,
               }))} />
-            <TextField select size="small" label="ثبت‌کنندهٔ ورود" value={form.entered_by}
-              onChange={set('entered_by')}>
-              <MenuItem value="">—</MenuItem>
-              {(users || []).map((row) => (
-                <MenuItem key={row.id} value={row.id}>{userLabel(row)}</MenuItem>
-              ))}
-            </TextField>
-            <TextField size="small" label="نام ثبت‌کننده (متن آزاد)" value={form.entered_by_name}
-              onChange={set('entered_by_name')} />
             <PersonnelPicker
               label="تحویل‌دهنده (پرسنل)"
               value={personValue(form.delivered_by, form.delivered_by_name)}
@@ -644,21 +687,9 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
           </FormTable>
         </FormSection>
 
-        <FormSection icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
+        <FormSection icon={EditNoteIcon} title="شماره‌ها و تاریخ ثبت" color={INCOMING}>
           <FormTable>
-            <TextField select size="small" label="سری شماره‌گذاری" value={form.series} onChange={set('series')}>
-              <MenuItem value="">سری پیش‌فرض</MenuItem>
-              {seriesOptions.map((row) => (
-                <MenuItem key={row.id} value={row.id}>{row.title}</MenuItem>
-              ))}
-            </TextField>
             <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')} />
-            <TextField size="small" label="شماره اندیکاتور" value={form.indicator_no}
-              onChange={set('indicator_no')} />
-            <TextField size="small" label="ترنسمیتال" value={form.transmittal_no}
-              onChange={set('transmittal_no')} />
-            <TextField size="small" label="شماره نامه طرف مقابل" value={form.external_number}
-              onChange={set('external_number')} />
             <JalaliMaskedDateInput variant="outlined" label="تاریخ نامه" value={form.letter_date}
               onChange={(value) => setForm((prev) => ({ ...prev, letter_date: value }))} />
             <TextField size="small" label="شماره ثبت ورود به شرکت" value={form.company_reg_no}
@@ -679,58 +710,95 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
         </FormSection>
 
         <FormSection icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
-          <FormTable columns={1}>
-            <PersonnelPicker
-              label="فرستنده (پرسنل منابع انسانی)"
-              value={personValue(form.sender_employee, form.sender_name)}
-              onChange={(option) => setForm((prev) => ({
-                ...prev,
-                sender_employee: option ? option.id : '',
-                sender_name: option ? option.full_name : prev.sender_name,
-                sender_title: option?.job_title || prev.sender_title,
-              }))}
-            />
-            <PartyPicker
-              label="ارسال‌کننده (طرف حساب از مدیریت قراردادها)"
-              value={partyValue(form.sender_party, form.sender_party_name)}
-              onChange={(party) => setForm((prev) => ({
-                ...prev,
-                sender_party: party?.id || '',
-                sender_party_name: party?.name || '',
-              }))}
-            />
-            <PartyPicker
-              label="طرف حساب (از مدیریت قراردادها)"
-              value={partyValue(form.party_account, form.party_account_name)}
-              onChange={(party) => setForm((prev) => ({
-                ...prev,
-                party_account: party?.id || '',
-                party_account_name: party?.name || '',
-              }))}
-            />
-          </FormTable>
-          <FormTable>
-            <TextField size="small" label="سمت ارسال‌کننده" value={form.sender_title}
-              onChange={set('sender_title')} />
-            <PersonnelPicker
-              label="گیرنده (پرسنل)"
-              value={personValue(form.receiver_employee, form.receiver_name)}
-              onChange={(option) => setForm((prev) => ({
-                ...prev,
-                receiver_employee: option ? option.id : '',
-                receiver_name: option ? option.full_name : '',
-              }))}
-            />
-            <TextField select size="small" label="مخاطب" value={form.correspondent}
-              onChange={set('correspondent')}>
-              <MenuItem value="">—</MenuItem>
-              {(contacts || []).map((row) => (
-                <MenuItem key={row.id} value={row.id}>
-                  {row.name}{row.title ? ` — ${row.title}` : ''}
-                </MenuItem>
-              ))}
-            </TextField>
-          </FormTable>
+          <Box sx={{
+            '& .MuiTableCell-root': { py: 0.4 },
+            '& .MuiInputBase-root': { minHeight: 34 },
+            '& .MuiAutocomplete-inputRoot': { py: 0.25 },
+          }}>
+            <FormTable columns={2}>
+              <TextField select size="small" label="نوع فرستنده" value={form.sender_kind}
+                onChange={(event) => {
+                  const kind = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    sender_kind: kind,
+                    sender_employee: kind === 'employee' ? prev.sender_employee : '',
+                    sender_name: kind === 'employee' ? prev.sender_name : '',
+                    sender_party: kind === 'party' ? prev.sender_party : '',
+                    sender_party_name: kind === 'party' ? prev.sender_party_name : '',
+                  }));
+                }}>
+                <MenuItem value="employee">پرسنل (منابع انسانی)</MenuItem>
+                <MenuItem value="party">شرکت / طرف حساب (قراردادها)</MenuItem>
+              </TextField>
+              {form.sender_kind === 'party' ? (
+                <PartyPicker
+                  label="فرستنده (طرف حساب از مدیریت قراردادها)"
+                  value={partyValue(form.sender_party, form.sender_party_name)}
+                  onChange={(party) => setForm((prev) => ({
+                    ...prev,
+                    sender_party: party?.id || '',
+                    sender_party_name: party?.name || '',
+                  }))}
+                />
+              ) : (
+                <PersonnelPicker
+                  label="فرستنده (پرسنل منابع انسانی)"
+                  value={personValue(form.sender_employee, form.sender_name)}
+                  onChange={(option) => setForm((prev) => ({
+                    ...prev,
+                    sender_employee: option ? option.id : '',
+                    sender_name: option ? option.full_name : prev.sender_name,
+                  }))}
+                />
+              )}
+              <PersonnelPicker
+                label="گیرنده (پرسنل)"
+                value={personValue(form.receiver_employee, form.receiver_name)}
+                onChange={(option) => setForm((prev) => ({
+                  ...prev,
+                  receiver_employee: option ? option.id : '',
+                  receiver_name: option ? option.full_name : '',
+                }))}
+              />
+              <TextField select size="small" label="مخاطب" value={form.correspondent}
+                onChange={set('correspondent')}>
+                <MenuItem value="">—</MenuItem>
+                {(contacts || []).map((row) => (
+                  <MenuItem key={row.id} value={row.id}>
+                    {row.name}{row.title ? ` — ${row.title}` : ''}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <PartyPicker
+                label="طرف حساب (از مدیریت قراردادها)"
+                value={partyValue(form.party_account, form.party_account_name)}
+                onChange={(party) => setForm((prev) => ({
+                  ...prev,
+                  party_account: party?.id || '',
+                  party_account_name: party?.name || '',
+                }))}
+              />
+              <Autocomplete
+                size="small"
+                options={contractOptions}
+                loading={contractsQuery.isLoading}
+                value={contractOptions.find((row) => String(row.id) === String(form.contract)) || null}
+                onChange={(_event, option) => setForm((prev) => ({
+                  ...prev,
+                  contract: option ? option.id : '',
+                  contract_title: option ? option.subject || '' : '',
+                  contract_number: option ? (option.number || '') : '',
+                }))}
+                getOptionLabel={contractLabel}
+                isOptionEqualToValue={(a, b) => String(a?.id) === String(b?.id)}
+                noOptionsText="قراردادی یافت نشد"
+                renderInput={(params) => (
+                  <TextField {...params} size="small" label="قرارداد مرتبط (مدیریت قراردادها)" />
+                )}
+              />
+            </FormTable>
+          </Box>
         </FormSection>
 
         <FormSection icon={MailOutlineIcon} title="مشخصات نامه" color={INTERNAL}>
@@ -762,23 +830,14 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
           </FormTable>
         </FormSection>
 
-        <FormSection icon={ArchiveIcon} title="مالی، قرارداد و بایگانی" color={SLATE}>
-          <FormTable>
+        <FormSection icon={ArchiveIcon} title="مبلغ و قرارداد" color={SLATE}>
+          <FormTable columns={2}>
             <TextField size="small" type="number" label="مبلغ (اختیاری)" value={form.amount}
               onChange={set('amount')} />
-            <TextField size="small" label="شماره قرارداد مرتبط" value={form.contract_number}
-              onChange={set('contract_number')} />
-            <TextField size="small" label="شماره بایگانی" value={form.archive_ref}
-              onChange={set('archive_ref')} />
-            <TextField select size="small" label="تنظیم‌کننده نامه" value={form.drafter}
-              onChange={set('drafter')}>
-              <MenuItem value="">خودم</MenuItem>
-              {(users || []).map((row) => (
-                <MenuItem key={row.id} value={row.id}>{userLabel(row)}</MenuItem>
-              ))}
-            </TextField>
-            <TextField size="small" label="نام تنظیم‌کننده (متن آزاد)" value={form.drafter_name}
-              onChange={set('drafter_name')} />
+            <TextField size="small" label="قرارداد مرتبط" value={form.contract_title
+              || (form.contract_number ? `شماره ${form.contract_number}` : '')}
+              InputProps={{ readOnly: true }}
+              helperText="از بخش «طرفین مکاتبه» انتخاب می‌شود" />
           </FormTable>
         </FormSection>
 

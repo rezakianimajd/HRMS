@@ -627,6 +627,11 @@ class Letter(BaseModel):
         max_length=120, blank=True, verbose_name=_('شناسه منبع'),
         help_text=_('برای ورود داده‌های تاریخی و جلوگیری از تکرار'),
     )
+    contract = models.ForeignKey(
+        'contracts.Contract', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='office_letters', db_constraint=False,
+        verbose_name=_('قرارداد مرتبط (مدیریت قراردادها)'),
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='created_letters', verbose_name=_('ثبت‌کننده'),

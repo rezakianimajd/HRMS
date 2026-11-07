@@ -494,6 +494,7 @@ class LetterSerializer(serializers.ModelSerializer):
     category_title = serializers.CharField(source='category.name', read_only=True)
     category_color = serializers.CharField(source='category.color', read_only=True)
     series_title = serializers.CharField(source='series.title', read_only=True)
+    contract_title = serializers.CharField(source='contract.subject', read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
     correspondent_name = serializers.CharField(source='correspondent.name', read_only=True)
     sender_organization_name = serializers.CharField(
@@ -550,7 +551,8 @@ class LetterSerializer(serializers.ModelSerializer):
             'delivered_by_name',
             'created_by_name', 'priority', 'priority_display', 'confidentiality',
             'confidentiality_display', 'status', 'status_display',
-            'amount', 'currency', 'archive_ref', 'contract_number', 'tags',
+            'amount', 'currency', 'archive_ref', 'contract_number', 'contract',
+            'contract_title', 'tags',
             'reply_to', 'reply_number', 'closed_at', 'archived_at',
             'attachments', 'referrals', 'events',
             'attachment_count', 'referral_count', 'reply_count', 'pending_referrals',
@@ -562,6 +564,7 @@ class LetterSerializer(serializers.ModelSerializer):
             'category_title', 'category_color', 'series_title', 'organization_name',
             'correspondent_name', 'sender_organization_name', 'entry_method_display',
             'entered_by_label', 'drafter_name', 'reply_number', 'source_ref', 'attachment_count',
+            'contract_title',
             'referral_count', 'reply_count', 'pending_referrals', 'last_referral',
             'is_overdue', 'days_to_due', 'created_at', 'updated_at',
             'delivery_type_display', 'delivered_by_label', 'sender_employee_label',
