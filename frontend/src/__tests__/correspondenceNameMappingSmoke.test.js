@@ -29,76 +29,58 @@ const API = '/correspondence-name-aliases/';
 const meta = {
   purposes: [
     {
-      key: 'referral', label: 'گیرندهٔ ارجاع', group: 'ارجاع',
-      description: 'نام گیرندهٔ ارجاع را به پرسنل منابع انسانی متصل می‌کند.',
-      target_kinds: ['employee'], paired: null, bidirectional: false, count: 1,
+      key: 'counterparty', label: 'طرف حساب نامه (وارده/صادره)', group: 'طرفین نامه',
+      description: 'نام طرف حساب نامه را به طرف حساب مدیریت قراردادها متصل می‌کند.',
+      target_kinds: ['party', 'organization'], paired: null, bidirectional: false, count: 1,
     },
     {
       key: 'sender', label: 'فرستنده / ارسال‌کننده', group: 'طرفین نامه',
       description: 'نام فرستندهٔ نامه را به مقصد متصل می‌کند.',
-      target_kinds: ['employee', 'party', 'organization', 'correspondent'],
-      paired: 'receiver', bidirectional: true, count: 1,
-    },
-    {
-      key: 'subject', label: 'موضوع نامه / نوع مکاتبه', group: 'موضوع',
-      description: 'موضوع‌های تکراری نامه را به نوع مکاتبه متصل می‌کند.',
-      target_kinds: ['category'], paired: null, bidirectional: false, count: 0,
+      target_kinds: ['employee', 'party'], paired: 'receiver', bidirectional: true, count: 1,
     },
   ],
   purpose_groups: [
-    { title: 'ارجاع', keys: ['referral'] },
-    { title: 'طرفین نامه', keys: ['sender'] },
-    { title: 'موضوع', keys: ['subject'] },
+    { title: 'طرفین نامه', keys: ['counterparty', 'sender'] },
   ],
   target_kinds: [
     { key: 'employee', label: 'پرسنل (منابع انسانی)' },
     { key: 'party', label: 'طرف حساب (مدیریت قراردادها)' },
+    { key: 'organization', label: 'سازمان (تعاریف مکاتبات)' },
     { key: 'category', label: 'نوع مکاتبه (تعاریف مکاتبات)' },
   ],
   paired_scopes: { sender: 'receiver', receiver: 'sender' },
   summary: {
-    aliases: 3, names: 2, multi: 1, bidirectional: 1, applied: 10, unmapped: 4,
-    by_kind: { employee: 2, party: 1 }, by_scope: { referral: 2, sender: 1 },
+    aliases: 3, names: 2, multi: 1, bidirectional: 1, applied: 10, unmapped: 3,
+    by_kind: { employee: 2, party: 1 }, by_scope: { counterparty: 2, sender: 1 },
   },
 };
 
+const columns = [
+  {
+    key: 'counterparty', label: 'طرف حساب نامه (وارده/صادره)', group: 'طرفین نامه',
+    description: 'نام طرف حساب نامه را به طرف حساب مدیریت قراردادها متصل می‌کند.',
+    target_kinds: ['party', 'organization'], paired: null,
+    names: 3, mapped: 1, unmapped: 2, rows: 6, aliases: 1,
+  },
+  {
+    key: 'sender', label: 'فرستنده / ارسال‌کننده', group: 'طرفین نامه',
+    description: 'نام فرستندهٔ نامه را به مقصد متصل می‌کند.',
+    target_kinds: ['employee', 'party'], paired: 'receiver',
+    names: 2, mapped: 1, unmapped: 1, rows: 12, aliases: 1,
+  },
+];
+
 const groups = {
-  count: 2,
+  count: 1,
   results: [
     {
-      key: 'حسینی|referral',
-      raw_name: 'خ.حسینی',
-      normalized: 'حسینی',
-      scope: 'referral',
-      scope_label: 'گیرندهٔ ارجاع',
+      key: 'طرف حساب آلفا|counterparty',
+      raw_name: 'شرکت آلفا',
+      normalized: 'طرف حساب آلفا',
+      scope: 'counterparty',
+      scope_label: 'طرف حساب نامه (وارده/صادره)',
       bidirectional: false,
-      applied_scopes: ['referral'],
-      targets: [
-        {
-          id: 1, target_kind: 'employee', target_kind_display: 'پرسنل (منابع انسانی)',
-          target_id: 11, label: 'سیده زهرا حسینی (1024)', order: 0,
-          applied_count: 5, last_applied_at: '2026-11-06T10:20:00Z',
-        },
-        {
-          id: 2, target_kind: 'employee', target_kind_display: 'پرسنل (منابع انسانی)',
-          target_id: 12, label: 'مریم رضایی (1030)', order: 1,
-          applied_count: 2, last_applied_at: '2026-11-05T09:00:00Z',
-        },
-      ],
-      target_count: 2,
-      targets_label: 'سیده زهرا حسینی (1024) — مریم رضایی (1030)',
-      target_kinds: ['employee'],
-      applied_count: 7,
-      last_applied_at: '2026-11-06T10:20:00Z',
-    },
-    {
-      key: 'شرکت الفا|sender',
-      raw_name: 'شرکت الفا',
-      normalized: 'شرکت الفا',
-      scope: 'sender',
-      scope_label: 'فرستنده / ارسال‌کننده',
-      bidirectional: true,
-      applied_scopes: ['sender', 'receiver'],
+      applied_scopes: ['counterparty'],
       targets: [
         {
           id: 3, target_kind: 'party', target_kind_display: 'طرف حساب (مدیریت قراردادها)',
@@ -115,6 +97,18 @@ const groups = {
   ],
 };
 
+const unmapped = [
+  {
+    raw_name: 'شرکت بتا صنعت',
+    normalized: 'طرف حساب بتا صنعت',
+    count: 4,
+    scopes: ['counterparty'],
+    suggestions: [
+      { kind: 'party', id: 12, label: 'بتا صنعت پارس', score: 0.91 },
+    ],
+  },
+];
+
 const wait = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 
 beforeEach(() => {
@@ -123,13 +117,20 @@ beforeEach(() => {
     matches: false, addListener: () => {}, removeListener: () => {},
     addEventListener: () => {}, removeEventListener: () => {},
   }));
-  axiosInstance.get.mockImplementation((url) => {
+  axiosInstance.get.mockImplementation((url, config = {}) => {
     if (url === `${API}meta/`) return Promise.resolve({ data: meta });
-    if (url === `${API}groups/`) return Promise.resolve({ data: groups });
-    if (url === `${API}unmapped/`) return Promise.resolve({ data: [] });
+    if (url === `${API}columns/`) return Promise.resolve({ data: columns });
+    if (url === `${API}groups/`) {
+      const scope = config?.params?.scope;
+      return Promise.resolve({ data: scope === 'counterparty' ? groups : { results: [] } });
+    }
+    if (url === `${API}unmapped/`) {
+      const scope = config?.params?.scope;
+      return Promise.resolve({ data: scope === 'counterparty' ? unmapped : [] });
+    }
     return Promise.resolve({ data: { results: [] } });
   });
-  axiosInstance.post.mockResolvedValue({ data: { id: 9, raw_name: 'خ.حسینی' } });
+  axiosInstance.post.mockResolvedValue({ data: { id: 9, raw_name: 'شرکت بتا صنعت', total: 2 } });
   axiosInstance.delete.mockResolvedValue({ data: {} });
 });
 
@@ -155,49 +156,103 @@ const renderPage = async (entry = '/correspondence/name-mapping') => {
   return { container, root };
 };
 
-
-test('name mapping page renders specialized purposes, KPIs and dash-joined targets', async () => {
+test('name mapping page renders column cards, KPIs and the column workspace', async () => {
   const { container, root } = await renderPage();
 
   expect(container.textContent).toContain('نگاشت نام‌ها');
   expect(container.textContent).toContain('نگاشت‌های فعال');
-  expect(container.textContent).toContain('نگاشت چند مقصده');
-  expect(container.textContent).toContain('ردیف‌های اصلاح‌شده');
+  expect(container.textContent).toContain('نام‌های نگاشت‌شده');
   expect(container.textContent).toContain('نام‌های بدون نگاشت');
+  expect(container.textContent).toContain('ردیف‌های اصلاح‌شده');
 
+  // کارت ستون‌ها (همهٔ فیلدها به‌جز تاریخ/شماره)
+  expect(container.querySelector('[aria-label="ستون طرف حساب نامه (وارده/صادره)"]')).toBeTruthy();
+  expect(container.querySelector('[aria-label="ستون فرستنده / ارسال‌کننده"]')).toBeTruthy();
+
+  // میزکار ستون انتخاب‌شده
+  expect(container.textContent).toContain('نگاشت ستون «طرف حساب نامه (وارده/صادره)»');
   const table = container.querySelector('[aria-label="نگاشت نام‌های مکاتبات"]');
   expect(table).toBeTruthy();
   expect(container.textContent).toContain('نام واردشده');
-  expect(container.textContent).toContain('کاربرد');
   expect(container.textContent).toContain('مقصدها');
-  expect(container.textContent).toContain('تعداد مقصد');
-
-  // کاربرد تخصصی هر نگاشت
-  expect(container.textContent).toContain('گیرندهٔ ارجاع');
-  expect(container.textContent).toContain('فرستنده / ارسال‌کننده');
-  // نگاشت دو مسیره
-  expect(container.textContent).toContain('دو مسیره');
-  // مقصدهای چندگانه با خط تیره (ارجاع به دو نفر)
-  expect(container.textContent).toContain('سیده زهرا حسینی (1024) — مریم رضایی (1030)');
+  expect(container.textContent).toContain('وضعیت');
   expect(container.textContent).toContain('شرکت آلفا تجارت');
+
+  // نام بدون نگاشت + پیشنهاد سامانه
+  expect(container.textContent).toContain('بدون نگاشت');
+  expect(container.textContent).toContain('شرکت بتا صنعت');
+  expect(container.textContent).toContain('بتا صنعت پارس');
 
   root.unmount();
   container.remove();
 });
 
-test('name mapping page sends the URL query to the grouped endpoint', async () => {
-  const { container, root } = await renderPage('/correspondence/name-mapping?q=حسینی');
+test('name mapping page requests the grouped endpoint for the selected column', async () => {
+  const { container, root } = await renderPage('/correspondence/name-mapping?q=آلفا');
 
   const calls = axiosInstance.get.mock.calls.filter(([url]) => url === `${API}groups/`);
   expect(calls.length).toBeGreaterThan(0);
   const params = calls[calls.length - 1][1].params;
-  expect(params.search).toBe('حسینی');
+  expect(params.scope).toBe('counterparty');
+  expect(params.search).toBe('آلفا');
+
+  const unmappedCalls = axiosInstance.get.mock.calls.filter(([url]) => url === `${API}unmapped/`);
+  expect(unmappedCalls.length).toBeGreaterThan(0);
+  expect(unmappedCalls[unmappedCalls.length - 1][1].params.scope).toBe('counterparty');
 
   root.unmount();
   container.remove();
 });
 
-test('adding a mapping opens the specialized form with purpose and dual switch', async () => {
+
+test('clicking a suggestion maps that name instantly (create + apply)', async () => {
+  const { container, root } = await renderPage();
+
+  const chip = [...container.querySelectorAll('[role="button"]')]
+    .find((node) => node.textContent.includes('بتا صنعت پارس'));
+  expect(chip).toBeTruthy();
+  await act(async () => {
+    chip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(400);
+  });
+
+  const createCall = axiosInstance.post.mock.calls.find(([url]) => url === API);
+  expect(createCall).toBeTruthy();
+  expect(createCall[1]).toMatchObject({
+    raw_name: 'شرکت بتا صنعت',
+    scope: 'counterparty',
+    target_kind: 'party',
+    party: 12,
+  });
+  const applyNamed = axiosInstance.post.mock.calls
+    .find(([url]) => String(url).endsWith('/9/apply/'));
+  expect(applyNamed).toBeTruthy();
+
+  root.unmount();
+  container.remove();
+});
+
+test('switching column reloads groups and unmapped for that column', async () => {
+  const { container, root } = await renderPage();
+
+  const card = container.querySelector('[aria-label="ستون فرستنده / ارسال‌کننده"]');
+  expect(card).toBeTruthy();
+  await act(async () => {
+    card.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(500);
+  });
+
+  const scopes = axiosInstance.get.mock.calls
+    .filter(([url]) => url === `${API}groups/`)
+    .map(([, config]) => config?.params?.scope);
+  expect(scopes).toContain('sender');
+  expect(container.textContent).toContain('نگاشت ستون «فرستنده / ارسال‌کننده»');
+
+  root.unmount();
+  container.remove();
+});
+
+test('adding a mapping opens the specialized form with purpose and target kinds', async () => {
   const { container, root } = await renderPage();
 
   const addButton = [...container.querySelectorAll('button')]
@@ -212,7 +267,6 @@ test('adding a mapping opens the specialized form with purpose and dual switch',
     .find((node) => node.textContent.includes('نگاشت نام جدید'));
   expect(dialog).toBeTruthy();
   expect(dialog.textContent).toContain('کاربرد نگاشت');
-  expect(dialog.textContent).toContain('نگاشت دو مسیره');
   expect(dialog.textContent).toContain('نوع مقصدهای مجاز');
 
   root.unmount();

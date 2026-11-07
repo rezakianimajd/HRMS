@@ -134,8 +134,47 @@ def similarity(raw, candidate):
     return round(max(score, ratio * 0.75), 4)
 
 
+def _candidate_label(candidate, key):
+    return str(key(candidate) if key else candidate)
+
+
+def prefilter_candidates(raw, candidates, key=None):
+    """کاهش سریع کاندیدها با تطبیق ارزان (بدون SequenceMatcher).
+
+    برای استخرهای بزرگ (هزاران طرف حساب/سازمان) محاسبهٔ امتیاز شباهت برای همهٔ
+    کاندیدها کند است؛ این تابع فقط کاندیدهایی را نگه می‌دارد که حداقل یک نشانهٔ
+    متنی مشترک دارند (پیشوند، زیررشته یا توکن مشترک).
+    """
+    raw_norm = normalize_name(raw)
+    raw_compact = raw_norm.replace(' ', '')
+    if not raw_compact:
+        return list(candidates)
+    raw_tokens = set(raw_norm.split())
+    head = raw_compact[:2]
+    picks = []
+    for candidate in candidates:
+        label = normalize_name(_candidate_label(candidate, key))
+        if not label:
+            continue
+        compact = label.replace(' ', '')
+        if (
+            compact == raw_compact
+            or compact.startswith(head)
+            or raw_compact.startswith(compact[:2])
+            or raw_compact in compact
+            or compact in raw_compact
+            or raw_tokens.intersection(label.split())
+        ):
+            picks.append(candidate)
+    return picks
+
+
 def best_matches(raw, candidates, limit=5, threshold=0.6, key=None):
     """بهترین کاندیدها برای یک نام خام → ``[{'score': .., 'item': ..}]``."""
+    candidates = list(candidates)
+    if len(candidates) > 40:
+        # پیش‌فیلتر ارزان تا محاسبهٔ شباهت فقط روی کاندیدهای مرتبط انجام شود
+        candidates = prefilter_candidates(raw, candidates, key=key)
     scored = []
     for candidate in candidates:
         label = key(candidate) if key else str(candidate)

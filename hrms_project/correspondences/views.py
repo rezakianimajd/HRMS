@@ -1441,6 +1441,12 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
 
     serializer_class = CorrespondenceNameAliasSerializer
     queryset = CorrespondenceNameAlias.objects.all()
+
+    # ترتیب ستون‌های صفحهٔ نگاشت (بدون «همهٔ فیلدها» که فقط fallback است)
+    WORKSPACE_SCOPES = (
+        'counterparty', 'sender', 'receiver', 'contact', 'organization',
+        'delivery', 'referral', 'referral_target', 'subject',
+    )
     search_fields = [
         'raw_name', 'normalized', 'note',
         'employee__first_name', 'employee__last_name', 'employee__employee_id',
@@ -1760,6 +1766,57 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
         return Response({'count': len(results), 'results': results[:limit]})
 
     @action(detail=False, methods=['get'])
+    def columns(self, request):
+        """ستون‌های قابل نگاشت + شمارش نام‌ها/بدون‌نگاشت/ردیف‌ها (بازطراحی صفحهٔ نگاشت)."""
+        from correspondences import alias_purposes, matching
+
+        company = self._company()
+        if not company:
+            return Response([])
+        labels = dict(CorrespondenceNameAlias.SCOPES)
+        alias_rows = list(CorrespondenceNameAlias.objects.filter(
+            company=company, is_active=True,
+        ).values('scope', 'normalized'))
+        covered = {(row['scope'], row['normalized']) for row in alias_rows}
+        any_covered = {row['normalized'] for row in alias_rows if row['scope'] == 'any'}
+
+        per_scope = {}
+        for sample in matching.iter_name_samples(company):
+            entry = per_scope.setdefault(sample['scope'], {
+                'names': set(), 'unmapped': set(), 'rows': 0,
+            })
+            entry['names'].add(sample['normalized'])
+            entry['rows'] += sample['count']
+            if (sample['scope'], sample['normalized']) not in covered \
+                    and sample['normalized'] not in any_covered:
+                entry['unmapped'].add(sample['normalized'])
+
+        alias_counts = {}
+        for row in alias_rows:
+            alias_counts[row['scope']] = alias_counts.get(row['scope'], 0) + 1
+
+        rows = []
+        for scope in self.WORKSPACE_SCOPES:
+            purpose = alias_purposes.PURPOSE_BY_KEY.get(scope, {})
+            data = per_scope.get(scope, {'names': set(), 'unmapped': set(), 'rows': 0})
+            names = len(data['names'])
+            unmapped = len(data['unmapped'])
+            rows.append({
+                'key': scope,
+                'label': labels.get(scope, scope),
+                'group': purpose.get('group') or '',
+                'description': purpose.get('description') or '',
+                'target_kinds': list(purpose.get('target_kinds') or ()),
+                'paired': purpose.get('paired'),
+                'names': names,
+                'mapped': max(0, names - unmapped),
+                'unmapped': unmapped,
+                'rows': data['rows'],
+                'aliases': alias_counts.get(scope, 0),
+            })
+        return Response(rows)
+
+    @action(detail=False, methods=['get'])
     def unmapped(self, request):
         """نام‌های موجود در داده‌ها که هنوز نگاشت نشده‌اند + پیشنهاد."""
         from correspondences import matching
@@ -1772,6 +1829,12 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
         ).values('scope', 'normalized'))
         covered = {(row['scope'], row['normalized']) for row in rows}
         any_covered = {row['normalized'] for row in rows if row['scope'] == 'any'}
+        scope_filter = (request.query_params.get('scope') or '').strip()
+        kinds_param = [
+            item.strip() for item in (request.query_params.get('kinds') or '').split(',')
+            if item.strip()
+        ]
+        search = (request.query_params.get('search') or '').strip()
         try:
             limit = min(200, max(1, int(request.query_params.get('limit') or 60)))
         except (TypeError, ValueError):
@@ -1784,6 +1847,10 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
         categories = self._category_candidates(company)
         aggregated = {}
         for sample in matching.iter_name_samples(company):
+            if scope_filter and sample['scope'] != scope_filter:
+                continue
+            if search and search not in sample['raw']:
+                continue
             key = (sample['scope'], sample['normalized'])
             if key in covered or sample['normalized'] in any_covered:
                 continue
@@ -1796,11 +1863,27 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
                 entry['scopes'].append(sample['scope'])
         ordered = sorted(aggregated.values(), key=lambda item: item['count'], reverse=True)
         for row in ordered[:limit]:
-            row['suggestions'] = self._suggestions_for(
-                row['raw_name'], None, employees=employees, parties=parties,
-                organizations=organizations, correspondents=correspondents,
-                categories=categories, limit=6,
-            )
+            if kinds_param:
+                suggestions, seen = [], set()
+                for kind in kinds_param:
+                    for item in self._suggestions_for(
+                        row['raw_name'], kind, employees=employees, parties=parties,
+                        organizations=organizations, correspondents=correspondents,
+                        categories=categories, limit=3,
+                    ):
+                        key = (item['kind'], item['id'])
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        suggestions.append(item)
+                suggestions.sort(key=lambda item: item.get('score') or 0, reverse=True)
+                row['suggestions'] = suggestions[:6]
+            else:
+                row['suggestions'] = self._suggestions_for(
+                    row['raw_name'], None, employees=employees, parties=parties,
+                    organizations=organizations, correspondents=correspondents,
+                    categories=categories, limit=6,
+                )
         return Response(ordered[:limit])
 
     @action(detail=False, methods=['get'])

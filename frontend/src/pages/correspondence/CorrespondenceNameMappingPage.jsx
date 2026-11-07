@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, Chip, CircularProgress, IconButton, InputAdornment,
-  ListSubheader, MenuItem, Paper, Stack, TextField, ToggleButton,
-  ToggleButtonGroup, Tooltip, Typography,
+  Alert, Box, Button, Chip, CircularProgress, IconButton, InputAdornment, LinearProgress,
+  Paper, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
@@ -21,7 +22,7 @@ import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUti
 import PageHeader from '../../core/components/ui/PageHeader';
 import { ModuleTable, useModuleTheme, useRowHeight } from '../contracts/contractModuleUi';
 import {
-  ACCENT, DANGER, INCOMING, INTERNAL, OK, SLATE, SOON, WARN, chipSx, dateTimeLabel,
+  ACCENT, DANGER, INCOMING, INTERNAL, OK, SLATE, SOON, WARN, chipSx,
 } from './correspondenceUi';
 import { StudioKpi, MUTED } from './correspondenceStudioUi';
 import {
@@ -30,7 +31,8 @@ import {
 } from './CorrespondenceNameMappingDialog';
 
 const API = '/correspondence-name-aliases/';
-const GROUPS_LIMIT = 200;
+const FETCH_LIMIT = 200;
+const UNMAPPED_LIMIT = 60;
 
 const PURPOSE_COLOR = {
   referral: WARN,
@@ -64,28 +66,27 @@ const useDebounced = (value, delay = 320) => {
   return debounced;
 };
 
+const panelSx = (theme) => ({
+  borderRadius: 'var(--hrms-table-radius, 16px)',
+  border: '1px solid',
+  borderColor: theme.cardBorderColor,
+  bgcolor: 'background.paper',
+  boxShadow: 'none',
+});
+
+
 const CorrespondenceNameMappingPage = () => {
   const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
-  const [search, setSearch] = useState(searchParams.get('q') || '');
   const [scope, setScope] = useState(searchParams.get('scope') || '');
-  const [targetKind, setTargetKind] = useState('');
-  const [mode, setMode] = useState('');
-  const [multiOnly, setMultiOnly] = useState(false);
-  const [unmappedOpen, setUnmappedOpen] = useState(false);
+  const [onlyUnmapped, setOnlyUnmapped] = useState(false);
+  const [search, setSearch] = useState(searchParams.get('q') || '');
   const [form, setForm] = useState(EMPTY_MAPPING_FORM);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [preview, setPreview] = useState(null);
   const debouncedSearch = useDebounced(search);
-
-  useEffect(() => {
-    const requested = searchParams.get('q');
-    if (requested !== null) setSearch(requested);
-    const requestedScope = searchParams.get('scope');
-    if (requestedScope) setScope(requestedScope);
-  }, [searchParams]);
 
   const metaQuery = useQuery({
     queryKey: ['correspondence-alias-meta'],
@@ -93,45 +94,98 @@ const CorrespondenceNameMappingPage = () => {
     staleTime: 60_000,
   });
 
+  const columnsQuery = useQuery({
+    queryKey: ['correspondence-alias-columns'],
+    queryFn: () => axiosInstance.get(`${API}columns/`).then((response) => response.data),
+    staleTime: 30_000,
+    placeholderData: (previous) => previous,
+  });
+
+  /** انواع مقصد مجاز همین ستون — محاسبهٔ پیشنهادها را روی همان استخرها محدود می‌کند. */
+  const columnKinds = useMemo(() => {
+    const current = asList(columnsQuery.data).find((item) => item.key === scope);
+    return (current?.target_kinds || []).join(',');
+  }, [columnsQuery.data, scope]);
+
   const groupsQuery = useQuery({
-    queryKey: ['correspondence-alias-groups', debouncedSearch, scope, targetKind, mode, multiOnly],
+    queryKey: ['correspondence-alias-groups', scope, debouncedSearch],
     queryFn: () => axiosInstance.get(`${API}groups/`, {
       params: {
-        search: debouncedSearch,
         scope,
-        target_kind: targetKind,
-        mode,
-        multi: multiOnly ? 1 : '',
-        limit: GROUPS_LIMIT,
+        limit: FETCH_LIMIT,
+        ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       },
     }).then((response) => response.data),
+    enabled: Boolean(scope),
     placeholderData: (previous) => previous,
     staleTime: 30_000,
   });
 
   const unmappedQuery = useQuery({
-    queryKey: ['correspondence-alias-unmapped'],
-    queryFn: () => axiosInstance.get(`${API}unmapped/`, { params: { limit: 60 } })
-      .then((response) => response.data),
-    enabled: unmappedOpen,
+    queryKey: ['correspondence-alias-unmapped', scope, debouncedSearch, columnKinds],
+    queryFn: () => axiosInstance.get(`${API}unmapped/`, {
+      params: {
+        scope,
+        limit: UNMAPPED_LIMIT,
+        ...(columnKinds ? { kinds: columnKinds } : {}),
+        ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+      },
+    }).then((response) => response.data),
+    enabled: Boolean(scope),
+    placeholderData: (previous) => previous,
     staleTime: 60_000,
   });
 
-  const dialogOpen = form.open;
   const metaData = metaQuery.data;
   const purposes = useMemo(() => metaData?.purposes || [], [metaData]);
-  const purposeGroups = useMemo(
-    () => metaData?.purpose_groups || [],
-    [metaData],
-  );
   const purposesByKey = useMemo(
     () => Object.fromEntries(purposes.map((item) => [item.key, item])),
     [purposes],
   );
-  const selectedPurpose = purposesByKey[form.scope];
-  const allowedKinds = selectedPurpose?.target_kinds || ['employee'];
-  const supportsDual = Boolean(metaData?.paired_scopes?.[form.scope]);
+  const kindLabels = useMemo(
+    () => Object.fromEntries((metaData?.target_kinds || []).map((item) => [item.key, item.label])),
+    [metaData],
+  );
+  const purposeGroups = useMemo(() => metaData?.purpose_groups || [], [metaData]);
 
+  /** ستون‌های کاری: از اندپوینت columns؛ در نبود آن از کاربردهای متادیتا. */
+  const columns = useMemo(() => {
+    const fromApi = asList(columnsQuery.data);
+    if (fromApi.length) return fromApi;
+    return purposes
+      .filter((item) => item.key !== 'any')
+      .map((item) => ({
+        key: item.key,
+        label: item.label,
+        group: item.group,
+        description: item.description,
+        target_kinds: item.target_kinds || [],
+        paired: item.paired,
+        names: 0,
+        mapped: 0,
+        unmapped: 0,
+        rows: 0,
+        aliases: item.count || 0,
+      }));
+  }, [columnsQuery.data, purposes]);
+
+  const selectedColumn = useMemo(
+    () => columns.find((item) => item.key === scope) || null,
+    [columns, scope],
+  );
+
+  // انتخاب ستون پیش‌فرض: پرترین ستون بدون نگاشت
+  useEffect(() => {
+    if (scope || !columns.length) return;
+    const worst = [...columns].sort((a, b) => (b.unmapped || 0) - (a.unmapped || 0))[0];
+    setScope(worst?.key || 'counterparty');
+  }, [columns, scope]);
+
+  const selectedPurpose = purposesByKey[scope] || {};
+  const allowedKinds = selectedPurpose?.target_kinds || selectedColumn?.target_kinds || ['employee'];
+  const supportsDual = Boolean(metaData?.paired_scopes?.[scope]);
+
+  const dialogOpen = form.open;
   const contactsQuery = useQuery({
     queryKey: ['correspondence-contacts'],
     queryFn: () => axiosInstance.get('/correspondents/', { params: { page_size: 300 } })
@@ -145,48 +199,100 @@ const CorrespondenceNameMappingPage = () => {
     enabled: dialogOpen,
   });
   const categoriesQuery = useQuery({
-    queryKey: ['correspondence-categories'],
+    queryKey: ['correspondence-letter-categories'],
     queryFn: () => axiosInstance.get('/letter-categories/', { params: { page_size: 200 } })
       .then((response) => response.data),
     enabled: dialogOpen,
   });
 
-  const summary = metaQuery.data?.summary || {};
-  const groups = asList(groupsQuery.data);
-  const unmapped = asList(unmappedQuery.data);
+  const summary = metaData?.summary || {};
   const contacts = asList(contactsQuery.data);
   const organizations = asList(organizationsQuery.data);
   const categories = asList(categoriesQuery.data);
 
+  /** ادغام «نگاشت‌شده‌ها» و «بدون نگاشت‌ها» در یک فهرست نام برای ستون فعال. */
+  const rows = useMemo(() => {
+    const query = debouncedSearch.trim();
+    const map = new Map();
+    asList(groupsQuery.data).forEach((group) => {
+      map.set(group.normalized, {
+        normalized: group.normalized,
+        raw_name: group.raw_name,
+        scope: group.scope,
+        bidirectional: Boolean(group.bidirectional),
+        count: 0,
+        mapped: true,
+        targets: group.targets || [],
+        targets_label: group.targets_label || '',
+        applied_count: group.applied_count || 0,
+        suggestions: [],
+      });
+    });
+    asList(unmappedQuery.data).forEach((row) => {
+      if (query && !String(row.raw_name || '').includes(query)
+        && !String(row.normalized || '').includes(query)) return;
+      const existing = map.get(row.normalized);
+      if (existing) {
+        existing.count += row.count || 0;
+        existing.suggestions = row.suggestions || [];
+        if (!existing.raw_name) existing.raw_name = row.raw_name;
+        return;
+      }
+      map.set(row.normalized, {
+        normalized: row.normalized,
+        raw_name: row.raw_name,
+        scope,
+        bidirectional: false,
+        count: row.count || 0,
+        mapped: false,
+        targets: [],
+        targets_label: '',
+        applied_count: 0,
+        suggestions: row.suggestions || [],
+      });
+    });
+    const list = [...map.values()];
+    if (onlyUnmapped) {
+      return list.filter((row) => !row.mapped)
+        .sort((a, b) => (b.count || 0) - (a.count || 0));
+    }
+    return list.sort((a, b) => (
+      Number(a.mapped) - Number(b.mapped) || (b.count || 0) - (a.count || 0)
+    ));
+  }, [groupsQuery.data, unmappedQuery.data, onlyUnmapped, scope, debouncedSearch]);
+
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
-    moduleTheme.tableTheme, Math.max(1, groups.length),
+    moduleTheme.tableTheme, Math.max(1, rows.length),
   );
 
   const refresh = useCallback(() => {
-    qc.invalidateQueries({ queryKey: ['correspondence-alias-groups'] });
+    qc.invalidateQueries({ queryKey: ['correspondence-alias-columns'] });
     qc.invalidateQueries({ queryKey: ['correspondence-alias-meta'] });
+    qc.invalidateQueries({ queryKey: ['correspondence-alias-groups'] });
     qc.invalidateQueries({ queryKey: ['correspondence-alias-unmapped'] });
   }, [qc]);
 
-
-  const openCreate = useCallback((rawName = '', nextScope = '', kind = '') => {
-    const purpose = purposesByKey[nextScope || 'referral'];
+  const firstAllowedKind = useCallback((key) => {
+    const purpose = purposesByKey[key];
     const kinds = purpose?.target_kinds || ['employee'];
-    const firstKind = kind || kinds[0];
+    return kinds[0];
+  }, [purposesByKey]);
+
+  const openManual = useCallback((rawName = '', nextScope = '') => {
+    const target = nextScope || scope || 'counterparty';
     setForm({
       ...EMPTY_MAPPING_FORM,
       open: true,
       raw_name: rawName,
-      scope: nextScope || 'referral',
-      targets: [emptyMappingTarget(firstKind)],
+      scope: target,
+      targets: [emptyMappingTarget(firstAllowedKind(target))],
     });
     setError('');
-  }, [purposesByKey]);
+  }, [firstAllowedKind, scope]);
 
   const openAddTarget = useCallback((row) => {
-    const usedKinds = row.target_kinds || [];
-    const purpose = purposesByKey[row.scope];
-    const kinds = purpose?.target_kinds || ['employee'];
+    const usedKinds = (row.targets || []).map((item) => item.target_kind);
+    const kinds = purposesByKey[row.scope]?.target_kinds || ['employee'];
     const nextKind = kinds.find((item) => !usedKinds.includes(item)) || kinds[0];
     setForm({
       ...EMPTY_MAPPING_FORM,
@@ -199,6 +305,12 @@ const CorrespondenceNameMappingPage = () => {
     });
     setError('');
   }, [purposesByKey]);
+
+  const openEditRow = useCallback((row, target) => {
+    setForm(mappingFormFromTarget(row, target));
+    setError('');
+  }, []);
+
 
   const save = useMutation({
     mutationFn: async () => {
@@ -270,6 +382,52 @@ const CorrespondenceNameMappingPage = () => {
     },
   });
 
+  /** نگاشت سریع: پیشنهاد سامانه → ثبت نگاشت + اعمال همان لحظه. */
+  const quickMap = useMutation({
+    mutationFn: async ({ row, suggestion }) => {
+      const created = await axiosInstance.post(API, {
+        raw_name: row.raw_name,
+        scope: row.scope || scope,
+        order: 0,
+        ...mappingTargetPayload({
+          kind: suggestion.kind,
+          value: { id: suggestion.id, name: suggestion.label },
+        }),
+      });
+      const applied = await axiosInstance.post(`${API}${created.data.id}/apply/`, {});
+      return { row, suggestion, applied: applied.data };
+    },
+    onSuccess: ({ row, suggestion, applied }) => {
+      refresh();
+      setError('');
+      setToast(`«${row.raw_name}» به «${suggestion.label}» نگاشت و `
+        + `${formatPersianNumber(applied?.total || 0)} ردیف اصلاح شد.`);
+    },
+    onError: (err) => setError(
+      err?.response?.data?.detail || 'ثبت نگاشت پیشنهادی ممکن نشد.',
+    ),
+  });
+
+  /** اعمال همهٔ نگاشت‌های همین ستون روی داده‌های موجود. */
+  const applyColumn = useMutation({
+    mutationFn: async () => {
+      let total = 0;
+      const mappedRows = rows.filter((row) => row.mapped && row.targets?.length);
+      for (const row of mappedRows) {
+        for (const item of row.targets) {
+          // eslint-disable-next-line no-await-in-loop
+          const response = await axiosInstance.post(`${API}${item.id}/apply/`, {});
+          total += response.data.total || 0;
+        }
+      }
+      return total;
+    },
+    onSuccess: (total) => {
+      refresh();
+      setToast(`${formatPersianNumber(total)} ردیف در ستون «${selectedColumn?.label || ''}» اصلاح شد.`);
+    },
+  });
+
   const applyAll = useMutation({
     mutationFn: (dryRun) => axiosInstance.post(`${API}apply-all/`, { dry_run: dryRun }),
     onSuccess: (response, dryRun) => {
@@ -283,149 +441,11 @@ const CorrespondenceNameMappingPage = () => {
     },
   });
 
-
-  const openEditRow = useCallback((row, target) => {
-    setForm(mappingFormFromTarget(row, target));
-    setError('');
-  }, []);
-
-  const columns = useMemo(() => ([
-    {
-      key: 'raw',
-      label: 'نام واردشده',
-      width: '19%',
-      render: (row) => (
-        <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap title={row.raw_name} sx={{ fontSize: 11.5, fontWeight: 800 }}>
-            {row.raw_name}
-          </Typography>
-          <Typography noWrap sx={{ fontSize: 9.5, color: MUTED }}>
-            {row.normalized && row.normalized !== row.raw_name
-              ? `کلید نگاشت: ${row.normalized}`
-              : (row.target_count > 1 ? 'نگاشت چند مقصده' : 'نگاشت یک مقصده')}
-          </Typography>
-        </Box>
-      ),
-    },
-    {
-      key: 'purpose',
-      label: 'کاربرد',
-      width: '17%',
-      render: (row) => (
-        <Stack spacing={0.3} alignItems="flex-start">
-          <Chip size="small" label={row.scope_label}
-            sx={chipSx(PURPOSE_COLOR[row.scope] || ACCENT)} />
-          {row.bidirectional ? (
-            <Chip size="small" icon={<SyncAltIcon sx={{ fontSize: 11 }} />}
-              label="دو مسیره" sx={chipSx(INTERNAL)} />
-          ) : null}
-        </Stack>
-      ),
-    },
-    {
-      key: 'targets',
-      label: 'مقصدها',
-      width: '29%',
-      render: (row) => (
-        <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap title={row.targets_label}
-            sx={{ fontSize: 11.5, fontWeight: 800, lineHeight: 1.6 }}>
-            {row.targets_label}
-          </Typography>
-          <Stack direction="row" spacing={0.3} useFlexGap flexWrap="wrap" sx={{ mt: 0.15 }}>
-            {row.targets.map((item) => (
-              <Chip
-                key={item.id}
-                size="small"
-                label={item.target_kind_display}
-                onClick={() => openEditRow(row, item)}
-                sx={{ ...chipSx(KIND_COLOR[item.target_kind] || SLATE), cursor: 'pointer' }}
-              />
-            ))}
-          </Stack>
-        </Box>
-      ),
-    },
-    {
-      key: 'count',
-      label: 'تعداد مقصد',
-      width: '9%',
-      align: 'center',
-      render: (row) => (
-        <Chip size="small" label={`${toPersianDigits(row.target_count)} مقصد`}
-          sx={chipSx(row.target_count > 1 ? INTERNAL : SLATE)} />
-      ),
-    },
-    {
-      key: 'applied',
-      label: 'اصلاح‌شده',
-      width: '9%',
-      align: 'center',
-      render: (row) => (
-        <Chip size="small" label={toPersianDigits(row.applied_count || 0)}
-          sx={chipSx(row.applied_count ? OK : SLATE)} />
-      ),
-    },
-    {
-      key: 'last',
-      label: 'آخرین اعمال',
-      width: '10%',
-      render: (row) => (
-        <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-          {row.last_applied_at ? dateTimeLabel(row.last_applied_at) : '—'}
-        </Typography>
-      ),
-    },
-    {
-      key: 'actions',
-      label: 'عملیات',
-      width: '12%',
-      align: 'center',
-      render: (row) => (
-        <Stack direction="row" spacing={0.2} justifyContent="center">
-          <Tooltip title="افزودن مقصد دیگر (نگاشت چند مقصده)">
-            <IconButton size="small" aria-label="افزودن مقصد" onClick={() => openAddTarget(row)}>
-              <AddLinkIcon sx={{ fontSize: 15, color: INTERNAL }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="ویرایش نگاشت">
-            <IconButton size="small" aria-label="ویرایش نگاشت"
-              onClick={() => openEditRow(row, row.targets[0])}>
-              <EditOutlinedIcon sx={{ fontSize: 15, color: SLATE }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="اعمال روی داده‌های موجود">
-            <span>
-              <IconButton size="small" aria-label="اعمال نگاشت"
-                disabled={applyGroup.isPending} onClick={() => applyGroup.mutate(row)}>
-                <PlayCircleOutlineIcon sx={{ fontSize: 15, color: INCOMING }} />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Tooltip title="حذف این نگاشت">
-            <IconButton size="small" aria-label="حذف نگاشت"
-              onClick={() => row.targets.forEach((item) => remove.mutate(item.id))}>
-              <DeleteOutlineIcon sx={{ fontSize: 15, color: DANGER }} />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      ),
-    },
-  ]), [applyGroup, openAddTarget, openEditRow, remove]);
-
-
-  const totalGroups = groupsQuery.data?.count ?? groups.length;
-  const loading = metaQuery.isLoading || (groupsQuery.isLoading && !groups.length);
-  const activeFilterCount = [scope, targetKind, mode, multiOnly ? 'multi' : '']
-    .filter(Boolean).length + (search.trim() ? 1 : 0);
-
-  const resetFilters = () => {
-    setSearch('');
-    setScope('');
-    setTargetKind('');
-    setMode('');
-    setMultiOnly(false);
-  };
+  const columnsTotals = useMemo(() => columns.reduce((acc, col) => ({
+    names: acc.names + (col.names || 0),
+    mapped: acc.mapped + (col.mapped || 0),
+    unmapped: acc.unmapped + (col.unmapped || 0),
+  }), { names: 0, mapped: 0, unmapped: 0 }), [columns]);
 
   const purposeOptions = purposeGroups.length
     ? purposeGroups.map((group) => ({
@@ -434,51 +454,177 @@ const CorrespondenceNameMappingPage = () => {
     })).filter((group) => group.items.length)
     : [{ group: 'کاربردها', items: purposes }];
 
-  const startFromSuggestion = (row, suggestion) => {
-    const scopeKey = (row.scopes || [])[0] || 'any';
-    setForm({
-      ...EMPTY_MAPPING_FORM,
-      open: true,
-      raw_name: row.raw_name,
-      scope: scopeKey,
-      targets: [{
-        ...emptyMappingTarget(suggestion.kind),
-        value: {
-          id: suggestion.id,
-          name: suggestion.label,
-          label: suggestion.label,
-          full_name: suggestion.label,
-        },
-      }],
-    });
-    setError('');
-  };
+
+  const tableColumns = useMemo(() => ([
+    {
+      key: 'raw',
+      label: 'نام واردشده',
+      width: '22%',
+      render: (row) => (
+        <Box sx={{ minWidth: 0 }}>
+          <Typography noWrap title={row.raw_name} sx={{ fontSize: 11.5, fontWeight: 800 }}>
+            {row.raw_name}
+          </Typography>
+          <Stack direction="row" spacing={0.35} alignItems="center" useFlexGap flexWrap="wrap">
+            <Typography noWrap sx={{ fontSize: 9.5, color: MUTED }}>
+              {`کلید: ${row.normalized || '—'}`}
+            </Typography>
+            {row.count ? (
+              <Chip size="small" label={`${toPersianDigits(row.count)} ردیف`}
+                sx={{ ...chipSx(SLATE), height: 17 }} />
+            ) : null}
+          </Stack>
+        </Box>
+      ),
+    },
+    {
+      key: 'state',
+      label: 'وضعیت',
+      width: '11%',
+      align: 'center',
+      render: (row) => (
+        row.mapped ? (
+          <Chip size="small" icon={<CheckCircleOutlineIcon sx={{ fontSize: 14 }} />}
+            label={`${toPersianDigits(row.targets.length)} مقصد`} sx={chipSx(OK)} />
+        ) : (
+          <Chip size="small" label="بدون نگاشت" sx={chipSx(WARN)} />
+        )
+      ),
+    },
+    {
+      key: 'targets',
+      label: 'مقصدها',
+      width: '25%',
+      render: (row) => (
+        row.mapped ? (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography noWrap title={row.targets_label}
+              sx={{ fontSize: 11.5, fontWeight: 800, lineHeight: 1.7 }}>
+              {row.targets_label}
+            </Typography>
+            <Stack direction="row" spacing={0.3} useFlexGap flexWrap="wrap" sx={{ mt: 0.15 }}>
+              {row.targets.map((item) => (
+                <Chip
+                  key={item.id}
+                  size="small"
+                  label={kindLabels[item.target_kind] || item.target_kind_display}
+                  onClick={() => openEditRow(row, item)}
+                  sx={{ ...chipSx(KIND_COLOR[item.target_kind] || SLATE), cursor: 'pointer' }}
+                />
+              ))}
+              {row.applied_count ? (
+                <Chip size="small" label={`${toPersianDigits(row.applied_count)} اصلاح`}
+                  sx={{ ...chipSx(INTERNAL), height: 18 }} />
+              ) : null}
+            </Stack>
+          </Box>
+        ) : (
+          <Typography sx={{ fontSize: 11, color: MUTED }}>—</Typography>
+        )
+      ),
+    },
+    {
+      key: 'suggestions',
+      label: 'پیشنهاد / آدرس‌دهی',
+      width: '28%',
+      render: (row) => (
+        row.mapped ? (
+          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+            نگاشت‌شده؛ برای تغییر روی مقصد کلیک کنید.
+          </Typography>
+        ) : (
+          <Stack direction="row" spacing={0.3} useFlexGap flexWrap="wrap">
+            {(row.suggestions || []).map((item) => (
+              <Tooltip key={`${item.kind}-${item.id}`}
+                title={`نگاشت به ${kindLabels[item.kind] || item.kind}`}>
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  icon={<AutoFixHighIcon sx={{ fontSize: 13 }} />}
+                  label={item.label}
+                  disabled={quickMap.isPending}
+                  onClick={() => quickMap.mutate({ row, suggestion: item })}
+                  sx={{ fontSize: 9.5, height: 22, cursor: 'pointer' }}
+                />
+              </Tooltip>
+            ))}
+            {!(row.suggestions || []).length ? (
+              <Typography sx={{ fontSize: 10, color: MUTED }}>
+                پیشنهادی نیست؛ «آدرس‌دهی دستی» را بزنید.
+              </Typography>
+            ) : null}
+          </Stack>
+        )
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'عملیات',
+      width: '14%',
+      align: 'center',
+      render: (row) => (
+        <Stack direction="row" spacing={0.2} justifyContent="center">
+          <Tooltip title={row.mapped ? 'افزودن مقصد دیگر' : 'آدرس‌دهی دستی'}>
+            <IconButton size="small" aria-label="آدرس‌دهی دستی"
+              onClick={() => (row.mapped ? openAddTarget(row) : openManual(row.raw_name))}>
+              <AddLinkIcon sx={{ fontSize: 15, color: INTERNAL }} />
+            </IconButton>
+          </Tooltip>
+          {row.mapped ? (
+            <>
+              <Tooltip title="ویرایش نگاشت">
+                <IconButton size="small" aria-label="ویرایش نگاشت"
+                  onClick={() => openEditRow(row, row.targets[0])}>
+                  <EditOutlinedIcon sx={{ fontSize: 15, color: SLATE }} />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="اعمال روی داده‌های موجود">
+                <span>
+                  <IconButton size="small" aria-label="اعمال نگاشت"
+                    disabled={applyGroup.isPending} onClick={() => applyGroup.mutate(row)}>
+                    <PlayCircleOutlineIcon sx={{ fontSize: 15, color: INCOMING }} />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="حذف این نگاشت">
+                <IconButton size="small" aria-label="حذف نگاشت"
+                  onClick={() => row.targets.forEach((item) => remove.mutate(item.id))}>
+                  <DeleteOutlineIcon sx={{ fontSize: 15, color: DANGER }} />
+                </IconButton>
+              </Tooltip>
+            </>
+          ) : null}
+        </Stack>
+      ),
+    },
+  ]), [
+    applyGroup, kindLabels, openAddTarget, openEditRow, openManual, quickMap, remove,
+  ]);
+
+  const loading = (columnsQuery.isLoading && !columns.length)
+    || (Boolean(scope) && groupsQuery.isLoading && !rows.length && unmappedQuery.isLoading);
+
 
   return (
     <Box>
       <PageHeader
         icon={<SyncAltIcon />}
         title="نگاشت نام‌ها"
-        subtitle="قواعد تخصصی تطبیق نام‌های خام مکاتبات با پرسنل، طرف حساب، مخاطبین، سازمان و نوع مکاتبه"
+        subtitle="هر ستون مکاتبات را جداگانه نگاشت کنید: نام‌های بدون نگاشت را با پیشنهاد سامانه یا انتخاب دستی به پرسنل، طرف حساب، مخاطب، سازمان و نوع مکاتبه وصل کنید"
         badge={(
           <Chip
             size="small"
-            label={`${formatPersianNumber(summary.names || 0)} نام نگاشت‌شده`}
+            label={`${formatPersianNumber(summary.names || columnsTotals.mapped || 0)} نام نگاشت‌شده`}
             sx={chipSx(ACCENT)}
           />
         )}
         actions={(
           <>
-            <Tooltip title="بازخوانی فهرست‌ها">
+            <Tooltip title="بازخوانی ستون‌ها">
               <IconButton size="small" aria-label="بازخوانی نگاشت‌ها" onClick={refresh}>
                 <RefreshIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
-            <Button size="small" variant="outlined"
-              startIcon={<WarningAmberIcon sx={{ fontSize: 16 }} />}
-              onClick={() => setUnmappedOpen((previous) => !previous)}>
-              نام‌های بدون نگاشت
-            </Button>
             <Button size="small" variant="outlined"
               startIcon={<AutoFixHighIcon sx={{ fontSize: 16 }} />}
               disabled={applyAll.isPending || !summary.aliases}
@@ -487,7 +633,7 @@ const CorrespondenceNameMappingPage = () => {
             </Button>
             <Button size="small" variant="contained"
               startIcon={<AddLinkIcon sx={{ fontSize: 16 }} />}
-              onClick={() => openCreate('')}>
+              onClick={() => openManual('')}>
               افزودن نگاشت
             </Button>
           </>
@@ -513,75 +659,166 @@ const CorrespondenceNameMappingPage = () => {
         mb: 1.25,
         gridTemplateColumns: {
           xs: 'repeat(2, minmax(0, 1fr))',
-          md: 'repeat(5, minmax(0, 1fr))',
+          md: 'repeat(4, minmax(0, 1fr))',
         },
       }}>
         <StudioKpi
           icon={SyncAltIcon}
           label="نگاشت‌های فعال"
           value={formatPersianNumber(summary.aliases || 0)}
-          hint={`${formatPersianNumber(summary.names || 0)} نام یکتا`}
+          hint={`${formatPersianNumber(summary.multi || 0)} نگاشت چند مقصده`}
           color={ACCENT}
         />
         <StudioKpi
-          icon={AddLinkIcon}
-          label="مقصدهای نگاشت‌شده"
-          value={formatPersianNumber(summary.aliases || 0)}
-          hint={`${formatPersianNumber(summary.by_kind?.employee || 0)} پرسنل · `
-            + `${formatPersianNumber(summary.by_kind?.party || 0)} طرف حساب`}
-          color={INCOMING}
-        />
-        <StudioKpi
-          icon={TuneIcon}
-          label="نگاشت چند مقصده"
-          value={formatPersianNumber(summary.multi || 0)}
-          hint={`${formatPersianNumber(summary.bidirectional || 0)} نگاشت دو مسیره`}
-          color={INTERNAL}
-          onClick={() => { setMultiOnly(true); setMode(''); }}
-        />
-        <StudioKpi
-          icon={PlayCircleOutlineIcon}
-          label="ردیف‌های اصلاح‌شده"
-          value={formatPersianNumber(summary.applied || 0)}
-          hint="اتصال خودکار نامه‌ها و ارجاعات"
+          icon={CheckCircleOutlineIcon}
+          label="نام‌های نگاشت‌شده"
+          value={formatPersianNumber(columnsTotals.mapped)}
+          hint={`از ${formatPersianNumber(columnsTotals.names)} نام موجود در داده‌ها`}
           color={OK}
         />
         <StudioKpi
           icon={WarningAmberIcon}
           label="نام‌های بدون نگاشت"
-          value={summary.unmapped
-            ? formatPersianNumber(summary.unmapped)
-            : (unmappedQuery.data ? formatPersianNumber(unmapped.length) : '—')}
-          hint="بررسی و نگاشت سریع"
+          value={formatPersianNumber(columnsTotals.unmapped)}
+          hint="با پیشنهاد یا آدرس‌دهی دستی"
           color={WARN}
-          onClick={() => setUnmappedOpen(true)}
+          onClick={() => setOnlyUnmapped(true)}
+        />
+        <StudioKpi
+          icon={PlayCircleOutlineIcon}
+          label="ردیف‌های اصلاح‌شده"
+          value={formatPersianNumber(summary.applied || 0)}
+          hint="اتصال نامه‌ها و ارجاعات"
+          color={INTERNAL}
+          onClick={() => applyAll.mutate(true)}
         />
       </Box>
 
 
-      <Paper elevation={0} sx={{
-        borderRadius: 'var(--hrms-table-radius, 16px)',
-        border: '1px solid',
-        borderColor: moduleTheme.cardBorderColor,
-        bgcolor: 'background.paper',
-        boxShadow: 'none',
-        px: `${moduleTheme.cardPadX}px`,
-        py: `${moduleTheme.cardPadY}px`,
-        mb: 1.25,
-      }}>
+      {/* ── انتخاب ستون (فیلد) ── */}
+      <Paper elevation={0} sx={{ ...panelSx(moduleTheme), p: 1, mb: 1.25 }}>
+        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap"
+          sx={{ mb: 0.75 }}>
+          <TuneIcon sx={{ fontSize: 17, color: ACCENT }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
+            ستون موردنظر را انتخاب کنید
+          </Typography>
+          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+            همهٔ ستون‌های نامی (به‌جز تاریخ و شمارهٔ نامه) قابل نگاشت هستند
+          </Typography>
+          <Box sx={{ flex: 1 }} />
+          {columnsQuery.isFetching ? <CircularProgress size={13} sx={{ color: ACCENT }} /> : null}
+        </Stack>
+        <Box sx={{
+          display: 'grid',
+          gap: 0.75,
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            md: 'repeat(3, minmax(0, 1fr))',
+            lg: 'repeat(5, minmax(0, 1fr))',
+          },
+        }}>
+          {columns.map((col) => {
+            const selected = col.key === scope;
+            const percent = col.names ? Math.round((col.mapped / col.names) * 100) : 0;
+            const tone = PURPOSE_COLOR[col.key] || ACCENT;
+            return (
+              <Box
+                key={col.key}
+                role="button"
+                tabIndex={0}
+                aria-label={`ستون ${col.label}`}
+                aria-pressed={selected}
+                onClick={() => setScope(col.key)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') setScope(col.key);
+                }}
+                sx={{
+                  p: 0.8,
+                  borderRadius: '13px',
+                  border: '1px solid',
+                  borderColor: selected ? tone : 'divider',
+                  bgcolor: selected ? alpha(tone, 0.07) : 'transparent',
+                  cursor: 'pointer',
+                  minWidth: 0,
+                  transition: 'border-color .15s ease, background-color .15s ease',
+                  '&:hover': { borderColor: alpha(tone, 0.6), bgcolor: alpha(tone, 0.04) },
+                }}
+              >
+                <Stack direction="row" alignItems="center" spacing={0.5} sx={{ minWidth: 0 }}>
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, flex: 1 }}>
+                    {col.label}
+                  </Typography>
+                  {col.unmapped ? (
+                    <Chip size="small" label={`${toPersianDigits(col.unmapped)} بدون نگاشت`}
+                      sx={{ ...chipSx(WARN), height: 18 }} />
+                  ) : (
+                    <Chip size="small" label="کامل" sx={{ ...chipSx(OK), height: 18 }} />
+                  )}
+                </Stack>
+                <LinearProgress
+                  variant="determinate"
+                  value={percent}
+                  sx={{
+                    height: 5,
+                    borderRadius: 3,
+                    mt: 0.6,
+                    bgcolor: alpha(tone, 0.16),
+                    '& .MuiLinearProgress-bar': { bgcolor: tone, borderRadius: 3 },
+                  }}
+                />
+                <Typography noWrap sx={{ fontSize: 9.5, color: MUTED, mt: 0.35 }}>
+                  {`${formatPersianNumber(col.names)} نام · ${formatPersianNumber(col.mapped)} نگاشت‌شده · ${formatPersianNumber(col.rows)} ردیف`}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Paper>
+
+
+      {/* ── میزکار ستون انتخاب‌شده ── */}
+      <Paper elevation={0} sx={{ ...panelSx(moduleTheme), overflow: 'hidden', mb: 1 }}>
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          spacing={1}
+          spacing={0.75}
           alignItems={{ xs: 'stretch', md: 'center' }}
           useFlexGap
           flexWrap="wrap"
+          sx={{
+            px: `${moduleTheme.cardPadX}px`,
+            py: 0.9,
+            borderBottom: '1px dashed',
+            borderColor: 'divider',
+          }}
         >
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
+              {selectedColumn?.label ? `نگاشت ستون «${selectedColumn.label}»` : 'یک ستون انتخاب کنید'}
+            </Typography>
+            <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+              {selectedColumn?.description
+                || 'نام‌های این ستون را با پیشنهاد سامانه یا انتخاب دستی به مقصد متصل کنید.'}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={0.3} useFlexGap flexWrap="wrap">
+            {(selectedColumn?.target_kinds || []).map((kind) => (
+              <Chip key={kind} size="small" label={kindLabels[kind] || kind}
+                sx={{ ...chipSx(KIND_COLOR[kind] || SLATE), height: 19 }} />
+            ))}
+            {supportsDual ? (
+              <Chip size="small" label="نگاشت دو مسیره"
+                sx={{ ...chipSx(INCOMING), height: 19 }} />
+            ) : null}
+          </Stack>
+          <Box sx={{ flex: 1 }} />
           <TextField
             size="small"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="جست‌وجو در نام، مقصد یا یادداشت…"
-            inputProps={{ 'aria-label': 'جست‌وجوی نگاشت نام‌ها' }}
+            placeholder="جست‌وجو در نام‌های این ستون…"
+            inputProps={{ 'aria-label': 'جست‌وجوی نام در ستون' }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -589,96 +826,26 @@ const CorrespondenceNameMappingPage = () => {
                 </InputAdornment>
               ),
             }}
-            sx={{ minWidth: { xs: '100%', md: 250 } }}
+            sx={{ minWidth: { xs: '100%', md: 220 } }}
           />
-          <TextField
-            select
-            size="small"
-            label="کاربرد نگاشت"
-            value={scope}
-            onChange={(event) => setScope(event.target.value)}
-            sx={{ minWidth: { xs: '100%', md: 210 } }}
-          >
-            <MenuItem value="">همهٔ کاربردها</MenuItem>
-            {purposeOptions.map((group) => [
-              <ListSubheader key={group.group} sx={{ fontSize: 10.5, fontWeight: 800 }}>
-                {group.group}
-              </ListSubheader>,
-              ...group.items.map((item) => (
-                <MenuItem key={item.key} value={item.key} sx={{ fontSize: 12 }}>
-                  {item.label}
-                  {item.count ? ` (${toPersianDigits(item.count)})` : ''}
-                </MenuItem>
-              )),
-            ])}
-          </TextField>
-          <TextField
-            select
-            size="small"
-            label="نوع مقصد"
-            value={targetKind}
-            onChange={(event) => setTargetKind(event.target.value)}
-            sx={{ minWidth: { xs: '100%', md: 180 } }}
-          >
-            <MenuItem value="">همهٔ مقصدها</MenuItem>
-            {(metaQuery.data?.target_kinds || []).map((item) => (
-              <MenuItem key={item.key} value={item.key} sx={{ fontSize: 12 }}>
-                {item.label}
-              </MenuItem>
-            ))}
-          </TextField>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={mode}
-            onChange={(_event, value) => setMode(value || '')}
-            sx={{ '& .MuiToggleButton-root': { fontSize: 11, px: 1.2, py: 0.4 } }}
-          >
-            <ToggleButton value="">همه</ToggleButton>
-            <ToggleButton value="single">یک‌مسیره</ToggleButton>
-            <ToggleButton value="dual">دو مسیره</ToggleButton>
-          </ToggleButtonGroup>
-          <ToggleButton
-            size="small"
-            value="multi"
-            selected={multiOnly}
-            onChange={() => setMultiOnly((previous) => !previous)}
-            sx={{ fontSize: 11, px: 1.2, py: 0.4, borderRadius: '8px !important' }}
-          >
-            فقط چند مقصده
-          </ToggleButton>
-          <Box sx={{ flex: 1 }} />
-          {activeFilterCount ? (
-            <Button size="small" onClick={resetFilters}
-              sx={{ fontSize: 11, color: MUTED }}>
-              {`پاک‌کردن ${toPersianDigits(activeFilterCount)} فیلتر`}
-            </Button>
-          ) : null}
-        </Stack>
-      </Paper>
-
-      <Paper elevation={0} sx={{
-        borderRadius: 'var(--hrms-table-radius, 16px)',
-        overflow: 'hidden',
-        border: '1px solid',
-        borderColor: moduleTheme.cardBorderColor,
-        bgcolor: 'background.paper',
-        boxShadow: 'none',
-        px: `${moduleTheme.cardPadX}px`,
-        py: `${moduleTheme.cardPadY}px`,
-      }}>
-        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap"
-          sx={{ mb: 0.75 }}>
-          <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
-            {`${formatPersianNumber(totalGroups)} نگاشت`}
-          </Typography>
-          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-            مقصدهای چندگانه با خط تیره نمایش داده می‌شوند (نمونه: ارجاع به دو نفر).
-          </Typography>
-          <Box sx={{ flex: 1 }} />
-          {groupsQuery.isFetching ? (
-            <CircularProgress size={14} sx={{ color: ACCENT }} />
-          ) : null}
+          <Button size="small"
+            variant={onlyUnmapped ? 'contained' : 'outlined'}
+            startIcon={<WarningAmberIcon sx={{ fontSize: 15 }} />}
+            onClick={() => setOnlyUnmapped((previous) => !previous)}>
+            فقط بدون نگاشت
+          </Button>
+          <Button size="small" variant="outlined"
+            startIcon={<PlayCircleOutlineIcon sx={{ fontSize: 15 }} />}
+            disabled={applyColumn.isPending || !rows.some((row) => row.mapped)}
+            onClick={() => applyColumn.mutate()}>
+            اعمال این ستون
+          </Button>
+          <Button size="small" variant="contained"
+            startIcon={<AddLinkIcon sx={{ fontSize: 15 }} />}
+            disabled={!scope}
+            onClick={() => openManual('')}>
+            نگاشت دستی
+          </Button>
         </Stack>
 
         {loading ? (
@@ -692,103 +859,20 @@ const CorrespondenceNameMappingPage = () => {
             containerRef={tableRef}
             tableHeight={tableHeight}
             rowHeight={rowHeight}
-            rows={groups}
-            rowKey={(row) => row.key}
-            emptyText="نگاشتی با این فیلترها پیدا نشد؛ از «افزودن نگاشت» یا فهرست نام‌های بدون نگاشت شروع کنید."
-            columns={columns}
+            rows={rows}
+            rowKey={(row) => `${row.scope}-${row.normalized}`}
+            emptyText={scope
+              ? 'برای این ستون نامی با این فیلترها پیدا نشد.'
+              : 'از کارت‌های بالا یک ستون انتخاب کنید.'}
+            columns={tableColumns}
           />
         )}
       </Paper>
 
-
-      {unmappedOpen ? (
-        <Paper elevation={0} sx={{
-          mt: 1.25,
-          p: 1.25,
-          borderRadius: 'var(--hrms-table-radius, 16px)',
-          border: '1px solid',
-          borderColor: moduleTheme.cardBorderColor,
-          bgcolor: 'background.paper',
-          boxShadow: 'none',
-        }}>
-          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.5 }}>
-            <WarningAmberIcon sx={{ fontSize: 17, color: WARN }} />
-            <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
-              نام‌های بدون نگاشت (از داده‌های موجود)
-            </Typography>
-            <Box sx={{ flex: 1 }} />
-            <Button size="small" onClick={() => setUnmappedOpen(false)} sx={{ fontSize: 11 }}>
-              بستن
-            </Button>
-          </Stack>
-          <Typography sx={{ fontSize: 10.5, color: MUTED, mb: 0.75 }}>
-            نام، تعداد تکرار و پیشنهادهای سامانه؛ با کلیک روی پیشنهاد، فرم نگاشت
-            با کاربرد مناسب باز می‌شود.
-          </Typography>
-          {unmappedQuery.isLoading ? (
-            <CircularProgress size={18} sx={{ color: ACCENT }} />
-          ) : null}
-          <Box sx={{
-            display: 'grid',
-            gap: 0.75,
-            gridTemplateColumns: {
-              xs: '1fr',
-              md: 'repeat(2, minmax(0, 1fr))',
-              lg: 'repeat(3, minmax(0, 1fr))',
-            },
-          }}>
-            {unmapped.map((row) => (
-              <Box key={row.normalized} sx={{
-                p: 0.8,
-                borderRadius: '12px',
-                border: '1px solid',
-                borderColor: 'divider',
-                minWidth: 0,
-              }}>
-                <Stack direction="row" spacing={0.5} alignItems="center" useFlexGap
-                  flexWrap="wrap">
-                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, flex: 1 }}>
-                    {row.raw_name}
-                  </Typography>
-                  <Chip size="small" label={`${toPersianDigits(row.count)} مورد`}
-                    sx={chipSx(SLATE)} />
-                </Stack>
-                <Stack direction="row" spacing={0.3} useFlexGap flexWrap="wrap"
-                  sx={{ mt: 0.3 }}>
-                  {(row.scopes || []).map((item) => (
-                    <Chip key={item} size="small"
-                      label={purposesByKey[item]?.label || item}
-                      sx={chipSx(PURPOSE_COLOR[item] || ACCENT)} />
-                  ))}
-                </Stack>
-                <Stack direction="row" spacing={0.3} useFlexGap flexWrap="wrap"
-                  sx={{ mt: 0.4 }}>
-                  {(row.suggestions || []).map((item) => (
-                    <Chip
-                      key={`${item.kind}-${item.id}`}
-                      size="small"
-                      variant="outlined"
-                      label={item.label}
-                      onClick={() => startFromSuggestion(row, item)}
-                      sx={{ fontSize: 9.5, height: 21 }}
-                    />
-                  ))}
-                  {(row.suggestions || []).length === 0 ? (
-                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>
-                      پیشنهادی نیست؛ دستی انتخاب کنید.
-                    </Typography>
-                  ) : null}
-                </Stack>
-              </Box>
-            ))}
-            {!unmappedQuery.isLoading && unmapped.length === 0 ? (
-              <Typography sx={{ fontSize: 11, color: MUTED }}>
-                همهٔ نام‌های داده‌ها نگاشت شده‌اند.
-              </Typography>
-            ) : null}
-          </Box>
-        </Paper>
-      ) : null}
+      <Typography sx={{ fontSize: 10.5, color: MUTED, px: 0.5 }}>
+        نکته: با کلیک روی هر پیشنهاد، نگاشت همان لحظه ساخته و روی نامه‌های موجود اعمال می‌شود.
+        برای انتخاب دستی، «آدرس‌دهی دستی» را بزنید و نوع مقصد (پرسنل، طرف حساب، مخاطب، سازمان یا نوع مکاتبه) را تعیین کنید.
+      </Typography>
 
       <NameMappingFormDialog
         form={form}
@@ -800,9 +884,9 @@ const CorrespondenceNameMappingPage = () => {
         onClearError={() => setError('')}
         purposeOptions={purposeOptions}
         selectedPurpose={purposesByKey[form.scope]}
-        allowedKinds={allowedKinds}
-        supportsDual={supportsDual}
-        targetKinds={metaQuery.data?.target_kinds || []}
+        allowedKinds={purposesByKey[form.scope]?.target_kinds || allowedKinds}
+        supportsDual={Boolean(metaData?.paired_scopes?.[form.scope])}
+        targetKinds={metaData?.target_kinds || []}
         contacts={contacts}
         organizations={organizations}
         categories={categories}

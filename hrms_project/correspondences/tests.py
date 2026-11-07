@@ -167,6 +167,90 @@ class LettersMetaTests(SimpleTestCase):
         )
 
 
+class NameMappingWorkspaceTests(SimpleTestCase):
+    """بازطراحی صفحهٔ نگاشت: میزکار هر ستون (فیلد) با پیشنهاد و آدرس‌دهی دستی."""
+
+    def test_alias_viewset_exposes_workspace_actions(self):
+        from correspondences.views import CorrespondenceNameAliasViewSet
+
+        for name in ('columns', 'unmapped', 'groups', 'meta', 'summary',
+                     'suggestions', 'apply', 'apply_all'):
+            self.assertTrue(hasattr(CorrespondenceNameAliasViewSet, name),
+                            f'action {name} missing')
+
+    def test_workspace_scopes_cover_every_name_column_but_not_date_or_number(self):
+        from correspondences.views import CorrespondenceNameAliasViewSet
+
+        scopes = CorrespondenceNameAliasViewSet.WORKSPACE_SCOPES
+        for key in ('counterparty', 'sender', 'receiver', 'contact', 'organization',
+                    'delivery', 'referral', 'referral_target', 'subject'):
+            self.assertIn(key, scopes)
+        # تاریخ و شمارهٔ نامه ستون نگاشت نیستند
+        self.assertNotIn('date', scopes)
+        self.assertNotIn('number', scopes)
+        self.assertNotIn('any', scopes)
+
+    def test_columns_endpoint_is_routed(self):
+        from django.urls import resolve
+
+        match = resolve('/api/correspondence-name-aliases/columns/')
+        self.assertEqual(match.func.__name__, 'CorrespondenceNameAliasViewSet')
+        self.assertEqual(match.url_name, 'correspondence-name-alias-columns')
+
+    def test_unmapped_endpoint_accepts_scope_filter(self):
+        import inspect
+
+        from correspondences.views import CorrespondenceNameAliasViewSet
+
+        source = inspect.getsource(CorrespondenceNameAliasViewSet.unmapped)
+        self.assertIn("query_params.get('scope')", source)
+        self.assertIn("query_params.get('kinds')", source)
+        self.assertIn("query_params.get('search')", source)
+
+
+class MatchingPrefilterTests(SimpleTestCase):
+    """پیش‌فیلتر کاندیدها: سرعت پیشنهادها روی استخرهای بزرگ."""
+
+    def test_prefilter_keeps_related_candidates_only(self):
+        from types import SimpleNamespace
+
+        from correspondences import matching
+
+        candidates = [
+            SimpleNamespace(id=1, name='شرکت آلفا تجارت'),
+            SimpleNamespace(id=2, name='بتا صنعت پارس'),
+            SimpleNamespace(id=3, name='گاما خدمات'),
+            SimpleNamespace(id=4, name='الفا بازرگانی'),
+        ]
+        picked = matching.prefilter_candidates(
+            'شرکت آلفا', candidates, key=lambda item: item.name,
+        )
+        ids = {item.id for item in picked}
+        self.assertIn(1, ids)     # نام یکسان
+        self.assertIn(4, ids)     # پیشوند مشترک
+        self.assertNotIn(3, ids)  # بی‌ارتباط
+
+    def test_prefilter_handles_empty_name(self):
+        from correspondences import matching
+
+        rows = ['الف', 'ب']
+        self.assertEqual(matching.prefilter_candidates('', rows), rows)
+
+    def test_best_matches_uses_prefilter_for_large_pools(self):
+        from types import SimpleNamespace
+
+        from correspondences import matching
+
+        pool = [SimpleNamespace(id=index, name=f'شرکت نمونه شماره {index}')
+                for index in range(400)]
+        pool.append(SimpleNamespace(id=9999, name='آلفا تجارت'))
+        matches = matching.best_matches(
+            'آلفا تجارت', pool, limit=3, key=lambda item: item.name,
+        )
+        self.assertTrue(matches)
+        self.assertEqual(matches[0]['item'].id, 9999)
+
+
 class LegacyExcelParsingTests(SimpleTestCase):
     """تبدیل داده‌های اکسل واحد مکاتبات به ردیف‌های استاندارد."""
 
