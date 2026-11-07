@@ -80,6 +80,7 @@ const AttachmentPreviewDialog = ({
   const active = files[safeIndex];
   const url = active.file_url || active.url;
   const name = fileNameOf(active);
+  const heading = (active.title || '').trim();
   const kind = previewKindOf(active);
   const size = fileSizeLabel(active.size);
   const kindLabel = active.kind_display || active.document_type || 'پیوست';
@@ -141,8 +142,8 @@ const AttachmentPreviewDialog = ({
       PaperProps={{ sx: { borderRadius: '16px' } }}>
       <DialogTitle sx={{ pb: 0.75, display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0 }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap title={name} sx={{ fontSize: 13, fontWeight: 900, color: INK }}>
-            {name || title || 'پیش‌نمایش پیوست'}
+          <Typography noWrap title={heading || name} sx={{ fontSize: 13, fontWeight: 900, color: INK }}>
+            {heading || name || title || 'پیش‌نمایش پیوست'}
           </Typography>
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 0.35 }}>
             <Chip
@@ -152,7 +153,12 @@ const AttachmentPreviewDialog = ({
               sx={{ height: 19, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(accent, 0.09), color: accent }}
             />
             {size ? <Typography sx={{ fontSize: 10.5, color: MUTED }}>{size}</Typography> : null}
-            {title ? <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>· {title}</Typography> : null}
+            {name && name !== heading ? (
+              <Typography noWrap title={name} sx={{ fontSize: 10.5, color: MUTED, maxWidth: 220 }}>· {name}</Typography>
+            ) : null}
+            {title && title !== heading ? (
+              <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, maxWidth: 260 }}>· {title}</Typography>
+            ) : null}
             {canNavigate ? (
               <Typography sx={{ fontSize: 10.5, color: MUTED }}>
                 · پیوست {toPersianDigits(safeIndex + 1)} از {toPersianDigits(files.length)}
