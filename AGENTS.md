@@ -1,0 +1,479 @@
+# AGENTS.md — handoff brief for the next coding agent
+
+**Repo:** `C:\HRMS` (Kian ERP / HRMS) · **Remote:** `https://github.com/rezakianimajd/HRMS.git` (branch `main`)
+**Last updated:** 2026-11-07 · **Baseline commit:** `fa44809d5`
+
+> هدف این سند: هر ایجنتی که تازه به پروژه می‌آید، بدون کشف دوباره، سریع و امن کار کند.
+> Structure/headings are English; explanations and warnings are Persian; all code/commands are English and copy‑paste ready.
+> این فایل را قبل از هر تغییر کامل بخوانید؛ سپس بخش مربوط به وظیفه را دوباره مرور کنید.
+
+---
+
+## 0) Golden rules — قواعد طلایی
+
+1. **Verify before you finish**: backend → `manage.py check` (+ tests), frontend → the related smoke tests. هر تغییر بدون این دو، ناتمام است.
+2. **UI must follow the Theme Studio** — هیچ رنگ/شعاع/سایهٔ hard‑code. از `useDesignTokens()` و `ModulePaletteContext` استفاده کنید (بخش ۶).
+3. **Every list/table is a performance contract**: light serializer + targeted `select_related`/`Prefetch`, سقف عملی ~۸ کوئری برای هر صفحه (بخش ۸).
+4. **Search lives in two layers**: endpoint search (`?search=` / `?q=`) **and** module search provider (`core/module_search.py`) — بدون دومی، سایدبار/پالت فرمان چیزی پیدا نمی‌کند.
+5. **Never commit** scratch files (`_*.py`, `_*.txt`, `_*.sh`, `_letters_pack/` …). الگوهای `_*.<ext>` در `.gitignore` هستند؛ اگر فایل موقتی لازم شد، با پیشوند `_` در روت بسازید و در پایان پاک کنید.
+6. **Secrets**: هیچ رمز/توکن/محتوای `.env` را در کد، سند یا کامیت نگذارید. رمز `sudo` سرور را همیشه از کاربر بپرسید.
+
+---
+
+## 1) Stack & versions
+
+| Layer | Tech |
+|---|---|
+| Backend | Django 5 + Django REST Framework + SimpleJWT + django‑tenants + django‑filters + Celery (redis) |
+| DB | **PostgreSQL only** (هیچ fallback برای SQLite نیست) |
+| Python | venv محلی: `C:\HRMS\venv\Scripts\python.exe` (سرور: `/opt/hrms/venv`) |
+| Frontend | React 18 + MUI 5.18 + `react-scripts` 5 (CRA) + `@tanstack/react-query` 5 + axios + recharts + i18next |
+| i18n/UX | `LANGUAGE_CODE='fa'`, `TIME_ZONE='Asia/Tehran'`, RTL، تاریخ جلالی (`toJalali`)، اعداد فارسی (`toPersianDigits`) |
+| Auth | JWT (access/refresh) در `localStorage`؛ `axiosInstance` خودکار refresh می‌کند |
+| Pagination | `core.pagination.StandardResultsSetPagination` → `page_size=100`, max 1000 |
+
+نکته: CRA build با `PUBLIC_URL=/assets` انجام می‌شود؛ فایل‌های نهایی از `/assets/static/...` سرو می‌شوند.
+
+---
+
+## 2) Repo layout
+
+```
+C:\HRMS
+├─ hrms_project\            # Django project + apps (هر اپ = یک ماژول)
+│  ├─ hrms_project\settings\{base,development,production}.py
+│  ├─ core\                # shared app: Company/Domain، search engine، pagination، theme API
+│  └─ <apps>\              # employees, documents, correspondences, contracts, accounting, …
+├─ frontend\src\           # React app (pages/, core/, modules/)
+├─ scripts\                # ابزارهای CLI (export/import مکاتبات، …)
+├─ docs\                   # correspondence-attachments.md، document-management-redesign.md،
+│                          # NEXT_AGENT_PROMPT.md (پرامپت آمادهٔ ایجنت بعدی)
+├─ deploy-frontend.ps1     # استقرار فقط فرانت
+├─ deploy-backend.ps1      # استقرار بک (+ مایگریشن)
+├─ update-server.ps1       # هر دو
+├─ SERVER_UPDATE.md        # راهنمای دستی سرور + عیب‌یابی
+├─ README.md / INSTALLATION.md / DATABASE_MIGRATION.md
+└─ ابزار کارایی: hrms_project\core\management\commands\dev_query_profile.py
+
+---
+
+## 3) Multi‑tenancy & database — چند‌مستاجری
+
+- `TENANT_MODEL = 'core.Company'` و `TENANT_DOMAIN_MODEL = 'core.Domain'` — این دو در **public schema** هستند.
+- `SHARED_APPS` (public): `django_tenants`, `jazzmin`, `core`, `rest_framework*`, `corsheaders`, `django_filters`, celery apps.
+- `TENANT_APPS` (داخل schema هر شرکت): `employees, documents, leaves, attendance, payroll, orgchart, settings_app, correspondences, notifications, lifecycle, recruitment, appraisal, contracts, projects, pettycash, accounting, procurement, treasury, datamapping`.
+- tenant فعال پروژه: **`kpsmi`** (شرکت «موسسه مدیریت راهبردی خاتم پاسارگاد»).
+
+قواعد عملی:
+1. **هر چیز مربوط به یک شرکت (مدل، تنظیمات، پروفایل بایگانی، اسناد) داخل schema است.** اگر در public کوئری بزنید خطای `relation "…" does not exist` می‌گیرید — این طبیعی است، نه باگ.
+2. در **management command**ها: ابتدا شرکت را از public بخوانید، بعد کار را داخل `schema_context(...)` ببرید:
+   ```python
+   from django_tenants.utils import get_tenant_model, schema_context
+   from core.models import Company
+
+   company = Company.objects.filter(is_active=True).first()      # public
+   for tenant in get_tenant_model().objects.exclude(schema_name='public'):
+       with schema_context(tenant.schema_name):
+           ...  # همهٔ مدل‌های tenant اینجا
+   ```
+   الگوی آماده: `correspondences/management/commands/import_letter_attachments.py` و `relocate_letter_attachments.py` (گزینهٔ `--schema`).
+3. در **shell/یک‌باره** همیشه `with schema_context('kpsmi'):` بگذارید (و `HTTP_HOST='192.168.1.63'` وقتی `build_absolute_uri` صدا زده می‌شود).
+4. مایگریشن: `python manage.py migrate_schemas --noinput` (سرور). برای دیدن وضعیت: `showmigrations`.
+5. `Company` دارای `auto_create_schema` است؛ در تست‌های بدون DB از `SimpleTestCase` استفاده کنید (بخش ۱۰).
+
+---
+
+## 4) Module map — نقشهٔ ماژول‌ها
+
+| Module slug | Backend app(s) | Frontend landing | Accent fallback |
+|---|---|---|---|
+| `hrms` | employees, leaves, attendance, payroll, lifecycle, appraisal, recruitment, orgchart, notifications | `/dashboard` | `#6366f1` |
+| `contracts` | contracts | `/contracts-dashboard` | `#f59e0b` |
+| `documents` | documents (+ settings_app profiles) | `/document-management` | `#0f766e` |
+| `projects` | projects | `/projects/dashboard` | `#8b5cf6` |
+| `accounting` | accounting (+ datamapping) | `/accounting` | `#0ea5e9` |
+| `treasury` | treasury | `/treasury` | `#14b8a6` |
+| `procurement` | procurement | `/procurement` | `#3b82f6` |
+| `pettycash` | pettycash | `/petty-cash/dashboard` | `#f59e0b` |
+| **`correspondence`** | **correspondences** | **`/correspondence`** | `#0ea5e9` |
+| `settings` | settings_app | `/settings` (+ `/appearance`) | `#64748b` |
+
+- مسیرها/آیکون‌ها: `frontend/src/core/constants/moduleIcons.js` (`MODULE_LANDING_PATHS`)، منوها: `frontend/src/core/config/menuConfig.js` (`getMenuForApp(slug)`).
+- accent پیش‌فرض هر ماژول: `MODULE_DEFAULT_ACCENTS` در `core/context/ModulePaletteContext.jsx` (توجه: `correspondence` در این نقشه نیست؛ fallback رنگ در خود کامپوننت‌ها مثل `correspondenceUi.ACCENT` است).
+- `getPalette(slug)` فقط وقتی چیزی در استودیو ذخیره شده باشد مقدار می‌دهد، وگرنه `null` → همیشه fallback بگذارید.
+
+
+---
+
+## 5) Frontend architecture — معماری فرانت
+
+### Provider order (`frontend/src/App.jsx`)
+```
+ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شود
+└─ DesignTokenProvider(tokens)    ← resolvedDesign از استودیو تم + normalizer
+   └─ AppThemeProvider            ← ThemeContext (mode, neon…)
+      └─ ModulePaletteProvider    ← /settings/appearance/ GET در شروع
+         └─ ApplicationProvider  ← currentApp (slug ماژول فعال)
+            └─ … Pages
+```
+
+### Contexts/hooks
+| چیزی | محل | کاربرد |
+|---|---|---|
+| `useDesignTokens()` | `core/context/DesignTokenContext.jsx` | همهٔ توکن‌های استودیو (`infoCards`, `headers`, `tables`, `lists`, `surfaces`, …) |
+| `useModulePalette()` | `core/context/ModulePaletteContext.jsx` | `getPalette(slug)`, `typography`, `designTokens`, set/reset, save |
+| `useModuleTheme()` | `pages/contracts/contractModuleUi.jsx` | `{ theme, tableTheme, toolbar, cardPadX, cardPadY, cardBorderColor }` |
+| `useRowHeight/useModuleTableState` | همان فایل | ارتفاع ردیف بر اساس تم، صفحه‌بندی سروری |
+
+### UI kit (از همین‌ها استفاده کنید، نه ساختن دوباره)
+- `PageHeader` — `icon={<Icon/>}` **عنصر** می‌گیرد؛ badge/actions دارد و از `headers` تم پیروی می‌کند.
+- `ModuleToolbar`, `ModuleTable`, `ModulePager` — نوار جست‌وجو/فیلتر/مرتب‌سازی، جدول تم‌محور، صفحه‌بندی فارسی.
+- `InfoCard`, `DataTable` — کارت اطلاعات و جدول عمومی (توکن‌محور).
+- `AttachmentPreviewDialog` — پیش‌نمایش PDF/عکس/متن بدون دانلود + «باز کردن در تب جدید»/«دریافت».
+- الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
+
+### API access
+- فقط از `axiosInstance` (`core/api/axiosConfig.js`)؛ `baseURL='/api'` و JWT/refresh خودکار. دانلود باینری: `responseType:'blob'` + `URL.createObjectURL`.
+- آدرس‌های پرکاربرد: `core/api/endpoints.js`, `globalSearch`, `moduleSearch`.
+
+### Persian/RTL conventions
+- همهٔ متن‌ها فارسی، `direction: rtl`؛ اعداد/مبالغ نمایش با `formatPersianNumber`/`toPersianDigits`، ورودی با `toEnglishDigits`.
+- تاریخ نمایشی `toJalali`/`dateLabel`؛ تاریخ میلادی خام نشان ندهید.
+
+
+---
+
+## 6) Theme Studio — مشخصات دقیق (خیلی مهم)
+
+**منبع داده:** `frontend/src/core/theme/designTokens.js` (`DEFAULT_DESIGN_TOKENS`, نسخه ۲).
+**API:** `GET/PUT /settings/appearance/` با payload `{ palettes, typography, design }`
+(بک‌اند: `settings_app/views.py::appearance_settings_view` + `settings_app/appearance_schema.py`).
+**UI استودیو:** `frontend/src/pages/AppearancePage.jsx` (مسیر `/appearance`): پالت ماژول، تایپوگرافی، سطح‌ها، جدول‌ها، کارت اطلاعات، لیست‌ها، سایه‌ها، چگالی.
+
+### Token schema (کلیدهایی که UI می‌خواند)
+```js
+{
+  version: 2,
+  typography: { family, roles: { pageHeader, sectionTitle, cardTitle, cardSubtitle,
+                cardValue, tableHeader, tableCell, formLabel, input, body, button,
+                chip, navItem, caption, tooltip } },      // هر نقش: { size, weight, lineHeight }
+  colors: { primary, secondary, success, warning, danger, info, background, surface,
+            surfaceElevated, textPrimary, textSecondary, border, divider, hover, selected },
+  surfaces: { page, appHeader, sidebar, pageHeader, card, table, dialog, drawer },
+  shape: { small, medium, large, pill },
+  spacing: { pagePadding, sectionGap, cardPadding, tableCellPadding },
+  shadows: { none, soft, card, header, dropdown, dialog, drawer, focus },
+  density: { mode, tableRowHeight, inputHeight, buttonHeight },
+  infoCards: { variant, surface, align, accentMode, labelPosition, iconPosition,
+               valuePosition, showIcon, showLabel, showSub, showDivider, tint,
+               glassOpacity, glassBlur, radius, padding, shadow },
+  headers:   { variant, surface, align, accentMode, showIcon, showSubtitle,
+               subtitlePosition, showBadge, iconPosition, tint, glassOpacity, glassBlur,
+               radius, padding, shadow },
+  tables:    { variant, surface, striped, hover, showBorders, headerStyle, headerAlign,
+               headerFontSize, headerFontWeight, headerHeight, headerColorMode, headerColor,
+               cellFontSize, cellFontWeight, cellAlign, cellColorMode, cellColor, numberFont,
+               hoverTint, stripeTint, dividerWidth, dividerStyle, dividerColor, dividerOpacity,
+               frame, frameMarginX, framePadding, singleLine, columnMinWidth, rowsPerPage,
+               visibleRows, showPagination, paginationVariant, … },
+  lists:     { variant, surface, itemPadding, showDivider, hover, hoverTint, … }
+}
+```
+
+### Helper functions (به‌جای دست‌کاری دستی رنگ/سایه)
+`core/theme/designTokens.js` → `infoCardBackground(design, config)` · `headerBackground(design, config)` ·
+`tableBackground(design, config)` · `shadowValue(design, key)` · `colorWithAlpha(color, alpha)` ·
+`mergeDesignTokens` · `normalizeDesignTokens` · `resolveTableTheme(tokens)`/`resolveToolbarTheme(tokens)`.
+
+### CSS variables (تم هنگام رندر ست می‌کند)
+`--hrms-region-card-bg`, `--hrms-border-card`, `--hrms-radius-large`, `--hrms-radius`, `--hrms-shadow-card`,
+`--hrms-info-card-border`, `--hrms-info-card-radius`, `--hrms-table-number-font`, `--hrms-table-*`
+→ همیشه با fallback: `var(--hrms-radius-large, 16px)`.
+
+### قواعد طراحی
+1. **Accent ماژول:** `const palette = useModulePalette().getPalette(currentApp?.slug); const accent = palette?.accent || FALLBACK;`
+   (`getPalette` اگر چیزی ذخیره نشده باشد `null` می‌دهد.)
+2. **کارت‌ها:** سطح/شعاع/سایه/آیکون/عنوان از `tokens.infoCards` یا `tokens.headers`؛ حالت‌های `solid | glass | tinted | transparent` را پشتیبانی کنید.
+3. **حداقل سایز فونت:** `MIN_TYPOGRAPHY_SIZES` در `appearanceDefaults.js`.
+4. **چگالی:** ارتفاع/فاصله از `tokens.tables.rowHeight` و `density`، نه عدد ثابت.
+5. **دام ثبت‌شده:** `PageHeader.icon` **عنصر** (`<MailIcon/>`) ولی `SectionCard.icon`/`StudioCard.icon` **کامپوننت** (`MailIcon`) → اشتباه = **React #130** (صفحهٔ سفید).
+6. رنگ‌های معنایی از `tokens.colors` یا فایل ماژول (`correspondenceUi.jsx` → `DANGER/WARN/OK/…`).
+
+
+---
+
+## 7) Recipes — دستور‌پخت‌های آماده
+
+### 7.1 صفحهٔ فهرست جدید (List page)
+**فرانت** (`frontend/src/pages/<module>/<X>Page.jsx`):
+```jsx
+const moduleTheme = useModuleTheme();
+const pageSize = moduleTheme.tableTheme.rowsPerPage;
+const { page, setPage, totalPages, pageNumbers } = useModuleTableState(total, pageSize, [search, filters]);
+const { data, isLoading } = useQuery({
+  queryKey: ['x-list', params],
+  queryFn: () => axiosInstance.get('/x/', { params }).then((r) => r.data),
+  placeholderData: (prev) => prev,
+  staleTime: 30_000,
+});
+<ModuleToolbar theme={moduleTheme} search={search} onSearch={setSearch}
+  filters={filters} sort={sort} onSort={setSort} activeFilterCount={n} onReset={reset} />
+<ModuleTable ariaLabel="فهرست …" theme={moduleTheme} columns={columns} rows={rows} … />
+<ModulePager tableTheme={moduleTheme.tableTheme} page={page} onPage={setPage} … />
+```
+**بک‌اند**: `ModelViewSet` + `filter_backends=[OrderingFilter]` + `get_serializer_class()` که برای `action == 'list'` سریالایزر سبک می‌دهد + `get_queryset()` که فقط FKهای لازم را `select_related` می‌کند.
+
+### 7.2 داشبورد استودیویی
+```jsx
+const { accent } = useStudio();                       // یا useModulePalette + fallback
+<StudioKpi icon={InboxIcon} label="نامه‌های وارده" value={formatPersianNumber(n)}
+  hint={`این ماه: ${formatPersianNumber(m)}`} delta={deltaPercent(prev, cur)} onClick={…} />
+<StudioCard icon={TuneIcon} title="صف اقدام امروز" color={WARN} action={<Button …/>}>
+  <QuickAction icon={WarningAmberIcon} label="معوق" description="۱۲ مکاتبه" onClick={…} />
+</StudioCard>
+```
+قواعد: کارت‌ها `height:100%`، شبکه‌های responsive با `gridTemplateColumns`، همهٔ اعداد فارسی، هر ویجت لینک فیلترشدهٔ فهرست داشته باشد.
+
+### 7.3 سریالایزر سبک فهرست + قاعدهٔ N+1
+```python
+class XListSerializer(XSerializer):
+    class Meta(XSerializer.Meta):
+        fields = [f for f in XSerializer.Meta.fields if f not in ('body', 'events', 'referrals')]
+
+# viewset
+def get_serializer_class(self):
+    return XListSerializer if self.action == 'list' else XSerializer
+
+def get_queryset(self):
+    qs = super().get_queryset().select_related('category', 'organization', 'party_account', 'entered_by')
+    if self.action != 'list':
+        qs = qs.select_related('drafter', 'created_by', 'reply_to').prefetch_related(
+            'attachments', 'referrals', 'events', 'replies')
+    else:
+        qs = qs.prefetch_related(
+            Prefetch('attachments', queryset=Attachment.objects.only('id', 'letter_id', 'title', 'file', 'size')),
+            Prefetch('referrals', queryset=Referral.objects.select_related('to_user', 'to_employee')),
+        )
+    return qs
+```
+⚠️ در serializer فهرست **هرگز** M2M/related را دستی صدا نزنید (`obj.to_employees.all()` → N+1). اگر برچسب لازم است، از FKهای `select_related`شده بسازید.
+
+### 7.4 جست‌وجوی جامع (دو لایه)
+```python
+# 1) endpoint: در viewset
+SEARCH_FIELDS = ('number', 'subject', 'summary', 'body', 'party_account__name', 'tags', …)
+SEARCH_JOIN_FIELDS = ('referrals__to_name', 'referrals__instruction',
+                      'referrals__to_user__first_name', 'referrals__to_employee__last_name',
+                      'attachments__title')
+# ارجاعات/پیوست با زیرکوئری IN (نه join) جست‌وجو می‌شوند:
+qs.filter(base_condition | Q(id__in=referral_ids) | Q(id__in=attachment_ids))
+```
+```python
+# 2) module search (سایدبار/پالت فرمان) در core/module_search.py
+PROVIDERS['<module>'] = [
+    SearchProvider('app.Model', ('subject', 'number', …),
+                   path=lambda obj: f'/<route>?q={_q(obj.number or obj.subject)}',
+                   title_fields=('number', 'subject'), subtitle_fields=('sender_name',),
+                   subtitle_display='status', icon='mail', color='#0ea5e9',
+                   select_related=('party_account',),
+                   extra_q=lambda term: Q(party_account__name__icontains=term) | Q(referrals__to_name__icontains=term),
+                   distinct=True),
+]
+```
+سپس با دستور `python manage.py dev_query_profile --schema kpsmi --params "search=…&page_size=20"` و یک جست‌وجوی واقعی صحت را بسنجید.
+
+### 7.5 ماژول بایگانی/پروفایل ذخیره‌سازی + پوشه‌های DMS
+1. `settings_app/models.py::default_storage_profiles()` → آیتم جدید `{module_key, module_name, root_folder, entity_folder_pattern, subfolders, allowed_extensions, max_file_size_mb, color, icon, sort_order}`.
+2. seed موجود: `settings_app/archive_views.py::_ensure_seed` و `documents/management_folders.py::ensure_default_document_folders` (هر دو **get_or_create برای کلیدهای نبود** — پروفایل موجود را بازنویسی نکنید).
+3. کاتالوگ کتابخانهٔ اسناد (فرانت): `core/config/documentLibraryModules.js` (label + keywords + mapping در `APPLICATION_LIBRARY_MODULES`).
+4. آپلود فایل ماژول: `core/engines/archive_storage_engine.resolve_upload_path(company_id, module_key, fields, filename, fallback_dir=…)` → `archive/company_<id>/<root>/<entity>/<uuid.ext>`.
+
+### 7.6 پیوست + پیش‌نمایش (بدون دانلود)
+- serializer پیوست: `file_url` مطلق (`request.build_absolute_uri(obj.file.url)`).
+- فرانت: `<AttachmentPreviewDialog open items={files} index={i} title={subject} onClose={…} />` و دکمه با `aria-label="مشاهدهٔ پیوست"`.
+- در فهرست سبک، پیوست‌های فشرده (`id/title/kind_display/file_url/size`) را نگه دارید تا پیش‌نمایش بدون درخواست اضافه باز شود.
+
+
+---
+
+## 8) Performance playbook — کارایی
+
+**قواعد سخت‌گیرانه:**
+1. هر صفحهٔ فهرست: **≤ ~۱۰ کوئری** برای ۲۰ ردیف (که ۴–۵ کوئری آن `SET search_path` مربوط به django‑tenants است).
+2. سریالایزر فهرست سبک: بدون `body`/آرایه‌های `events`/`referrals`، پیوست/آخرین ارجاع فشرده.
+3. `select_related` فقط برای FKهای لازم؛ `Prefetch(queryset=…select_related(…))` برای relatedهای لازم.
+4. در جست‌وجوی چند‑جدولی از **`Q(id__in=Subquery)`** استفاده کنید، نه join + `DISTINCT`.
+5. `DISTINCT` را فقط وقتی لازم است (فیلترهای M2M/join) اعمال کنید.
+6. سمت کلاینت: `staleTime` فهرست ۳۰s، داشبورد ۶۰s، `refetchOnWindowFocus: false` برای داشبورد؛ `placeholderData` برای صفحه‌بندی.
+7. `page_size` را بی‌دلیل بالا نبرید (سقف ۱۰۰۰). جست‌وجو ۳۰۰–۳۵۰ms debounce دارد.
+
+**اعداد مرجع (اندازه‌گیری‌شده روی سرور، ۶٬۲۴۶ نامه):**
+| Operation | Before | After |
+|---|---|---|
+| Letters list (20 rows) | 762 ms / 154 queries | **159 ms / 8 queries** |
+| Search `بایگانی` | 2,305 ms | **424 ms** |
+| Filter “without attachment” | 514 ms | **68 ms** |
+| Dashboard `/letters/stats/` | 157 ms / 18 q | **57–73 ms** |
+| Main SELECT of the list | 495 ms | **93 ms** |
+
+**روش اندازه‌گیری:** `python manage.py dev_query_profile --schema kpsmi --params "page_size=20"`
+(دستور مدیریتی آماده در `core/management/commands/dev_query_profile.py`؛ خروجی: زمان کل، تعداد کوئری، کوئری‌های کند و کوئری‌های تکراری با WHERE → N+1 فوراً دیده می‌شود.)
+برای اندپوینت‌های دیگر: `--action stats --path /api/letters/stats/ --params ""` یا `--viewset <dotted.path> --path <url>`.
+
+**گام‌های تشخیص کندی (به ترتیب):**
+1. پروفایل بگیرید؛ اگر کوئری زیاد است → N+1 (سریالایزر/M2M).
+2. اگر یک کوئری کند است → plan/join؛ `select_related` را کم کنید یا ایندکس اضافه کنید.
+3. اگر جست‌وجو کند است → فیلدهای `body` و `icontains` را محدود کنید یا `pg_trgm` (بک‌لاگ).
+4. اگر فرانت کند است → حجم payload (`payload KB` در پروفایل)، سپس `staleTime`/`placeholderData`.
+
+---
+
+## 9) Server & deployment — سرور و استقرار
+
+### مشخصات سرور
+| Item | Value |
+|---|---|
+| Host / user | `hradmin@192.168.1.63` (SSH key دارد؛ `ssh -o BatchMode=yes` بدون رمز کار می‌کند) |
+| App dir | `/opt/hrms/hrms_project` · venv `/opt/hrms/venv` · app user `hrms` |
+| Env | `/opt/hrms/hrms_project/.env` (کلیدها را همین‌جا بخوانید: `SECRET_KEY`, `ALLOWED_HOSTS`, `DB_*`, `MEDIA_ROOT`, `STATIC_ROOT`, redis) |
+| Services | `gunicorn` + `nginx` (`systemctl is-active gunicorn nginx`) |
+| Frontend | `/opt/hrms/frontend/build` (+ assets در `/var/www/hrms/static/`) |
+| Media | `/var/www/hrms/media` — nginx مستقیم سرو می‌کند (`/media/...`, PDF به‌صورت inline) |
+| DB | PostgreSQL `hrms_db` / `hrms_user@localhost` · tenant schema `kpsmi` |
+| Static/Front | index.html از `/assets/static/js/main.<hash>.js` استفاده می‌کند |
+
+### سه سناریوی استقرار
+```powershell
+# 1) فقط فرانت‌اند (بدون sudo؛ یک اتصال SSH)
+.\deploy-frontend.ps1                 # بیلد + آپلود + جای‌گذاری + تأیید HTTP
+.\deploy-frontend.ps1 -NoBuild        # فقط آپلود بیلد موجود
+.\deploy-frontend.ps1 -CheckOnly      # فقط بررسی دسترسی
+
+# 2) فقط بک‌اند (فایل‌های تحت Git + migrate + restart)
+.\deploy-backend.ps1 -Migrate
+.\deploy-backend.ps1 -CheckOnly
+
+# 3) هر دو با هم
+.\update-server.ps1                   # -NoMigrate -NoBuild -SkipBackend -SkipFrontend
+```
+**تأیید بعد از استقرار:**
+```powershell
+curl.exe -s -o NUL -w "index=%{http_code}\n" http://192.168.1.63/
+curl.exe -s -o NUL -w "bundle=%{http_code}\n" http://192.168.1.63/assets/static/js/main.<hash>.js
+# لاگ بک‌اند:
+ssh -o BatchMode=yes hradmin@192.168.1.63 'journalctl -u gunicorn -n 50 --no-pager'
+```
+
+### ⚠️ دام‌های محیط (خیلی مهم)
+1. **`powershell -File script.ps1` در این ماشین بی‌صدا اجرا می‌شود** (خروجی صفر، بدون اثر). از این شکل استفاده کنید:
+   ```powershell
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& 'C:\HRMS\deploy-frontend.ps1'"
+   ```
+2. **اجرای طولانی (بیلد/تست) را detached اجرا کنید**؛ `Start-Process powershell` ممکن است با پایان دستور کشته شود. الگوی مطمئن: یک لانچر پایتونی که `subprocess.Popen` می‌کند و لاگ می‌نویسد (نمونه: همان روشی که در استقرارها استفاده شد).
+3. **sudo روی سرور:** `printf '%s\n' '<SUDO_PASSWORD>' | sudo -S bash /tmp/script.sh` — رمز را از **کاربر** بپرسید و هرگز کامیت نکنید.
+4. `/tmp` سرور **tmpfs (۷.۶GB)** است؛ فایل بزرگ را در `/var/tmp` یا `/opt/hrms/import` بگذارید.
+5. فایل‌های کپی‌شده در `correspondences/` و `core/` را طبق الگو `cp /tmp/x.py …; chown hrms:hrms …; systemctl restart gunicorn` جای‌گذاری کنید و **همیشه قبلش backup** بگیرید.
+6. بعد از هر تغییر بک‌اند، `manage.py check` روی سرور (با `.env` sourced) و سپس restart.
+
+
+---
+
+## 10) Testing & verification — تست و اعتبارسنجی
+
+### Backend (PostgreSQL محلی معمولاً خاموش است → تست‌ها باید DB-free باشند)
+```powershell
+cd C:\HRMS\hrms_project
+$env:SECRET_KEY='dev-only-secret-key-for-checks'; $env:PYTHONIOENCODING='utf-8'
+C:\HRMS\venv\Scripts\python.exe manage.py check --settings=hrms_project.settings.development
+C:\HRMS\venv\Scripts\python.exe manage.py makemigrations --check --dry-run --settings=hrms_project.settings.development
+C:\HRMS\venv\Scripts\python.exe manage.py test correspondences documents core --settings=hrms_project.settings.development
+```
+- الگوی تست: `SimpleTestCase` + `SimpleNamespace`/`unittest.mock.patch` (بدون DB). نمونه‌ها: `correspondences/tests.py`, `documents/tests.py`, `core/tests_module_search.py`.
+- اگر واقعاً DB لازم شد (queryset/filter/tenant)، `TestCase` بنویسید و بدانید PostgreSQL محلی نیست؛ یا روی سرور با `schema_context` بسنجید.
+
+### Frontend (CRA/Jest smoke tests)
+```powershell
+cd C:\HRMS\frontend
+$env:CI='true'
+npx react-scripts test --watchAll=false --testPathPattern=correspondenceSmoke
+```
+الگوی تست (`frontend/src/__tests__/`):
+```jsx
+jest.mock('../core/api/axiosConfig', () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn() } }));
+jest.mock('../core/context/ModulePaletteContext', () => ({ useModulePalette: () => ({ getPalette: () => null, typography: {} }) }));
+const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no retry) + MemoryRouter + act + wait */ };
+```
+- هر کامپوننتی که `useQuery` دارد باید داخل `QueryClientProvider` رندر شود.
+- **کل سوئیت زیر بار سنگین flaky می‌شود** (timeout ۵ ثانیه)؛ سوئیت‌های شکست‌خورده را تک‌تک دوباره اجرا کنید (الگوی امروز: ۵۸ سوئیت / ۲۰۷ تست سبز).
+
+### Definition of Done
+1. `manage.py check` پاک؛ مایگریشن لازم ساخته و روی سرور اعمال شده.
+2. تست‌های مربوطه (بک + فرانت) سبز.
+3. UI از توکن‌های استودیو تم پیروی می‌کند (هیچ رنگ هاردکد جدید).
+4. اگر فهرست/جست‌وجو تغییر کرده: پروفایل کارایی گرفته و اعداد در توضیح کامیت آمده.
+5. استقرار انجام و **زنده تأیید** شده (hash باندل + HTTP 200 + لاگ).
+6. `git status` تمیز؛ فایل موقت `_*` باقی نمانده.
+
+---
+
+## 11) Lessons learned — درس‌های ثبت‌شده
+
+1. **`relation "…" does not exist`** یعنی مدل tenant در public کوئری شده؛ از `schema_context` استفاده کنید (`Company` در public است).
+2. **N+1 از M2M**: خواندن `obj.to_employees.all()` در serializer هر ردیف یک کوئری می‌زند؛ برچسب را از FKهای `select_related`شده بسازید.
+3. **`select_related` زیاد هم کند است**: ۱۴ join، کوئری اصلی را از ۹۳ms به ۴۹۵ms برد؛ فقط FKهای مصرفی.
+4. **جست‌وجوی join+distinct** روی ۶k رکورد ۲.۳s بود؛ با `Q(id__in=Subquery)` به ۰.۴s رسید.
+5. **سقف `sync_archive_files`** (۵٬۰۰۰) مانع کامل‌شدن ایندکس ماژول‌های پرحجم می‌شد؛ ۵۰٬۰۰۰ شد.
+6. **فایل‌ها باید داخل بایگانی باشند** (`archive/company_<id>/<root>/…`) وگرنه حجم/آمار ۰؛ دستور `relocate_letter_attachments --schema kpsmi --sync-dms`.
+7. **seed پروفایل بایگانی** باید `get_or_create` باشد تا تنظیمات کاربر بازنویسی نشود.
+8. تست‌های بک‌اند بدون `SECRET_KEY` بالا نمی‌آیند؛ env بدهید.
+9. **CRA**: `PUBLIC_URL=/assets`؛ اگر رشتهٔ جدید در باندل زنده نبود، بیلد/آپلود انجام نشده یا کش مرورگر است.
+10. **`git add -A`** فایل موقت را می‌آورد؛ قبل از کامیت `git status` ببینید.
+11. **`PageHeader.icon` عنصر ≠ `SectionCard.icon` کامپوننت** → React #130.
+12. جابه‌جایی فایل رسانه بدون به‌روزرسانی `file.name` در DB = لینک ۴۰۴.
+
+---
+
+## 12) Current snapshot — وضعیت فعلی
+
+- **Last commit:** `fa44809d5 perf(correspondence): light list payload, no N+1 and comprehensive search`
+- **Live:** frontend `main.eb4fb4b4.js` (HTTP 200) · backend deployed، gunicorn active.
+- **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
+- ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، نگاشت نام‌ها، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
+
+---
+
+## 13) Backlog / known gaps
+
+1. **`pg_trgm` + GIN** روی `subject`/`body` (نیاز به `CREATE EXTENSION`).
+2. پیش‌نمایش Office در DMS (تبدیل سمت سرور).
+3. چیدمان قابل‌تنظیم ویجت‌های داشبورد (ترجیحات کاربر).
+4. تست‌های DB-based برای querysetهای پیچیده.
+5. گزارش‌های مکاتبات (میانگین زمان پاسخ، بار کاری واحدها).
+6. ایندکس تکمیلی `(company, direction, due_date)` در صورت رشد داده.
+
+---
+
+## 14) Persian UI glossary — واژه‌نامه
+
+| فنی | متن UI |
+|---|---|
+| incoming / outgoing / internal | وارده / صادره / داخلی |
+| referral / refer | ارجاع / ارجاع دادن |
+| cartable / workdesk | کارتابل / میزکار |
+| counterparty / party | طرف حساب |
+| correspondent / organization | مخاطب / سازمان |
+| attachment / draft | پیوست / پیش‌نویس |
+| in progress / answered / closed / archived | در جریان / پاسخ‌داده‌شده / بسته‌شده / بایگانی‌شده |
+| overdue / due soon | معوق / نزدیک مهلت |
+| indicator no. / transmittal no. | شمارهٔ اندیکاتور / شمارهٔ ترابری |
+| scan / scanned ratio | اسکن / نسبت اسکن‌شده |
+| archive profile / archive folder | پروفایل بایگانی / پوشهٔ بایگانی |
+| name mapping | نگاشت نام‌ها |
+| theme studio / appearance | استودیو تم / ظاهر و پوسته |
+| quick actions / action queue | دسترسی سریع / صف اقدام |
+
+---
+
+**پایان سند.** اگر جایی این سند با کد نمی‌خواند، **کد مرجع است**؛ همین فایل را اصلاح کنید تا زنده بماند.
+
+```
