@@ -396,6 +396,10 @@ ssh -o BatchMode=yes hradmin@192.168.1.63 'journalctl -u gunicorn -n 50 --no-pag
 4. `/tmp` سرور **tmpfs (۷.۶GB)** است؛ فایل بزرگ را در `/var/tmp` یا `/opt/hrms/import` بگذارید.
 5. فایل‌های کپی‌شده در `correspondences/` و `core/` را طبق الگو `cp /tmp/x.py …; chown hrms:hrms …; systemctl restart gunicorn` جای‌گذاری کنید و **همیشه قبلش backup** بگیرید.
 6. بعد از هر تغییر بک‌اند، `manage.py check` روی سرور (با `.env` sourced) و سپس restart.
+7. **صفحهٔ سفید = بیلد بدون `PUBLIC_URL=/assets`.** اگر بیلد محلی (`react-scripts build` بدون env) انجام شود و بعد
+   `deploy-frontend.ps1 -NoBuild` اجرا شود، `index.html` به `/static/js/...` اشاره می‌کند (404) و کل برنامه سفید می‌شود.
+   همیشه بیلد را با خود اسکریپت (`deploy-frontend.ps1` بدون `-NoBuild`) انجام دهید؛ تأیید نهایی:
+   `curl /` باید `src="/assets/static/js/main.<hash>.js"` بدهد و همان مسیر ۲۰۰ باشد.
 
 
 ---
@@ -457,8 +461,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `579b90c02 fix(settings): show module titles in the user dialog's module cards`
-- **Live:** frontend `main.03302bbb.js` (HTTP 200) · backend deployed (اتصال قرارداد به نامه + مایگریشن `correspondences.0018`)، gunicorn/celery/nginx active.
+- **Last commit:** `421b7763e refactor(correspondence): streamline the incoming-letter dialog and link contracts`
+- **Live:** frontend `main.756b6de5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
