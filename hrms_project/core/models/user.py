@@ -336,6 +336,48 @@ class AccessRole(models.Model):
             )
 
 
+class UserAccess(models.Model):
+    """مجوزهای ریز هر کاربر (پرسنل) — مستقل از «نقش».
+
+    هر کاربر می‌تواند در یک ماژول فقط «مشاهده» و در ماژول دیگر «تأیید» داشته باشد؛
+    کدها به شکل ``module.menu.action`` ذخیره می‌شوند و «دسترسی کامل» فقط برای
+    مدیر سیستم فعال می‌شود.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='access',
+        verbose_name=_('کاربر'),
+    )
+    is_full_access = models.BooleanField(
+        default=False, verbose_name=_('دسترسی کامل (مدیر سیستم)'),
+        help_text=_('مدیر سیستم به همهٔ منوها و عملیات دسترسی دارد.'),
+    )
+    permissions = models.JSONField(
+        default=dict, blank=True, verbose_name=_('مجوزهای ریز'),
+        help_text=_('کدهای module.menu.action با مقدار بولی.'),
+    )
+    applications = models.JSONField(
+        default=list, blank=True, verbose_name=_('ماژول‌های مجاز'),
+        help_text=_('لیست slug ماژول‌ها؛ خالی یعنی خروجی از مجوزهای ریز.'),
+    )
+    note = models.CharField(max_length=250, blank=True, verbose_name=_('یادداشت'))
+    updated_by = models.CharField(max_length=150, blank=True, verbose_name=_('آخرین ویرایشگر'))
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('تاریخ ایجاد'))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_('تاریخ به‌روزرسانی'))
+
+    class Meta:
+        verbose_name = _('دسترسی کاربر')
+        verbose_name_plural = _('دسترسی‌های کاربران')
+
+    def __str__(self):
+        return f'{self.user.username} — {"کامل" if self.is_full_access else f"{len(self.permissions or {})} مجوز"}'
+
+    def granted_codes(self):
+        return {code for code, value in (self.permissions or {}).items() if value}
+
+
 # Define RBAC permissions per role
 ROLE_PERMISSIONS = {
     'super_admin': {

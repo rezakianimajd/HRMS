@@ -19,6 +19,11 @@ jest.mock('../core/context/ModulePaletteContext', () => ({
   MODULE_DEFAULT_ACCENTS: {},
 }));
 
+jest.mock('../core/context/ApplicationContext', () => ({
+  __esModule: true,
+  useApplication: () => ({ currentApp: { slug: 'settings' }, applications: [] }),
+}));
+
 jest.mock('../core/components/ui/UserAvatar', () => ({
   __esModule: true,
   default: ({ user }) => (
@@ -31,80 +36,69 @@ jest.mock('../core/components/ui/EmployeePicker', () => ({
   default: () => <div data-testid="employee-picker" />,
 }));
 
-jest.mock('../core/context/ApplicationContext', () => ({
-  __esModule: true,
-  useApplication: () => ({ currentApp: { slug: 'settings' }, applications: [] }),
-}));
-
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const rolesPayload = {
-  stats: { modules: 2, groups: 3, menus: 3, codes: 5, actions: [] },
-  actions: [
-    { key: 'view', label: 'مشاهده', hint: '' },
-    { key: 'edit', label: 'ویرایش', hint: '' },
-    { key: 'delete', label: 'حذف', hint: '' },
-  ],
-  roles: [
-    {
-      code: 'super_admin', name: 'مدیر ارشد سیستم', description: 'دسترسی کامل',
-      color: '#8b5cf6', base_role: 'super_admin', is_system: true, employees: 1,
-      permissions_total: 5, permissions: {}, applications: [],
-    },
-    {
-      code: 'treasury_manager', name: 'مدیر خزانه', description: 'مدیریت خزانه',
-      color: '#14b8a6', base_role: 'employee', is_system: false, employees: 2,
-      permissions_total: 1, permissions: { 'treasury.receipts.view': true }, applications: [],
-    },
-  ],
-  catalog: [
-    {
-      slug: 'treasury', name: 'خزانه‌داری', color: '#14b8a6', menu_count: 2, code_count: 4,
-      groups: [
-        {
-          title: 'دریافت و پرداخت',
-          items: [
-            {
-              id: 'receipts', title: 'دریافت‌ها', path: '/treasury/receipts',
-              actions: ['view', 'edit'],
-              codes: { view: 'treasury.receipts.view', edit: 'treasury.receipts.edit' },
+const actions = [
+  { key: 'view', label: 'مشاهده', hint: '' },
+  { key: 'edit', label: 'ویرایش', hint: '' },
+  { key: 'approve', label: 'تأیید', hint: '' },
+];
+
+const catalog = [
+  {
+    slug: 'treasury', name: 'خزانه‌داری', color: '#14b8a6', menu_count: 2, code_count: 5,
+    groups: [
+      {
+        title: 'دریافت و پرداخت',
+        items: [
+          {
+            id: 'receipts', title: 'دریافت‌ها', path: '/treasury/receipts',
+            actions: ['view', 'edit', 'approve'],
+            codes: {
+              view: 'treasury.receipts.view',
+              edit: 'treasury.receipts.edit',
+              approve: 'treasury.receipts.approve',
             },
-            {
-              id: 'transfers', title: 'انتقال وجوه', path: '/treasury/transfers',
-              actions: ['view', 'edit'],
-              codes: { view: 'treasury.transfers.view', edit: 'treasury.transfers.edit' },
-            },
-          ],
-        },
-      ],
+          },
+          {
+            id: 'transfers', title: 'انتقال وجوه', path: '/treasury/transfers',
+            actions: ['view', 'edit'],
+            codes: { view: 'treasury.transfers.view', edit: 'treasury.transfers.edit' },
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const usersPayload = {
+  count: 2,
+  results: [
+    {
+      id: 1, username: 'admin', full_name: 'مدیر سیستم', is_active: true,
+      is_superuser: false, is_full_access: true, permissions_granted: 'همه',
+      modules: [], applications: [], employee_position: 'مدیرعامل',
+      employee_department: 'مدیریت', last_login: '2026-11-02T08:00:00Z',
     },
     {
-      slug: 'settings', name: 'تنظیمات و تعاریف', color: '#64748b', menu_count: 1, code_count: 1,
-      groups: [
-        {
-          title: 'تعاریف',
-          items: [{
-            id: 'general', title: 'تنظیمات عمومی', path: '/settings',
-            actions: ['view'], codes: { view: 'settings.general.view' },
-          }],
-        },
-      ],
+      id: 4, username: 'nasrin', full_name: 'نسرین احمدی', is_active: true,
+      is_superuser: false, is_full_access: false, permissions_granted: 1,
+      modules: [{ slug: 'treasury', name: 'خزانه‌داری', color: '#14b8a6', count: 1 }],
+      applications: [], employee_position: 'کارشناس ارشد خزانه',
+      employee_department: 'امور مالی', employee_code: '1042',
+      last_login: '2026-11-01T08:00:00Z',
     },
   ],
 };
 
-const usersPayload = {
-  count: 1,
-  results: [
-    {
-      id: 4, username: 'nasrin', full_name: 'نسرین احمدی', first_name: 'نسرین',
-      last_name: 'احمدی', email: 'nasrin@example.com', is_active: true,
-      is_superuser: false, role: 'treasury_manager', role_name: 'مدیر خزانه',
-      applications: [1], permissions_granted: 1,
-      employee_position: 'کارشناس ارشد خزانه', employee_department: 'امور مالی',
-      employee_code: '1042', last_login: '2026-11-01T08:00:00Z',
-    },
-  ],
+const accessPayload = {
+  user: { id: 4, username: 'nasrin', full_name: 'نسرین احمدی', is_superuser: false },
+  full_access: false,
+  permissions: { 'treasury.receipts.view': true },
+  applications: [],
+  catalog,
+  actions,
+  stats: { modules: 1, groups: 1, menus: 2, codes: 5 },
 };
 
 beforeEach(() => {
@@ -113,15 +107,25 @@ beforeEach(() => {
     addEventListener: () => {}, removeEventListener: () => {},
   }));
   axiosInstance.get.mockImplementation((url) => {
-    if (url === '/users/roles/') return Promise.resolve({ data: rolesPayload });
     if (url === '/users/') return Promise.resolve({ data: usersPayload });
+    if (url === '/users/access/catalog/') {
+      return Promise.resolve({
+        data: { catalog, actions, stats: { modules: 1, groups: 1, menus: 2, codes: 5 } },
+      });
+    }
+    if (url === '/users/4/access/') return Promise.resolve({ data: accessPayload });
+    if (url === '/users/1/access/') {
+      return Promise.resolve({
+        data: { ...accessPayload, user: { ...accessPayload.user, id: 1, username: 'admin' } },
+      });
+    }
     if (url === '/applications/catalog/') {
       return Promise.resolve({ data: { applications: [{ id: 1, name: 'خزانه', label: 'خزانه' }] } });
     }
     if (url === '/employees/') return Promise.resolve({ data: { results: [] } });
     return Promise.resolve({ data: { results: [] } });
   });
-  axiosInstance.post.mockResolvedValue({ data: {} });
+  axiosInstance.post.mockResolvedValue({ data: { message: 'ذخیره شد' } });
 });
 
 const renderPage = async () => {
@@ -137,7 +141,6 @@ const renderPage = async () => {
     );
     await wait(700);
   });
-  await act(async () => { await wait(250); });
   for (let attempt = 0; attempt < 15; attempt += 1) {
     if (container.textContent.includes('نسرین')) break;
     await act(async () => { await wait(150); });
@@ -145,52 +148,67 @@ const renderPage = async () => {
   return { container, root };
 };
 
-test('users tab shows employee job title as organizational role', async () => {
+test('users tab shows job title, system admin and per-user permission counts', async () => {
   const { container, root } = await renderPage();
 
-  expect(container.textContent).toContain('کاربران، نقش‌ها و مجوزها');
+  expect(container.textContent).toContain('کاربران و مجوزهای ریز');
   expect(container.textContent).toContain('نسرین احمدی');
   expect(container.textContent).toContain('کارشناس ارشد خزانه');
   expect(container.textContent).toContain('امور مالی');
-  expect(container.textContent).toContain('مدیر خزانه');
+  expect(container.textContent).toContain('مدیر سیستم');
   expect(container.textContent).toContain('کاربر جدید');
 
   root.unmount();
   container.remove();
 });
 
-test('roles tab renders the fine-grained permission matrix and saves it', async () => {
+test('permission tab edits one employee independently and saves the matrix', async () => {
   const { container, root } = await renderPage();
 
-  const rolesTab = [...container.querySelectorAll('[role="tab"]')]
-    .find((node) => node.textContent.includes('نقش‌ها و مجوزهای ریز'));
-  expect(rolesTab).toBeTruthy();
+  const accessTab = [...container.querySelectorAll('[role="tab"]')]
+    .find((node) => node.textContent.includes('مجوزهای کاربران'));
+  expect(accessTab).toBeTruthy();
   await act(async () => {
-    rolesTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await wait(500);
+    accessTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(600);
   });
 
-  expect(container.textContent).toContain('مدیر ارشد سیستم');
-  expect(container.textContent).toContain('مدیر خزانه');
-
-  const roleCards = [...container.querySelectorAll('div')]
-    .filter((node) => node.textContent.trim().startsWith('مدیر خزانه'));
+  const userCard = [...container.querySelectorAll('div')]
+    .filter((node) => node.textContent.trim().startsWith('نسرین احمدی'));
   await act(async () => {
-    roleCards[roleCards.length - 1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await wait(350);
+    userCard[userCard.length - 1]?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(400);
   });
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    if (container.textContent.includes('ذخیرهٔ مجوزها')) break;
+    await act(async () => { await wait(200); });
+  }
 
+  // eslint-disable-next-line no-console
+  console.log('DEBUG-FULL::', container.textContent.slice(-400));
+  // eslint-disable-next-line no-console
+  console.log('DEBUG-BUTTONS::', container.querySelectorAll('[role="button"]').length,
+    container.innerHTML.length);
   const accordion = [...container.querySelectorAll('[role="button"]')]
     .find((node) => node.textContent.includes('خزانه‌داری'));
   expect(accordion).toBeTruthy();
   await act(async () => {
     accordion.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await wait(400);
+    await wait(450);
   });
 
   expect(container.textContent).toContain('دریافت‌ها');
   expect(container.textContent).toContain('انتقال وجوه');
-  expect(container.textContent).toContain('مشاهده');
+  expect(container.textContent).toContain('تأیید');
+
+  const approveBox = container.querySelector(
+    'input[aria-label="دریافت‌ها تأیید"]',
+  );
+  expect(approveBox).toBeTruthy();
+  await act(async () => {
+    approveBox.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(300);
+  });
 
   const saveButton = [...container.querySelectorAll('button')]
     .find((node) => node.textContent.includes('ذخیرهٔ مجوزها'));
@@ -201,9 +219,10 @@ test('roles tab renders the fine-grained permission matrix and saves it', async 
   });
 
   const saveCall = axiosInstance.post.mock.calls
-    .find(([url]) => url === '/users/roles/treasury_manager/permissions/');
+    .find(([url]) => url === '/users/4/access/');
   expect(saveCall).toBeTruthy();
   expect(saveCall[1].permissions['treasury.receipts.view']).toBe(true);
+  expect(saveCall[1].permissions['treasury.receipts.approve']).toBe(true);
 
   root.unmount();
   container.remove();

@@ -11,7 +11,8 @@ Permission Engine — RBAC ریز بر اساس کاتالوگ منوها + سا
 پس کد ویوهای موجود نیازی به تغییر ندارد.
 """
 from core.permission_catalog import (
-    LEGACY_RULES, all_codes as catalog_codes, is_valid_code, module_any_permission,
+    LEGACY_RULES, all_codes as catalog_codes, is_valid_code,
+    legacy_permissions_from_fine, module_any_permission,
 )
 
 ALL_PERMISSIONS = [
@@ -36,13 +37,33 @@ def _role_override(role):
     return RolePermission.objects.filter(role=role).first()
 
 
+def user_access_record(user):
+    """ردیف مجوزهای کاربر (UserAccess) یا None."""
+    from core.models.user import UserAccess
+
+    if not user or not getattr(user, 'is_authenticated', False):
+        return None
+    return UserAccess.objects.filter(user=user).first()
+
+
 def fine_permissions_for(user):
-    """کدهای ریز داده‌شده به کاربر: dict(code → bool) — فقط کدهای کاتالوگ."""
+    """کدهای ریز داده‌شده به کاربر: dict(code → bool) — منبع اصلی: UserAccess."""
     granted = {}
     if not user or not getattr(user, 'is_authenticated', False):
         return granted
     if getattr(user, 'is_superuser', False):
         return {code: True for code in catalog_codes()}
+
+    access = user_access_record(user)
+    if access is not None:
+        if access.is_full_access:
+            return {code: True for code in catalog_codes()}
+        for key, value in (access.permissions or {}).items():
+            if is_valid_code(key):
+                granted[key] = bool(value)
+        return granted
+
+    # سازگاری: کاربرانی که هنوز مجوز کاربری ندارند، از نقش قدیمی استفاده می‌کنند
     profile = getattr(user, 'profile', None)
     if profile is None:
         return granted
@@ -55,9 +76,21 @@ def fine_permissions_for(user):
 
 
 def permissions_for(user):
-    """مجوزهای لایهٔ قدیمی (سازگاری کامل با چک‌های فعلی ویوها)."""
+    """مجوزهای لایهٔ قدیمی — از مجوزهای کاربر مشتق می‌شود (سازگاری با ویوها)."""
     if getattr(user, 'is_superuser', False):
         return {permission: True for permission in ALL_PERMISSIONS}
+    if not user or not getattr(user, 'is_authenticated', False):
+        return {permission: False for permission in ALL_PERMISSIONS}
+
+    access = user_access_record(user)
+    if access is not None:
+        if access.is_full_access:
+            return {permission: True for permission in ALL_PERMISSIONS}
+        granted = {code for code, value in (access.permissions or {}).items() if value}
+        derived = legacy_permissions_from_fine(granted)
+        return {permission: bool(derived.get(permission, False))
+                for permission in ALL_PERMISSIONS}
+
     profile = getattr(user, 'profile', None)
     if profile is None:
         return {permission: False for permission in ALL_PERMISSIONS}

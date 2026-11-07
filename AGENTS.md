@@ -457,8 +457,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `f7368027c feat(treasury): Pasargad-style interbank (SHEBA) and cash print templates`
-- **Live:** frontend `main.981af62d.js` (HTTP 200) · backend deployed (نقش‌ها/مجوزهای ریز + مایگریشن `core.0018`)، gunicorn/celery/nginx active.
+- **Last commit:** `619cef305 feat(settings): full menu-level roles and permissions across every module`
+- **Live:** frontend `main.7665adc9.js` (HTTP 200) · backend deployed (مجوز ریز هر کاربر + مایگریشن `core.0019`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
@@ -489,21 +489,24 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   و بلافاصله چاپ نهایی باز می‌شود. اندپوینت‌ها: `/api/treasury/voucher-preview/` و `/api/treasury/voucher-issue/`.
   چاپ تراکنش‌های خزانه اکنون HTML قالب (نه فقط داده) برمی‌گرداند؛ «ثبت انتقال» در یک تابع مشترک
   `vouchers.post_transfer_documents` متمرکز شد.
-- **کاربران، نقش‌ها و مجوزهای ریز (۲۰۲۶-۱۱-۰۷):** `/users` بازطراحی شد به دو تب:
-  **کاربران** (جدول با عنوان شغلی پرسنل = نقش سازمانی، نقش دسترسی، شمارش مجوز، ماژول‌ها، آخرین ورود،
-  ویرایش/غیرفعال‌سازی) و **نقش‌ها و مجوزهای ریز** (کارت نقش‌ها + ماتریس ماژول→گروه→منو با
-  مشاهده/ایجاد/ویرایش/حذف/تأیید/خروجی، «انتخاب همه» هر ماژول، جست‌وجو و ذخیرهٔ ماتریس).
-  - کاتالوگ مجوزها: `core/permission_catalog.py` + `core/permission_catalog_data.json`
-    (۱۰ ماژول، ۷۵ گروه، **۲۵۹ منو**، **۱۰۷۲ کد** `module.menu.action`). بازتولید با
+- **کاربران و مجوزهای ریز هر پرسنل (۲۰۲۶-۱۱-۰۷):** `/users` دو تب دارد:
+  **کاربران** (جدول با عنوان شغلی/دپارتمان پرسنل، برچسب «مدیر سیستم» یا تعداد مجوز، ماژول‌های مجاز،
+  آخرین ورود، ویرایش/غیرفعال‌سازی) و **مجوزهای کاربران** (انتخاب هر کاربر → ماتریس ماژول→گروه→منو
+  با مشاهده/ایجاد/ویرایش/حذف/تأیید/خروجی، «انتخاب همه» ماژول، جست‌وجوی منو، سوئیچ «دسترسی کامل = مدیر سیستم»).
+  - **بدون نقش‌محوری**: مجوزها برای «هر کاربر» مستقل ذخیره می‌شود؛ فقط یک نقش سیستمی «مدیر سیستم»
+    (سوپریوزر یا `is_full_access`) با دسترسی کامل وجود دارد. یک کاربر می‌تواند در یک ماژول فقط «مشاهده»
+    و در ماژول دیگر «تأیید» داشته باشد.
+  - کاتالوگ: `core/permission_catalog.py` + `core/permission_catalog_data.json`
+    (۱۰ ماژول، ۷۵ گروه، **۲۵۹ منو**، **۱۰۷۲ کد** `module.menu.action`). بازتولید:
     `python scripts/build_permission_catalog.py` بعد از تغییر `menuConfig.js`.
-  - نقش‌ها: مدل `core.AccessRole` (سیستمی + سفارشی، `base_role` برای ارث‌بری، رنگ/توضیح) و
-    ذخیرهٔ ماتریس در `core.RolePermission.permissions` (کلیدهای نقطه‌دار + کلیدهای قدیمی).
-  - اندپوینت‌ها: `GET users/roles/` (نقش‌ها+کاتالوگ+آمار)، `GET users/roles/catalog/`،
-    `POST users/roles/<code>/permissions/`، `POST users/roles/create/`، `POST users/roles/<code>/delete/`،
-    `GET users/` (شامل `employee_position`/`employee_department`) و `POST users/<id>/role/` (هر نقش فعال).
-  - سازگاری کامل: `permission_engine` هم مجوزهای قدیمی (`treasury_execute`, `can_approve_documents`…)
-    و هم کدهای ریز را می‌فهمد؛ `LEGACY_RULES` نگاشت دوطرفه را انجام می‌دهد. ویوهای موجود تغییر نکردند.
-  - تست‌ها: `core/tests_permissions.py` (کاتالوگ/نگاشت/سازگاری) و `__tests__/usersAccessSmoke.test.js`.
+  - مدل `core.UserAccess` (user OneToOne، `permissions` JSON، `is_full_access`, `applications`, `note`)
+    + مایگریشن `core.0019`. موتور: `fine_permissions_for` از `UserAccess` می‌خواند؛ مجوزهای قدیمی
+    (`treasury_execute`, `can_approve_documents`…) با `LEGACY_RULES` از همان کدهای ریز مشتق می‌شوند
+    (سازگاری کامل ویوها) و کاربران بدون ردیف UserAccess هنوز از پیش‌فرض نقش قدیمی استفاده می‌کنند.
+  - اندپوینت‌ها: `GET users/` (با `employee_position`/`employee_department`/`modules`/`is_full_access`)،
+    `GET users/access/catalog/`، `GET|POST users/<id>/access/` (ماتریس + دسترسی کامل)،
+    و مسیرهای سازگاری `users/roles/…` (دیگر در UI استفاده نمی‌شوند).
+  - تست‌ها: `core/tests_permissions.py` و `__tests__/usersAccessSmoke.test.js`.
 - **دریافت/پرداخت پیشرفته:** دفتر اسناد (`/treasury/voucher-book` با انواع چک/نقدی/شبا/سند و حساب بدهکار)،
   دستور پرداخت بین‌بانکی پایا/ساتنا (`/treasury/bank-orders` + اعتبارسنجی شبا mod 97 و تشخیص بانک از کد شبا)،
   کسورات چندگانهٔ پرداخت (`PaymentDeduction`، مبلغ خالص، `/payment-requests/{id}/distribution/`),

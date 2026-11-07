@@ -206,3 +206,28 @@ def module_any_permission(granted, module, actions):
     suffixes = tuple(f'.{action}' for action in actions)
     return any(code.startswith(prefix) and code.endswith(suffixes) for code in granted)
 
+
+def legacy_permissions_from_fine(granted):
+    """کدهای ریز → دیکشنری مجوزهای قدیمی (پایهٔ سازگاری ویوهای موجود)."""
+    granted = set(granted or ())
+    return {
+        legacy: module_any_permission(granted, module, actions)
+        for legacy, rules in LEGACY_RULES.items()
+        for module, actions in rules[:1]
+    }
+
+
+def modules_brief(granted):
+    """خلاصهٔ ماژول‌های دارای مجوز برای نمایش در فهرست کاربران."""
+    counts = {}
+    for code in granted or ():
+        module = code.split('.')[0]
+        counts[module] = counts.get(module, 0) + 1
+    result = []
+    for module in catalog():
+        count = counts.get(module['slug'])
+        if count:
+            result.append({'slug': module['slug'], 'name': module['name'],
+                           'color': module['color'], 'count': count})
+    return result
+

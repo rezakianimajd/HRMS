@@ -93,3 +93,36 @@ class PermissionCompatibilityTests(SimpleTestCase):
         self.assertTrue(engine._fine_implied('documents.workflow.approve', legacy))
         fine = {'documents.library.delete'}
         self.assertTrue(engine._legacy_implied('can_delete_documents', fine))
+
+    def test_legacy_permissions_from_fine_mixed_modules(self):
+        fine = {
+            'treasury.receipts.view',
+            'treasury.receipts.approve',
+            'documents.library.view',
+        }
+        derived = catalog_mod.legacy_permissions_from_fine(fine)
+        self.assertTrue(derived['treasury_view'])
+        self.assertTrue(derived['treasury_approve'])
+        self.assertFalse(derived['treasury_execute'])
+        self.assertTrue(derived['can_manage_documents'] is False)
+        self.assertFalse(derived['can_delete_documents'])
+        self.assertFalse(derived['can_approve_leaves'])
+
+    def test_modules_brief_counts_per_module(self):
+        brief = catalog_mod.modules_brief({
+            'treasury.receipts.view', 'treasury.receipts.edit', 'settings.general.view',
+        })
+        by_slug = {row['slug']: row for row in brief}
+        self.assertEqual(by_slug['treasury']['count'], 2)
+        self.assertEqual(by_slug['settings']['count'], 1)
+        self.assertIn('name', by_slug['treasury'])
+        self.assertNotIn('accounting', by_slug)
+
+    def test_user_access_model_fields(self):
+        from core.models.user import UserAccess
+
+        names = {field.name for field in UserAccess._meta.get_fields()}
+        for name in ('user', 'is_full_access', 'permissions', 'applications',
+                     'note', 'updated_by'):
+            self.assertIn(name, names)
+        self.assertEqual(UserAccess._meta.get_field('user').remote_field.related_name, 'access')

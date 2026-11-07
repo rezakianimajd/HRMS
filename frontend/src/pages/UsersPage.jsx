@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Checkbox,
   Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
-  FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
-  Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Tooltip, Typography, alpha,
+  FormControlLabel, Grid, IconButton, InputAdornment, MenuItem, Paper, Stack, Switch,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Tooltip,
+  Typography, alpha,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import BusinessIcon from '@mui/icons-material/Business';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -29,7 +30,7 @@ import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
 const USERS_API = '/users/';
-const ROLES_API = '/users/roles/';
+const CATALOG_API = '/users/access/catalog/';
 const APPS_API = '/applications/catalog/';
 const EMPLOYEES_API = '/employees/';
 
@@ -42,8 +43,6 @@ const ACTION_TONE = {
   export: SOFT.teal,
 };
 
-const roleColor = (role) => role?.color || SOFT.indigo;
-
 const employeeLine = (user) => {
   const position = user.employee_position || '';
   const department = user.employee_department || '';
@@ -53,18 +52,28 @@ const employeeLine = (user) => {
 
 const lastLogin = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
 
-const RoleChip = ({ role }) => (
+const ADMIN_Chip = () => (
   <Chip
     size="small"
-    label={role?.name || role?.role_name || '—'}
+    icon={<AdminPanelSettingsIcon sx={{ fontSize: 13 }} />}
+    label="مدیر سیستم"
     sx={{
-      height: 22,
-      fontSize: 10.5,
-      fontWeight: 800,
-      bgcolor: alpha(roleColor(role), 0.14),
-      color: roleColor(role),
-      border: `1px solid ${alpha(roleColor(role), 0.3)}`,
-      '& .MuiChip-label': { px: 0.9 },
+      height: 22, fontSize: 10, fontWeight: 800,
+      bgcolor: alpha(SOFT.violet, 0.14), color: SOFT.violet,
+      border: `1px solid ${alpha(SOFT.violet, 0.3)}`,
+      '& .MuiChip-label': { px: 0.8 },
+    }}
+  />
+);
+
+const CountChip = ({ value, label, color = SOFT.green }) => (
+  <Chip
+    size="small"
+    label={`${formatPersianNumber(value)} ${label}`}
+    sx={{
+      height: 22, fontSize: 10, fontWeight: 800,
+      bgcolor: alpha(color, 0.12), color,
+      '& .MuiChip-label': { px: 0.8 },
     }}
   />
 );
@@ -78,14 +87,18 @@ const StatPill = ({ icon, label, value, color = SOFT.indigo }) => (
   </Stack>
 );
 
+const moduleCodes = (module) => module.groups.flatMap(
+  (group) => group.items.flatMap((item) => Object.values(item.codes)),
+);
+
 /* ─────────────────────────── تب کاربران ─────────────────────────── */
 const EMPTY_USER = {
   username: '', first_name: '', last_name: '', email: '', password: '',
-  role: 'employee', employee_id: null, application_ids: [],
+  employee_id: null, application_ids: [], full_access: false,
 };
 
 const UserEditDialog = ({
-  open, onClose, user, roles, apps, employees, employeesLoading, onCreate, onUpdate,
+  open, onClose, user, apps, employees, employeesLoading, onCreate, onUpdate,
 }) => {
   const [form, setForm] = useState(EMPTY_USER);
   const accent = SOFT.indigo;
@@ -98,9 +111,9 @@ const UserEditDialog = ({
       last_name: user.last_name || '',
       email: user.email || '',
       password: '',
-      role: user.role || 'employee',
       employee_id: user.employee_id || null,
       application_ids: user.applications || [],
+      full_access: Boolean(user.is_full_access),
     } : EMPTY_USER);
   }, [open, user]);
 
@@ -146,20 +159,28 @@ const UserEditDialog = ({
                   onChange={(event) => set('password', event.target.value)} />
               </Grid>
             ) : null}
-            <Grid item xs={12}>
-              <FormControl fullWidth size="small">
-                <InputLabel>نقش دسترسی</InputLabel>
-                <Select value={form.role} label="نقش دسترسی"
-                  onChange={(event) => set('role', event.target.value)}>
-                  {roles.map((role) => (
-                    <MenuItem key={role.code} value={role.code} sx={{ fontSize: 12 }}>
-                      {`${role.name} — ${formatPersianNumber(role.employees || 0)} کاربر`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
           </Grid>
+
+          <FormControlLabel
+            control={(
+              <Switch
+                size="small"
+                checked={form.full_access}
+                disabled={Boolean(user?.is_superuser)}
+                onChange={(event) => set('full_access', event.target.checked)}
+              />
+            )}
+            label={(
+              <Box>
+                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
+                  مدیر سیستم (دسترسی کامل به همهٔ ماژول‌ها و عملیات)
+                </Typography>
+                <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                  برای سایر پرسنل، مجوزها را در تب «مجوزهای کاربران» تک‌تک تعیین کنید.
+                </Typography>
+              </Box>
+            )}
+          />
 
 
           <Stack direction="row" spacing={1.25} alignItems="center">
@@ -176,10 +197,10 @@ const UserEditDialog = ({
             />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                اتصال به پروندهٔ پرسنلی (عنوان شغلی = نقش سازمانی)
+                اتصال به پروندهٔ پرسنلی (عنوان شغلی نمایش داده می‌شود)
               </Typography>
               <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                با انتخاب پرسنل، عنوان شغلی و دپارتمان او کنار نام کاربر نمایش داده می‌شود.
+                برای اینکه عنوان شغلی و دپارتمان پرسنل کنار نام کاربر بیاید.
               </Typography>
             </Box>
           </Stack>
@@ -193,7 +214,7 @@ const UserEditDialog = ({
 
           <Divider />
           <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.secondary' }}>
-            ماژول‌های مجاز (خالی یعنی طبق نقش)
+            ماژول‌های مجاز (خالی یعنی همهٔ ماژول‌هایی که مجوز دارند)
           </Typography>
           <Grid container spacing={1}>
             {apps.map((app) => {
@@ -243,10 +264,9 @@ const UserEditDialog = ({
 };
 
 
-const UsersTab = ({ roles, apps, onMessage }) => {
+const UsersTab = ({ apps, onMessage, onOpenAccess }) => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
   const [editing, setEditing] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -267,10 +287,7 @@ const UsersTab = ({ roles, apps, onMessage }) => {
     ? employeesQuery.data
     : (employeesQuery.data?.results || []);
 
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['access-users'] });
-    qc.invalidateQueries({ queryKey: ['role-access'] });
-  };
+  const refresh = () => qc.invalidateQueries({ queryKey: ['access-users'] });
 
   const create = useMutation({
     mutationFn: (body) => axiosInstance.post('/users/create/', body),
@@ -307,22 +324,14 @@ const UsersTab = ({ roles, apps, onMessage }) => {
     }),
   });
 
-  const roleByCode = useMemo(
-    () => Object.fromEntries(roles.map((role) => [role.code, role])),
-    [roles],
-  );
-
   const filtered = users.filter((user) => {
     const term = search.trim().toLowerCase();
-    const haystack = [
+    if (!term) return true;
+    return [
       user.username, user.full_name, user.first_name, user.last_name,
       user.email, user.employee_position, user.employee_department,
-    ].filter(Boolean).join(' ').toLowerCase();
-    const matchesSearch = !term || haystack.includes(term);
-    const matchesRole = !roleFilter || user.role === roleFilter;
-    return matchesSearch && matchesRole;
+    ].filter(Boolean).join(' ').toLowerCase().includes(term);
   });
-
 
   return (
     <Box>
@@ -341,23 +350,19 @@ const UsersTab = ({ roles, apps, onMessage }) => {
                 </InputAdornment>
               ),
             }}
-            sx={{ minWidth: { xs: '100%', md: 280 } }}
+            sx={{ minWidth: { xs: '100%', md: 300 } }}
           />
-          <FormControl size="small" sx={{ minWidth: 190 }}>
-            <InputLabel>نقش</InputLabel>
-            <Select value={roleFilter} label="نقش"
-              onChange={(event) => setRoleFilter(event.target.value)}>
-              <MenuItem value="" sx={{ fontSize: 12 }}>همهٔ نقش‌ها</MenuItem>
-              {roles.map((role) => (
-                <MenuItem key={role.code} value={role.code} sx={{ fontSize: 12 }}>
-                  {role.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
           <Box sx={{ flex: 1 }} />
           <StatPill icon={<GroupsIcon sx={{ fontSize: 14 }} />} label="کاربران"
             value={formatPersianNumber(users.length)} color={SOFT.indigo} />
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => onOpenAccess(null)}
+            sx={{ fontSize: 11 }}
+          >
+            تعیین مجوز کاربران
+          </Button>
           <Button
             size="small"
             variant="contained"
@@ -382,17 +387,15 @@ const UsersTab = ({ roles, apps, onMessage }) => {
                 }}>
                   <TableCell>کاربر</TableCell>
                   <TableCell>عنوان سازمانی (پرسنل)</TableCell>
-                  <TableCell>نقش دسترسی</TableCell>
-                  <TableCell align="center">مجوزهای ریز</TableCell>
-                  <TableCell align="center">ماژول‌ها</TableCell>
+                  <TableCell>دسترسی</TableCell>
+                  <TableCell>ماژول‌های مجاز</TableCell>
                   <TableCell align="center">آخرین ورود</TableCell>
-                  <TableCell align="center" width={96}>عملیات</TableCell>
+                  <TableCell align="center" width={120}>عملیات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
 
                 {filtered.map((user) => {
-                  const role = roleByCode[user.role] || { name: user.role_name, color: SOFT.slate };
                   const position = employeeLine(user);
                   return (
                     <TableRow key={user.id} hover>
@@ -428,24 +431,63 @@ const UsersTab = ({ roles, apps, onMessage }) => {
                           </Typography>
                         ) : null}
                       </TableCell>
-                      <TableCell><RoleChip role={role} /></TableCell>
-                      <TableCell align="center">
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                          {user.is_superuser
-                            ? 'همه'
-                            : formatPersianNumber(user.permissions_granted || 0)}
-                        </Typography>
+                      <TableCell>
+                        {user.is_full_access ? (
+                          <ADMIN_Chip />
+                        ) : (
+                          <CountChip
+                            value={typeof user.permissions_granted === 'number'
+                              ? user.permissions_granted : 0}
+                            label="مجوز"
+                            color={SOFT.green}
+                          />
+                        )}
                       </TableCell>
-                      <TableCell align="center">
-                        <Typography sx={{ fontSize: 11.5 }}>
-                          {formatPersianNumber((user.applications || []).length)}
-                        </Typography>
+                      <TableCell>
+                        {user.is_full_access ? (
+                          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                            همهٔ ماژول‌ها
+                          </Typography>
+                        ) : (user.modules || []).length ? (
+                          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                            {user.modules.slice(0, 4).map((module) => (
+                              <Chip
+                                key={module.slug}
+                                size="small"
+                                label={`${module.name} · ${formatPersianNumber(module.count)}`}
+                                sx={{
+                                  height: 20, fontSize: 9.5,
+                                  bgcolor: alpha(module.color || SOFT.slate, 0.12),
+                                  color: module.color || SOFT.slate,
+                                }}
+                              />
+                            ))}
+                            {user.modules.length > 4 ? (
+                              <Chip size="small"
+                                label={`+${formatPersianNumber(user.modules.length - 4)}`}
+                                sx={{ height: 20, fontSize: 9.5 }} />
+                            ) : null}
+                          </Stack>
+                        ) : (
+                          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                            هنوز مجوزی تعیین نشده
+                          </Typography>
+                        )}
                       </TableCell>
+
                       <TableCell align="center">
                         <Typography sx={{ fontSize: 11 }}>{lastLogin(user.last_login)}</Typography>
                       </TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={0.25} justifyContent="center">
+                          <Tooltip title="مجوزهای ریز">
+                            <span>
+                              <IconButton size="small" disabled={user.is_superuser}
+                                onClick={() => onOpenAccess(user)}>
+                                <KeyOutlinedIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
                           <Tooltip title="ویرایش">
                             <IconButton size="small"
                               onClick={() => { setEditing(user); setDialogOpen(true); }}>
@@ -455,7 +497,7 @@ const UsersTab = ({ roles, apps, onMessage }) => {
                           <Tooltip title="غیرفعال‌سازی">
                             <span>
                               <IconButton size="small" color="error"
-                                disabled={remove.isPending}
+                                disabled={remove.isPending || user.is_superuser}
                                 onClick={() => {
                                   if (window.confirm(`کاربر «${user.username}» غیرفعال شود؟`)) {
                                     remove.mutate(user.id);
@@ -472,7 +514,7 @@ const UsersTab = ({ roles, apps, onMessage }) => {
                 })}
                 {!filtered.length ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                       <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
                         کاربری با این فیلترها پیدا نشد.
                       </Typography>
@@ -489,7 +531,6 @@ const UsersTab = ({ roles, apps, onMessage }) => {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         user={editing}
-        roles={roles}
         apps={apps}
         employees={employees}
         employeesLoading={employeesQuery.isLoading}
@@ -501,71 +542,8 @@ const UsersTab = ({ roles, apps, onMessage }) => {
 };
 
 
-/* ─────────────────── تب نقش‌ها و مجوزهای ریز ─────────────────── */
-const BASE_ROLES = [
-  { value: 'super_admin', label: 'مدیر ارشد سیستم' },
-  { value: 'hr_manager', label: 'مدیر منابع انسانی' },
-  { value: 'hr_specialist', label: 'کارشناس منابع انسانی' },
-  { value: 'department_head', label: 'مدیر دپارتمان' },
-  { value: 'employee', label: 'کارمند' },
-];
-
-const moduleCodes = (module) => module.groups.flatMap(
-  (group) => group.items.flatMap((item) => Object.values(item.codes)),
-);
-
-const RoleCreateDialog = ({ open, onClose, onCreate, saving }) => {
-  const [form, setForm] = useState({
-    code: '', name: '', description: '', base_role: 'employee', color: '#64748b',
-  });
-  React.useEffect(() => {
-    if (open) {
-      setForm({ code: '', name: '', description: '', base_role: 'employee', color: '#64748b' });
-    }
-  }, [open]);
-  const set = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle sx={{ fontSize: 14, fontWeight: 900 }}>نقش سفارشی جدید</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={1.25} sx={{ pt: 0.5 }}>
-          <TextField size="small" label="نام نقش *" value={form.name}
-            onChange={(event) => set('name', event.target.value)} />
-          <TextField size="small" label="کد یکتا (انگلیسی) *" value={form.code}
-            onChange={(event) => set('code', event.target.value.toLowerCase().replace(/\s+/g, '_'))}
-            inputProps={{ dir: 'ltr' }} helperText="مثال: treasury_manager" />
-          <TextField size="small" label="توضیح" value={form.description}
-            onChange={(event) => set('description', event.target.value)} />
-          <FormControl size="small">
-            <InputLabel>نقش پایه (ارث‌بری)</InputLabel>
-            <Select value={form.base_role} label="نقش پایه (ارث‌بری)"
-              onChange={(event) => set('base_role', event.target.value)}>
-              {BASE_ROLES.map((row) => (
-                <MenuItem key={row.value} value={row.value} sx={{ fontSize: 12 }}>
-                  {row.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <TextField size="small" label="رنگ" value={form.color}
-            onChange={(event) => set('color', event.target.value)} inputProps={{ dir: 'ltr' }} />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>انصراف</Button>
-        <Button variant="contained" disabled={saving || !form.code || !form.name}
-          onClick={() => onCreate.mutate(form)}
-          sx={{ bgcolor: SOFT.violet, boxShadow: 'none', '&:hover': { bgcolor: SOFT.violet } }}>
-          ساخت نقش
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-
-const PermissionMatrix = ({ role, catalog, actions, draft, onToggleCodes, search }) => {
+/* ─────────────────── تب مجوزهای کاربران (هر پرسنل مستقل) ─────────────────── */
+const PermissionMatrix = ({ catalog, actions, draft, onToggleCodes, search }) => {
   const term = search.trim().toLowerCase();
   return (
     <Stack spacing={0.75}>
@@ -595,16 +573,13 @@ const PermissionMatrix = ({ role, catalog, actions, draft, onToggleCodes, search
                 useFlexGap flexWrap="wrap">
                 <Box sx={{
                   width: 8, height: 8, borderRadius: '50%',
-                  bgcolor: module.color || roleColor(role),
+                  bgcolor: module.color || SOFT.slate,
                 }} />
                 <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>{module.name}</Typography>
-                <Chip
-                  size="small"
-                  label={`${formatPersianNumber(grantedCount)} از ${formatPersianNumber(moduleCodeList.length)}`}
-                  sx={{
-                    height: 20, fontSize: 10, fontWeight: 800,
-                    bgcolor: alpha(SOFT.green, 0.12), color: SOFT.green,
-                  }}
+                <CountChip
+                  value={grantedCount}
+                  label={`از ${formatPersianNumber(moduleCodeList.length)}`}
+                  color={SOFT.green}
                 />
                 <Box sx={{ flex: 1 }} />
                 <Button size="small" sx={{ fontSize: 10.5, minWidth: 0 }}
@@ -707,24 +682,49 @@ const PermissionMatrix = ({ role, catalog, actions, draft, onToggleCodes, search
 };
 
 
-const RolesTab = ({ roles, catalog, actions, onMessage, onRefresh }) => {
-  const [selected, setSelected] = useState(roles[0]?.code || '');
-  const [draft, setDraft] = useState({});
+const UserAccessTab = ({ catalog, actions, initialUserId, onMessage, onSaved }) => {
+  const qc = useQueryClient();
+  const [selectedId, setSelectedId] = useState(initialUserId || null);
   const [search, setSearch] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [draft, setDraft] = useState({});
+  const [fullAccess, setFullAccess] = useState(false);
 
-  const role = roles.find((row) => row.code === selected) || roles[0];
+  const usersQuery = useQuery({
+    queryKey: ['access-users'],
+    queryFn: () => axiosInstance.get(USERS_API).then((response) => response.data),
+  });
+  const rawUsers = usersQuery.data;
+  const users = Array.isArray(rawUsers) ? rawUsers : (rawUsers?.results || []);
 
   React.useEffect(() => {
-    if (!role) return;
-    setDraft({ ...(role.permissions || {}) });
-  }, [role?.code]); // eslint-disable-line
+    if (selectedId) return;
+    const first = users.find((user) => !user.is_superuser) || users[0];
+    if (first) setSelectedId(first.id);
+  }, [users, selectedId]);
 
+  const accessQuery = useQuery({
+    queryKey: ['user-access', selectedId],
+    queryFn: () => axiosInstance.get(`${USERS_API}${selectedId}/access/`)
+      .then((response) => response.data),
+    enabled: Boolean(selectedId),
+    staleTime: 15_000,
+  });
+
+  const accessData = accessQuery.data;
+  React.useEffect(() => {
+    if (!accessData) return;
+    setDraft({ ...(accessData.permissions || {}) });
+    setFullAccess(Boolean(accessData.full_access));
+  }, [accessData]);
+
+  const selectedUser = users.find((user) => user.id === selectedId);
   const granted = Object.values(draft).filter(Boolean).length;
   const totalCodes = useMemo(
     () => catalog.reduce((sum, module) => sum + moduleCodes(module).length, 0),
     [catalog],
   );
+  const readOnly = Boolean(selectedUser?.is_superuser);
 
   const toggleCodes = (codes, value) => {
     setDraft((previous) => {
@@ -736,113 +736,86 @@ const RolesTab = ({ roles, catalog, actions, onMessage, onRefresh }) => {
 
   const save = useMutation({
     mutationFn: () => axiosInstance.post(
-      `${ROLES_API}${role.code}/permissions/`,
-      { permissions: draft },
+      `${USERS_API}${selectedId}/access/`,
+      { permissions: fullAccess ? {} : draft, full_access: fullAccess },
     ),
-    onSuccess: () => {
-      onRefresh();
-      onMessage({ type: 'success', text: `مجوزهای نقش «${role.name}» ذخیره شد.` });
+    onSuccess: (response) => {
+      qc.invalidateQueries({ queryKey: ['access-users'] });
+      qc.invalidateQueries({ queryKey: ['user-access', selectedId] });
+      if (onSaved) onSaved();
+      onMessage({ type: 'success', text: response.data?.message || 'مجوزها ذخیره شد.' });
     },
     onError: (error) => onMessage({
       type: 'error', text: error?.response?.data?.error || 'ذخیرهٔ مجوزها انجام نشد.',
     }),
   });
 
-  const create = useMutation({
-    mutationFn: (body) => axiosInstance.post(`${ROLES_API}create/`, body),
-    onSuccess: () => {
-      onRefresh();
-      setCreateOpen(false);
-      onMessage({ type: 'success', text: 'نقش سفارشی ساخته شد.' });
-    },
-    onError: (error) => onMessage({
-      type: 'error', text: error?.response?.data?.error || 'ساخت نقش انجام نشد.',
-    }),
-  });
-
-  const remove = useMutation({
-    mutationFn: (code) => axiosInstance.post(`${ROLES_API}${code}/delete/`),
-    onSuccess: () => {
-      onRefresh();
-      onMessage({ type: 'success', text: 'نقش حذف شد.' });
-    },
-    onError: (error) => onMessage({
-      type: 'error', text: error?.response?.data?.error || 'حذف نقش انجام نشد.',
-    }),
+  const filteredUsers = users.filter((user) => {
+    const term = userSearch.trim().toLowerCase();
+    if (!term) return true;
+    return [
+      user.username, user.full_name, user.employee_position, user.employee_department,
+    ].filter(Boolean).join(' ').toLowerCase().includes(term);
   });
 
   return (
     <Grid container spacing={1.5}>
       <Grid item xs={12} lg={4}>
         <Paper elevation={0} sx={{ ...SURFACE, p: 1.25 }}>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-            <ShieldOutlinedIcon sx={{ fontSize: 18, color: SOFT.violet }} />
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <GroupsIcon sx={{ fontSize: 18, color: SOFT.indigo }} />
             <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>
-              نقش‌ها ({formatPersianNumber(roles.length)})
+              پرسنل / کاربران ({formatPersianNumber(users.length)})
             </Typography>
-            <Box sx={{ flex: 1 }} />
-            <Button size="small" startIcon={<AddIcon sx={{ fontSize: 15 }} />}
-              onClick={() => setCreateOpen(true)} sx={{ fontSize: 11 }}>
-              نقش جدید
-            </Button>
           </Stack>
-          <Stack spacing={0.75}>
-            {roles.map((row) => {
-              const active = row.code === role?.code;
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="جست‌وجوی نام یا عنوان شغلی…"
+            value={userSearch}
+            onChange={(event) => setUserSearch(event.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 16 }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ mb: 1 }}
+          />
+          <Stack spacing={0.75} sx={{ maxHeight: { md: 'calc(100vh - 380px)' }, overflow: 'auto' }}>
+            {filteredUsers.map((user) => {
+              const active = user.id === selectedId;
               return (
                 <Paper
-                  key={row.code}
-                  onClick={() => setSelected(row.code)}
+                  key={user.id}
+                  onClick={() => setSelectedId(user.id)}
                   elevation={0}
                   sx={{
-                    p: 1, cursor: 'pointer', borderRadius: '12px',
-                    border: '1px solid',
-                    borderColor: active ? alpha(roleColor(row), 0.55) : 'divider',
-                    bgcolor: active ? alpha(roleColor(row), 0.07) : 'background.paper',
+                    p: 0.9, cursor: 'pointer', borderRadius: '12px', border: '1px solid',
+                    borderColor: active ? alpha(SOFT.indigo, 0.55) : 'divider',
+                    bgcolor: active ? alpha(SOFT.indigo, 0.06) : 'background.paper',
                   }}
                 >
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Avatar variant="rounded" sx={{
-                      width: 28, height: 28, borderRadius: '9px', fontSize: 13,
-                      bgcolor: alpha(roleColor(row), 0.16), color: roleColor(row),
-                    }}>
-                      <SecurityIcon sx={{ fontSize: 15 }} />
-                    </Avatar>
+                    <UserAvatar user={user} size={30} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>
-                        {row.name}
+                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                        {user.full_name || user.username}
                       </Typography>
                       <Typography noWrap sx={{ fontSize: 10, color: 'text.secondary' }}>
-                        {row.description || row.code}
+                        {employeeLine(user) || `@${user.username}`}
                       </Typography>
                     </Box>
-                    {row.is_system ? (
-                      <Chip size="small" label="سیستمی"
-                        sx={{ height: 18, fontSize: 9.5, bgcolor: alpha(SOFT.slate, 0.14) }} />
+                    {user.is_full_access ? (
+                      <ADMIN_Chip />
                     ) : (
-                      <Tooltip title="حذف نقش">
-                        <IconButton size="small" color="error"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (window.confirm(`نقش «${row.name}» حذف شود؟`)) {
-                              remove.mutate(row.code);
-                            }
-                          }}>
-                          <DeleteIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      </Tooltip>
+                      <CountChip
+                        value={typeof user.permissions_granted === 'number'
+                          ? user.permissions_granted : 0}
+                        label="مجوز"
+                      />
                     )}
-                  </Stack>
-                  <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }} useFlexGap flexWrap="wrap">
-                    <Chip size="small" icon={<GroupsIcon sx={{ fontSize: 12 }} />}
-                      label={`${formatPersianNumber(row.employees || 0)} کاربر`}
-                      sx={{ height: 18, fontSize: 9.5 }} />
-                    <Chip size="small" icon={<KeyOutlinedIcon sx={{ fontSize: 12 }} />}
-                      label={`${formatPersianNumber(row.permissions_total || 0)} مجوز`}
-                      sx={{
-                        height: 18, fontSize: 9.5,
-                        bgcolor: alpha(roleColor(row), 0.1), color: roleColor(row),
-                      }} />
                   </Stack>
                 </Paper>
               );
@@ -854,20 +827,36 @@ const RolesTab = ({ roles, catalog, actions, onMessage, onRefresh }) => {
 
       <Grid item xs={12} lg={8}>
         <Paper elevation={0} sx={{ ...SURFACE, p: 1.25 }}>
-          {role ? (
+          {!selectedId ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                یک کاربر را انتخاب کنید تا مجوزهای ریز او تعیین شود.
+              </Typography>
+            </Box>
+          ) : accessQuery.isLoading ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={22} /></Box>
+          ) : (
             <>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}
                 alignItems={{ xs: 'stretch', md: 'center' }} useFlexGap flexWrap="wrap">
-                <Stack direction="row" spacing={0.75} alignItems="center">
-                  <RoleChip role={role} />
-                  <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-                    {`نقش پایه: ${BASE_ROLES.find((row) => row.value === role.base_role)?.label || role.base_role}`}
-                  </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <UserAvatar user={selectedUser || {}} size={34} />
+                  <Box>
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>
+                      {selectedUser?.full_name || accessData?.user?.full_name
+                        || selectedUser?.username}
+                    </Typography>
+                    <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      {employeeLine(selectedUser || {}) || `@${selectedUser?.username || ''}`}
+                    </Typography>
+                  </Box>
                 </Stack>
                 <Box sx={{ flex: 1 }} />
-                <StatPill icon={<KeyOutlinedIcon sx={{ fontSize: 14 }} />} label="مجوز فعال"
-                  value={`${formatPersianNumber(granted)} از ${formatPersianNumber(totalCodes)}`}
-                  color={SOFT.green} />
+                <CountChip
+                  value={fullAccess ? totalCodes : granted}
+                  label={`از ${formatPersianNumber(totalCodes)} مجوز`}
+                  color={SOFT.green}
+                />
                 <TextField
                   size="small"
                   placeholder="جست‌وجوی منو…"
@@ -880,33 +869,56 @@ const RolesTab = ({ roles, catalog, actions, onMessage, onRefresh }) => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{ minWidth: 200 }}
+                  sx={{ minWidth: 190 }}
                 />
                 <Button
                   size="small"
                   variant="contained"
                   startIcon={<SaveIcon sx={{ fontSize: 16 }} />}
-                  disabled={save.isPending || role.code === 'super_admin'}
+                  disabled={save.isPending || readOnly}
                   onClick={() => save.mutate()}
                   sx={{
-                    bgcolor: roleColor(role), boxShadow: 'none',
-                    '&:hover': { bgcolor: roleColor(role) },
+                    bgcolor: SOFT.indigo, boxShadow: 'none',
+                    '&:hover': { bgcolor: SOFT.indigo },
                   }}
                 >
                   ذخیرهٔ مجوزها
                 </Button>
               </Stack>
 
-              {role.code === 'super_admin' ? (
-                <Alert severity="info" sx={{ mt: 1, fontSize: 11.5 }}>
-                  نقش «مدیر ارشد سیستم» همیشه به همهٔ منوها و عملیات دسترسی دارد و قابل محدودسازی نیست.
+              <Divider sx={{ my: 1 }} />
+
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <FormControlLabel
+                  control={(
+                    <Switch
+                      size="small"
+                      checked={fullAccess || readOnly}
+                      disabled={readOnly}
+                      onChange={(event) => setFullAccess(event.target.checked)}
+                    />
+                  )}
+                  label={(
+                    <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                      مدیر سیستم — دسترسی کامل (جایگزین ماتریس)
+                    </Typography>
+                  )}
+                />
+              </Stack>
+
+              {readOnly ? (
+                <Alert severity="info" sx={{ mb: 1, fontSize: 11.5 }}>
+                  این کاربر «مدیر سیستم» است و به‌طور خودکار به همهٔ منوها و عملیات دسترسی دارد.
                 </Alert>
               ) : null}
 
-              <Divider sx={{ my: 1 }} />
-              <Box sx={{ maxHeight: { xs: 'none', md: 'calc(100vh - 320px)' }, overflow: 'auto', pr: 0.5 }}>
+              <Box sx={{
+                maxHeight: { xs: 'none', md: 'calc(100vh - 380px)' },
+                overflow: 'auto', pr: 0.5,
+                opacity: (fullAccess || readOnly) ? 0.45 : 1,
+                pointerEvents: (fullAccess || readOnly) ? 'none' : 'auto',
+              }}>
                 <PermissionMatrix
-                  role={role}
                   catalog={catalog}
                   actions={actions}
                   draft={draft}
@@ -915,38 +927,28 @@ const RolesTab = ({ roles, catalog, actions, onMessage, onRefresh }) => {
                 />
               </Box>
             </>
-          ) : (
-            <Box sx={{ py: 6, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                نقش‌ای برای نمایش وجود ندارد.
-              </Typography>
-            </Box>
           )}
         </Paper>
       </Grid>
-
-      <RoleCreateDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreate={create}
-        saving={create.isPending}
-      />
     </Grid>
   );
 };
 
 
-
 /* ──────────────────────────── صفحهٔ اصلی ──────────────────────────── */
 const UsersPage = () => {
-  const qc = useQueryClient();
   const [tab, setTab] = useState(0);
   const [message, setMessage] = useState(null);
+  const [selectedUserId, setSelectedUserId] = useState(null);
 
-  const rolesQuery = useQuery({
-    queryKey: ['role-access'],
-    queryFn: () => axiosInstance.get(ROLES_API).then((response) => response.data),
-    staleTime: 60_000,
+  const usersQuery = useQuery({
+    queryKey: ['access-users'],
+    queryFn: () => axiosInstance.get(USERS_API).then((response) => response.data),
+  });
+  const catalogQuery = useQuery({
+    queryKey: ['access-catalog'],
+    queryFn: () => axiosInstance.get(CATALOG_API).then((response) => response.data),
+    staleTime: 300_000,
   });
   const appsQuery = useQuery({
     queryKey: ['applications-catalog'],
@@ -954,41 +956,49 @@ const UsersPage = () => {
     staleTime: 300_000,
   });
 
-  const roles = rolesQuery.data?.roles || [];
-  const catalog = rolesQuery.data?.catalog || [];
-  const actions = rolesQuery.data?.actions || [];
-  const stats = rolesQuery.data?.stats || { modules: 0, groups: 0, menus: 0, codes: 0 };
+  const rawUsers = usersQuery.data;
+  const users = Array.isArray(rawUsers) ? rawUsers : (rawUsers?.results || []);
+  const catalog = catalogQuery.data?.catalog || [];
+  const actions = catalogQuery.data?.actions || [];
+  const stats = catalogQuery.data?.stats || { modules: 0, groups: 0, menus: 0, codes: 0 };
   const appsData = appsQuery.data;
   const apps = appsData?.applications || (Array.isArray(appsData) ? appsData : []);
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['role-access'] });
+  const admins = users.filter((user) => user.is_full_access).length;
+  const withAccess = users.filter(
+    (user) => !user.is_full_access && Number(user.permissions_granted || 0) > 0,
+  ).length;
 
   const cards = [
     {
-      label: 'نقش‌های دسترسی', value: formatPersianNumber(roles.length),
-      sub: 'سیستمی و سفارشی', color: SOFT.violet, icon: <ShieldOutlinedIcon />,
+      label: 'کاربران فعال', value: formatPersianNumber(users.length),
+      sub: 'متصل به پروندهٔ پرسنلی', color: SOFT.indigo, icon: <GroupsIcon />,
     },
     {
-      label: 'ماژول‌های برنامه', value: formatPersianNumber(stats.modules),
-      sub: `${formatPersianNumber(stats.groups)} گروه منو`, color: SOFT.blue,
-      icon: <BusinessIcon />,
+      label: 'مدیر سیستم', value: formatPersianNumber(admins),
+      sub: 'دسترسی کامل', color: SOFT.violet, icon: <AdminPanelSettingsIcon />,
     },
     {
-      label: 'منوهای تحت کنترل', value: formatPersianNumber(stats.menus),
-      sub: 'دسترسی تک‌تک منوها', color: SOFT.teal, icon: <GroupsIcon />,
+      label: 'دارای مجوز ریز', value: formatPersianNumber(withAccess),
+      sub: 'دسترسی اختصاصی هر پرسنل', color: SOFT.green, icon: <KeyOutlinedIcon />,
     },
     {
-      label: 'مجوزهای ریز', value: formatPersianNumber(stats.codes),
-      sub: 'مشاهده/ایجاد/ویرایش/حذف/تأیید/خروجی',
-      color: SOFT.amber, icon: <KeyOutlinedIcon />,
+      label: 'منو × عملیات', value: formatPersianNumber(stats.codes),
+      sub: `${formatPersianNumber(stats.menus)} منو در ${formatPersianNumber(stats.modules)} ماژول`,
+      color: SOFT.amber, icon: <ShieldOutlinedIcon />,
     },
   ];
+
+  const openAccess = (user) => {
+    setSelectedUserId(user ? user.id : null);
+    setTab(1);
+  };
 
   return (
     <Box>
       <PageHeader
         icon={<SecurityIcon />}
-        title="کاربران، نقش‌ها و مجوزها"
+        title="کاربران و مجوزهای ریز"
         color={SOFT.violet}
         actions={(
           <Chip
@@ -999,9 +1009,9 @@ const UsersPage = () => {
         )}
       />
 
-      {rolesQuery.isError ? (
+      {usersQuery.isError || catalogQuery.isError ? (
         <Alert severity="error" sx={{ mb: 1.5 }}>
-          دسترسی به فهرست نقش‌ها ممکن نشد (مدیر ارشد یا مدیر منابع انسانی لازم است).
+          دسترسی به مدیریت کاربران ممکن نشد (فقط مدیر سیستم مجاز است).
         </Alert>
       ) : null}
       {message ? (
@@ -1015,24 +1025,24 @@ const UsersPage = () => {
       <TabsCard
         tabs={[
           { label: 'کاربران', icon: <GroupsIcon sx={{ fontSize: 16 }} /> },
-          { label: 'نقش‌ها و مجوزهای ریز', icon: <ShieldOutlinedIcon sx={{ fontSize: 16 }} /> },
+          { label: 'مجوزهای کاربران', icon: <KeyOutlinedIcon sx={{ fontSize: 16 }} /> },
         ]}
         value={tab}
         onChange={setTab}
         activeColor={SOFT.violet}
       />
 
-      {rolesQuery.isLoading ? (
+      {usersQuery.isLoading || catalogQuery.isLoading ? (
         <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress size={24} /></Box>
       ) : tab === 0 ? (
-        <UsersTab roles={roles} apps={apps} onMessage={setMessage} />
+        <UsersTab apps={apps} onMessage={setMessage} onOpenAccess={openAccess} />
       ) : (
-        <RolesTab
-          roles={roles}
+        <UserAccessTab
           catalog={catalog}
           actions={actions}
+          initialUserId={selectedUserId}
           onMessage={setMessage}
-          onRefresh={refresh}
+          onSaved={() => usersQuery.refetch()}
         />
       )}
     </Box>
@@ -1040,3 +1050,4 @@ const UsersPage = () => {
 };
 
 export default UsersPage;
+

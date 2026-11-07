@@ -62,18 +62,16 @@ urlpatterns = [
     path('applications/catalog/', application_views.applications_catalog_view, name='api-applications-catalog'),
     path('applications/switch/', application_views.switch_application_view, name='api-applications-switch'),
 
-    # Users & roles
+    # کاربران و مجوزهای ریز (هر کاربر مستقل)
     path('users/', access_views.access_users_view, name='api-users'),
     path('users/create/', views.user_create_view, name='api-user-create'),
     path('users/<int:user_id>/role/', access_views.access_user_set_role_view, name='api-user-set-role'),
     path('users/<int:user_id>/update/', views.user_update_view, name='api-user-update'),
     path('users/<int:user_id>/applications/', views.user_set_applications_view, name='api-user-set-applications'),
     path('users/<int:user_id>/delete/', views.user_delete_view, name='api-user-delete'),
-    # نقش‌ها و مجوزهای ریز (منو‌محور)
+    path('users/access/catalog/', access_views.access_catalog_view, name='api-access-catalog'),
+    path('users/<int:user_id>/access/', access_views.user_access_view, name='api-user-access'),
+    # (سازگاری) فهرست نقش‌های سیستمی — صفحهٔ جدید از آن استفاده نمی‌کند
     path('users/roles/', access_views.roles_overview_view, name='api-user-roles'),
     path('users/roles/catalog/', access_views.permission_catalog_view, name='api-permission-catalog'),
-    path('users/roles/create/', access_views.role_create_view, name='api-role-create'),
-    path('users/roles/<str:role>/permissions/', access_views.role_permissions_save_view, name='api-role-permissions'),
-    path('users/roles/<str:role>/delete/', access_views.role_delete_view, name='api-role-delete'),
-    path('users/roles/<str:role>/save/', access_views.role_permissions_save_view, name='api-user-role-save'),
 ]
