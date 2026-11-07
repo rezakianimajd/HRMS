@@ -666,3 +666,104 @@ class NewModelContractTests(SimpleTestCase):
             {'tax', 'insurance', 'retention', 'deposit', 'advance', 'other'},
         )
 
+
+
+class VoucherComposeTests(SimpleTestCase):
+    """پیش‌نمایش/صدور سند از فرم (فیش دریافت، حواله پرداخت، رسید انتقال)."""
+
+    def test_amount_parsing_accepts_persian_digits_and_separators(self):
+        from treasury.voucher_compose import to_decimal
+
+        self.assertEqual(to_decimal('۲,۵۰۰,۰۰۰'), Decimal('2500000'))
+        self.assertEqual(to_decimal('1 200 000'), Decimal('1200000'))
+        self.assertEqual(to_decimal(''), Decimal('0'))
+        self.assertEqual(to_decimal('abc', Decimal('7')), Decimal('7'))
+
+    def test_currency_unit_mapping(self):
+        from treasury.voucher_compose import currency_unit
+
+        self.assertEqual(currency_unit('IRR'), 'ریال')
+        self.assertEqual(currency_unit(None), 'ریال')
+        self.assertEqual(currency_unit('USD'), 'USD')
+
+    def test_preview_payload_contains_words_barcode_and_jalali_date(self):
+        from treasury.voucher_compose import build_preview_payload
+
+        payload = build_preview_payload(
+            'receipt',
+            {
+                'date': '2026-11-07',
+                'amount': '2500000',
+                'party': 'شرکت الف',
+                'purpose': 'فروش خدمات',
+                'method': 'cash',
+            },
+            company_brief={'name': 'موسسه نمونه'},
+            number='RC-1405-000009',
+            account={'name': 'صندوق مرکزی'},
+        )
+
+        self.assertEqual(payload['kind'], 'receipt')
+        self.assertEqual(payload['amount'], '2500000')
+        self.assertIn('دو میلیون و پانصد هزار ریال', payload['amount_words'])
+        self.assertEqual(payload['date'], '۱۴۰۵/۰۸/۱۶')
+        self.assertEqual(payload['received_from'], 'شرکت الف')
+        self.assertEqual(payload['method'], 'نقدی')
+        self.assertEqual(payload['account']['name'], 'صندوق مرکزی')
+        self.assertIn('PREVIEW-receipt-RC-1405-000009', payload['verification']['code'])
+        self.assertIn('<svg', payload['verification']['barcode'])
+        self.assertTrue(payload['preview'])
+
+    def test_preview_payload_payment_kind_and_signatures(self):
+        from treasury.voucher_compose import build_preview_payload
+
+        payload = build_preview_payload(
+            'payment',
+            {
+                'date': '2026-11-07',
+                'amount': 12000000,
+                'beneficiary': 'تأمین‌کننده ج',
+                'method': 'internal_transfer',
+                'cheque_number': '123456',
+                'cheque_due_date': '2026-12-01',
+                'transfer_type': 'ساتنا',
+            },
+            number='PY-1405-000003',
+        )
+
+        self.assertEqual(payload['beneficiary'], 'تأمین‌کننده ج')
+        self.assertEqual(payload['method'], 'انتقال بانکی')
+        self.assertEqual(payload['instrument']['cheque'], '123456')
+        self.assertEqual(payload['cheque_due_date'], '۱۴۰۵/۰۹/۱۰')
+        self.assertEqual(len(payload['signatures']), 4)
+        self.assertEqual(payload['signatures'][3]['label'], 'خزانه‌دار')
+
+    def test_compose_html_escapes_user_values(self):
+        from treasury.voucher_compose import build_preview_payload, compose_html
+
+        payload = build_preview_payload(
+            'receipt',
+            {'amount': '1000', 'party': '<script>alert(1)</script>', 'date': '2026-11-07'},
+            number='RC-1',
+        )
+        html = compose_html(payload, None)
+
+        self.assertNotIn('<script>alert(1)</script>', html)
+        self.assertIn('&lt;script&gt;', html)
+        self.assertIn('RC-1', html)
+
+    def test_invalid_kind_is_rejected(self):
+        from treasury.voucher_compose_views import _kind
+
+        self.assertEqual(_kind('receipt'), 'receipt')
+        self.assertEqual(_kind('payment'), 'payment')
+        self.assertEqual(_kind('transfer'), 'transfer')
+        self.assertEqual(_kind('cheque'), '')
+        self.assertEqual(_kind(None), 'receipt')
+
+    def test_issue_endpoints_are_registered(self):
+        from django.urls import reverse
+
+        self.assertEqual(reverse('treasury-voucher-preview'), '/api/treasury/voucher-preview/')
+        self.assertEqual(reverse('treasury-voucher-issue'), '/api/treasury/voucher-issue/')
+

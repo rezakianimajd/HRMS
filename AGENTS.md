@@ -135,6 +135,13 @@ ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شو�
   + `quickCreate`. کانفیگ‌ها: `treasuryListConfigs.jsx` (دریافت‌ها، عملیات)، `treasuryListConfigs2.jsx`
   (درخواست/دستور پرداخت، تعهدات، انتقال، علی‌الحساب، سپرده، دسته‌چک، قابل‌پرداخت)، `treasuryCheckConfigs.jsx`
   (چک دریافتی/پرداختی با همهٔ وضعیت‌های منو). صفحهٔ جدید = یک `<TreasuryListPage {...CONFIG} />`.
+- **صدور سند با پیش‌نمایش چاپ**: `pages/treasury/TreasuryVoucherComposerDialog.jsx` — فرم سمت راست
+  (نوع سند: فیش دریافت / حواله پرداخت / رسید انتقال + تاریخ شمسی، مبلغ، طرف حساب، حساب/صندوق، روش/نوع سند، چک و سررسید)
+  و پیش‌نمایش زندهٔ قالب چاپ سمت چپ (`iframe srcDoc`) با تاریخ شمسی، مبلغ به حروف، بارکد و شمارهٔ بعدی.
+  بک‌اند: `POST /api/treasury/voucher-preview/` (بدون ثبت) و `POST /api/treasury/voucher-issue/`
+  (`kind: receipt|payment|transfer` → `Receipt` / `TreasuryTransaction(payment, posted)` / `TreasuryTransfer(posted)`
+  + `print_url`). ماژول‌ها: `treasury/voucher_compose.py` (خالص/قابل تست) و `treasury/voucher_compose_views.py`.
+  چاپ نهایی با `TreasuryVoucherDialog` روی همان `print_url` (قالب جای‌نگهدار + بارکد).
 - `AttachmentPreviewDialog` — پیش‌نمایش PDF/عکس/متن بدون دانلود + «باز کردن در تب جدید»/«دریافت».
 - الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
 
@@ -466,6 +473,13 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `/treasury/entities` حذف و به حساب‌های بانکی نگاشت شد؛ بخش‌های قدیمی `*Sections.jsx` حذف شدند.
   بک‌اند: فیلترهای `status` (چندمقداری)، `date_from/date_to`, `entity`, `due_soon`, `instrument_kind`،
   جست‌وجو در دستور پرداخت‌ها و فیلترهای تعهدات/انتقال/علی‌الحساب/سپرده اضافه شد.
+- **صدور سند با پیش‌نمایش چاپ (۲۰۲۶-۱۱-۰۷):** در «دریافت‌ها»، «همه عملیات» (پرداخت‌ها) و «انتقال وجوه»
+  دکمهٔ «صدور فیش دریافت / صدور حواله پرداخت / صدور رسید انتقال» یک دیالوگ دوستونه باز می‌کند:
+  فرم (فیلدهای سند) + **پیش‌نمایش زندهٔ قالب چاپ** (تاریخ شمسی، مبلغ به حروف، بارکد، شمارهٔ بعدی)؛
+  با «ثبت و صدور»، سند واقعی ساخته می‌شود (Receipt / TreasuryTransaction posted / TreasuryTransfer posted)
+  و بلافاصله چاپ نهایی باز می‌شود. اندپوینت‌ها: `/api/treasury/voucher-preview/` و `/api/treasury/voucher-issue/`.
+  چاپ تراکنش‌های خزانه اکنون HTML قالب (نه فقط داده) برمی‌گرداند؛ «ثبت انتقال» در یک تابع مشترک
+  `vouchers.post_transfer_documents` متمرکز شد.
 - **دریافت/پرداخت پیشرفته:** دفتر اسناد (`/treasury/voucher-book` با انواع چک/نقدی/شبا/سند و حساب بدهکار)،
   دستور پرداخت بین‌بانکی پایا/ساتنا (`/treasury/bank-orders` + اعتبارسنجی شبا mod 97 و تشخیص بانک از کد شبا)،
   کسورات چندگانهٔ پرداخت (`PaymentDeduction`، مبلغ خالص، `/payment-requests/{id}/distribution/`),

@@ -223,26 +223,22 @@ class TreasuryTransactionViewSet(BaseViewSet):
 
     @action(detail=True, methods=['get'], url_path='print-data')
     def print_data(self, request, pk=None):
-        """دادهٔ چاپ رسید دریافت/پرداخت خزانه."""
-        from treasury.vouchers import (
-            build_verification, build_verification_payload, jalali_label,
-        )
-
+        """دادهٔ چاپ رسید/حوالهٔ تراکنش خزانه (قالب جای‌نگهدار)."""
         obj = self.get_object()
         kind = 'receipt' if obj.direction == 'receipt' else 'payment'
-        verification = build_verification(kind, obj, request)
-        return Response({
-            'kind': kind,
-            'title': 'رسید دریافت' if kind == 'receipt' else 'رسید پرداخت',
-            'number': obj.number,
-            'date': jalali_label(obj.date),
-            'amount': str(obj.amount),
-            'party': obj.party,
-            'description': obj.description,
-            'account': getattr(obj.entity, 'name', ''),
-            'verification': verification,
-            'summary': build_verification_payload(kind, obj),
-        })
+        from treasury.print_templates import (
+            build_context, get_default_template, render_template,
+        )
+        from treasury.vouchers import build_transaction_voucher, build_verification_payload
+
+        payload = build_transaction_voucher(obj, request)
+        template = get_default_template(obj.company, kind)
+        payload['html'] = render_template(template, build_context(payload))
+        payload['template_id'] = getattr(template, 'id', None)
+        payload['template_name'] = getattr(template, 'name', '')
+        payload['paper'] = getattr(template, 'paper', 'A5')
+        payload['summary'] = build_verification_payload(kind, obj)
+        return Response(payload)
 
 
 class PayableItemViewSet(BaseViewSet):

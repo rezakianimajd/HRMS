@@ -269,3 +269,85 @@ def build_verification_payload(kind, obj):
         'valid': True,
     }
 
+def build_transaction_voucher(transaction, request=None):
+    """دادهٔ چاپ «رسید/حوالهٔ تراکنش خزانه» (دفتر اسناد و پرداخت‌های مستقیم)."""
+    kind = 'receipt' if getattr(transaction, 'direction', 'receipt') == 'receipt' else 'payment'
+    document = _document_brief(kind, transaction, request)
+    amount = getattr(transaction, 'amount', 0) or 0
+    currency = getattr(transaction, 'currency', 'IRR') or 'IRR'
+    unit = 'ریال' if currency == 'IRR' else currency
+    party = getattr(transaction, 'party', '') or ''
+    entity = getattr(transaction, 'entity', None)
+    instrument_kind = getattr(transaction, 'instrument_kind', '') or ''
+    instrument_choices = getattr(type(transaction), 'InstrumentKind', None)
+    instrument_labels = dict(instrument_choices.choices) if instrument_choices else {}
+    return {
+        'kind': kind,
+        'title': VOUCHER_TITLES[kind],
+        'company': _company_brief(getattr(transaction, 'company', None)),
+        'number': document['number'],
+        'date': jalali_label(getattr(transaction, 'date', None)),
+        'status': document['status'],
+        'received_from': party if kind == 'receipt' else '',
+        'beneficiary': party if kind == 'payment' else '',
+        'amount': str(amount),
+        'amount_words': amount_in_words(amount, unit=unit),
+        'currency': currency,
+        'purpose': getattr(transaction, 'description', '') or '',
+        'description': getattr(transaction, 'description', '') or '',
+        'method': instrument_labels.get(instrument_kind, instrument_kind),
+        'instrument': {
+            'reference_no': getattr(transaction, 'reference_no', '') or '',
+            'tracking_no': getattr(transaction, 'tracking_no', '') or '',
+            'bank_reference': '',
+            'terminal': '',
+            'cheque': getattr(transaction, 'cheque_number', '') or '',
+        },
+        'cheque_due_date': jalali_label(getattr(transaction, 'cheque_due_date', None)),
+        'account': _entity_brief(entity),
+        'project': '',
+        'contract': '',
+        'accounting_document': getattr(
+            getattr(transaction, 'accounting_document', None), 'number', '',
+        ) or '',
+        'signatures': [
+            {'label': 'دریافت‌کننده' if kind == 'receipt' else 'پرداخت‌کننده', 'name': ''},
+            {'label': 'خزانه‌دار', 'name': ''},
+            {'label': 'تأییدکننده', 'name': ''},
+            {'label': 'مدیر مالی', 'name': ''},
+        ],
+        'verification': document['verification'],
+        'footer': document['footer'],
+        'generated_at': timezone.now().isoformat(),
+    }
+
+
+def post_transfer_documents(transfer, username=''):
+    """ثبت «انتقال وجه»: ساخت جفت تراکنش پرداخت/دریافت + به‌روزرسانی وضعیت.
+
+    منبع واحد این عملیات است؛ هم اکشن ``post_transfer`` و هم
+    «صدور سند با پیش‌نمایش» از همین تابع استفاده می‌کنند.
+    """
+    from treasury.models import TreasuryTransaction
+
+    description = getattr(transfer, 'description', '') or ''
+    source_id = f'transfer-{transfer.pk}'
+    TreasuryTransaction.objects.create(
+        company=transfer.company, entity=transfer.source, direction='payment',
+        amount=transfer.amount, date=transfer.date, description=description,
+        status='posted', source_module='transfer', source_id=source_id,
+    )
+    TreasuryTransaction.objects.create(
+        company=transfer.company, entity=transfer.destination, direction='receipt',
+        amount=transfer.amount, date=transfer.date, description=description,
+        status='posted', source_module='transfer', source_id=source_id,
+    )
+    previous = transfer.status
+    transfer.status = 'posted'
+    transfer.history = [
+        *transfer.history,
+        {'step': 'posted', 'by': username, 'at': timezone.now().isoformat()},
+    ]
+    transfer.save()
+    return previous
+

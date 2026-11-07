@@ -228,21 +228,9 @@ class TreasuryTransferViewSet(BaseViewSet):
         obj = self.get_object()
         if obj.status != 'draft':
             return Response({'error': 'فقط انتقال پیش‌نویس قابل ثبت است.'}, status=400)
-        from treasury.models import TreasuryTransaction
-        TreasuryTransaction.objects.create(
-            company=obj.company, entity=obj.source, direction='payment',
-            amount=obj.amount, date=obj.date, description=obj.description,
-            status='posted', source_module='transfer', source_id=f'transfer-{obj.id}',
-        )
-        TreasuryTransaction.objects.create(
-            company=obj.company, entity=obj.destination, direction='receipt',
-            amount=obj.amount, date=obj.date, description=obj.description,
-            status='posted', source_module='transfer', source_id=f'transfer-{obj.id}',
-        )
-        old = obj.status
-        obj.status = 'posted'
-        obj.history = [*obj.history, {'step': 'posted', 'by': request.user.username, 'at': timezone.now().isoformat()}]
-        obj.save()
+        from treasury.vouchers import post_transfer_documents
+
+        old = post_transfer_documents(obj, getattr(request.user, 'username', ''))
         log_transition(request.user, obj.company, 'TreasuryTransfer', obj.id, old, 'posted')
         return Response(self.get_serializer(obj).data)
 

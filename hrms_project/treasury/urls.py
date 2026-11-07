@@ -25,6 +25,7 @@ from treasury.config_views import (
     TreasuryApprovalRuleViewSet, TreasuryPrintTemplateViewSet, TreasurySettingsView,
 )
 from treasury.report_views import TreasuryReportsView
+from treasury.voucher_compose_views import VoucherIssueView, VoucherPreviewView
 
 router = DefaultRouter()
 router.register(r'treasury-entities', TreasuryEntityViewSet, basename='treasury-entity')
@@ -60,5 +61,7 @@ urlpatterns = [
     path('verify/', VoucherVerifyView.as_view(), name='treasury-verify'),
     path('settings/', TreasurySettingsView.as_view(), name='treasury-settings'),
     path('reports/', TreasuryReportsView.as_view(), name='treasury-reports'),
+    path('voucher-preview/', VoucherPreviewView.as_view(), name='treasury-voucher-preview'),
+    path('voucher-issue/', VoucherIssueView.as_view(), name='treasury-voucher-issue'),
 
 ]
