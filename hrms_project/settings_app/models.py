@@ -398,7 +398,7 @@ def default_storage_profiles():
         },
         {
             'module_key': 'hrms.correspondence', 'module_name': 'مکاتبات اداری',
-            'root_folder': 'correspondences', 'entity_folder_pattern': '{number}',
+            'root_folder': 'correspondences', 'entity_folder_pattern': '{year}',
             'subfolders': [
                 'نامه‌های وارده', 'نامه‌های صادره', 'نامه‌های داخلی',
                 'پیوست‌ها', 'ارجاعات', 'بایگانی',
@@ -409,7 +409,8 @@ def default_storage_profiles():
             ],
             'max_file_size_mb': 25,
             'color': '#0ea5e9', 'icon': 'mail', 'sort_order': 10,
-            'description': 'بایگانی نامه‌های وارده، صادره و داخلی همراه پیوست‌ها و ارجاعات',
+            'description': 'بایگانی پیوست نامه‌ها به تفکیک سال شمسی در ساختار '
+                           'archive/company_<id>/correspondences/<سال>',
         },
     ]
 

@@ -4,6 +4,56 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
 
+CORRESPONDENCE_MODULE_KEY = 'hrms.correspondence'
+
+
+def letter_archive_year(letter) -> str:
+    """سال شمسی نامه برای پوشهٔ بایگانی (مثلاً 1404)."""
+    value = (
+        getattr(letter, 'letter_date', None)
+        or getattr(letter, 'received_date', None)
+        or getattr(letter, 'sent_date', None)
+    )
+    if not value:
+        return 'بدون_تاریخ'
+    try:
+        import jdatetime
+
+        return str(jdatetime.date.fromgregorian(date=value).year)
+    except Exception:  # noqa: BLE001 — نبود jdatetime نباید آپلود را بشکند
+        return str(getattr(value, 'year', '') or 'بدون_تاریخ')
+
+
+def letter_attachment_upload_path(instance, filename):
+    """مسیر پیوست نامه در بایگانی ماژول مکاتبات.
+
+    ساختار: ``archive/company_<id>/correspondences/<سال شمسی>/<فایل>``
+
+    اگر پروفایل بایگانی ماژول فعال نباشد، مسیر قدیمی
+    ``correspondences/letters/<فایل>`` برگردانده می‌شود تا آپلود هرگز از کار
+    نیفتد.
+    """
+    letter = getattr(instance, 'letter', None)
+    company_id = (
+        getattr(instance, 'company_id', None)
+        or getattr(letter, 'company_id', None)
+    )
+    fields = {
+        'year': letter_archive_year(letter),
+        'number': (getattr(letter, 'number', '') or '').strip(),
+        'name': getattr(letter, 'subject', '') or '',
+        'id': getattr(letter, 'pk', '') or '',
+    }
+    try:
+        from core.engines.archive_storage_engine import resolve_upload_path
+
+        return resolve_upload_path(
+            company_id, CORRESPONDENCE_MODULE_KEY, fields, filename,
+            fallback_dir='correspondences/letters',
+        )
+    except Exception:  # noqa: BLE001 — نبود جدول تنظیمات نباید آپلود را بشکند
+        return f'correspondences/letters/{filename}'
+
 
 class IncomingLetter(BaseModel):
     """نامه وارده"""
@@ -620,7 +670,7 @@ class LetterAttachment(BaseModel):
     title = models.CharField(max_length=200, blank=True, verbose_name=_('عنوان'))
     kind = models.CharField(max_length=20, default='attachment', choices=KINDS,
                             verbose_name=_('نوع فایل'))
-    file = models.FileField(upload_to='correspondences/letters/%Y/%m/', verbose_name=_('فایل'))
+    file = models.FileField(upload_to=letter_attachment_upload_path, verbose_name=_('فایل'))
     size = models.PositiveIntegerField(default=0, verbose_name=_('حجم (بایت)'))
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

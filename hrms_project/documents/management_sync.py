@@ -222,8 +222,13 @@ def _document_type_for(module_key, module_root):
     return ManagedDocument.DocumentType.OTHER
 
 
-def sync_archive_files(company, max_files=5000):
-    """فایل‌های موجود در archive را در DMS ایندکس می‌کند."""
+def sync_archive_files(company, max_files=50000):
+    """فایل‌های موجود در archive را در DMS ایندکس می‌کند.
+
+    سقف ``max_files`` فقط برای جلوگیری از پیمایش بی‌پایان است؛ چون فایل‌های
+    ایندکس‌شده هم در شمارش می‌آیند، سقف کوچک باعث می‌شود ماژول‌های پرحجم
+    (مثل مکاتبات) هرگز کامل ایندکس نشوند.
+    """
     if not company:
         return {'scanned': 0, 'created': 0, 'skipped': 0, 'truncated': False}
     company_id = getattr(company, 'pk', company)

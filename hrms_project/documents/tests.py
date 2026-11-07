@@ -221,7 +221,7 @@ class DocumentManagementTests(SimpleTestCase):
         )
         self.assertEqual(profile['module_name'], 'مکاتبات اداری')
         self.assertEqual(profile['root_folder'], 'correspondences')
-        self.assertEqual(profile['entity_folder_pattern'], '{number}')
+        self.assertEqual(profile['entity_folder_pattern'], '{year}')
         for subfolder in ('نامه‌های وارده', 'نامه‌های صادره', 'پیوست‌ها', 'ارجاعات'):
             self.assertIn(subfolder, profile['subfolders'])
         self.assertGreater(profile['max_file_size_mb'], 0)

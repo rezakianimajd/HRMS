@@ -1,6 +1,7 @@
 """تست‌های واحد ماژول مکاتبات اداری (بدون نیاز به دیتابیس)."""
 from datetime import date, timedelta
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
@@ -586,6 +587,68 @@ class PersianDisplayFormattingTests(SimpleTestCase):
         self.assertIn("'label': trend_map[key].get('label', key)", source)
         self.assertIn('_jdate.fromgregorian', source)
 
+
+
+class LetterArchiveStorageTests(SimpleTestCase):
+    """مسیر بایگانی پیوست نامه در ماژول «مکاتبات اداری»."""
+
+    def _instance(self, **kwargs):
+        from datetime import date
+        from types import SimpleNamespace
+
+        letter = SimpleNamespace(
+            pk=kwargs.get('pk', 12),
+            company_id=kwargs.get('company_id', 3),
+            number=kwargs.get('number', '1404/م پ/067'),
+            subject=kwargs.get('subject', 'صورت‌وضعیت شماره ۴'),
+            letter_date=kwargs.get('letter_date', date(2025, 10, 11)),
+            received_date=None, sent_date=None,
+        )
+        return SimpleNamespace(letter=letter, company_id=kwargs.get('company_id', 3))
+
+    def test_jalali_archive_year_is_used(self):
+        from correspondences.models import letter_archive_year
+
+        self.assertEqual(letter_archive_year(self._instance().letter), '1404')
+
+    def test_year_falls_back_when_letter_has_no_date(self):
+        from correspondences.models import letter_archive_year
+
+        self.assertEqual(letter_archive_year(self._instance(letter_date=None).letter), 'بدون_تاریخ')
+
+    @patch('core.engines.archive_storage_engine.resolve_upload_path',
+           return_value='archive/company_3/correspondences/1404/scan.pdf')
+    def test_upload_path_uses_the_correspondence_archive_profile(self, mocked):
+        from correspondences.models import letter_attachment_upload_path
+
+        path = letter_attachment_upload_path(self._instance(), 'scan.pdf')
+
+        self.assertEqual(path, 'archive/company_3/correspondences/1404/scan.pdf')
+        call = mocked.call_args
+        self.assertEqual(call.args[0], 3)
+        self.assertEqual(call.args[1], 'hrms.correspondence')
+        self.assertEqual(call.args[2]['year'], '1404')
+        self.assertEqual(call.args[2]['number'], '1404/م پ/067')
+        self.assertEqual(call.kwargs['fallback_dir'], 'correspondences/letters')
+
+    def test_upload_path_keeps_legacy_folder_without_profile(self):
+        """بدون پروفایل بایگانی (یا خطای دسترسی) مسیر قدیمی حفظ می‌شود."""
+        from correspondences.models import letter_attachment_upload_path
+
+        path = letter_attachment_upload_path(self._instance(), 'scan.pdf')
+
+        self.assertTrue(path.startswith('correspondences/letters/'))
+        self.assertTrue(path.endswith('.pdf'))
+
+    def test_correspondence_profile_folder_pattern_is_year(self):
+        from settings_app.models import default_storage_profiles
+
+        profile = next(
+            item for item in default_storage_profiles()
+            if item['module_key'] == 'hrms.correspondence'
+        )
+        self.assertEqual(profile['entity_folder_pattern'], '{year}')
+        self.assertEqual(profile['root_folder'], 'correspondences')
 
 
 class WorkdeskSchemaTests(SimpleTestCase):
