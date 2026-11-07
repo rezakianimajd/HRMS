@@ -1,4 +1,7 @@
 """تست‌های کاتالوگ مجوزهای ریز و سازگاری لایهٔ قدیمی (بدون دیتابیس)."""
+from types import SimpleNamespace
+from unittest.mock import patch
+
 from django.test import SimpleTestCase
 
 from core import permission_catalog as catalog_mod
@@ -107,6 +110,45 @@ class PermissionCompatibilityTests(SimpleTestCase):
         self.assertTrue(derived['can_manage_documents'] is False)
         self.assertFalse(derived['can_delete_documents'])
         self.assertFalse(derived['can_approve_leaves'])
+
+    def test_correspondence_legacy_mapping(self):
+        fine = {'correspondence.incoming.delete'}
+        self.assertTrue(engine._legacy_implied('can_delete_documents', fine))
+        self.assertFalse(engine._legacy_implied('can_manage_documents', fine))
+        created = {'correspondence.outgoing.create'}
+        self.assertTrue(engine._legacy_implied('can_manage_documents', created))
+        self.assertTrue(catalog_mod.legacy_permissions_from_fine(created)['can_manage_documents'])
+        self.assertTrue(engine._fine_implied(
+            'correspondence.incoming.delete', {'can_delete_documents': True},
+        ))
+        self.assertFalse(engine._fine_implied(
+            'documents.library.delete', {'can_approve_documents': True},
+        ))
+
+    def test_module_action_granted_from_fine_and_legacy(self):
+        user = SimpleNamespace(is_authenticated=True, is_superuser=False)
+        with patch.object(engine, 'fine_permissions_for',
+                          return_value={'correspondence.incoming.delete': True}), \
+                patch.object(engine, 'permissions_for', return_value={}):
+            self.assertTrue(engine.module_action_granted(user, 'correspondence', ('delete',)))
+            self.assertFalse(engine.module_action_granted(user, 'correspondence', ('edit',)))
+            self.assertFalse(engine.module_action_granted(user, 'documents', ('delete',)))
+
+        with patch.object(engine, 'fine_permissions_for', return_value={}), \
+                patch.object(engine, 'permissions_for', return_value={'can_delete_documents': True}):
+            self.assertTrue(engine.module_action_granted(user, 'correspondence', ('delete',)))
+            self.assertFalse(engine.module_action_granted(user, 'treasury', ('delete',)))
+
+        self.assertFalse(engine.module_action_granted(None, 'correspondence', ('delete',)))
+        self.assertTrue(engine.module_action_granted(
+            SimpleNamespace(is_authenticated=True, is_superuser=True),
+            'correspondence', ('delete',),
+        ))
+        with patch.object(engine, 'fine_permissions_for', return_value={}), \
+                patch.object(engine, 'permissions_for', return_value={}):
+            with self.assertRaises(Exception) as ctx:
+                engine.require_module_action(user, 'correspondence', ('delete',), 'حذف مکاتبات')
+            self.assertIn('دسترسی غیرمجاز', str(ctx.exception))
 
     def test_modules_brief_counts_per_module(self):
         brief = catalog_mod.modules_brief({

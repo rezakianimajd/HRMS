@@ -149,6 +149,38 @@ def can_any(user, permissions):
     return any(can(user, permission) for permission in permissions)
 
 
+def module_action_granted(user, module, actions):
+    """آیا کاربر برای این ماژول، یکی از این عملیات را دارد؟ (لایهٔ ریز یا قدیمی)"""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+
+    granted = {code for code, value in fine_permissions_for(user).items() if value}
+    if module_any_permission(granted, module, actions):
+        return True
+
+    legacy = permissions_for(user)
+    wanted = set(actions)
+    for legacy_code, rules in LEGACY_RULES.items():
+        if not legacy.get(legacy_code):
+            continue
+        for rule_module, rule_actions in rules:
+            if rule_module == module and wanted.intersection(rule_actions):
+                return True
+    return False
+
+
+def require_module_action(user, module, actions, label=''):
+    """PermissionDenied اگر کاربر هیچ‌یک از عملیات این ماژول را نداشته باشد."""
+    from django.core.exceptions import PermissionDenied
+
+    if not module_action_granted(user, module, actions):
+        raise PermissionDenied(
+            f'دسترسی غیرمجاز — برای {label or module} مجوز لازم را ندارید.',
+        )
+
+
 def effective_summary(user):
     """خلاصهٔ مجوزها برای فرانت: لایهٔ قدیمی + شمارش مجوزهای ریز."""
     fine = fine_permissions_for(user)

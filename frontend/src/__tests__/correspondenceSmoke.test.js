@@ -27,6 +27,21 @@ jest.mock('../core/context/ApplicationContext', () => ({
   useApplication: () => ({ currentApp: { slug: 'correspondence' }, applications: [] }),
 }));
 
+jest.mock('../core/hooks/useAuth', () => ({
+  __esModule: true,
+  default: () => ({
+    user: {
+      id: 11,
+      username: 'mahdieh',
+      is_superuser: false,
+      is_full_access: false,
+      permissions: { can_delete_documents: false },
+      fine_permissions: { 'correspondence.incoming.delete': true },
+    },
+    isAuthenticated: true,
+  }),
+}));
+
 const iso = (days) => {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -406,6 +421,38 @@ test('letter drawer attachment tab shows a preview action per file', async () =>
     .find((node) => node.querySelector('iframe'));
   expect(dialog).toBeTruthy();
   expect(dialog.textContent).toContain('scan-1404-100.pdf');
+
+  root.unmount();
+  container.remove();
+});
+
+test('delete permission exposes row delete action and attachment delete button', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  const moreButton = container.querySelector('[aria-label="عملیات بیشتر"]');
+  expect(moreButton).toBeTruthy();
+  await act(async () => {
+    moreButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(260);
+  });
+  const rowDelete = [...document.querySelectorAll('[role="menuitem"]')]
+    .find((item) => item.textContent.includes('حذف نامه'));
+  expect(rowDelete).toBeTruthy();
+
+  const rows = container.querySelectorAll('tbody tr');
+  await act(async () => {
+    rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(400);
+  });
+  const attachmentsTab = [...document.querySelectorAll('[role="tab"]')]
+    .find((tab) => tab.textContent.includes('پیوست'));
+  expect(attachmentsTab).toBeTruthy();
+  await act(async () => {
+    attachmentsTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(320);
+  });
+  expect(document.querySelector('[aria-label="حذف پیوست"]')).toBeTruthy();
+  expect(document.body.textContent).not.toContain('دسترسی غیرمجاز');
 
   root.unmount();
   container.remove();

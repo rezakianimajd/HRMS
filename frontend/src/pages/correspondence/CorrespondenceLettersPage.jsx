@@ -15,6 +15,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DownloadIcon from '@mui/icons-material/Download';
 import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -33,6 +34,7 @@ import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../core/utils/numberUtils';
+import useAuth from '../../core/hooks/useAuth';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { MUTED } from '../accounting/AccountingDashboardUI';
 import {
@@ -51,7 +53,6 @@ const LETTERS_KEY = ['correspondence-letters'];
 const META_KEY = ['correspondence-meta'];
 const STATS_KEY = ['correspondence-stats'];
 const REFERRALS_KEY = ['correspondence-my-referrals'];
-const USERS_KEY = ['correspondence-users'];
 const CONTACTS_KEY = ['correspondence-contacts'];
 
 const EMPTY_LETTER = {
@@ -480,17 +481,34 @@ const joinParts = (...parts) => parts
   .join(' · ');
 
 
-const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contacts, onClose, onSaved }) => {
+const LetterFormDialog = ({
+  open, initial, presetDirection, meta, contacts, canDelete, onClose, onSaved,
+}) => {
   const qc = useQueryClient();
   const [form, setForm] = useState({ ...EMPTY_LETTER, direction: presetDirection || 'incoming' });
   const [files, setFiles] = useState([]);
+  const [existingAttachments, setExistingAttachments] = useState([]);
   const [error, setError] = useState('');
   const fileRef = useRef(null);
+
+  const deleteExistingAttachment = useMutation({
+    mutationFn: (attachmentId) => axiosInstance.delete(`/letter-attachments/${attachmentId}/`),
+    onSuccess: (_data, attachmentId) => {
+      setExistingAttachments((previous) => previous.filter((row) => row.id !== attachmentId));
+      qc.invalidateQueries({ queryKey: LETTERS_KEY });
+      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
+      setError('');
+    },
+    onError: (err) => setError(
+      err?.response?.data?.detail || 'حذف پیوست ممکن نشد (مجوز یا وابستگی).',
+    ),
+  });
 
   useEffect(() => {
     if (!open) return;
     setError('');
     setFiles([]);
+    setExistingAttachments((initial?.attachments || []).filter((row) => row?.id));
     if (initial) {
       const next = { ...EMPTY_LETTER };
       Object.keys(EMPTY_LETTER).forEach((key) => {
@@ -867,6 +885,43 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
             label={<Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>ثبت شماره و نهایی‌سازی</Typography>}
           />
         </Stack>
+
+        {initial && existingAttachments.length ? (
+          <Box sx={{ mt: 1.25 }}>
+            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED, mb: 0.5 }}>
+              {`پیوست‌های فعلی (${toPersianDigits(existingAttachments.length)})`}
+            </Typography>
+            <Stack spacing={0.5}>
+              {existingAttachments.map((file) => (
+                <Stack key={file.id} direction="row" alignItems="center" spacing={0.75}
+                  sx={{
+                    p: 0.5, borderRadius: '9px', border: '1px solid', borderColor: 'divider',
+                    minWidth: 0,
+                  }}>
+                  <AttachFileIcon sx={{ fontSize: 15, color: INTERNAL }} />
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, flex: 1, minWidth: 0 }}>
+                    {file.title || 'پیوست'}
+                  </Typography>
+                  {canDelete ? (
+                    <Tooltip title="حذف پیوست">
+                      <span>
+                        <IconButton size="small" color="error" aria-label="حذف پیوست"
+                          disabled={deleteExistingAttachment.isPending}
+                          onClick={() => {
+                            if (window.confirm(`پیوست «${file.title || 'بدون عنوان'}» حذف شود؟`)) {
+                              deleteExistingAttachment.mutate(file.id);
+                            }
+                          }}>
+                          <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  ) : null}
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+        ) : null}
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
@@ -1036,7 +1091,19 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const preset = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
+
+  /** مجوز حذف: سوپر‌یوزر/دسترسی کامل، یا هر کد ریز «حذف» مکاتبات، یا مجوز قدیمی حذف مدارک. */
+  const canDelete = useMemo(() => {
+    if (!user) return false;
+    if (user.is_superuser || user.is_full_access) return true;
+    const fine = user.fine_permissions || {};
+    const fineDelete = Object.entries(fine).some(
+      ([code, granted]) => granted && code.startsWith('correspondence.') && code.endsWith('.delete'),
+    );
+    return fineDelete || Boolean(user.permissions?.can_delete_documents);
+  }, [user]);
 
   const [direction, setDirection] = useState(preset.direction || 'all');
   const [statusFilter, setStatusFilter] = useState(preset.status || 'all');
@@ -1179,17 +1246,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       params: { mine: 1, open_only: 1, page_size: 100 },
     }).then((response) => response.data),
   });
-  const { data: rawUsers } = useQuery({
-    queryKey: USERS_KEY,
-    queryFn: () => axiosInstance.get('/users/').then((response) => response.data),
-  });
   const { data: rawContacts } = useQuery({
     queryKey: CONTACTS_KEY,
     queryFn: () => axiosInstance.get('/correspondents/', { params: { page_size: 500 } })
       .then((response) => response.data),
   });
 
-  const users = useMemo(() => rawUsers?.users || asList(rawUsers), [rawUsers]);
   const contacts = useMemo(() => asList(rawContacts), [rawContacts]);
 
   const { data: drawerDetail } = useQuery({
@@ -1421,6 +1483,32 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       setCompleteReferral(null);
     },
     onError: (err) => setError(err?.response?.data?.detail || 'ثبت پاسخ ارجاع انجام نشد.'),
+  });
+
+  /** حذف نامه (فقط با مجوز حذف مکاتبات) */
+  const deleteLetter = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/letters/${id}/`),
+    onSuccess: () => {
+      refreshAll();
+      setDrawerLetter(null);
+      setToast('نامه حذف شد.');
+      setError('');
+    },
+    onError: (err) => setError(
+      err?.response?.data?.detail || 'حذف نامه ممکن نشد (مجوز یا وابستگی).',
+    ),
+  });
+
+  /** حذف پیوست (فقط با مجوز حذف مکاتبات) */
+  const deleteAttachment = useMutation({
+    mutationFn: (attachmentId) => axiosInstance.delete(`/letter-attachments/${attachmentId}/`),
+    onSuccess: () => {
+      refreshAll();
+      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
+      setToast('پیوست حذف شد.');
+      setError('');
+    },
+    onError: (err) => setError(err?.response?.data?.detail || 'حذف پیوست ممکن نشد.'),
   });
 
   const rows = useMemo(() => letters.map((letter) => {
@@ -2204,6 +2292,23 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           <ArchiveIcon sx={{ fontSize: 16, color: SLATE }} />
           بایگانی
         </MenuItem>
+        {canDelete ? (
+          <MenuItem
+            onClick={() => {
+              const target = rowMenu?.letter;
+              setRowMenu(null);
+              if (!target) return;
+              const label = target.number ? `شماره ${toPersianDigits(target.number)}` : target.subject;
+              if (window.confirm(`نامه «${label}» حذف شود؟ این عمل بازگشت‌ناپذیر است.`)) {
+                deleteLetter.mutate(target.id);
+              }
+            }}
+            sx={{ fontSize: 12.5, gap: 1, color: DANGER }}
+          >
+            <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+            حذف نامه
+          </MenuItem>
+        ) : null}
       </Menu>
 
       <Dialog
@@ -2484,6 +2589,21 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                           <DownloadIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
+                      {canDelete ? (
+                        <Tooltip title="حذف پیوست">
+                          <span>
+                            <IconButton size="small" color="error" aria-label="حذف پیوست"
+                              disabled={deleteAttachment.isPending}
+                              onClick={() => {
+                                if (window.confirm(`پیوست «${file.title || 'بدون عنوان'}» حذف شود؟`)) {
+                                  deleteAttachment.mutate(file.id);
+                                }
+                              }}>
+                              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      ) : null}
                     </Stack>
                   )) : (
                     <Typography sx={{ fontSize: 12.5, color: MUTED }}>پیوستی ثبت نشده است.</Typography>
@@ -2551,8 +2671,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         initial={formLetter}
         presetDirection={preset.direction || (direction !== 'all' ? direction : 'incoming')}
         meta={meta}
-        users={users}
         contacts={contacts}
+        canDelete={canDelete}
         onClose={() => { setFormOpen(false); setFormLetter(null); }}
         onSaved={(letter) => setDrawerLetter(letter)}
       />

@@ -59,10 +59,12 @@ LEGACY_RULES = {
     'can_add_employee': [('hrms', ('create',))],
     'can_change_employee': [('hrms', ('edit',))],
     'can_delete_employee': [('hrms', ('delete',))],
-    'can_manage_documents': [('documents', ('create', 'edit'))],
-    'can_delete_documents': [('documents', ('delete',))],
-    'can_approve_documents': [('documents', ('approve',))],
-    'can_publish_documents': [('documents', ('approve', 'edit'))],
+    'can_manage_documents': [('documents', ('create', 'edit')), ('correspondence', ('create', 'edit'))],
+    'can_delete_documents': [('documents', ('delete',)), ('correspondence', ('delete',))],
+    'can_approve_documents': [('documents', ('approve',)), ('correspondence', ('approve',))],
+    'can_publish_documents': [
+        ('documents', ('approve', 'edit')), ('correspondence', ('approve', 'edit')),
+    ],
     'can_approve_leaves': [('hrms', ('approve',))],
     'can_view_sensitive_data': [('hrms', ('view',))],
     'can_edit_settings': [('settings', ('create', 'edit'))],
@@ -210,11 +212,12 @@ def module_any_permission(granted, module, actions):
 def legacy_permissions_from_fine(granted):
     """کدهای ریز → دیکشنری مجوزهای قدیمی (پایهٔ سازگاری ویوهای موجود)."""
     granted = set(granted or ())
-    return {
-        legacy: module_any_permission(granted, module, actions)
-        for legacy, rules in LEGACY_RULES.items()
-        for module, actions in rules[:1]
-    }
+    result = {}
+    for legacy, rules in LEGACY_RULES.items():
+        result[legacy] = any(
+            module_any_permission(granted, module, actions) for module, actions in rules
+        )
+    return result
 
 
 def modules_brief(granted):

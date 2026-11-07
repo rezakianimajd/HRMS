@@ -462,7 +462,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.1fad571b.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0019`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.fd9e673d.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0019`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -476,6 +476,20 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     fallback از `entered_by_label` قدیمی)، حذف اندیکاتور/ترنسمیتال/شماره طرف مقابل/سمت ارسال‌کننده/بایگانی/تنظیم‌کننده،
     و نمایش «قرارداد مرتبط». دادهٔ قدیمی با مایگریشن `0019_backfill_delivered_by` به `delivered_by_name` منتقل شد
     (۳٬۲۳۵ نامه).
+- **حذف نامه/پیوست با مجوز ریز (۲۰۲۶-۱۱-۰۷):** ستون «عملیات» فهرست مکاتبات گزینهٔ **حذف نامه** دارد
+  (`DELETE /letters/{id}/`)، پیوست‌های فهرست جزئیات و **دیالوگ ویرایش** دکمهٔ **حذف پیوست**
+  (`DELETE /letter-attachments/{id}/`) دارند. کنترل نمایش سمت فرانت با مجوز ریز
+  (`correspondence.*.delete`) یا مجوز قدیمی `can_delete_documents`؛ سمت بک‌اند
+  `permission_engine.require_module_action(user, 'correspondence', ('delete',))` در
+  `LetterViewSet.destroy` و `LetterAttachmentViewSet.destroy` → کاربر بدون مجوز ۴۰۳ می‌گیرد.
+  `LEGACY_RULES` حالا برای `can_manage_documents`/`can_delete_documents`/`can_approve_documents`/
+  `can_publish_documents` هم ماژول `documents` و هم `correspondence` را پوشش می‌دهد و
+  `legacy_permissions_from_fine` همهٔ رول‌ها را (نه فقط اولی) بررسی می‌کند.
+  `/auth/me` فیلد جدید **`fine_permissions`** (dict کد→بولین) می‌دهد تا UI دکمه‌ها را gate کند.
+- **رفع «دسترسی غیرمجاز» در پایین صفحهٔ مکاتبات:** صفحهٔ فهرست قبلاً `/api/users/` را هم صدا می‌زد
+  (باقی‌ماندهٔ فیلدهای حذف‌شدهٔ «ثبت‌کننده/تنظیم‌کننده») و برای کاربری که فقط به مکاتبات دسترسی دارد
+  ۴۰۳ + پیام «دسترسی غیرمجاز» تولید می‌کرد. این درخواست حذف شد؛ برای اهداف ارجاع از
+  `/letters/personnel/` استفاده می‌شود.
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
   (ارجاع / ارجاع برون‌سازمانی / فرستنده / گیرنده / طرف حساب / تحویل‌دهنده / مخاطب / سازمان / **موضوع → نوع مکاتبه** / همهٔ فیلدها)،
   «نگاشت دو مسیره» (sender ↔ receiver، فقط برای این دو دامنه)، چند مقصد برای یک نام با برچسب خط‌تیره‌ای،

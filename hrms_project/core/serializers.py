@@ -47,17 +47,24 @@ class UserSerializer(serializers.ModelSerializer):
     employee_photo = serializers.SerializerMethodField()
     employee_gender = serializers.SerializerMethodField()
     employee_gender_display = serializers.SerializerMethodField()
+    fine_permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_superuser', 'is_active', 'date_joined', 'last_login',
-            'companies', 'role', 'permissions',
+            'companies', 'role', 'permissions', 'fine_permissions',
             'employee_id', 'employee_name', 'employee_code', 'employee_photo',
             'employee_gender', 'employee_gender_display',
         ]
         read_only_fields = ['id', 'date_joined', 'last_login']
+
+    def get_fine_permissions(self, obj):
+        """مجوزهای ریز (module.menu.action) برای کنترل دکمه‌ها در UI."""
+        from core.engines.permission_engine import fine_permissions_for
+
+        return fine_permissions_for(obj)
 
     @staticmethod
     def _profile(obj):

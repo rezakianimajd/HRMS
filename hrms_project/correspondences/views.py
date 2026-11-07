@@ -484,6 +484,13 @@ class LetterViewSet(BaseLetterViewSet):
             return LetterListSerializer
         return LetterSerializer
 
+    def destroy(self, request, *args, **kwargs):
+        """حذف نامه فقط با مجوز «حذف» مکاتبات اداری."""
+        from core.engines.permission_engine import require_module_action
+
+        require_module_action(request.user, 'correspondence', ('delete',), 'حذف مکاتبات')
+        return super().destroy(request, *args, **kwargs)
+
     def _apply_search(self, qs, term):
         """جست‌وجوی همه‌جانبه در شماره، موضوع، متن، طرف حساب و ارجاعات.
 
@@ -1867,6 +1874,13 @@ class LetterAttachmentViewSet(BaseLetterViewSet):
     serializer_class = LetterAttachmentSerializer
     queryset = LetterAttachment.objects.all()
     ordering = ['-created_at']
+
+    def destroy(self, request, *args, **kwargs):
+        """حذف پیوست فقط با مجوز «حذف» مکاتبات اداری."""
+        from core.engines.permission_engine import require_module_action
+
+        require_module_action(request.user, 'correspondence', ('delete',), 'حذف پیوست مکاتبات')
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('letter', 'uploaded_by')
