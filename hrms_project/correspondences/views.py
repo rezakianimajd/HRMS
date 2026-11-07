@@ -460,7 +460,7 @@ class LetterViewSet(BaseLetterViewSet):
         'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject', 'summary',
         'body', 'sender_name', 'sender_title', 'receiver_name', 'drafter_name',
         'contract_number', 'company_reg_no', 'unit_reg_no', 'unit_name', 'delivered_by_name',
-        'tags', 'source_ref', 'archive_ref', 'entered_by_name',
+        'tags', 'source_ref', 'archive_ref', 'entered_by_name', 'party_name',
         'organization__name', 'correspondent__name', 'sender_organization__name',
         'sender_party__name', 'party_account__name',
         'sender_employee__first_name', 'sender_employee__last_name',

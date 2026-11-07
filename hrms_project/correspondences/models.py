@@ -615,6 +615,17 @@ class Letter(BaseModel):
         related_name='office_letters', db_constraint=False,
         verbose_name=_('طرف حساب'),
     )
+    party_name = models.CharField(
+        max_length=250, blank=True, verbose_name=_('طرف حساب (متن آزاد)'),
+        help_text=_('برای شرکت‌هایی که هنوز در مدیریت قراردادها ثبت نشده‌اند؛ '
+                    'بعداً از «نگاشت نام‌ها» به طرف حساب قراردادها وصل می‌شود.'),
+    )
+    sender_kind = models.CharField(
+        max_length=10, default='employee', blank=True,
+        choices=(('employee', _('پرسنل')), ('party', _('شرکت / طرف حساب'))),
+        verbose_name=_('نوع فرستنده'),
+        help_text=_('پرسنل داخلی یا شرکت/طرف حساب؛ برای شرکت‌های بدون قرارداد «شرکت» انتخاب می‌شود.'),
+    )
     drafter = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='drafted_letters', verbose_name=_('تنظیم‌کننده نامه'),

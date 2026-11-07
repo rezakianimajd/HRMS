@@ -82,6 +82,8 @@ const EMPTY_LETTER = {
   sender_kind: 'employee',
   party_account: '',
   party_account_name: '',
+  party_name: '',
+  party_create_in_contracts: false,
   delivery_type: 'in_person',
   delivered_by: '',
   delivered_by_name: '',
@@ -202,7 +204,8 @@ export const LETTER_PAGE_PRESETS = {
 const safeDate = (value) => (value ? String(value).slice(0, 10) : '');
 
 const UI_ONLY_KEYS = new Set([
-  'register', 'sender_kind', 'contract_title', 'sender_party_name', 'party_account_name',
+  'register', 'contract_title', 'sender_party_name', 'party_account_name',
+  'party_create_in_contracts',
 ]);
 
 const cleanPayload = (form) => {
@@ -516,7 +519,12 @@ const LetterFormDialog = ({
       });
       DATE_KEYS.forEach((key) => { next[key] = safeDate(initial[key]); });
       next.direction = initial.direction || 'incoming';
-      next.sender_kind = initial.sender_party ? 'party' : 'employee';
+      next.sender_kind = (
+        initial.sender_kind === 'party' || initial.sender_party ? 'party' : 'employee'
+      );
+      if (next.sender_kind === 'party' && !next.sender_party_name) {
+        next.sender_party_name = initial.sender_name || '';
+      }
       /* ثبت‌کنندهٔ قدیمی → تحویل‌دهنده (مهاجرت نرم در ویرایش) */
       if (!next.delivered_by && !next.delivered_by_name && initial.entered_by_label) {
         next.delivered_by_name = initial.entered_by_label;
@@ -755,12 +763,17 @@ const LetterFormDialog = ({
               </TextField>
               {form.sender_kind === 'party' ? (
                 <PartyPicker
-                  label="فرستنده (طرف حساب از مدیریت قراردادها)"
-                  value={partyValue(form.sender_party, form.sender_party_name)}
+                  label="فرستنده (شرکت / طرف حساب)"
+                  helperText="اگر شرکت در قراردادها نیست، نامش را بنویسید و Enter بزنید."
+                  createInContracts={form.party_create_in_contracts}
+                  value={form.sender_party
+                    ? partyValue(form.sender_party, form.sender_party_name)
+                    : (form.sender_party_name || null)}
                   onChange={(party) => setForm((prev) => ({
                     ...prev,
                     sender_party: party?.id || '',
                     sender_party_name: party?.name || '',
+                    sender_name: party?.name ? party.name : prev.sender_name,
                   }))}
                 />
               ) : (
@@ -793,12 +806,19 @@ const LetterFormDialog = ({
                 ))}
               </TextField>
               <PartyPicker
-                label="طرف حساب (از مدیریت قراردادها)"
-                value={partyValue(form.party_account, form.party_account_name)}
+                label="طرف حساب (شرکت / طرف حساب)"
+                helperText={form.party_account
+                  ? 'متصل به طرف حساب مدیریت قراردادها'
+                  : 'شرکت جدید؟ فقط نامش در مکاتبات ثبت می‌شود و بعداً از «نگاشت نام‌ها» به طرف حساب قراردادها وصل می‌شود.'}
+                createInContracts={form.party_create_in_contracts}
+                value={form.party_account
+                  ? partyValue(form.party_account, form.party_account_name)
+                  : (form.party_name || null)}
                 onChange={(party) => setForm((prev) => ({
                   ...prev,
                   party_account: party?.id || '',
                   party_account_name: party?.name || '',
+                  party_name: party?.id ? '' : (party?.name || ''),
                 }))}
               />
               <Autocomplete
@@ -820,6 +840,24 @@ const LetterFormDialog = ({
                 )}
               />
             </FormTable>
+            <FormControlLabel
+              sx={{ mt: 0.5 }}
+              control={(
+                <Switch size="small" checked={Boolean(form.party_create_in_contracts)}
+                  onChange={(event) => setForm((prev) => ({
+                    ...prev, party_create_in_contracts: event.target.checked,
+                  }))} />
+              )}
+              label={(
+                <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
+                  شرکت جدید در مدیریت قراردادها هم ثبت شود
+                </Typography>
+              )}
+            />
+            <Typography sx={{ fontSize: 11.5, color: MUTED, mt: 0.25 }}>
+              خاموش باشد، نام شرکت فقط در مکاتبات اداری ثبت می‌شود (بدون ساخت طرف حساب در قراردادها) و
+              بعداً از صفحهٔ «نگاشت نام‌ها» → کاربرد «طرف حساب» به طرف حساب مدیریت قراردادها تعمیم داده می‌شود.
+            </Typography>
           </Box>
         </FormSection>
 
@@ -1278,13 +1316,15 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     'subject', 'category', 'delivery_type', 'entry_method', 'entry_time',
     'delivered_by', 'delivered_by_name',
     'sender_employee', 'sender_name', 'sender_party',
-    'party_account', 'receiver_employee', 'receiver_name', 'contract',
+    'party_account', 'party_name', 'receiver_employee', 'receiver_name', 'contract',
     'letter_date', 'due_date', 'priority', 'status',
   ];
   const NULLABLE_FIELDS = [
     'category', 'sender_employee', 'receiver_employee', 'sender_party', 'party_account',
     'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time', 'contract',
   ];
+  /* متن‌های آزاد که پاک‌شدن‌شان باید با رشتهٔ خالی ذخیره شود (نه null). */
+  const EMPTY_ALLOWED_FIELDS = ['party_name'];
 
   const seedDraft = (letter) => ({
     number: letter.number || '',
@@ -1304,6 +1344,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     sender_name: letter.sender_name || '',
     sender_party: letter.sender_party || '',
     party_account: letter.party_account || '',
+    party_name: letter.party_name || '',
     receiver_employee: letter.receiver_employee || '',
     receiver_name: letter.receiver_name || '',
     contract: letter.contract || '',
@@ -1322,6 +1363,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       const before = original[key] ?? '';
       if (String(next) === String(before)) return;
       if (next === '') {
+        if (EMPTY_ALLOWED_FIELDS.includes(key)) {
+          payload[key] = '';
+          return;
+        }
         if (!NULLABLE_FIELDS.includes(key)) return;
         payload[key] = null;
         return;
@@ -2001,12 +2046,18 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     <PartyPicker
                       label="" placeholder="طرف حساب"
                       variant="standard" size="small" sx={inlineSx}
-                      value={partyValue(draft.party_account, letter.party_account_name)}
-                      onChange={(party) => patchDraft('party_account')(party?.id || '')}
+                      value={draft.party_account
+                        ? partyValue(draft.party_account, letter.party_account_name)
+                        : (draft.party_name || null)}
+                      onChange={(party) => {
+                        patchDraft('party_account')(party?.id || '');
+                        if (!party?.id) patchDraft('party_name')(party?.name || '');
+                      }}
                     />
                   );
                 }
                 const primary = letter.party_account_name
+                  || letter.party_name
                   || letter.organization_name
                   || letter.correspondent_name
                   || letter.sender_party_name
@@ -2440,7 +2491,9 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                         || activeLetter.sender_organization_name],
                       ['گیرنده', activeLetter.receiver_employee_label || activeLetter.receiver_name],
                       ['مخاطب', activeLetter.correspondent_name],
-                      ['طرف حساب', activeLetter.party_account_name || activeLetter.organization_name],
+                      ['طرف حساب', activeLetter.party_account_name
+                        || activeLetter.party_name
+                        || activeLetter.organization_name],
                       ['قرارداد مرتبط', activeLetter.contract_title
                         || (activeLetter.contract_number
                           ? `شماره ${toPersianDigits(activeLetter.contract_number)}` : '')],

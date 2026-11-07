@@ -462,7 +462,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.fd9e673d.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0019`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.2d9f714c.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -476,6 +476,17 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     fallback از `entered_by_label` قدیمی)، حذف اندیکاتور/ترنسمیتال/شماره طرف مقابل/سمت ارسال‌کننده/بایگانی/تنظیم‌کننده،
     و نمایش «قرارداد مرتبط». دادهٔ قدیمی با مایگریشن `0019_backfill_delivered_by` به `delivered_by_name` منتقل شد
     (۳٬۲۳۵ نامه).
+- **طرف حساب شرکت‌های بدون قرارداد (۲۰۲۶-۱۱-۰۷):** انتخابگر «طرف حساب» و «فرستنده (شرکت)» دیگر اجباراً
+  از `ContractParty` نمی‌سازد؛ پیش‌فرض تازه این است که نام شرکت **فقط در مکاتبات** ثبت شود:
+  - فیلد جدید `Letter.party_name` (متن آزاد) + `Letter.sender_kind` (`employee|party`)؛ مایگریشن
+    `correspondences.0020_letter_party_name`. در دیالوگ نامه سوییچ «شرکت جدید در مدیریت قراردادها هم ثبت شود»
+    (خاموش = فقط مکاتبات؛ روشن = همان `POST /letters/quick-party/` قبلی).
+  - `PartyPicker` (`correspondenceLookups.jsx`) پراپ جدید `createInContracts` گرفت: خاموش ⇒ نام تایپ‌شده
+    بدون درخواست سرور به‌عنوان متن آزاد برمی‌گردد؛ روشن ⇒ ساخت `ContractParty`.
+  - نگاشت نام‌ها: `matching.iter_name_samples` حالا `party_name` را هم با دامنهٔ `counterparty` اسکن می‌کند و
+    `mapping._apply_party` نام‌های آزاد را «تعمیم» می‌دهد (`party_account`/`sender_party` را ست می‌کند).
+    دیالوگ نگاشت برای مقصد «طرف حساب» امکان ساخت طرف حساب جدید در مدیریت قراردادها را دارد.
+  - `party_label`/`SEARCH_FIELDS` و ستون «طرف حساب/طرف مکاتبه» + جزئیات و ویرایش درجا با `party_name` هم‌خوان شدند.
 - **حذف نامه/پیوست با مجوز ریز (۲۰۲۶-۱۱-۰۷):** ستون «عملیات» فهرست مکاتبات گزینهٔ **حذف نامه** دارد
   (`DELETE /letters/{id}/`)، پیوست‌های فهرست جزئیات و **دیالوگ ویرایش** دکمهٔ **حذف پیوست**
   (`DELETE /letter-attachments/{id}/`) دارند. کنترل نمایش سمت فرانت با مجوز ریز

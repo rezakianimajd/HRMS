@@ -546,7 +546,8 @@ class LetterSerializer(serializers.ModelSerializer):
             'sender_name', 'receiver_name', 'drafter', 'drafter_name', 'source_ref', 'created_by',
             'sender_employee', 'sender_employee_label', 'receiver_employee',
             'receiver_employee_label', 'sender_party', 'sender_party_name', 'party_account',
-            'party_account_name', 'sender_label', 'party_label', 'receiver_label',
+            'party_account_name', 'party_name', 'sender_kind', 'sender_label', 'party_label',
+            'receiver_label',
             'delivery_type', 'delivery_type_display', 'delivered_by', 'delivered_by_label',
             'delivered_by_name',
             'created_by_name', 'priority', 'priority_display', 'confidentiality',
@@ -608,6 +609,7 @@ class LetterSerializer(serializers.ModelSerializer):
     def get_party_label(self, obj):
         return (
             (obj.party_account.name if obj.party_account_id else '')
+            or obj.party_name
             or (obj.organization.name if obj.organization_id else '')
             or (obj.correspondent.name if obj.correspondent_id else '')
             or ''
@@ -681,6 +683,7 @@ class LetterListSerializer(LetterSerializer):
             'sender_organization', 'sender_organization_name', 'sender_title',
             'sender_name', 'receiver_name', 'source_ref', 'contract_number',
             'sender_party', 'party_account', 'party_account_name', 'sender_party_name',
+            'party_name', 'sender_kind',
             'delivery_type', 'delivery_type_display', 'delivered_by_name',
             'priority', 'priority_display', 'confidentiality', 'confidentiality_display',
             'status', 'status_display', 'amount', 'currency', 'archive_ref', 'tags',

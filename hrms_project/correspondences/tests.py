@@ -135,6 +135,37 @@ class LettersMetaTests(SimpleTestCase):
         match = resolve('/api/letter-series/3/preview/')
         self.assertEqual(match.func.__name__, 'LetterSeriesViewSet')
 
+    def test_letter_supports_free_text_party_and_sender_kind(self):
+        """شرکت بدون قرارداد: نام طرف حساب به‌صورت متن آزاد + نوع فرستنده ذخیره می‌شود."""
+        from correspondences.models import Letter
+        from correspondences.serializers import LetterListSerializer, LetterSerializer
+        from correspondences.views import LetterViewSet
+
+        names = {field.name for field in Letter._meta.get_fields()}
+        self.assertIn('party_name', names)
+        self.assertIn('sender_kind', names)
+        self.assertIn('party_name', LetterSerializer.Meta.fields)
+        self.assertIn('party_name', LetterListSerializer.Meta.fields)
+        self.assertIn('sender_kind', LetterSerializer.Meta.fields)
+        self.assertIn('party_name', LetterViewSet.SEARCH_FIELDS)
+        choices = dict(Letter._meta.get_field('sender_kind').choices)
+        self.assertEqual(set(choices), {'employee', 'party'})
+        self.assertEqual(Letter._meta.get_field('sender_kind').default, 'employee')
+
+    def test_party_label_falls_back_to_free_text_name(self):
+        """برچسب «طرف حساب» وقتی FK خالی است از نام آزاد پر می‌شود."""
+        from types import SimpleNamespace
+
+        from correspondences.serializers import LetterListSerializer
+
+        row = SimpleNamespace(
+            party_account_id=None, party_name='شرکت تازه‌تأسیس نمونه',
+            organization_id=None, correspondent_id=None,
+        )
+        self.assertEqual(
+            LetterListSerializer().get_party_label(row), 'شرکت تازه‌تأسیس نمونه',
+        )
+
 
 class LegacyExcelParsingTests(SimpleTestCase):
     """تبدیل داده‌های اکسل واحد مکاتبات به ردیف‌های استاندارد."""

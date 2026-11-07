@@ -85,10 +85,11 @@ const TargetPicker = ({ target, onChange, contacts, organizations, categories })
     return (
       <PartyPicker
         value={target.value}
-        allowCreate={false}
+        allowCreate
+        createInContracts
         onChange={(option) => onChange(option)}
-        label="طرف حساب مقصد"
-        helperText="از طرف‌های حساب مدیریت قراردادها انتخاب کنید."
+        label="طرف حساب مقصد (مدیریت قراردادها)"
+        helperText="از طرف‌های حساب مدیریت قراردادها انتخاب کنید؛ اگر شرکت هنوز ثبت نشده، نامش را بنویسید و Enter بزنید تا در همان‌جا ساخته شود."
       />
     );
   }

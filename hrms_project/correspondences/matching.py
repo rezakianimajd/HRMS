@@ -170,6 +170,8 @@ def iter_name_samples(company):
         # طرف حساب نامه (وارده از فرستنده / صادره از گیرنده)
         ('counterparty', Letter, 'sender_name', {'party_account__isnull': True}),
         ('counterparty', Letter, 'receiver_name', {'party_account__isnull': True}),
+        # نام آزاد طرف حساب (شرکتی که هنوز در قراردادها نیست) — قابل «تعمیم» به طرف حساب
+        ('counterparty', Letter, 'party_name', {'party_account__isnull': True}),
         # سازمان طرف نامه
         ('organization', Letter, 'sender_name', {'sender_organization__isnull': True}),
         ('organization', Letter, 'receiver_name', {'organization__isnull': True}),

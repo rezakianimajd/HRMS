@@ -201,10 +201,14 @@ export const MultiPersonnelPicker = ({
 
 
 
-/** انتخاب طرف حساب از مدیریت قراردادها؛ امکان ثبت سریع نام جدید. */
+/** انتخاب طرف حساب؛ اگر شرکت در قراردادها نبود، نامش فقط در مکاتبات ثبت می‌شود
+ *  (و بعداً از «نگاشت نام‌ها» به طرف حساب مدیریت قراردادها وصل/تعمیم داده می‌شود).
+ *  با ``createInContracts`` روشن، نام جدید مستقیماً در مدیریت قراردادها ساخته می‌شود.
+ */
 export const PartyPicker = ({
   value = null, onChange, label = 'طرف حساب', size = 'small', variant = 'outlined',
-  allowCreate = true, disabled = false, helperText = '', placeholder = 'نام طرف حساب…', sx,
+  allowCreate = true, createInContracts = false, disabled = false, helperText = '',
+  placeholder = 'نام طرف حساب…', sx,
 }) => {
   const { options, loading, setQuery } = useLookup('/letters/parties/');
   const [creating, setCreating] = useState(false);
@@ -216,6 +220,11 @@ export const PartyPicker = ({
       if (!name) return;
       if (!allowCreate) {
         onChange?.(null, { error: 'طرف حساب انتخاب‌شده در مدیریت قراردادها یافت نشد.' });
+        return;
+      }
+      if (!createInContracts) {
+        // ثبت فقط در مکاتبات (بدون ساخت طرف حساب در مدیریت قراردادها)
+        onChange?.({ id: null, name, label: name, free_text: true }, { free_text: true });
         return;
       }
       setCreating(true);
@@ -240,6 +249,11 @@ export const PartyPicker = ({
   };
 
   const busy = loading || creating;
+  const noOptionsText = !allowCreate
+    ? 'موردی یافت نشد'
+    : (createInContracts
+      ? 'موردی یافت نشد — با Enter در مدیریت قراردادها ثبت می‌شود'
+      : 'موردی یافت نشد — با Enter فقط در مکاتبات ثبت می‌شود');
 
   return (
     <Autocomplete
@@ -259,10 +273,10 @@ export const PartyPicker = ({
         typeof option === 'string' ? option : (option?.name || option?.label || '')
       )}
       isOptionEqualToValue={(a, b) => a?.id === b?.id}
-      noOptionsText={allowCreate ? 'موردی یافت نشد — با Enter ثبت می‌شود' : 'موردی یافت نشد'}
+      noOptionsText={noOptionsText}
       loadingText="در حال جستجو…"
       renderOption={(props, option) => (
-        <Box component="li" {...props} key={option.id}>
+        <Box component="li" {...props} key={option.id || option.name}>
           <PickOption
             primary={option.name || option.label}
             secondary={[option.party_type_display, option.contact_person].filter(Boolean).join(' · ')}

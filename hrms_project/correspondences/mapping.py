@@ -159,6 +159,25 @@ def _apply_party(alias, dry_run=False):
     company = alias.company
     counts = {'referrals': 0, 'letters': 0}
 
+    if 'sender' in scopes or 'receiver' in scopes:
+        # نام آزاد طرف حساب (شرکتی که هنوز در قراردادها ثبت نشده) → «تعمیم» به طرف حساب
+        rows = list(
+            Letter.objects.filter(
+                company=company, party_account__isnull=True,
+            ).exclude(party_name=''),
+        )
+        matched = [row for row in rows if _matches(row.party_name, normalized)]
+        if matched and not dry_run:
+            for row in matched:
+                row.party_account = party
+                if row.direction == 'incoming' and not row.sender_party_id:
+                    row.sender_party = party
+                row.party_name = party.name[:250]
+            Letter.objects.bulk_update(
+                matched, ['party_account', 'sender_party', 'party_name'], batch_size=300,
+            )
+        counts['letters'] += len(matched)
+
     if 'sender' in scopes:
         rows = list(
             Letter.objects.filter(
