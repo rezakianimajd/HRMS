@@ -385,3 +385,284 @@ class TreasuryModelContractTests(SimpleTestCase):
                            'treasury_approve', 'treasury_manage_config'):
             self.assertIn(permission, ALL_PERMISSIONS)
 
+
+
+class BarcodeTests(SimpleTestCase):
+    """بارکد اعتبارسنجی Code 39 (§۱۱/§۳۳)."""
+
+    def test_encodable_and_cleaning(self):
+        from treasury.barcode import is_encodable
+
+        self.assertTrue(is_encodable('RC-1405-000001'))
+        self.assertTrue(is_encodable('rc 1405'))  # حروف کوچک → بزرگ
+        self.assertFalse(is_encodable(''))
+        self.assertFalse(is_encodable('فارسی'))
+
+    def test_svg_structure(self):
+        from treasury.barcode import barcode_svg
+
+        svg = barcode_svg('RC-1405-000001')
+        self.assertTrue(svg.startswith('<svg'))
+        self.assertIn('<rect', svg)
+        self.assertIn('RC-1405-000001', svg)
+        self.assertEqual(barcode_svg(''), '')
+
+    def test_data_uri(self):
+        from treasury.barcode import barcode_data_uri
+
+        uri = barcode_data_uri('PY-1405-000002')
+        self.assertTrue(uri.startswith('data:image/svg+xml;base64,'))
+
+
+class IbanTests(SimpleTestCase):
+    """اعتبارسنجی شبا (mod 97) و تشخیص بانک."""
+
+    @staticmethod
+    def _build_iban(bank_code='057', account='1234567890123456789'):
+        bban = f'{bank_code}{account}'
+        check = 98 - (int(bban + '182700') % 97)
+        return f'IR{check:02d}{bban}'
+
+    def test_valid_iban_round_trip(self):
+        from treasury.iban import is_valid, normalize
+
+        iban = self._build_iban()
+        self.assertEqual(len(normalize(iban)), 26)
+        self.assertTrue(is_valid(iban))
+
+    def test_invalid_iban_is_rejected(self):
+        from treasury.iban import is_valid
+
+        iban = self._build_iban()
+        broken = iban[:10] + ('0' if iban[10] != '0' else '1') + iban[11:]
+        self.assertFalse(is_valid(broken))
+        self.assertFalse(is_valid('IR000000000000000000000000'))
+        self.assertFalse(is_valid(''))
+
+    def test_bank_code_and_name(self):
+        from treasury.iban import bank_code, bank_name
+
+        iban = self._build_iban('057')
+        self.assertEqual(bank_code(iban), '057')
+        self.assertEqual(bank_name(iban), 'بانک پاسارگاد')
+        self.assertEqual(
+            bank_name(iban, [{'code': '057', 'name': 'بانک تست'}]),
+            'بانک تست',
+        )
+
+    def test_pretty_format(self):
+        from treasury.iban import format_pretty
+
+        self.assertEqual(
+            format_pretty('IR123456789012345678901234'),
+            'IR12 3456 7890 1234 5678 9012 34',
+        )
+
+
+class PrintTemplateTests(SimpleTestCase):
+    """قالب چاپ با جای‌نگهدار و درج امن مقادیر."""
+
+    def _payload(self):
+        return {
+            'number': 'RC-1405-000009',
+            'date': '۱۴۰۵/۰۸/۱۶',
+            'amount': '2,500,000',
+            'amount_words': 'دو میلیون و پانصد هزار ریال',
+            'received_from': '<script>alert(1)</script>',
+            'company': {'name': 'شرکت آزمون', 'code': 'T1'},
+            'account': {'name': 'بانک ملت', 'account_number': '123'},
+            'verification': {'code': 'RECEIPT-RC-1405-000009', 'url': '/verify'},
+        }
+
+    def test_render_substitutes_and_escapes(self):
+        from types import SimpleNamespace
+
+        from treasury.print_templates import build_context, render_template
+
+        template = SimpleNamespace(body='<b>{{number}}</b> — {{received_from}} — {{amount_words}}')
+        html = render_template(template, build_context(self._payload()))
+        self.assertIn('RC-1405-000009', html)
+        self.assertIn('دو میلیون و پانصد هزار ریال', html)
+        self.assertNotIn('<script>', html)  # مقادیر escape می‌شوند
+
+    def test_barcode_slot_is_raw(self):
+        from types import SimpleNamespace
+
+        from treasury.print_templates import build_context, render_template
+
+        template = SimpleNamespace(body='{{barcode}}')
+        html = render_template(template, build_context(self._payload()))
+        self.assertIn('<svg', html)
+
+    def test_placeholders_include_common_keys(self):
+        from treasury.print_templates import placeholders_for
+
+        keys = {row['key'] for row in placeholders_for('receipt')}
+        for key in ('company_name', 'number', 'amount_words', 'barcode', 'received_from'):
+            self.assertIn(key, keys)
+
+
+
+class DeductionMathTests(SimpleTestCase):
+    """محاسبهٔ مبلغ خالص پرداخت با کسورات (§۲۰)."""
+
+    @staticmethod
+    def _request(rows, amount='1000000', approved=None):
+        from treasury.payment_models import PaymentRequest
+
+        class FakeManager:
+            def __init__(self, items):
+                self.items = items
+
+            def all(self):
+                return self.items
+
+        obj = SimpleNamespace(
+            amount=Decimal(amount),
+            approved_amount=Decimal(approved) if approved else None,
+            deductions=FakeManager(rows),
+        )
+        obj.deductions_total = PaymentRequest.deductions_total.fget(obj)
+        obj.net_amount = PaymentRequest.net_amount.fget(obj)
+        return obj
+
+    def test_net_amount_with_deductions(self):
+        rows = [
+            SimpleNamespace(kind='tax', amount=Decimal('100000')),
+            SimpleNamespace(kind='insurance', amount=Decimal('50000')),
+        ]
+        obj = self._request(rows)
+        self.assertEqual(obj.deductions_total, Decimal('150000'))
+        self.assertEqual(obj.net_amount, Decimal('850000'))
+
+    def test_net_amount_never_negative(self):
+        obj = self._request([SimpleNamespace(kind='tax', amount=Decimal('2000000'))])
+        self.assertEqual(obj.net_amount, Decimal('0'))
+
+
+class ApprovalRuleTests(SimpleTestCase):
+    """قواعد سطح تأیید بر اساس مبلغ (§۱۰)."""
+
+    def test_rule_covers_ranges(self):
+        from treasury.approval_models import TreasuryApprovalRule
+
+        rule = TreasuryApprovalRule(
+            min_amount=Decimal('100000000'), max_amount=Decimal('1000000000'),
+        )
+        self.assertFalse(rule.covers(Decimal('99999999')))
+        self.assertTrue(rule.covers(Decimal('100000000')))
+        self.assertTrue(rule.covers(Decimal('1000000000')))
+        self.assertFalse(rule.covers(Decimal('1000000001')))
+
+    def test_open_ended_rule(self):
+        from treasury.approval_models import TreasuryApprovalRule
+
+        rule = TreasuryApprovalRule(min_amount=Decimal('0'), max_amount=None)
+        self.assertTrue(rule.covers(Decimal('9999999999999')))
+
+
+
+class ReconciliationMatchTests(SimpleTestCase):
+    """تطبیق خودکار گردش بانک با تراکنش‌ها (§۲۶)."""
+
+    @staticmethod
+    def _line(**kwargs):
+        data = {
+            'pk': 1, 'amount': Decimal('5000000'), 'direction': 'credit',
+            'date': date(2025, 10, 11), 'reference': 'REF-1', 'entity_id': 3,
+        }
+        data.update(kwargs)
+        return SimpleNamespace(**data)
+
+    @staticmethod
+    def _tx(**kwargs):
+        data = {
+            'pk': 10, 'amount': Decimal('5000000'), 'direction': 'receipt',
+            'date': date(2025, 10, 11), 'reference_no': 'REF-1',
+            'tracking_no': '', 'entity_id': 3,
+        }
+        data.update(kwargs)
+        return SimpleNamespace(**data)
+
+    def test_reference_and_same_day_scores_high(self):
+        from treasury.reconciliation_service import match_score
+
+        score = match_score(self._line(), self._tx())
+        self.assertIsNotNone(score)
+        self.assertGreaterEqual(score, 70)
+
+    def test_direction_must_match(self):
+        from treasury.reconciliation_service import match_score
+
+        self.assertIsNone(match_score(self._line(), self._tx(direction='payment')))
+
+    def test_amount_must_match(self):
+        from treasury.reconciliation_service import match_score
+
+        self.assertIsNone(match_score(self._line(), self._tx(amount=Decimal('1'))))
+
+    def test_date_tolerance(self):
+        from treasury.reconciliation_service import match_score
+
+        self.assertIsNone(match_score(self._line(), self._tx(date=date(2025, 10, 30))))
+        self.assertIsNotNone(
+            match_score(self._line(), self._tx(date=date(2025, 10, 13)), day_tolerance=3),
+        )
+
+    def test_auto_match_does_not_reuse_transaction(self):
+        from treasury.reconciliation_service import auto_match
+
+        lines = [self._line(pk=1), self._line(pk=2, reference='X')]
+        matches = auto_match(lines, [self._tx(pk=10)])
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0][1].pk, 10)
+
+
+class NewModelContractTests(SimpleTestCase):
+    """قرارداد مدل‌های جدید: دستور بین‌بانکی، مغایرت، قالب چاپ، کسورات."""
+
+    def test_bank_payment_order_fields(self):
+        from treasury.models import BankPaymentOrder
+
+        names = {field.name for field in BankPaymentOrder._meta.get_fields()}
+        for name in ('number', 'transfer_type', 'source_entity', 'source_iban',
+                     'destination_iban', 'destination_bank_name', 'amount',
+                     'cheque_number', 'status', 'company_national_id', 'customer_number'):
+            self.assertIn(name, names)
+        self.assertEqual(set(BankPaymentOrder.TransferType.values), {'satna', 'paya'})
+
+    def test_statement_line_statuses(self):
+        from treasury.models import TreasuryStatementLine
+
+        self.assertEqual(
+            set(TreasuryStatementLine.Status.values),
+            {'unmatched', 'matched', 'partial', 'ignored', 'adjusted'},
+        )
+
+    def test_print_template_kinds_cover_documents(self):
+        from treasury.models import TreasuryPrintTemplate
+        from treasury.numbering import DOC_KINDS
+
+        kinds = {row[0] for row in TreasuryPrintTemplate._meta.get_field('kind').choices}
+        for kind in ('receipt', 'payment', 'bank_order'):
+            self.assertIn(kind, kinds)
+        self.assertIn('bank_order', DOC_KINDS)
+
+    def test_transaction_voucher_fields(self):
+        from treasury.models import TreasuryTransaction
+
+        names = {field.name for field in TreasuryTransaction._meta.get_fields()}
+        for name in ('instrument_kind', 'cheque_number', 'cheque_due_date', 'is_guarantee',
+                     'party_national_id', 'invoice_number', 'invoice_date',
+                     'invoice_amount', 'debit_account'):
+            self.assertIn(name, names)
+        self.assertIn('sheba', TreasuryTransaction.InstrumentKind.values)
+
+    def test_payment_deduction_kinds(self):
+        from treasury.models import PaymentDeduction
+
+        self.assertEqual(
+            set(PaymentDeduction.Kind.values),
+            {'tax', 'insurance', 'retention', 'deposit', 'advance', 'other'},
+        )
+

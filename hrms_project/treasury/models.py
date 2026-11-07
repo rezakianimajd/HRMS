@@ -12,7 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
 from treasury.payment_models import (
     TreasuryPaymentType, TreasuryPaymentMethod,
-    PaymentCommitment, PaymentRequest, PaymentOrder,
+    PaymentCommitment, PaymentDeduction, PaymentRequest, PaymentOrder,
 )
 from treasury.operation_models import (
     Receipt, AdvanceAccount, AdvanceSettlement, TreasuryTransfer, TreasuryGuarantee,
@@ -20,6 +20,10 @@ from treasury.operation_models import (
 from treasury.planning_models import TreasuryReconciliation
 from treasury.master_models import Bank, BankBranch, POSTerminal
 from treasury.numbering import TreasuryNumberingSetting, allocate_number, preview_numbers
+from treasury.bank_order_models import BankPaymentOrder
+from treasury.reconciliation_models import TreasuryStatementLine
+from treasury.approval_models import TreasuryApprovalRule, TreasurySettings
+from treasury.print_templates import TreasuryPrintTemplate
 
 
 class TreasuryEntity(BaseModel):
@@ -136,12 +140,37 @@ class TreasuryTransaction(BaseModel):
         POSTED = 'posted', _('ثبت شده')
         CANCELLED = 'cancelled', _('لغو')
 
+    class InstrumentKind(models.TextChoices):
+        CASH = 'cash', _('نقدی')
+        CHEQUE = 'cheque', _('چک')
+        SHEBA = 'sheba', _('شبا / حواله بانکی')
+        BILL = 'bill', _('سند / برات')
+        POS = 'pos', _('کارت‌خوان')
+        OTHER = 'other', _('سایر')
+
     entity = models.ForeignKey(TreasuryEntity, on_delete=models.PROTECT, related_name='transactions', verbose_name=_('بانک/صندوق'))
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره تراکنش'))
     date = models.DateField(verbose_name=_('تاریخ'))
     direction = models.CharField(max_length=10, choices=Direction.choices, verbose_name=_('جهت'))
+    instrument_kind = models.CharField(
+        max_length=10, choices=InstrumentKind.choices, default=InstrumentKind.CASH,
+        verbose_name=_('نوع سند'),
+    )
     amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ'))
     party = models.CharField(max_length=250, blank=True, verbose_name=_('طرف حساب'))
+    party_national_id = models.CharField(max_length=20, blank=True,
+                                         verbose_name=_('شناسه/کد ملی طرف حساب'))
+    cheque_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره چک'))
+    cheque_due_date = models.DateField(null=True, blank=True, verbose_name=_('سررسید چک'))
+    is_guarantee = models.BooleanField(default=False, verbose_name=_('چک تضمینی'))
+    invoice_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره فاکتور'))
+    invoice_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ فاکتور'))
+    invoice_amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True,
+                                         verbose_name=_('مقدار فاکتور'))
+    debit_account = models.ForeignKey(
+        'accounting.Account', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='treasury_transactions_debit', verbose_name=_('حساب بدهکار سند'),
+    )
     description = models.TextField(blank=True, verbose_name=_('شرح'))
     source_module = models.CharField(max_length=50, blank=True, verbose_name=_('ماژول مبدأ'))
     source_id = models.CharField(max_length=64, blank=True, verbose_name=_('شناسهٔ مبدأ'))

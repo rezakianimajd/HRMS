@@ -1,4 +1,6 @@
 """Serializers برای هستهٔ گردش پرداخت خزانه (فاز ۱)."""
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from treasury.guards import (
@@ -7,8 +9,24 @@ from treasury.guards import (
 )
 from treasury.payment_models import (
     TreasuryPaymentType, TreasuryPaymentMethod,
-    PaymentCommitment, PaymentRequest, PaymentOrder,
+    PaymentCommitment, PaymentDeduction, PaymentRequest, PaymentOrder,
 )
+
+
+class PaymentDeductionSerializer(serializers.ModelSerializer):
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    party_name = serializers.CharField(source='party.name', read_only=True)
+
+    class Meta:
+        model = PaymentDeduction
+        fields = ['id', 'kind', 'kind_display', 'title', 'party', 'party_name',
+                  'amount', 'percent', 'note']
+        read_only_fields = ['id', 'kind_display', 'party_name']
+
+    def validate_amount(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError('مبلغ کسور باید بزرگ‌تر از صفر باشد.')
+        return value
 
 
 class BaseModelSerializer(serializers.ModelSerializer):
@@ -51,6 +69,11 @@ class PaymentRequestSerializer(BaseModelSerializer):
     contract_name = serializers.CharField(source='contract.subject', read_only=True)
     payment_type_name = serializers.CharField(source='payment_type.name', read_only=True)
     payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
+    deductions = PaymentDeductionSerializer(many=True, required=False)
+    deductions_total = serializers.DecimalField(
+        max_digits=18, decimal_places=2, read_only=True,
+    )
+    net_amount = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = PaymentRequest
@@ -58,6 +81,43 @@ class PaymentRequestSerializer(BaseModelSerializer):
         read_only_fields = BaseModelSerializer.Meta.read_only_fields + [
             'status', 'history', 'submitted_at', 'decided_at',
         ]
+
+    @staticmethod
+    def _save_deductions(instance, rows):
+        if rows is None:
+            return
+        instance.deductions.all().delete()
+        for row in rows:
+            PaymentDeduction.objects.create(
+                company=instance.company, request=instance, **row,
+            )
+
+    def _validate_deductions(self, deductions, amount):
+        if deductions is None:
+            return
+        total = sum((Decimal(str(row.get('amount') or 0)) for row in deductions), Decimal('0'))
+        if amount is not None and total > Decimal(str(amount)):
+            raise serializers.ValidationError({
+                'deductions': 'جمع کسورات نمی‌تواند از مبلغ درخواست بیشتر باشد.',
+            })
+
+    def create(self, validated_data):
+        deductions = validated_data.pop('deductions', None)
+        instance = super().create(validated_data)
+        self._save_deductions(instance, deductions)
+        return instance
+
+    def update(self, instance, validated_data):
+        deductions = validated_data.pop('deductions', None)
+        instance = super().update(instance, validated_data)
+        self._save_deductions(instance, deductions)
+        return instance
+
+    def validate(self, attrs):
+        deductions = attrs.get('deductions')
+        amount = attrs.get('amount', getattr(self.instance, 'amount', None))
+        self._validate_deductions(deductions, amount)
+        return attrs
 
 
 class PaymentOrderSerializer(BaseModelSerializer):

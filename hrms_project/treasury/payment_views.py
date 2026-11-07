@@ -109,7 +109,7 @@ class PaymentRequestViewSet(BaseViewSet):
     serializer_class = PaymentRequestSerializer
     queryset = PaymentRequest.objects.select_related(
         'party', 'project', 'contract', 'supplier', 'payment_type', 'payment_method',
-    )
+    ).prefetch_related('deductions')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'title', 'party__name']
     ordering = ['-requested_date', '-created_at']
@@ -165,14 +165,44 @@ class PaymentRequestViewSet(BaseViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
+        from treasury.approval_models import get_settings, resolve_required_permission
+
         require(request.user, 'treasury_approve')
         obj = self.get_object()
-        r = self._transition(request, PaymentRequest.Status.APPROVED)
+        settings_obj = get_settings(obj.company)
+        if (
+            settings_obj.enforce_segregation
+            and obj.requester_id
+            and obj.requester_id == getattr(request.user, 'id', None)
+        ):
+            return Response(
+                {'error': 'بر اساس تفکیک وظایف، ثبت‌کننده نمی‌تواند تأییدکنندهٔ همان درخواست باشد.'},
+                status=400,
+            )
+        required = resolve_required_permission(
+            obj.company, obj.approved_amount or obj.amount,
+        )
+        if required and required != 'treasury_approve':
+            require(request.user, required)
+        result = self._transition(request, PaymentRequest.Status.APPROVED)
         approved_amount = request.data.get('approved_amount')
         if approved_amount is not None:
             obj.approved_amount = approved_amount
             obj.save(update_fields=['approved_amount', 'updated_at'])
-        return r
+        return result
+
+    @action(detail=True, methods=['get'])
+    def distribution(self, request, pk=None):
+        """تفکیک مبلغ: ناخالص، کسورات و مبلغ خالص پرداخت (§۱۹/§۲۰)."""
+        obj = self.get_object()
+        gross = obj.approved_amount or obj.amount
+        return Response({
+            'number': obj.number,
+            'gross': str(gross),
+            'deductions_total': str(obj.deductions_total),
+            'net': str(obj.net_amount),
+            'lines': obj.deduction_breakdown,
+        })
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
@@ -251,10 +281,18 @@ class PaymentOrderViewSet(BaseViewSet):
 
     @action(detail=True, methods=['get'], url_path='print-data')
     def print_data(self, request, pk=None):
-        """دادهٔ چاپ «فیش پرداخت وجه» (مبلغ به حروف + توکن اعتبارسنجی)."""
+        """دادهٔ چاپ «فیش پرداخت وجه» (قالب جای‌نگهدار + بارکد + مبلغ به حروف)."""
+        from treasury.print_templates import build_context, get_default_template, render_template
         from treasury.vouchers import build_payment_voucher
 
-        return Response(build_payment_voucher(self.get_object(), request))
+        obj = self.get_object()
+        payload = build_payment_voucher(obj, request)
+        template = get_default_template(obj.company, 'payment')
+        payload['html'] = render_template(template, build_context(payload))
+        payload['template_id'] = getattr(template, 'id', None)
+        payload['template_name'] = getattr(template, 'name', '')
+        payload['paper'] = getattr(template, 'paper', 'A5')
+        return Response(payload)
 
     @action(detail=True, methods=['post'])
     def issue(self, request, pk=None):

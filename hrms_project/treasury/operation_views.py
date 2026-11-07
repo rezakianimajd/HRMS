@@ -81,11 +81,18 @@ class ReceiptViewSet(BaseViewSet):
 
     @action(detail=True, methods=['get'], url_path='print-data')
     def print_data(self, request, pk=None):
-        """دادهٔ چاپ «فیش دریافت وجه» (شامل مبلغ به حروف و توکن اعتبارسنجی)."""
+        """دادهٔ چاپ «فیش دریافت وجه» (قالب جای‌نگهدار + بارکد + مبلغ به حروف)."""
+        from treasury.print_templates import build_context, get_default_template, render_template
         from treasury.vouchers import build_receipt_voucher
 
         obj = self.get_object()
-        return Response(build_receipt_voucher(obj, request))
+        payload = build_receipt_voucher(obj, request)
+        template = get_default_template(obj.company, 'receipt')
+        payload['html'] = render_template(template, build_context(payload))
+        payload['template_id'] = getattr(template, 'id', None)
+        payload['template_name'] = getattr(template, 'name', '')
+        payload['paper'] = getattr(template, 'paper', 'A5')
+        return Response(payload)
 
     @action(detail=True, methods=['post'])
     def receive(self, request, pk=None):
@@ -179,10 +186,16 @@ class TreasuryTransferViewSet(BaseViewSet):
 
     @action(detail=True, methods=['get'], url_path='print-data')
     def print_data(self, request, pk=None):
-        """دادهٔ چاپ «رسید انتقال بین حساب‌ها»."""
+        """دادهٔ چاپ «رسید انتقال بین حساب‌ها» (قالب جای‌نگهدار)."""
+        from treasury.print_templates import build_context, get_default_template, render_template
         from treasury.vouchers import build_transfer_voucher
 
-        return Response(build_transfer_voucher(self.get_object(), request))
+        obj = self.get_object()
+        payload = build_transfer_voucher(obj, request)
+        template = get_default_template(obj.company, 'transfer')
+        payload['html'] = render_template(template, build_context(payload))
+        payload['paper'] = getattr(template, 'paper', 'A5')
+        return Response(payload)
 
     @action(detail=True, methods=['post'])
     def post_transfer(self, request, pk=None):

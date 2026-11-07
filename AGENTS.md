@@ -450,6 +450,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   داشبورد نقدینگی (`/api/treasury/dashboard/`)، چرخهٔ کامل چک (صندوق اسناد/واگذاری/وصول/برگشت/عودت/واگذاری به شخص).
   صفحات فرانت: `/treasury/accounts`, `/treasury/cashboxes`, `/treasury/banks`, `/treasury/bank-branches`,
   `/treasury/terminals`, `/treasury/payment-methods`, `/treasury/numbering`, `/treasury/verify`.
+- **دریافت/پرداخت پیشرفته:** دفتر اسناد (`/treasury/voucher-book` با انواع چک/نقدی/شبا/سند و حساب بدهکار)،
+  دستور پرداخت بین‌بانکی پایا/ساتنا (`/treasury/bank-orders` + اعتبارسنجی شبا mod 97 و تشخیص بانک از کد شبا)،
+  کسورات چندگانهٔ پرداخت (`PaymentDeduction`، مبلغ خالص، `/payment-requests/{id}/distribution/`),
+  قواعد سطح تأیید (`TreasuryApprovalRule`) + تفکیک وظایف (`/treasury/settings/`), گزارش‌ها (`/treasury/reports/` + Excel),
+  مغایرت بانکی (`/treasury/statement-lines/` + تطبیق خودکار/دستی), و قالب چاپ جای‌نگهدار (`/treasury/print-templates/`) با بارکد Code 39
+  (به‌جای QR که به بستهٔ بیرونی نیاز دارد).
 
 ---
 

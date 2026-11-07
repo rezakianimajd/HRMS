@@ -121,6 +121,17 @@ const TreasuryVoucherDialog = ({ open, endpoint, onClose }) => {
     staleTime: 60_000,
   });
   const data = voucherQuery.data;
+  const frameRef = React.useRef(null);
+
+  const printFrame = () => {
+    const frame = frameRef.current;
+    if (frame && frame.contentWindow) {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      return;
+    }
+    window.print();
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -129,6 +140,20 @@ const TreasuryVoucherDialog = ({ open, endpoint, onClose }) => {
         {voucherQuery.isLoading || !data ? (
           <Box sx={{ py: 6, textAlign: 'center' }}>
             <CircularProgress size={22} />
+          </Box>
+        ) : data.html ? (
+          <Box>
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.6 }}>
+              <Chip size="small" label={`قالب: ${data.template_name || 'استاندارد'}`}
+                sx={chipSx('#0f766e')} />
+              <Chip size="small" label={data.paper || 'A5'} sx={chipSx('#64748b')} />
+            </Stack>
+            <iframe
+              ref={frameRef}
+              title="قالب چاپ سند"
+              srcDoc={data.html}
+              style={{ width: '100%', height: 420, border: '1px solid #e2e8f0', background: '#fff' }}
+            />
           </Box>
         ) : (
           <VoucherSheet data={data} accent="#14b8a6" />
@@ -141,7 +166,7 @@ const TreasuryVoucherDialog = ({ open, endpoint, onClose }) => {
           variant="contained"
           startIcon={<PrintIcon sx={{ fontSize: 16 }} />}
           disabled={!data}
-          onClick={() => window.print()}
+          onClick={printFrame}
         >
           چاپ
         </Button>

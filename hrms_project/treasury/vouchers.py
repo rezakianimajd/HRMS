@@ -13,6 +13,7 @@ from django.core import signing
 from django.utils import timezone
 
 from treasury.amount_words import amount_in_words
+from treasury.barcode import barcode_svg
 
 SALT = 'treasury.voucher'
 TOKEN_MAX_AGE = 60 * 60 * 24 * 365 * 5  # ۵ سال
@@ -84,10 +85,12 @@ def build_verification(kind, obj, request=None, path='/treasury/verify'):
             url = request.build_absolute_uri(url)
         except Exception:  # noqa: BLE001
             pass
+    code = _verification_code(kind, obj)
     return {
         'token': token,
-        'code': _verification_code(kind, obj),
+        'code': code,
         'url': url,
+        'barcode': barcode_svg(code),
     }
 
 

@@ -437,6 +437,8 @@ const treasuryMenu = [
     color: '#14b8a6',
     items: [
       { id: 'treasury-forecast', title: 'نقدینگی و مغایرت', icon: <InsightsIcon />, path: '/treasury/forecast', color: '#14b8a6', primary: false, ready: true },
+      { id: 'treasury-reconciliation', title: 'مغایرت بانکی', icon: <InsightsIcon />, path: '/treasury/reconciliation', color: '#0f766e', primary: false, ready: true },
+      { id: 'treasury-reports', title: 'گزارش‌های دریافت و پرداخت', icon: <InsightsIcon />, path: '/treasury/reports', color: '#3b82f6', primary: false, ready: true },
     ],
   },
   {
@@ -454,6 +456,8 @@ const treasuryMenu = [
     color: '#0ea5e9',
     items: [
       { id: 'treasury-receipts', title: 'دریافت‌ها', icon: <CallReceivedIcon />, path: '/treasury/receipts', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'treasury-voucher-book', title: 'دفتر اسناد دریافت و پرداخت', icon: <ReceiptLongIcon />, path: '/treasury/voucher-book', color: '#0284c7', primary: false, ready: true },
+      { id: 'treasury-bank-orders', title: 'دستور پرداخت بین‌بانکی', icon: <AccountBalanceIcon />, path: '/treasury/bank-orders', color: '#0f766e', primary: false, ready: true },
       { id: 'treasury-transfers', title: 'انتقال‌های وجه', icon: <SwapHorizIcon />, path: '/treasury/transfers', color: '#3b82f6', primary: false, ready: true },
       { id: 'treasury-advances', title: 'علی‌الحساب‌ها', icon: <RequestQuoteIcon />, path: '/treasury/advances', color: '#f59e0b', primary: false, ready: true },
     ],
@@ -488,6 +492,7 @@ const treasuryMenu = [
       { id: 'treasury-terminals', title: 'پایانه‌های کارت‌خوان', icon: <PointOfSaleIcon />, path: '/treasury/terminals', color: '#f59e0b', primary: false, ready: true },
       { id: 'treasury-payment-methods', title: 'روش‌های دریافت و پرداخت', icon: <TuneIcon />, path: '/treasury/payment-methods', color: '#8b5cf6', primary: false, ready: true },
       { id: 'treasury-numbering', title: 'شماره‌گذاری اسناد', icon: <NumbersIcon />, path: '/treasury/numbering', color: '#64748b', primary: false, ready: true },
+      { id: 'treasury-print-templates', title: 'قالب‌های چاپ فیش', icon: <NumbersIcon />, path: '/treasury/print-templates', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
 ];

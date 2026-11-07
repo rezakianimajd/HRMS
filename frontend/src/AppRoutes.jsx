@@ -159,6 +159,11 @@ import {
 import TreasuryTerminalsPage from './pages/treasury/TreasuryTerminalsPage';
 import TreasuryPaymentMethodsPage from './pages/treasury/TreasuryPaymentMethodsPage';
 import TreasuryNumberingPage from './pages/treasury/TreasuryNumberingPage';
+import TreasuryVoucherBookPage from './pages/treasury/TreasuryVoucherBookPage';
+import TreasuryBankOrdersPage from './pages/treasury/TreasuryBankOrdersPage';
+import TreasuryPrintTemplatesPage from './pages/treasury/TreasuryPrintTemplatesPage';
+import TreasuryReportsPage from './pages/treasury/TreasuryReportsPage';
+import TreasuryReconciliationPage from './pages/treasury/TreasuryReconciliationPage';
 import TreasuryVerifyPage from './pages/treasury/TreasuryVerifyPage';
 import TreasuryEntitiesPage from './pages/treasury/TreasuryEntitiesPage';
 import TreasuryTransactionsPage from './pages/treasury/TreasuryTransactionsPage';
@@ -337,6 +342,11 @@ const AppRoutes = () => {
       <Route path="/treasury/terminals" element={<ProtectedLayout><TreasuryTerminalsPage /></ProtectedLayout>} />
       <Route path="/treasury/payment-methods" element={<ProtectedLayout><TreasuryPaymentMethodsPage /></ProtectedLayout>} />
       <Route path="/treasury/numbering" element={<ProtectedLayout><TreasuryNumberingPage /></ProtectedLayout>} />
+      <Route path="/treasury/voucher-book" element={<ProtectedLayout><TreasuryVoucherBookPage /></ProtectedLayout>} />
+      <Route path="/treasury/bank-orders" element={<ProtectedLayout><TreasuryBankOrdersPage /></ProtectedLayout>} />
+      <Route path="/treasury/print-templates" element={<ProtectedLayout><TreasuryPrintTemplatesPage /></ProtectedLayout>} />
+      <Route path="/treasury/reports" element={<ProtectedLayout><TreasuryReportsPage /></ProtectedLayout>} />
+      <Route path="/treasury/reconciliation" element={<ProtectedLayout><TreasuryReconciliationPage /></ProtectedLayout>} />
       <Route path="/treasury/verify" element={<ProtectedLayout><TreasuryVerifyPage /></ProtectedLayout>} />
       <Route path="/treasury/transactions" element={<ProtectedLayout><TreasuryTransactionsPage /></ProtectedLayout>} />
       <Route path="/treasury/payables" element={<ProtectedLayout><TreasuryPayablesPage /></ProtectedLayout>} />

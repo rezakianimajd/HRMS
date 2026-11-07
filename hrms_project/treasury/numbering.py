@@ -28,6 +28,7 @@ DOC_KINDS = {
     'transfer': 'انتقال وجه',
     'request': 'درخواست پرداخت',
     'order': 'دستور پرداخت',
+    'bank_order': 'دستور پرداخت بین‌بانکی',
 }
 
 DEFAULT_PREFIXES = {
@@ -36,6 +37,7 @@ DEFAULT_PREFIXES = {
     'transfer': 'TR',
     'request': 'PR',
     'order': 'PO',
+    'bank_order': 'BO',
 }
 
 
@@ -78,6 +80,7 @@ class TreasuryNumberingSetting(BaseModel):
     transfer_prefix = models.CharField(max_length=12, default='TR', verbose_name=_('پیشوند انتقال'))
     request_prefix = models.CharField(max_length=12, default='PR', verbose_name=_('پیشوند درخواست پرداخت'))
     order_prefix = models.CharField(max_length=12, default='PO', verbose_name=_('پیشوند دستور پرداخت'))
+    bank_order_prefix = models.CharField(max_length=12, default='BO', verbose_name=_('پیشوند دستور بین‌بانکی'))
     padding = models.PositiveSmallIntegerField(default=6, verbose_name=_('تعداد رقم شماره'))
     separator = models.CharField(max_length=3, default='-', verbose_name=_('جداکننده'))
     include_year = models.BooleanField(default=True, verbose_name=_('درج سال شمسی در شماره'))

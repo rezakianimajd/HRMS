@@ -188,6 +188,34 @@ class PaymentRequest(BaseModel):
         value = getattr(target, 'value', target)
         return value in self.TRANSITIONS.get(self.status, set())
 
+    @property
+    def deductions_total(self):
+        """جمع کسورات ثبت‌شده برای این درخواست."""
+        from decimal import Decimal
+
+        return sum((row.amount or Decimal('0') for row in self.deductions.all()), Decimal('0'))
+
+    @property
+    def net_amount(self):
+        """مبلغ خالص پرداخت = مبلغ تأییدشده/درخواستی − کسورات."""
+        from decimal import Decimal
+
+        base = self.approved_amount or self.amount or Decimal('0')
+        return max(Decimal('0'), base - self.deductions_total)
+
+    @property
+    def deduction_breakdown(self):
+        """تفکیک کسورات برای نمایش در فرم/فیش."""
+        return [
+            {
+                'kind': row.kind,
+                'kind_display': row.get_kind_display(),
+                'title': row.title,
+                'amount': str(row.amount),
+            }
+            for row in self.deductions.all()
+        ]
+
 
 class PaymentOrder(BaseModel):
     """دستور پرداخت — صدور و اجرای پرداخت با ابزار مشخص."""
@@ -236,3 +264,43 @@ class PaymentOrder(BaseModel):
 
     def __str__(self):
         return f'{self.number or self.pk} - {self.amount}'
+
+
+class PaymentDeduction(BaseModel):
+    """کسورات پرداخت (مالیات/بیمه/حسن انجام کار/سپرده/علی‌الحساب/سایر).
+
+    مبلغ خالص پرداخت = مبلغ درخواست − جمع کسورات. برای پرداخت‌های قراردادی،
+    کسورات می‌تواند از اطلاعات قرارداد پیشنهاد شود (§۲۰).
+    """
+
+    class Kind(models.TextChoices):
+        TAX = 'tax', _('مالیات')
+        INSURANCE = 'insurance', _('بیمه')
+        RETENTION = 'retention', _('حسن انجام کار')
+        DEPOSIT = 'deposit', _('سپرده')
+        ADVANCE = 'advance', _('علی‌الحساب')
+        OTHER = 'other', _('سایر کسورات')
+
+    request = models.ForeignKey(
+        'treasury.PaymentRequest', on_delete=models.CASCADE, related_name='deductions',
+        verbose_name=_('درخواست پرداخت'),
+    )
+    kind = models.CharField(max_length=15, choices=Kind.choices, default=Kind.OTHER,
+                            verbose_name=_('نوع کسور'))
+    title = models.CharField(max_length=150, blank=True, verbose_name=_('عنوان'))
+    party = models.ForeignKey(
+        'contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='treasury_deductions', verbose_name=_('ذی‌نفع کسور'),
+    )
+    amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ کسور'))
+    percent = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True,
+                                  verbose_name=_('درصد'))
+    note = models.CharField(max_length=250, blank=True, verbose_name=_('یادداشت'))
+
+    class Meta:
+        verbose_name = _('کسورات پرداخت')
+        verbose_name_plural = _('کسورات پرداخت‌ها')
+        ordering = ['kind', 'id']
+
+    def __str__(self):
+        return f'{self.get_kind_display()} — {self.amount}'
