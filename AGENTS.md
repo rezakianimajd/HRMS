@@ -448,8 +448,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `fa44809d5 perf(correspondence): light list payload, no N+1 and comprehensive search`
-- **Live:** frontend `main.cc44dfb4.js` (HTTP 200) · backend deployed، gunicorn active.
+- **Last commit:** `12ba969f4 feat(treasury): issue vouchers from a live print-preview form`
+- **Live:** frontend `main.75d4f27a.js` (HTTP 200) · backend deployed (voucher-preview/issue)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
