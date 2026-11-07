@@ -1122,11 +1122,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
 
   const listParams = useMemo(() => {
     const ordering = {
-      newest: '-letter_date',
-      oldest: 'letter_date',
+      newest: '-effective_date',
+      oldest: 'effective_date',
       due: 'due_date',
       number: 'number',
-    }[sortBy] || '-letter_date';
+    }[sortBy] || '-effective_date';
     const params = { page: page + 1, page_size: pageSize, ordering };
     if (direction !== 'all') params.direction = direction;
     if (statusFilter !== 'all') params.status = statusFilter;
@@ -1802,8 +1802,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           : `جستجو در ${preset.title} (موضوع، شماره، طرف حساب، ارجاع‌شده)…`}
         sort={sortBy}
         sortOptions={[
-          { value: 'newest', label: 'جدیدترین تاریخ' },
-          { value: 'oldest', label: 'قدیمی‌ترین تاریخ' },
+          { value: 'newest', label: 'جدیدترین تاریخ ورود' },
+          { value: 'oldest', label: 'قدیمی‌ترین تاریخ ورود' },
           { value: 'due', label: 'نزدیک‌ترین مهلت' },
           { value: 'number', label: 'شماره نامه' },
         ]}

@@ -450,8 +450,11 @@ class LetterViewSet(BaseLetterViewSet):
     # جست‌وجوی جامع دستی انجام می‌شود تا نام ارجاع‌شدگان، طرف حساب، پیوست‌ها و
     # متن نامه هم پوشش داده شوند.
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ['letter_date', 'created_at', 'due_date', 'priority', 'status', 'number']
-    ordering = ['-letter_date', '-id']
+    ordering_fields = [
+        'letter_date', 'received_date', 'effective_date', 'created_at', 'due_date',
+        'priority', 'status', 'number',
+    ]
+    ordering = ['-effective_date', '-id']
 
     SEARCH_FIELDS = (
         'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject', 'summary',
@@ -553,6 +556,11 @@ class LetterViewSet(BaseLetterViewSet):
             )
 
         params = self.request.query_params
+        # ترتیب پیش‌فرض بر اساس «تاریخ ورود» است؛ اگر نامه تاریخ ورود نداشته باشد
+        # (صادره/داخلی) از «تاریخ نامه» استفاده می‌شود.
+        from django.db.models.functions import Coalesce
+
+        qs = qs.annotate(effective_date=Coalesce('received_date', 'letter_date'))
         qs = self._apply_view_filters(qs, params)
         return self._apply_search(qs, params.get('search') or params.get('q'))
 
