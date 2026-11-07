@@ -121,6 +121,25 @@ beforeEach(() => {
   }));
   axiosInstance.get.mockImplementation((url) => {
     if (url === '/letters/') return Promise.resolve({ data: { results: letters } });
+    if (url === '/letters/1/') {
+      return Promise.resolve({
+        data: {
+          ...letters[0],
+          attachments: [
+            {
+              id: 71, letter: 1, title: 'scan-1404-100.pdf', kind: 'letter',
+              kind_display: 'نامه', file_url: '/media/correspondences/letters/scan-1404-100.pdf',
+              size: 2097152, uploaded_by_name: 'خانم حقیقی', created_at: iso(-2),
+            },
+            {
+              id: 72, letter: 1, title: 'پیوست-دوم.jpg', kind: 'attachment',
+              kind_display: 'پیوست', file_url: '/media/correspondences/letters/second.jpg',
+              size: 4096, uploaded_by_name: 'خانم حقیقی', created_at: iso(-2),
+            },
+          ],
+        },
+      });
+    }
     if (url === '/letters/stats/') return Promise.resolve({ data: stats });
     if (url === '/letters/meta/') return Promise.resolve({ data: meta });
     if (url === '/letter-referrals/') return Promise.resolve({ data: { results: [] } });
@@ -303,6 +322,73 @@ test('letters table shows the standard incoming column set', async () => {
   expect(headers).toEqual([
     'تاریخ ورود', 'شماره نامه', 'طرف حساب', 'موضوع نامه', 'تاریخ نامه', 'ارجاع', 'عملیات',
   ]);
+
+  root.unmount();
+  container.remove();
+});
+
+test('incoming row exposes an inline attachment preview without downloading', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  const previewButton = container.querySelector('[aria-label="مشاهدهٔ پیوست"]');
+  expect(previewButton).toBeTruthy();
+
+  await act(async () => {
+    previewButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(400);
+  });
+
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).toBeTruthy();
+  expect(dialog.querySelector('iframe')).toBeTruthy();
+  expect(dialog.textContent).toContain('scan-1404-100.pdf');
+  expect(dialog.textContent).toContain('دریافت فایل');
+  expect(dialog.textContent).toContain('باز کردن در تب جدید');
+  expect(dialog.querySelector('[aria-label="پیوست بعدی"]')).toBeTruthy();
+
+  const nextButton = [...dialog.querySelectorAll('[aria-label="پیوست بعدی"]')]
+    .find((node) => node.tagName === 'BUTTON');
+  expect(nextButton).toBeTruthy();
+  await act(async () => {
+    nextButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(260);
+  });
+  expect(document.body.textContent).toContain('پیوست-دوم.jpg');
+  expect(document.body.textContent).toContain('پیوست ۲ از ۲');
+
+  root.unmount();
+  container.remove();
+});
+
+test('letter drawer attachment tab shows a preview action per file', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  const rows = container.querySelectorAll('tbody tr');
+  await act(async () => {
+    rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(400);
+  });
+
+  const attachmentsTab = [...document.querySelectorAll('[role="tab"]')]
+    .find((tab) => tab.textContent.includes('پیوست'));
+  expect(attachmentsTab).toBeTruthy();
+  await act(async () => {
+    attachmentsTab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(320);
+  });
+
+  expect(document.body.textContent).toContain('scan-1404-100.pdf');
+  const viewButton = document.querySelector('[aria-label="مشاهدهٔ پیوست"]');
+  expect(viewButton).toBeTruthy();
+  await act(async () => {
+    viewButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(320);
+  });
+
+  const dialog = [...document.querySelectorAll('[role="dialog"]')]
+    .find((node) => node.querySelector('iframe'));
+  expect(dialog).toBeTruthy();
+  expect(dialog.textContent).toContain('scan-1404-100.pdf');
 
   root.unmount();
   container.remove();

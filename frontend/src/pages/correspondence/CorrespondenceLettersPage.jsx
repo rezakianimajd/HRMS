@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
+import AttachmentPreviewDialog from '../../core/components/ui/AttachmentPreviewDialog';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -996,6 +997,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [previewState, setPreviewState] = useState(null);
   const uploadRef = useRef(null);
 
   useEffect(() => {
@@ -1377,6 +1379,37 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     link.download = 'correspondence.xlsx';
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openPreview = (files, index, title) => {
+    const items = (files || []).filter((file) => file && file.file_url);
+    if (!items.length) return;
+    setPreviewState({ items, index: Math.min(Math.max(index || 0, 0), items.length - 1), title });
+  };
+
+  const openRowPreview = async (letter) => {
+    if (!letter?.id) return;
+    const cachedFiles = (letter.attachments || []).filter((file) => file?.file_url);
+    if (cachedFiles.length) {
+      openPreview(cachedFiles, 0, letter.subject);
+      return;
+    }
+    try {
+      const detail = await qc.fetchQuery({
+        queryKey: ['correspondence-letter', letter.id],
+        queryFn: () => axiosInstance.get(`/letters/${letter.id}/`).then((response) => response.data),
+      });
+      const files = (detail?.attachments || []).filter((file) => file?.file_url);
+      if (files.length) {
+        openPreview(files, 0, detail.subject || letter.subject);
+        return;
+      }
+      setDrawerLetter(detail && detail.id ? detail : letter);
+      setDrawerTab('attachments');
+      setToast('این نامه فایل قابل‌نمایش ندارد.');
+    } catch (err) {
+      setError('دریافت پیوست‌های نامه ممکن نشد.');
+    }
   };
 
   const uploadAttachment = async (event) => {
@@ -1928,6 +1961,14 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 return (
                   <Stack direction="row" spacing={0.25} useFlexGap justifyContent="center"
                     onClick={(event) => event.stopPropagation()}>
+                    {(letter.attachment_count || (letter.attachments || []).length) ? (
+                      <Tooltip title="مشاهدهٔ پیوست">
+                        <IconButton size="small" aria-label="مشاهدهٔ پیوست"
+                          onClick={() => openRowPreview(letter)}>
+                          <AttachFileIcon sx={{ fontSize: 17, color: INTERNAL }} />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
                     <Tooltip title="مشاهدهٔ پرونده">
                       <IconButton size="small" aria-label="مشاهدهٔ نامه"
                         onClick={() => { setDrawerLetter(letter); setComment(''); }}>
@@ -2322,7 +2363,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     {uploading ? 'در حال بارگذاری…' : 'افزودن پیوست'}
                   </Button>
                   <input ref={uploadRef} type="file" hidden onChange={uploadAttachment} />
-                  {(activeLetter.attachments || []).length ? (activeLetter.attachments || []).map((file) => (
+                  {(activeLetter.attachments || []).length ? (activeLetter.attachments || []).map((file, fileIndex) => (
                     <Stack key={file.id} direction="row" alignItems="center" spacing={0.75}
                       sx={{ p: 0.75, borderRadius: '10px', border: '1px solid', borderColor: 'divider', minWidth: 0 }}>
                       <AttachFileIcon sx={{ fontSize: 16, color: INTERNAL }} />
@@ -2334,6 +2375,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                           {file.kind_display} · {toPersianDigits(Math.max(1, Math.round((file.size || 0) / 1024)))} کیلوبایت
                         </Typography>
                       </Box>
+                      <Tooltip title="مشاهدهٔ پیوست">
+                        <IconButton size="small" aria-label="مشاهدهٔ پیوست"
+                          onClick={() => openPreview(activeLetter.attachments, fileIndex, activeLetter.subject)}>
+                          <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="دانلود">
                         <IconButton size="small" aria-label="دانلود پیوست"
                           component="a" href={file.file_url} target="_blank" rel="noreferrer">
@@ -2392,6 +2439,15 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           </Box>
         ) : null}
       </Dialog>
+
+      <AttachmentPreviewDialog
+        open={Boolean(previewState)}
+        items={previewState?.items || []}
+        index={previewState?.index || 0}
+        title={previewState?.title || ''}
+        accent={pageAccent}
+        onClose={() => setPreviewState(null)}
+      />
 
       <LetterFormDialog
         open={formOpen}
