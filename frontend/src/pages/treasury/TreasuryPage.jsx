@@ -1,88 +1,305 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from '../../core/api/axiosConfig';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Typography, Paper, Avatar, Grid, CircularProgress, Chip,
+  Box, Button, Chip, CircularProgress, Paper, Stack, Typography,
 } from '@mui/material';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import AddLinkIcon from '@mui/icons-material/AddLink';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import InsightsIcon from '@mui/icons-material/Insights';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import axiosInstance from '../../core/api/axiosConfig';
+import PageHeader from '../../core/components/ui/PageHeader';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
-import InfoCard from '../../core/components/ui/InfoCard';
+import { chipSx, moneyLabel, useTreasuryTheme } from './treasuryMasterUi';
 
-const COLOR = '#14b8a6';
-const COLOR_DARK = '#0f766e';
-const FONT = 'Vazirmatn, IRANSans, sans-serif';
-
-const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.46))',
-  backdropFilter: 'blur(22px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 14px 40px rgba(20,184,166,0.12)',
-  borderRadius: '16px',
-};
-
-const Kpi = ({ label, value, color }) => (
-  <InfoCard label={label} value={value} color={color} />
+const KpiTile = ({ label, value, hint, color, onClick }) => (
+  <Paper
+    elevation={0}
+    onClick={onClick}
+    sx={{
+      p: 1.1,
+      borderRadius: 'var(--hrms-info-card-radius, 14px)',
+      border: '1px solid',
+      borderColor: 'divider',
+      bgcolor: 'background.paper',
+      minWidth: 0,
+      cursor: onClick ? 'pointer' : 'default',
+    }}
+  >
+    <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 700, opacity: 0.75 }}>{label}</Typography>
+    <Typography noWrap sx={{
+      fontSize: 16, fontWeight: 900, color,
+      fontFamily: 'var(--hrms-table-number-font, inherit)',
+    }}>
+      {value}
+    </Typography>
+    {hint ? <Typography noWrap sx={{ fontSize: 9.5, opacity: 0.65 }}>{hint}</Typography> : null}
+  </Paper>
 );
 
-const QuickLink = ({ icon, title, subtitle, path, color }) => {
-  const navigate = useNavigate();
-  return (
-    <Paper onClick={() => navigate(path)} sx={{ ...glass, p: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1.5, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-3px)' } }}>
-      <Avatar sx={{ width: 46, height: 46, borderRadius: '13px', background: `linear-gradient(135deg, ${color || COLOR}, ${color || COLOR}cc)` }}>{icon}</Avatar>
-      <Box>
-        <Typography variant="body2" fontWeight={800} sx={{ fontFamily: FONT }}>{title}</Typography>
-        <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{subtitle}</Typography>
-      </Box>
-    </Paper>
-  );
-};
+const QuickTile = ({ icon: Icon, title, subtitle, color, onClick }) => (
+  <Paper
+    elevation={0}
+    onClick={onClick}
+    sx={{
+      p: 1.1,
+      borderRadius: 'var(--hrms-info-card-radius, 14px)',
+      border: '1px solid',
+      borderColor: 'divider',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 1,
+      cursor: 'pointer',
+      '&:hover': { borderColor: color },
+    }}
+  >
+    <Box sx={{
+      width: 32, height: 32, borderRadius: '10px', display: 'grid', placeItems: 'center',
+      bgcolor: `${color}14`, color,
+    }}>
+      <Icon sx={{ fontSize: 17 }} />
+    </Box>
+    <Box sx={{ minWidth: 0 }}>
+      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{title}</Typography>
+      <Typography noWrap sx={{ fontSize: 9.5, opacity: 0.7 }}>{subtitle}</Typography>
+    </Box>
+  </Paper>
+);
 
 const TreasuryPage = () => {
-  const [kpis, setKpis] = useState({ payable: 0, paid: 0, outstanding: 0, cash: 0, open: 0 });
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const moduleTheme = useTreasuryTheme();
 
-  useEffect(() => {
-    axiosInstance.get('/treasury/payable-items/dashboard/').then(r => {
-      setKpis({ payable: r.data.total_payable, paid: r.data.total_paid, outstanding: r.data.outstanding, cash: r.data.total_cash, open: r.data.open_count });
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  const dashboardQuery = useQuery({
+    queryKey: ['treasury-dashboard'],
+    queryFn: () => axiosInstance.get('/treasury/dashboard/').then((response) => response.data),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  if (loading) return <Box textAlign="center" py={8}><CircularProgress sx={{ color: COLOR }} /></Box>;
+  if (dashboardQuery.isLoading) {
+    return (
+      <Box sx={{ py: 9, textAlign: 'center' }}>
+        <CircularProgress size={22} sx={{ color: moduleTheme.accent }} />
+      </Box>
+    );
+  }
+
+  const data = dashboardQuery.data || {};
+  const liquidity = data.liquidity || {};
+  const receivables = data.receivables || {};
+  const payables = data.payables || {};
+  const dueSoon = data.due_soon_7d || {};
+  const forecast = data.forecast_30d || {};
+  const trend = data.trend || [];
+
+  const kpis = [
+    {
+      label: 'موجودی بانک‌ها',
+      value: moneyLabel(liquidity.banks),
+      hint: 'جمع ماندهٔ حساب‌های بانکی',
+      color: '#0ea5e9',
+      onClick: () => navigate('/treasury/accounts'),
+    },
+    {
+      label: 'موجودی صندوق‌ها',
+      value: moneyLabel(liquidity.cashboxes),
+      hint: 'نقد در دست صندوق‌ها',
+      color: '#14b8a6',
+      onClick: () => navigate('/treasury/cashboxes'),
+    },
+    {
+      label: 'اسناد دریافتنی',
+      value: moneyLabel(receivables.received_checks?.amount),
+      hint: `${toPersianDigits(receivables.received_checks?.count || 0)} چک باز`,
+      color: '#0f766e',
+      onClick: () => navigate('/treasury/received-checks'),
+    },
+    {
+      label: 'اسناد پرداختنی',
+      value: moneyLabel(payables.issued_checks?.amount),
+      hint: `${toPersianDigits(payables.issued_checks?.count || 0)} چک صادرشده`,
+      color: '#be123c',
+      onClick: () => navigate('/treasury/issued-checks'),
+    },
+    {
+      label: 'در انتظار پرداخت',
+      value: moneyLabel(data.pending_payments?.amount),
+      hint: `${toPersianDigits(data.pending_payments?.count || 0)} درخواست`,
+      color: '#f59e0b',
+      onClick: () => navigate('/treasury/payment-requests'),
+    },
+    {
+      label: 'سررسید ۷ روز آینده',
+      value: moneyLabel(
+        Number(dueSoon.received_checks?.amount || 0) + Number(dueSoon.issued_checks?.amount || 0),
+      ),
+      hint: `${toPersianDigits(dueSoon.issued_checks?.count || 0)} چک پرداختی`,
+      color: '#b45309',
+      onClick: () => navigate('/treasury/issued-checks'),
+    },
+    {
+      label: 'در جریان وصول',
+      value: moneyLabel(receivables.receipts_in_clearing?.amount),
+      hint: `${toPersianDigits(receivables.receipts_in_clearing?.count || 0)} دریافت`,
+      color: '#0284c7',
+      onClick: () => navigate('/treasury/receipts'),
+    },
+    {
+      label: 'پیش‌بینی ۳۰ روزه',
+      value: moneyLabel(forecast.projected_balance),
+      hint: `تعهدات: ${moneyLabel(forecast.upcoming_payments)}`,
+      color: '#7c3aed',
+      onClick: () => navigate('/treasury/forecast'),
+    },
+  ];
+
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <AccountBalanceWalletIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>داشبورد خزانه‌داری</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>نمای کلی وجوه نقد و بدهی‌های قابل پرداخت</Typography>
-        </Box>
-        <Chip label="Treasury" sx={{ bgcolor: `${COLOR}14`, color: COLOR_DARK, fontWeight: 700, fontFamily: FONT }} />
-      </Paper>
+      <PageHeader
+        icon={<AccountBalanceWalletIcon />}
+        title="داشبورد خزانه‌داری"
+        subtitle="ماندهٔ نقدینگی، صف پرداخت، سررسیدها و پیش‌بینی جریان نقد"
+        badge={(
+          <Chip size="small" label={`تا ${data.as_of || '—'}`}
+            sx={chipSx(moduleTheme.accent)} />
+        )}
+        actions={(
+          <>
+            <Button size="small" variant="outlined"
+              startIcon={<SwapHorizIcon sx={{ fontSize: 16 }} />}
+              onClick={() => navigate('/treasury/transfers')}>
+              انتقال وجه
+            </Button>
+            <Button size="small" variant="contained"
+              startIcon={<AddLinkIcon sx={{ fontSize: 16 }} />}
+              onClick={() => navigate('/treasury/receipts')}>
+              ثبت دریافت
+            </Button>
+          </>
+        )}
+      />
 
-      <Grid container spacing={2} sx={{ mb: 2.5 }}>
-        <Grid item xs={6} sm={4} md={2.4}><Kpi label="کل قابل‌پرداخت" value={formatPersianNumber(kpis.payable)} color="#b45309" /></Grid>
-        <Grid item xs={6} sm={4} md={2.4}><Kpi label="پرداخت‌شده" value={formatPersianNumber(kpis.paid)} color="#10b981" /></Grid>
-        <Grid item xs={6} sm={4} md={2.4}><Kpi label="ماندهٔ باز" value={formatPersianNumber(kpis.outstanding)} color="#ef4444" /></Grid>
-        <Grid item xs={6} sm={4} md={2.4}><Kpi label="موجودی نقد" value={formatPersianNumber(kpis.cash)} color="#14b8a6" /></Grid>
-        <Grid item xs={6} sm={4} md={2.4}><Kpi label="اقلام باز" value={toPersianDigits(kpis.open)} color="#f59e0b" /></Grid>
-      </Grid>
+      <Box sx={{
+        display: 'grid',
+        gap: 1,
+        mb: 1.25,
+        gridTemplateColumns: {
+          xs: 'repeat(2, minmax(0, 1fr))',
+          md: 'repeat(4, minmax(0, 1fr))',
+          lg: 'repeat(8, minmax(0, 1fr))',
+        },
+      }}>
+        {kpis.map((item) => <KpiTile key={item.label} {...item} />)}
+      </Box>
 
-      <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT, mb: 1.5 }}>دسترسی سریع</Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<AccountBalanceIcon sx={{ color: '#fff' }} />} title="بانک‌ها و صندوق‌ها" subtitle="نهادهای پولی و مانده" path="/treasury/entities" color="#14b8a6" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<SwapHorizIcon sx={{ color: '#fff' }} />} title="تراکنش‌ها" subtitle="دریافت و پرداخت" path="/treasury/transactions" color="#3b82f6" /></Grid>
-        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<ReceiptLongIcon sx={{ color: '#fff' }} />} title="قابل‌پرداخت‌ها" subtitle="تجمیع بدهی‌های ماژول‌ها" path="/treasury/payables" color="#f59e0b" /></Grid>
-      </Grid>
+      <Box sx={{
+        display: 'grid',
+        gap: 1.25,
+        gridTemplateColumns: { xs: '1fr', md: '1.4fr 1fr' },
+      }}>
+        <Paper elevation={0} sx={{
+          p: 1.25,
+          borderRadius: 'var(--hrms-table-radius, 16px)',
+          border: '1px solid',
+          borderColor: moduleTheme.cardBorderColor,
+        }}>
+          <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.75 }}>
+            <AccountBalanceIcon sx={{ fontSize: 17, color: moduleTheme.accent }} />
+            <Typography sx={{ fontSize: 12, fontWeight: 800 }}>ماندهٔ حساب‌ها و صندوق‌ها</Typography>
+          </Stack>
+          <Stack spacing={0.5}>
+            {(data.entities || []).map((entity) => (
+              <Stack key={entity.id} direction="row" alignItems="center" spacing={0.75}
+                sx={{ px: 0.5, py: 0.35, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Chip size="small"
+                  label={entity.entity_type === 'cash' ? 'صندوق' : 'بانک'}
+                  sx={chipSx(entity.entity_type === 'cash' ? '#14b8a6' : '#0ea5e9')} />
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, flex: 1 }}>
+                  {entity.name}
+                </Typography>
+                <Typography sx={{ fontSize: 11.5, fontWeight: 900 }}>
+                  {moneyLabel(entity.balance)}
+                </Typography>
+              </Stack>
+            ))}
+            {(data.entities || []).length === 0 ? (
+              <Typography sx={{ fontSize: 11, opacity: 0.7 }}>
+                بانک یا صندوقی تعریف نشده است.
+              </Typography>
+            ) : null}
+          </Stack>
+        </Paper>
+
+        <Stack spacing={1.25}>
+          <Paper elevation={0} sx={{
+            p: 1.25,
+            borderRadius: 'var(--hrms-table-radius, 16px)',
+            border: '1px solid',
+            borderColor: moduleTheme.cardBorderColor,
+          }}>
+            <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.75 }}>
+              <InsightsIcon sx={{ fontSize: 17, color: moduleTheme.accent }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 800 }}>ورودی/خروجی نقد (۶ ماه)</Typography>
+            </Stack>
+            <Stack spacing={0.6}>
+              {trend.map((row) => {
+                const inflow = Number(row.in || 0);
+                const outflow = Number(row.out || 0);
+                const peak = Math.max(inflow, outflow, 1);
+                return (
+                  <Box key={row.month}>
+                    <Typography sx={{ fontSize: 10, mb: 0.2 }}>
+                      {`${row.month} — وارد ${formatPersianNumber(Math.round(inflow))}`}
+                    </Typography>
+                    <Box sx={{ height: 4, bgcolor: 'divider', borderRadius: 2, overflow: 'hidden', mb: 0.3 }}>
+                      <Box sx={{ width: `${(inflow / peak) * 100}%`, height: '100%', bgcolor: '#0f766e' }} />
+                    </Box>
+                    <Box sx={{ height: 4, bgcolor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                      <Box sx={{ width: `${(outflow / peak) * 100}%`, height: '100%', bgcolor: '#be123c' }} />
+                    </Box>
+                  </Box>
+                );
+              })}
+              {trend.length === 0 ? (
+                <Typography sx={{ fontSize: 11, opacity: 0.7 }}>گردشی ثبت نشده است.</Typography>
+              ) : null}
+            </Stack>
+          </Paper>
+
+          <Paper elevation={0} sx={{
+            p: 1.25,
+            borderRadius: 'var(--hrms-table-radius, 16px)',
+            border: '1px solid',
+            borderColor: moduleTheme.cardBorderColor,
+          }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 800, mb: 0.75 }}>دسترسی سریع</Typography>
+            <Stack spacing={0.6}>
+              <QuickTile icon={ReceiptLongIcon} title="فیش‌های دریافت"
+                subtitle="ثبت و چاپ رسید" color="#0ea5e9"
+                onClick={() => navigate('/treasury/receipts')} />
+              <QuickTile icon={EventAvailableIcon} title="دستور پرداخت"
+                subtitle="درخواست، تأیید و اجرا" color="#8b5cf6"
+                onClick={() => navigate('/treasury/payment-requests')} />
+              <QuickTile icon={WarningAmberIcon} title="چک‌های نزدیک سررسید"
+                subtitle="پیگیری و جلوگیری از برگشت" color="#b45309"
+                onClick={() => navigate('/treasury/issued-checks')} />
+              <QuickTile icon={InsightsIcon} title="مغایرت و پیش‌بینی"
+                subtitle="نقدینگی و تطبیق بانکی" color="#14b8a6"
+                onClick={() => navigate('/treasury/forecast')} />
+            </Stack>
+          </Paper>
+        </Stack>
+      </Box>
     </Box>
   );
 };
 
 export default TreasuryPage;
+

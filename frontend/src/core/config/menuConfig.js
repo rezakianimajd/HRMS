@@ -63,6 +63,8 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import TuneIcon from '@mui/icons-material/Tune';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import HubIcon from '@mui/icons-material/Hub';
 import NumbersIcon from '@mui/icons-material/Numbers';
@@ -424,7 +426,7 @@ const treasuryMenu = [
     title: 'عملیات',
     color: '#14b8a6',
     items: [
-      { id: 'treasury-entities', title: 'بانک‌ها و صندوق‌ها', icon: <AccountBalanceIcon />, path: '/treasury/entities', color: '#14b8a6', primary: false, ready: true },
+      { id: 'treasury-entities', title: 'بانک‌ها و صندوق‌ها', icon: <AccountBalanceIcon />, path: '/treasury/accounts', color: '#14b8a6', primary: false, ready: true },
       { id: 'treasury-transactions', title: 'تراکنش‌ها', icon: <SwapHorizIcon />, path: '/treasury/transactions', color: '#3b82f6', primary: false, ready: true },
       { id: 'treasury-payables', title: 'قابل‌پرداخت‌ها', icon: <ReceiptLongIcon />, path: '/treasury/payables', color: '#f59e0b', primary: false, ready: true },
     ],
@@ -472,6 +474,20 @@ const treasuryMenu = [
       { id: 'treasury-checkbooks', title: 'دسته‌چک‌ها', icon: <MenuBookIcon />, path: '/treasury/checkbooks', color: '#8b5cf6', primary: false, ready: true },
       { id: 'treasury-received-checks', title: 'چک‌های دریافتی', icon: <ReceiptLongIcon />, path: '/treasury/received-checks', color: '#10b981', primary: false, ready: true },
       { id: 'treasury-issued-checks', title: 'چک‌های پرداختی', icon: <PaymentsIcon />, path: '/treasury/issued-checks', color: '#ef4444', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'treasury-master',
+    title: 'تعاریف خزانه',
+    color: '#0f766e',
+    items: [
+      { id: 'treasury-banks', title: 'بانک‌ها', icon: <AccountBalanceIcon />, path: '/treasury/banks', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'treasury-bank-branches', title: 'شعبه‌های بانک', icon: <AltRouteIcon />, path: '/treasury/bank-branches', color: '#0284c7', primary: false, ready: true },
+      { id: 'treasury-accounts', title: 'حساب‌های بانکی', icon: <AccountBalanceWalletIcon />, path: '/treasury/accounts', color: '#0f766e', primary: false, ready: true },
+      { id: 'treasury-cashboxes', title: 'صندوق‌ها', icon: <PaymentsIcon />, path: '/treasury/cashboxes', color: '#14b8a6', primary: false, ready: true },
+      { id: 'treasury-terminals', title: 'پایانه‌های کارت‌خوان', icon: <PointOfSaleIcon />, path: '/treasury/terminals', color: '#f59e0b', primary: false, ready: true },
+      { id: 'treasury-payment-methods', title: 'روش‌های دریافت و پرداخت', icon: <TuneIcon />, path: '/treasury/payment-methods', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'treasury-numbering', title: 'شماره‌گذاری اسناد', icon: <NumbersIcon />, path: '/treasury/numbering', color: '#64748b', primary: false, ready: true },
     ],
   },
 ];

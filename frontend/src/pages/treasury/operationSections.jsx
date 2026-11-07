@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { QuickCreateButton } from '../../core/components/ui/QuickCreateDialog';
+import TreasuryVoucherDialog from './TreasuryVoucherDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const COLOR = '#14b8a6';
@@ -73,36 +74,65 @@ const GUARANTEE_STATUS = {
 export const ReceiptsSection = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [voucher, setVoucher] = useState(null);
   const load = () => axiosInstance.get('/treasury/receipts/').then(r => setRows(listOf(r))).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
   const act = (id, action) => axiosInstance.post(`/treasury/receipts/${id}/${action}/`).then(load);
   return (
     <Box>
       <Header icon={<CallReceivedIcon sx={{ fontSize: 28, color: '#fff' }} />} title="دریافت‌ها"
-        subtitle="دریافت‌های بانکی/نقدی/چکی و چرخهٔ وصول"
+        subtitle="فیش دریافت بانکی/نقدی/چکی، شماره‌گذاری خودکار و چاپ رسید"
         extra={<QuickCreateButton title="دریافت جدید" color={COLOR_DARK} endpoint="/treasury/receipts/"
           onSaved={load}
           fields={[
             { name: 'party', label: 'طرف حساب', type: 'remote', required: true, endpoint: '/contract-parties/', labelKey: 'name' },
+            { name: 'received_from', label: 'دریافت از (نام آزاد)' },
             { name: 'amount', label: 'مبلغ', type: 'number', required: true },
             { name: 'entity', label: 'بانک/صندوق', type: 'remote', endpoint: '/treasury/treasury-entities/', labelKey: 'name' },
-            { name: 'method', label: 'روش', type: 'select', options: [{ value: 'bank', label: 'بانکی' }, { value: 'cash', label: 'نقدی' }, { value: 'cheque', label: 'چک' }] },
+            {
+              name: 'method',
+              label: 'روش دریافت',
+              type: 'select',
+              options: [
+                { value: 'cash', label: 'نقدی' },
+                { value: 'bank', label: 'واریز به حساب' },
+                { value: 'transfer', label: 'حواله بانکی' },
+                { value: 'internal_transfer', label: 'انتقال بانکی' },
+                { value: 'cheque', label: 'چک' },
+                { value: 'guarantee_cheque', label: 'چک تضمینی' },
+                { value: 'card_to_card', label: 'کارت‌به‌کارت' },
+                { value: 'pos', label: 'کارت‌خوان' },
+                { value: 'draft', label: 'اسناد دریافتنی' },
+                { value: 'foreign_currency', label: 'دریافت ارزی' },
+                { value: 'other', label: 'سایر' },
+              ],
+            },
+            { name: 'reference_no', label: 'شماره پیگیری' },
+            { name: 'tracking_no', label: 'شماره مرجع بانکی' },
+            { name: 'purpose', label: 'بابت' },
+            { name: 'currency', label: 'ارز', type: 'select', options: [{ value: 'IRR', label: 'ریال' }, { value: 'USD', label: 'دلار' }, { value: 'EUR', label: 'یورو' }, { value: 'AED', label: 'درهم' }] },
             { name: 'expected_date', label: 'تاریخ مورد انتظار', type: 'date' },
             { name: 'description', label: 'شرح' },
           ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
-            <TableHead><TableRow><TH>شماره</TH><TH>طرف</TH><TH>روش</TH><TH>مبلغ</TH><TH>تاریخ</TH><TH>وضعیت</TH><TH>عملیات</TH></TableRow></TableHead>
+            <TableHead><TableRow><TH>شماره</TH><TH>طرف</TH><TH>روش</TH><TH>مبلغ</TH><TH>بابت</TH><TH>تاریخ</TH><TH>وضعیت</TH><TH>عملیات</TH></TableRow></TableHead>
             <TableBody>
               {rows.map(r => (
                 <TableRow key={r.id} hover>
-                  <TD bold>{r.number || `#${r.id}`}</TD><TD>{r.party_name || '—'}</TD><TD>{r.method_display}</TD>
-                  <TD>{formatPersianNumber(r.amount)}</TD><TD>{toJalali(r.expected_date || r.received_date)}</TD>
+                  <TD bold>{r.number || `#${r.id}`}</TD>
+                  <TD>{r.party_name || r.received_from || '—'}</TD>
+                  <TD>{r.payment_method_name || r.method_display}</TD>
+                  <TD>{formatPersianNumber(r.amount)}</TD>
+                  <TD>{r.purpose || '—'}</TD>
+                  <TD>{toJalali(r.expected_date || r.received_date)}</TD>
                   <TD><StatusChip status={r.status} map={RECEIPT_STATUS} /></TD>
                   <TD>
                     {r.status === 'expected' && <Button size="small" variant="outlined" onClick={() => act(r.id, 'receive')} sx={{ fontFamily: FONT, borderRadius: '8px' }}>دریافت</Button>}
                     {r.status === 'received' && <Button size="small" color="success" variant="outlined" onClick={() => act(r.id, 'clear')} sx={{ fontFamily: FONT, borderRadius: '8px' }}>وصول</Button>}
+                    <Button size="small" variant="text" onClick={() => setVoucher(`/treasury/receipts/${r.id}/print-data/`)}
+                      sx={{ fontFamily: FONT, borderRadius: '8px' }}>چاپ فیش</Button>
                   </TD>
                 </TableRow>
               ))}
@@ -110,6 +140,8 @@ export const ReceiptsSection = () => {
           </Table></TableContainer>
         )}
       </Paper>
+      <TreasuryVoucherDialog open={Boolean(voucher)} endpoint={voucher}
+        onClose={() => setVoucher(null)} />
     </Box>
   );
 };

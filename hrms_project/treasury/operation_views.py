@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from core.engines.permission_engine import require
 from treasury.audit import log_transition
+from treasury.numbering import allocate_number
 from treasury.operation_models import (
     Receipt, AdvanceAccount, AdvanceSettlement, TreasuryTransfer, TreasuryGuarantee,
 )
@@ -35,14 +36,56 @@ class BaseViewSet(viewsets.ModelViewSet):
 
 class ReceiptViewSet(BaseViewSet):
     serializer_class = ReceiptSerializer
-    queryset = Receipt.objects.select_related('party', 'entity', 'received_check')
+    queryset = Receipt.objects.select_related(
+        'party', 'entity', 'received_check', 'payment_method', 'terminal',
+        'project', 'contract', 'cost_center', 'accounting_document',
+    )
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['number', 'party__name']
+    search_fields = ['number', 'party__name', 'received_from', 'reference_no', 'tracking_no',
+                     'bank_reference', 'purpose', 'description', 'entity__name']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        status_param = params.get('status')
+        if status_param:
+            values = [item for item in status_param.split(',') if item]
+            qs = qs.filter(status__in=values)
+        if params.get('method'):
+            qs = qs.filter(method=params['method'])
+        if params.get('entity'):
+            qs = qs.filter(entity_id=params['entity'])
+        if params.get('date_from'):
+            qs = qs.filter(received_date__gte=params['date_from'])
+        if params.get('date_to'):
+            qs = qs.filter(received_date__lte=params['date_to'])
+        return qs
+
+    def perform_create(self, serializer):
+        require(self.request.user, 'treasury_execute')
+        company = _company(self.request)
+        number = serializer.validated_data.get('number')
+        if not number:
+            number = allocate_number(
+                'receipt', company,
+                serializer.validated_data.get('received_date')
+                or serializer.validated_data.get('expected_date'),
+                Receipt,
+            )
+        serializer.save(company=company, number=number)
 
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')
         return super().create(request, *args, **kwargs)
+
+    @action(detail=True, methods=['get'], url_path='print-data')
+    def print_data(self, request, pk=None):
+        """دادهٔ چاپ «فیش دریافت وجه» (شامل مبلغ به حروف و توکن اعتبارسنجی)."""
+        from treasury.vouchers import build_receipt_voucher
+
+        obj = self.get_object()
+        return Response(build_receipt_voucher(obj, request))
 
     @action(detail=True, methods=['post'])
     def receive(self, request, pk=None):
@@ -123,6 +166,23 @@ class TreasuryTransferViewSet(BaseViewSet):
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')
         return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        require(self.request.user, 'treasury_execute')
+        company = _company(self.request)
+        number = serializer.validated_data.get('number')
+        if not number:
+            number = allocate_number(
+                'transfer', company, serializer.validated_data.get('date'), TreasuryTransfer,
+            )
+        serializer.save(company=company, number=number)
+
+    @action(detail=True, methods=['get'], url_path='print-data')
+    def print_data(self, request, pk=None):
+        """دادهٔ چاپ «رسید انتقال بین حساب‌ها»."""
+        from treasury.vouchers import build_transfer_voucher
+
+        return Response(build_transfer_voucher(self.get_object(), request))
 
     @action(detail=True, methods=['post'])
     def post_transfer(self, request, pk=None):

@@ -9,7 +9,7 @@ from core.models.base_model import BaseModel
 
 
 class Receipt(BaseModel):
-    """دریافت وجوه — بانکی/نقدی/چک، با گردشکار مورد انتظار → انجام‌شده."""
+    """فیش دریافت وجوه — بانکی/نقدی/چک، با گردشکار مورد انتظار → انجام‌شده."""
     class Status(models.TextChoices):
         EXPECTED = 'expected', _('مورد انتظار')
         RECEIVED = 'received', _('دریافت‌شده')
@@ -18,18 +18,54 @@ class Receipt(BaseModel):
         CANCELLED = 'cancelled', _('لغو')
 
     class Method(models.TextChoices):
-        BANK = 'bank', _('بانکی')
         CASH = 'cash', _('نقدی')
+        BANK = 'bank', _('واریز به حساب')
+        TRANSFER = 'transfer', _('حواله بانکی')
+        INTERNAL_TRANSFER = 'internal_transfer', _('انتقال بانکی')
         CHEQUE = 'cheque', _('چک')
+        GUARANTEE_CHEQUE = 'guarantee_cheque', _('چک تضمینی')
+        CARD_TO_CARD = 'card_to_card', _('کارت‌به‌کارت')
+        POS = 'pos', _('کارت‌خوان')
+        DRAFT = 'draft', _('اسناد دریافتنی')
+        FOREIGN_CURRENCY = 'foreign_currency', _('دریافت ارزی')
+        OTHER = 'other', _('سایر')
 
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره دریافت'))
     party = models.ForeignKey('contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True, related_name='treasury_receipts', verbose_name=_('طرف حساب'))
+    received_from = models.CharField(max_length=250, blank=True, verbose_name=_('دریافت از / پرداخت‌کننده'))
     entity = models.ForeignKey('TreasuryEntity', on_delete=models.PROTECT, null=True, blank=True, related_name='receipts', verbose_name=_('بانک/صندوق'))
     received_check = models.ForeignKey('ReceivedCheck', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('چک دریافتی'))
-    method = models.CharField(max_length=10, choices=Method.choices, default=Method.BANK, verbose_name=_('روش دریافت'))
+    method = models.CharField(max_length=20, choices=Method.choices, default=Method.BANK, verbose_name=_('روش دریافت'))
+    payment_method = models.ForeignKey(
+        'treasury.TreasuryPaymentMethod', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='receipts', verbose_name=_('روش دریافت (Master)'),
+    )
+    terminal = models.ForeignKey(
+        'treasury.POSTerminal', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='receipts', verbose_name=_('پایانهٔ کارت‌خوان'),
+    )
     amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ'))
+    currency = models.CharField(max_length=10, default='IRR', verbose_name=_('ارز'))
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=6, default=1,
+                                        verbose_name=_('نرخ تبدیل به ریال'))
+    reference_no = models.CharField(max_length=100, blank=True, verbose_name=_('شماره پیگیری'))
+    tracking_no = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع بانکی'))
+    bank_reference = models.CharField(max_length=100, blank=True, verbose_name=_('شناسهٔ تراکنش بانک'))
+    purpose = models.CharField(max_length=250, blank=True, verbose_name=_('بابت'))
+    project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True,
+                                blank=True, related_name='treasury_receipts', verbose_name=_('پروژه'))
+    contract = models.ForeignKey('contracts.Contract', on_delete=models.SET_NULL, null=True,
+                                 blank=True, related_name='treasury_receipts', verbose_name=_('قرارداد'))
+    cost_center = models.ForeignKey('accounting.CostCenter', on_delete=models.SET_NULL,
+                                    null=True, blank=True, related_name='treasury_receipts',
+                                    verbose_name=_('مرکز هزینه'))
+    accounting_document = models.ForeignKey(
+        'accounting.AccountingDocument', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='treasury_receipts', verbose_name=_('سند حسابداری'),
+    )
     expected_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ مورد انتظار'))
     received_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ دریافت'))
+    received_time = models.TimeField(null=True, blank=True, verbose_name=_('ساعت دریافت'))
     description = models.TextField(blank=True, verbose_name=_('شرح'))
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.EXPECTED, verbose_name=_('وضعیت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
@@ -38,10 +74,19 @@ class Receipt(BaseModel):
         verbose_name = _('دریافت')
         verbose_name_plural = _('دریافت‌ها')
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['company', 'status'])]
+        indexes = [
+            models.Index(fields=['company', 'status']),
+            models.Index(fields=['company', 'received_date']),
+        ]
 
     def __str__(self):
         return f'{self.number or self.pk} - {self.amount}'
+
+    @property
+    def amount_base(self):
+        """معادل ریالی مبلغ (برای گزارش‌های تجمیعی)."""
+        from decimal import Decimal
+        return (self.amount or Decimal('0')) * (self.exchange_rate or Decimal('1'))
 
 
 class AdvanceAccount(BaseModel):
@@ -109,7 +154,14 @@ class TreasuryTransfer(BaseModel):
     destination = models.ForeignKey('TreasuryEntity', on_delete=models.PROTECT, related_name='transfers_in', verbose_name=_('مقصد'))
     amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ'))
     date = models.DateField(verbose_name=_('تاریخ انتقال'))
+    fee = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('کارمزد'))
+    reference_no = models.CharField(max_length=100, blank=True, verbose_name=_('شماره پیگیری'))
+    tracking_no = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع بانکی'))
     description = models.TextField(blank=True, verbose_name=_('شرح'))
+    accounting_document = models.ForeignKey(
+        'accounting.AccountingDocument', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='treasury_transfers', verbose_name=_('سند حسابداری'),
+    )
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
 

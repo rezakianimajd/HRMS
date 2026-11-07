@@ -444,6 +444,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   «نگاشت دو مسیره» (sender ↔ receiver، فقط برای این دو دامنه)، چند مقصد برای یک نام با برچسب خط‌تیره‌ای،
   اندپوینت‌های `groups/` (گروه‌بندی سمت سرور، ۱ کوئری) و `meta/` (فراداده + شمارش سبک) و `summary/` (با اسکن نام‌های بدون نگاشت).
   تب قدیمی `?tab=mapping` در تنظیمات به این صفحه هدایت می‌شود.
+- **خزانه‌داری (Treasury):** Master Data تکمیل شد (بانک/شعبه/حساب بانکی/صندوق/پایانهٔ کارت‌خوان/روش دریافت و پرداخت)،
+  شماره‌گذاری قابل تنظیم (`treasury/numbering.py` → `RC/PY/TR/PR/PO`)، مبلغ به حروف (`treasury/amount_words.py`)،
+  کنترل‌های عملیاتی (`treasury/guards.py`)، فیش/رسید چاپی با توکن اعتبارسنجی (`treasury/vouchers.py` + `/api/treasury/verify/`)،
+  داشبورد نقدینگی (`/api/treasury/dashboard/`)، چرخهٔ کامل چک (صندوق اسناد/واگذاری/وصول/برگشت/عودت/واگذاری به شخص).
+  صفحات فرانت: `/treasury/accounts`, `/treasury/cashboxes`, `/treasury/banks`, `/treasury/bank-branches`,
+  `/treasury/terminals`, `/treasury/payment-methods`, `/treasury/numbering`, `/treasury/verify`.
 
 ---
 
@@ -477,6 +483,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 | name mapping purpose / scope | کاربرد نگاشت / دامنهٔ کاربرد |
 | dual (two-way) mapping | نگاشت دو مسیره |
 | multi-target mapping | نگاشت چند مقصده |
+| treasury voucher (receipt/payment) | فیش دریافت / فیش پرداخت |
+| payment request / payment order | درخواست پرداخت / دستور پرداخت |
+| bank account / cash box | حساب بانکی / صندوق |
+| received check / issued check | چک دریافتی / چک پرداختی |
+| bank reconciliation | مغایرت بانکی |
+| amount in words | مبلغ به حروف |
 | theme studio / appearance | استودیو تم / ظاهر و پوسته |
 | quick actions / action queue | دسترسی سریع / صف اقدام |
 

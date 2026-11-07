@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 from core.engines.permission_engine import require
 from treasury.audit import log_transition
+from treasury.numbering import allocate_number
 from treasury.payment_models import (
     TreasuryPaymentType, TreasuryPaymentMethod,
     PaymentCommitment, PaymentRequest, PaymentOrder,
@@ -125,7 +126,14 @@ class PaymentRequestViewSet(BaseViewSet):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(company=_company(self.request), requester=self.request.user)
+        company = _company(self.request)
+        number = serializer.validated_data.get('number')
+        if not number:
+            number = allocate_number(
+                'request', company, serializer.validated_data.get('requested_date'),
+                PaymentRequest,
+            )
+        serializer.save(company=company, requester=self.request.user, number=number)
 
     def _transition(self, request, target):
         obj = self.get_object()
@@ -221,12 +229,32 @@ class PaymentRequestViewSet(BaseViewSet):
 
 class PaymentOrderViewSet(BaseViewSet):
     serializer_class = PaymentOrderSerializer
-    queryset = PaymentOrder.objects.select_related('request', 'entity', 'issued_check')
+    queryset = PaymentOrder.objects.select_related(
+        'request', 'request__party', 'request__project', 'request__contract',
+        'entity', 'issued_check', 'payment_method', 'accounting_document',
+    )
     ordering = ['-created_at']
 
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')
         return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        require(self.request.user, 'treasury_execute')
+        company = _company(self.request)
+        number = serializer.validated_data.get('number')
+        if not number:
+            number = allocate_number(
+                'order', company, serializer.validated_data.get('execution_date'), PaymentOrder,
+            )
+        serializer.save(company=company, number=number)
+
+    @action(detail=True, methods=['get'], url_path='print-data')
+    def print_data(self, request, pk=None):
+        """دادهٔ چاپ «فیش پرداخت وجه» (مبلغ به حروف + توکن اعتبارسنجی)."""
+        from treasury.vouchers import build_payment_voucher
+
+        return Response(build_payment_voucher(self.get_object(), request))
 
     @action(detail=True, methods=['post'])
     def issue(self, request, pk=None):

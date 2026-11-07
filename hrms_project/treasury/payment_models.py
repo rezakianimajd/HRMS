@@ -28,26 +28,60 @@ class TreasuryPaymentType(BaseModel):
 
 
 class TreasuryPaymentMethod(BaseModel):
-    """روش‌های پرداخت: انتقال بانکی، چک، نقد، کارت."""
+    """روش دریافت/پرداخت به‌صورت Master Data (نه hard-code در فرم).
+
+    هر روش می‌گوید چه اطلاعاتی لازم دارد (چک/کارت/پایانه/شماره پیگیری) و در
+    کدام سمت (دریافت/پرداخت/هر دو) مجاز است؛ فرم فیش بر همین اساس فیلدها را
+    نشان می‌دهد و اعتبارسنجی می‌کند.
+    """
     class Target(models.TextChoices):
         BANK = 'bank', _('بانک')
         CASH = 'cash', _('صندوق')
         CHEQUE = 'cheque', _('چک')
         CARD = 'card', _('کارت')
 
+    class Category(models.TextChoices):
+        RECEIPT = 'receipt', _('دریافت')
+        PAYMENT = 'payment', _('پرداخت')
+        BOTH = 'both', _('دریافت و پرداخت')
+
     code = models.CharField(max_length=30, verbose_name=_('کد'))
     name = models.CharField(max_length=150, verbose_name=_('عنوان'))
     target = models.CharField(max_length=10, choices=Target.choices, default=Target.BANK, verbose_name=_('مقصد ابزار'))
+    category = models.CharField(max_length=10, choices=Category.choices,
+                                default=Category.BOTH, verbose_name=_('سمت کاربرد'))
+    requires_bank = models.BooleanField(default=False, verbose_name=_('نیازمند بانک/شعبه'))
+    requires_cheque = models.BooleanField(default=False, verbose_name=_('نیازمند مشخصات چک'))
+    requires_card = models.BooleanField(default=False, verbose_name=_('نیازمند شماره کارت'))
+    requires_terminal = models.BooleanField(default=False, verbose_name=_('نیازمند پایانه/پذیرنده'))
+    requires_reference = models.BooleanField(default=True, verbose_name=_('نیازمند شماره پیگیری'))
+    requires_tracking = models.BooleanField(default=False, verbose_name=_('نیازمند شماره مرجع بانکی'))
+    requires_foreign_currency = models.BooleanField(default=False, verbose_name=_('نیازمند ارز/نرخ'))
+    sort_order = models.PositiveIntegerField(default=0, verbose_name=_('ترتیب'))
+    description = models.CharField(max_length=250, blank=True, verbose_name=_('توضیح'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
         verbose_name = _('روش پرداخت')
         verbose_name_plural = _('روش‌های پرداخت')
         unique_together = [('company', 'code')]
-        ordering = ['code']
+        ordering = ['sort_order', 'code']
 
     def __str__(self):
         return self.name
+
+    @property
+    def requirements(self):
+        """فیلدهای لازم برای این روش (برای فرم و اعتبارسنجی)."""
+        return {
+            'bank': self.requires_bank,
+            'cheque': self.requires_cheque,
+            'card': self.requires_card,
+            'terminal': self.requires_terminal,
+            'reference': self.requires_reference,
+            'tracking': self.requires_tracking,
+            'foreign_currency': self.requires_foreign_currency,
+        }
 
 
 class PaymentCommitment(BaseModel):
@@ -126,6 +160,12 @@ class PaymentRequest(BaseModel):
     payment_method = models.ForeignKey(TreasuryPaymentMethod, on_delete=models.SET_NULL, null=True, blank=True, related_name='payment_requests', verbose_name=_('روش پرداخت'))
     amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ درخواستی'))
     approved_amount = models.DecimalField(max_digits=18, decimal_places=2, null=True, blank=True, verbose_name=_('مبلغ تأییدشده'))
+    currency = models.CharField(max_length=10, default='IRR', verbose_name=_('ارز'))
+    priority = models.CharField(
+        max_length=10, default='normal',
+        choices=[('low', _('کم')), ('normal', _('عادی')), ('high', _('زیاد')), ('urgent', _('فوری'))],
+        verbose_name=_('اولویت'),
+    )
     requested_date = models.DateField(verbose_name=_('تاریخ درخواست'))
     due_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ سررسید'))
     source_type = models.CharField(max_length=30, blank=True, verbose_name=_('نوع مبدأ'))
@@ -168,10 +208,24 @@ class PaymentOrder(BaseModel):
     request = models.ForeignKey(PaymentRequest, on_delete=models.PROTECT, related_name='payment_orders', verbose_name=_('درخواست پرداخت'))
     entity = models.ForeignKey('TreasuryEntity', on_delete=models.PROTECT, null=True, blank=True, related_name='payment_orders', verbose_name=_('بانک/صندوق'))
     instrument = models.CharField(max_length=15, choices=Instrument.choices, default=Instrument.TRANSFER, verbose_name=_('ابزار پرداخت'))
+    payment_method = models.ForeignKey(
+        TreasuryPaymentMethod, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='payment_orders', verbose_name=_('روش پرداخت'),
+    )
     issued_check = models.ForeignKey('IssuedCheck', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('چک صادرشده'))
     amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ'))
+    currency = models.CharField(max_length=10, default='IRR', verbose_name=_('ارز'))
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=6, default=1,
+                                        verbose_name=_('نرخ تبدیل به ریال'))
     execution_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ اجرا'))
     reference = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع'))
+    tracking_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره پیگیری'))
+    bank_reference = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع بانکی'))
+    accounting_document = models.ForeignKey(
+        'accounting.AccountingDocument', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='treasury_payment_orders', verbose_name=_('سند حسابداری'),
+    )
+    printed_at = models.DateTimeField(null=True, blank=True, verbose_name=_('آخرین چاپ فیش'))
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
 

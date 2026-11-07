@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from treasury.views import (
     TreasuryEntityViewSet, TreasuryTransactionViewSet, PayableItemViewSet,
-    CheckBookViewSet, ReceivedCheckViewSet, IssuedCheckViewSet,
+    CheckBookViewSet, ReceivedCheckViewSet, IssuedCheckViewSet, TreasuryDashboardView,
 )
 from treasury.payment_views import (
     TreasuryPaymentTypeViewSet, TreasuryPaymentMethodViewSet,
@@ -15,9 +15,16 @@ from treasury.operation_views import (
 from treasury.planning_views import (
     TreasuryReconciliationViewSet, CashFlowForecastViewSet,
 )
+from treasury.master_views import (
+    BankBranchViewSet, BankViewSet, POSTerminalViewSet,
+    TreasuryNumberingSettingView, VoucherVerifyView,
+)
 
 router = DefaultRouter()
 router.register(r'treasury-entities', TreasuryEntityViewSet, basename='treasury-entity')
+router.register(r'banks', BankViewSet, basename='bank')
+router.register(r'bank-branches', BankBranchViewSet, basename='bank-branch')
+router.register(r'pos-terminals', POSTerminalViewSet, basename='pos-terminal')
 router.register(r'treasury-transactions', TreasuryTransactionViewSet, basename='treasury-transaction')
 router.register(r'payable-items', PayableItemViewSet, basename='payable-item')
 router.register(r'check-books', CheckBookViewSet, basename='check-book')
@@ -38,4 +45,7 @@ router.register(r'cash-flow-forecast', CashFlowForecastViewSet, basename='cash-f
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('dashboard/', TreasuryDashboardView.as_view(), name='treasury-dashboard'),
+    path('numbering/', TreasuryNumberingSettingView.as_view(), name='treasury-numbering'),
+    path('verify/', VoucherVerifyView.as_view(), name='treasury-verify'),
 ]
