@@ -120,7 +120,12 @@ beforeEach(() => {
       });
     }
     if (url === '/applications/catalog/') {
-      return Promise.resolve({ data: { applications: [{ id: 1, name: 'خزانه', label: 'خزانه' }] } });
+      return Promise.resolve({
+        data: [{
+          id: 1, slug: 'treasury', title: 'خزانه‌داری', description: 'خزانه',
+          icon: 'account_balance', color: '#14b8a6', order: 1, is_coming_soon: false,
+        }],
+      });
     }
     if (url === '/employees/') return Promise.resolve({ data: { results: [] } });
     return Promise.resolve({ data: { results: [] } });
@@ -157,6 +162,26 @@ test('users tab shows job title, system admin and per-user permission counts', a
   expect(container.textContent).toContain('امور مالی');
   expect(container.textContent).toContain('مدیر سیستم');
   expect(container.textContent).toContain('کاربر جدید');
+
+  root.unmount();
+  container.remove();
+});
+
+test('edit dialog lists module titles (not blank/white cards)', async () => {
+  const { container, root } = await renderPage();
+
+  const editButton = container.querySelector('button[aria-label="ویرایش کاربر"]');
+  expect(editButton).toBeTruthy();
+  await act(async () => {
+    editButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(500);
+  });
+
+  const dialog = [...document.querySelectorAll('[role="dialog"]')]
+    .find((node) => node.textContent.includes('ویرایش کاربر'));
+  expect(dialog).toBeTruthy();
+  expect(dialog.textContent).toContain('خزانه‌داری');
+  expect(dialog.textContent).toContain('ماژول‌های مجاز');
 
   root.unmount();
   container.remove();

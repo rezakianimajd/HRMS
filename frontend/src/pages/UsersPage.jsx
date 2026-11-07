@@ -8,16 +8,25 @@ import {
   Typography, alpha,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import BusinessIcon from '@mui/icons-material/Business';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DescriptionIcon from '@mui/icons-material/Description';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import GroupsIcon from '@mui/icons-material/Groups';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import PaymentsIcon from '@mui/icons-material/Payments';
 import SearchIcon from '@mui/icons-material/Search';
 import SecurityIcon from '@mui/icons-material/Security';
+import SettingsIcon from '@mui/icons-material/Settings';
 import SaveIcon from '@mui/icons-material/Save';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import axiosInstance from '../core/api/axiosConfig';
@@ -90,6 +99,27 @@ const StatPill = ({ icon, label, value, color = SOFT.indigo }) => (
 const moduleCodes = (module) => module.groups.flatMap(
   (group) => group.items.flatMap((item) => Object.values(item.codes)),
 );
+
+/** آیکون ماژول (اندپوینت ماژول‌ها فقط نام آیکون را می‌دهد، نه المان). */
+const MODULE_ICONS = {
+  hrms: GroupsIcon,
+  treasury: AccountBalanceIcon,
+  accounting: AccountBalanceWalletIcon,
+  documents: FolderSharedIcon,
+  correspondence: MailOutlineIcon,
+  contracts: DescriptionIcon,
+  projects: AccountTreeIcon,
+  procurement: Inventory2Icon,
+  pettycash: PaymentsIcon,
+  settings: SettingsIcon,
+};
+
+const moduleLabel = (app) => app?.title || app?.label || app?.name || 'ماژول بدون عنوان';
+
+const ModuleIcon = ({ app }) => {
+  const Icon = MODULE_ICONS[app?.slug] || BusinessIcon;
+  return <Icon sx={{ fontSize: 15 }} />;
+};
 
 /* ─────────────────────────── تب کاربران ─────────────────────────── */
 const EMPTY_USER = {
@@ -217,6 +247,13 @@ const UserEditDialog = ({
             ماژول‌های مجاز (خالی یعنی همهٔ ماژول‌هایی که مجوز دارند)
           </Typography>
           <Grid container spacing={1}>
+            {apps.length === 0 ? (
+              <Grid item xs={12}>
+                <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                  فهرست ماژول‌ها در دسترس نیست — مجوزهای ریز هر منو را در تب «مجوزهای کاربران» تعیین کنید.
+                </Typography>
+              </Grid>
+            ) : null}
             {apps.map((app) => {
               const checked = form.application_ids.includes(app.id);
               return (
@@ -239,11 +276,22 @@ const UserEditDialog = ({
                       width: 26, height: 26, borderRadius: '8px', fontSize: 13,
                       bgcolor: `${app.color || accent}1f`, color: app.color || accent,
                     }}>
-                      {app.icon || <BusinessIcon sx={{ fontSize: 14 }} />}
+                      <ModuleIcon app={app} />
                     </Avatar>
-                    <Typography sx={{ fontSize: 11, fontWeight: 700 }} noWrap>
-                      {app.label || app.name}
-                    </Typography>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography
+                        noWrap
+                        title={moduleLabel(app)}
+                        sx={{ fontSize: 11, fontWeight: 800, color: 'text.primary' }}
+                      >
+                        {moduleLabel(app)}
+                      </Typography>
+                      {app.description ? (
+                        <Typography noWrap sx={{ fontSize: 9.5, color: 'text.secondary' }}>
+                          {app.description}
+                        </Typography>
+                      ) : null}
+                    </Box>
                   </Paper>
                 </Grid>
               );
@@ -482,21 +530,22 @@ const UsersTab = ({ apps, onMessage, onOpenAccess }) => {
                         <Stack direction="row" spacing={0.25} justifyContent="center">
                           <Tooltip title="مجوزهای ریز">
                             <span>
-                              <IconButton size="small" disabled={user.is_superuser}
+                              <IconButton size="small" aria-label="مجوزهای ریز"
+                                disabled={user.is_superuser}
                                 onClick={() => onOpenAccess(user)}>
                                 <KeyOutlinedIcon sx={{ fontSize: 16 }} />
                               </IconButton>
                             </span>
                           </Tooltip>
                           <Tooltip title="ویرایش">
-                            <IconButton size="small"
+                            <IconButton size="small" aria-label="ویرایش کاربر"
                               onClick={() => { setEditing(user); setDialogOpen(true); }}>
                               <EditIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="غیرفعال‌سازی">
                             <span>
-                              <IconButton size="small" color="error"
+                              <IconButton size="small" color="error" aria-label="غیرفعال‌سازی"
                                 disabled={remove.isPending || user.is_superuser}
                                 onClick={() => {
                                   if (window.confirm(`کاربر «${user.username}» غیرفعال شود؟`)) {

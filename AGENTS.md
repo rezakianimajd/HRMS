@@ -457,8 +457,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `619cef305 feat(settings): full menu-level roles and permissions across every module`
-- **Live:** frontend `main.7665adc9.js` (HTTP 200) · backend deployed (مجوز ریز هر کاربر + مایگریشن `core.0019`)، gunicorn/celery/nginx active.
+- **Last commit:** `cca9f3539 refactor(settings): per-user fine-grained permissions instead of roles`
+- **Live:** frontend `main.b16f5997.js` (HTTP 200) · backend deployed (مجوز ریز هر کاربر + مایگریشن `core.0019`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
@@ -507,6 +507,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `GET users/access/catalog/`، `GET|POST users/<id>/access/` (ماتریس + دسترسی کامل)،
     و مسیرهای سازگاری `users/roles/…` (دیگر در UI استفاده نمی‌شوند).
   - تست‌ها: `core/tests_permissions.py` و `__tests__/usersAccessSmoke.test.js`.
+  - نکته: اندپوینت `/applications/catalog/` فیلد **`title`** (و `icon` به‌صورت **رشته**) می‌دهد؛
+    در UI عنوان با `app.title` و آیکون با نقشهٔ `MODULE_ICONS[slug]` رندر می‌شود (نه `name/label`).
 - **دریافت/پرداخت پیشرفته:** دفتر اسناد (`/treasury/voucher-book` با انواع چک/نقدی/شبا/سند و حساب بدهکار)،
   دستور پرداخت بین‌بانکی پایا/ساتنا (`/treasury/bank-orders` + اعتبارسنجی شبا mod 97 و تشخیص بانک از کد شبا)،
   کسورات چندگانهٔ پرداخت (`PaymentDeduction`، مبلغ خالص، `/payment-requests/{id}/distribution/`),
