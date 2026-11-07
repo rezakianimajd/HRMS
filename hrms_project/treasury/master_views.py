@@ -54,7 +54,10 @@ class BankViewSet(BaseMasterViewSet):
     ordering = ['sort_order', 'name']
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        from django.db.models import Count
+
+        # شمارش شعبه با annotate (بدون کوئری به‌ازای هر ردیف)
+        qs = super().get_queryset().annotate(branch_count=Count('branches'))
         if str(self.request.query_params.get('active') or '').lower() in ('1', 'true'):
             qs = qs.filter(is_active=True)
         return qs

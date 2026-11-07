@@ -12,12 +12,19 @@ class BaseModelSerializer(serializers.ModelSerializer):
 
 
 class BankSerializer(BaseModelSerializer):
-    branch_count = serializers.IntegerField(source='branches.count', read_only=True)
+    branch_count = serializers.SerializerMethodField()
 
     class Meta(BaseModelSerializer.Meta):
         model = Bank
         fields = '__all__'
         read_only_fields = BaseModelSerializer.Meta.read_only_fields + ['branch_count']
+
+    def get_branch_count(self, obj):
+        """از annotate ویوسِت خوانده می‌شود؛ در پاسخ create/update محاسبه می‌شود."""
+        value = getattr(obj, 'branch_count', None)
+        if value is not None:
+            return value
+        return obj.branches.count()
 
 
 class BankBranchSerializer(BaseModelSerializer):
