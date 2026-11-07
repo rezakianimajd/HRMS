@@ -62,17 +62,16 @@ def ensure_default_document_folders(company):
         return
     company_id = getattr(company, 'pk', company)
 
-    # ساخت پروفایل‌های پیش‌فرض در صورت نبود
+    # ساخت پروفایل‌های پیش‌فرضِ نبود (ماژول‌های تازه‌اضافه‌شده هم پوشه بگیرند)
     profiles = []
     try:
         from settings_app.models import StorageProfile, default_storage_profiles
 
-        if not StorageProfile.objects.filter(company_id=company_id).exists():
-            for item in default_storage_profiles():
-                StorageProfile.objects.get_or_create(
-                    company_id=company_id, module_key=item['module_key'],
-                    defaults=item,
-                )
+        for item in default_storage_profiles():
+            StorageProfile.objects.get_or_create(
+                company_id=company_id, module_key=item['module_key'],
+                defaults=item,
+            )
         profiles = list(
             StorageProfile.objects.filter(company_id=company_id, is_active=True)
             .order_by('sort_order', 'module_name')

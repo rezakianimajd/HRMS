@@ -396,6 +396,21 @@ def default_storage_profiles():
             'color': '#0f766e', 'icon': 'folder_copy', 'sort_order': 9,
             'description': 'پروفایل بایگانی کتابخانهٔ مرکزی مدیریت اسناد و مدارک',
         },
+        {
+            'module_key': 'hrms.correspondence', 'module_name': 'مکاتبات اداری',
+            'root_folder': 'correspondences', 'entity_folder_pattern': '{number}',
+            'subfolders': [
+                'نامه‌های وارده', 'نامه‌های صادره', 'نامه‌های داخلی',
+                'پیوست‌ها', 'ارجاعات', 'بایگانی',
+            ],
+            'allowed_extensions': [
+                '.pdf', '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff',
+                '.doc', '.docx', '.xls', '.xlsx', '.zip', '.rar',
+            ],
+            'max_file_size_mb': 25,
+            'color': '#0ea5e9', 'icon': 'mail', 'sort_order': 10,
+            'description': 'بایگانی نامه‌های وارده، صادره و داخلی همراه پیوست‌ها و ارجاعات',
+        },
     ]
 
 

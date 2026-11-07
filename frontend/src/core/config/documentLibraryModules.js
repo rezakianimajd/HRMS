@@ -64,8 +64,11 @@ export const DOCUMENT_LIBRARY_MODULES = [
     ],
   },
   {
-    key: 'correspondence', label: 'مکاتبات رسمی', color: '#0ea5e9', icon: 'correspondence',
-    keywords: ['مکاتبات رسمی', 'مکاتبات', 'correspondence', 'correspondences'],
+    key: 'correspondence', label: 'مکاتبات اداری', color: '#0ea5e9', icon: 'correspondence',
+    keywords: [
+      'مکاتبات اداری', 'مکاتبات رسمی', 'مکاتبات', 'correspondence', 'correspondences',
+      'hrms.correspondence', 'نامه‌های وارده', 'نامه‌های صادره',
+    ],
   },
 ];
 

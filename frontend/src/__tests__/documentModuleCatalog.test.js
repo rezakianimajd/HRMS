@@ -31,8 +31,11 @@ test('DMS library exposes the requested module catalogue and organization submen
   expect(library.items.map((item) => item.title)).toEqual([
     'منابع انسانی', 'مدیریت قراردادها', 'مدیریت پروژه‌ها', 'تنخواه',
     'حقوق و دستمزد', 'حسابداری', 'خرید و تدارکات', 'خزانه‌داری',
-    'اسناد سازمانی', 'مکاتبات رسمی',
+    'اسناد سازمانی', 'مکاتبات اداری',
   ]);
+  const correspondence = library.items.find((item) => item.id === 'dms-library-correspondence');
+  expect(correspondence).toBeTruthy();
+  expect(correspondence.path).toContain('module=correspondence');
   expect(hr.children.map((item) => item.title)).toEqual(['پرسنل', 'جذب و استخدام']);
   expect(hr.children.find((item) => item.id === 'dms-library-employees').path).toContain('folder=20');
   expect(hr.path).toContain('module=hr');
@@ -66,9 +69,23 @@ test('each application gets its own document library module', () => {
   expect(libraryModuleForApplication('accounting')).toBe('accounting');
   expect(libraryModuleForApplication('projects')).toBe('projects');
   expect(libraryModuleForApplication('documents')).toBe('documents');
+  expect(libraryModuleForApplication('correspondence')).toBe('correspondence');
   expect(libraryModuleForApplication('settings')).toBe('organization');
   expect(libraryModuleForApplication('unknown')).toBe('');
   expect(libraryModuleLabel('contracts')).toBe('مدیریت قراردادها');
+  expect(libraryModuleLabel('correspondence')).toBe('مکاتبات اداری');
+});
+
+test('correspondence module folder root is resolved from the archive folder name', () => {
+  const folders = [
+    { id: 80, name: 'مکاتبات اداری', parent: null, code: 'hrms.correspondence', order: 11 },
+    { id: 81, name: 'نامه‌های وارده', parent: 80, code: 'hrms.correspondence.sub.1', order: 1 },
+    { id: 82, name: 'نامه‌های صادره', parent: 80, code: 'hrms.correspondence.sub.2', order: 2 },
+  ];
+
+  expect(moduleRootFolders(folders, 'correspondence').map((folder) => folder.id)).toEqual([80]);
+  expect([...scopedLibraryFolders(folders, { moduleKey: 'correspondence' }).folders]
+    .map((folder) => folder.id)).toEqual([80, 81, 82]);
 });
 
 test('documents has its own complete menu and is not embedded in HRMS menu', () => {

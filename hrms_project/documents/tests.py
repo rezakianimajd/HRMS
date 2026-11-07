@@ -211,6 +211,43 @@ class DocumentManagementTests(SimpleTestCase):
         self.assertIn('نسخه‌ها', profile['subfolders'])
         self.assertEqual(profile['max_file_size_mb'], 50)
 
+    def test_correspondence_storage_profile_is_registered(self):
+        """ماژول «مکاتبات اداری» باید در فهرست پروفایل‌های بایگانی باشد."""
+        from settings_app.models import default_storage_profiles
+
+        profile = next(
+            item for item in default_storage_profiles()
+            if item['module_key'] == 'hrms.correspondence'
+        )
+        self.assertEqual(profile['module_name'], 'مکاتبات اداری')
+        self.assertEqual(profile['root_folder'], 'correspondences')
+        self.assertEqual(profile['entity_folder_pattern'], '{number}')
+        for subfolder in ('نامه‌های وارده', 'نامه‌های صادره', 'پیوست‌ها', 'ارجاعات'):
+            self.assertIn(subfolder, profile['subfolders'])
+        self.assertGreater(profile['max_file_size_mb'], 0)
+        self.assertTrue(profile['allowed_extensions'])
+
+    def test_archive_seed_adds_only_missing_module_profiles(self):
+        """پروفایل‌های موجود نباید بازنویسی شوند ولی ماژول‌های تازه ساخته شوند."""
+        from unittest.mock import MagicMock
+
+        from settings_app import archive_views
+
+        manager = MagicMock()
+        with patch.object(archive_views, 'StorageProfile', MagicMock(objects=manager)):
+            archive_views._ensure_seed(SimpleNamespace(pk=7))
+
+        calls = manager.get_or_create.call_args_list
+        keys = [call.kwargs['module_key'] for call in calls]
+        self.assertIn('hrms.correspondence', keys)
+        self.assertIn('hr.employees', keys)
+        self.assertTrue(manager.filter.called is False)
+        correspondence = next(
+            call for call in calls if call.kwargs['module_key'] == 'hrms.correspondence'
+        )
+        self.assertEqual(correspondence.kwargs['defaults']['root_folder'], 'correspondences')
+        self.assertEqual(correspondence.kwargs['company'].pk, 7)
+
     @patch('core.engines.archive_storage_engine.resolve_upload_path')
     def test_managed_version_survives_missing_folder(self, mocked):
         mocked.return_value = 'archive/company_3/documents/x.pdf'

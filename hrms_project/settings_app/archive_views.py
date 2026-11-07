@@ -31,9 +31,12 @@ from settings_app.views import _get_company, _can_edit_settings
 
 
 def _ensure_seed(company):
-    """اگر شرکت هیچ پروفایلی ندارد، پروفایل‌های پیش‌فرض را می‌سازد."""
-    if StorageProfile.objects.filter(company=company).exists():
-        return
+    """پروفایل‌های پیش‌فرضِ نبودِ شرکت را می‌سازد (بدون دست‌زدن به موجودها).
+
+    فقط کلیدهایی ساخته می‌شوند که برای این شرکت وجود ندارند؛ بنابراین ماژول‌های
+    تازه‌اضافه‌شده (مثل «مکاتبات اداری») در شرکت‌های قدیمی هم ظاهر می‌شوند و
+    تنظیمات دستی کاربر بازنویسی نمی‌شود.
+    """
     for item in default_storage_profiles():
         StorageProfile.objects.get_or_create(
             company=company, module_key=item['module_key'],
