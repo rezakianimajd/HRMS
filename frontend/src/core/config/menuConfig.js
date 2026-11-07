@@ -412,89 +412,187 @@ const accountingMenu = [
   },
 ];
 
+const TREASURY_ACCENT = '#14b8a6';
+const treasuryItem = (id, title, icon, path, color = TREASURY_ACCENT) => ({
+  id, title, icon, path, color, primary: false, ready: true,
+});
+
 const treasuryMenu = [
   {
-    id: 'treasury-home',
-    title: 'خانه',
-    color: '#14b8a6',
+    // ── خانه ──────────────────────────────────────────────────────────
+    id: 'treasury-home', title: 'خانه', color: TREASURY_ACCENT,
     items: [
-      { id: 'treasury', title: 'داشبورد خزانه', icon: <AccountBalanceWalletIcon />, path: '/treasury', color: '#14b8a6', primary: true, ready: true },
+      {
+        id: 'treasury',
+        title: 'داشبورد خزانه',
+        icon: <AccountBalanceWalletIcon />,
+        path: '/treasury',
+        color: TREASURY_ACCENT,
+        primary: true,
+        ready: true,
+      },
     ],
   },
   {
-    id: 'treasury-operations',
-    title: 'عملیات',
-    color: '#14b8a6',
+    id: 'treasury-money-movement', title: 'دریافت و پرداخت', color: '#0ea5e9',
     items: [
-      { id: 'treasury-entities', title: 'بانک‌ها و صندوق‌ها', icon: <AccountBalanceIcon />, path: '/treasury/accounts', color: '#14b8a6', primary: false, ready: true },
-      { id: 'treasury-transactions', title: 'تراکنش‌ها', icon: <SwapHorizIcon />, path: '/treasury/transactions', color: '#3b82f6', primary: false, ready: true },
-      { id: 'treasury-payables', title: 'قابل‌پرداخت‌ها', icon: <ReceiptLongIcon />, path: '/treasury/payables', color: '#f59e0b', primary: false, ready: true },
+      treasuryItem('treasury-transactions', 'همه عملیات', <SwapHorizIcon />, '/treasury/transactions', '#0ea5e9'),
+      treasuryItem('treasury-receipts', 'دریافت‌ها', <CallReceivedIcon />, '/treasury/receipts', '#10b981'),
+      treasuryItem('treasury-payments-list', 'پرداخت‌ها', <PaymentsIcon />, '/treasury/transactions?direction=payment', '#ef4444'),
+      treasuryItem('treasury-transfers', 'انتقال وجوه', <CompareArrowsIcon />, '/treasury/transfers', '#3b82f6'),
+      treasuryItem('treasury-voucher-book', 'فیش‌ها و رسیدها', <ReceiptLongIcon />, '/treasury/voucher-book', '#0284c7'),
     ],
   },
   {
-    id: 'treasury-planning',
-    title: 'برنامه‌ریزی و کنترل',
-    color: '#14b8a6',
+    id: 'treasury-requests-orders', title: 'درخواست و دستور پرداخت', color: '#3b82f6',
     items: [
-      { id: 'treasury-forecast', title: 'نقدینگی و مغایرت', icon: <InsightsIcon />, path: '/treasury/forecast', color: '#14b8a6', primary: false, ready: true },
-      { id: 'treasury-reconciliation', title: 'مغایرت بانکی', icon: <InsightsIcon />, path: '/treasury/reconciliation', color: '#0f766e', primary: false, ready: true },
-      { id: 'treasury-reports', title: 'گزارش‌های دریافت و پرداخت', icon: <InsightsIcon />, path: '/treasury/reports', color: '#3b82f6', primary: false, ready: true },
+      treasuryItem('treasury-payment-requests', 'درخواست‌های پرداخت', <RequestQuoteIcon />, '/treasury/payment-requests', '#3b82f6'),
+      treasuryItem('treasury-payment-orders', 'دستورهای پرداخت', <PaymentsIcon />, '/treasury/payment-orders', '#0284c7'),
+      treasuryItem('treasury-pending-approval', 'در انتظار تأیید', <FactCheckOutlinedIcon />, '/treasury/payment-requests?status=submitted,under_review', '#b45309'),
+      treasuryItem('treasury-pending-payment', 'در انتظار پرداخت', <EventAvailableIcon />, '/treasury/payment-requests?status=approved,scheduled,payment_ordered', '#8b5cf6'),
+      treasuryItem('treasury-paid-requests', 'پرداخت‌شده', <VerifiedUserIcon />, '/treasury/payment-requests?status=paid', '#10b981'),
     ],
   },
   {
-    id: 'treasury-payments',
-    title: 'پرداخت‌ها',
-    color: '#3b82f6',
+    id: 'treasury-banking', title: 'بانک و حساب‌ها', color: '#0f766e',
     items: [
-      { id: 'treasury-payment-requests', title: 'درخواست‌های پرداخت', icon: <RequestQuoteIcon />, path: '/treasury/payment-requests', color: '#3b82f6', primary: false, ready: true },
-      { id: 'treasury-commitments', title: 'تعهدات نقدی', icon: <EventAvailableIcon />, path: '/treasury/payment-commitments', color: '#8b5cf6', primary: false, ready: true },
+      treasuryItem('treasury-banks', 'بانک‌ها', <AccountBalanceIcon />, '/treasury/banks', '#0ea5e9'),
+      treasuryItem('treasury-bank-branches', 'شعب', <AltRouteIcon />, '/treasury/bank-branches', '#0284c7'),
+      treasuryItem('treasury-accounts', 'حساب‌های بانکی', <AccountBalanceWalletIcon />, '/treasury/accounts', '#0f766e'),
+      treasuryItem('treasury-statement', 'گردش حساب', <HistoryIcon />, '/treasury/transactions', '#3b82f6'),
+      treasuryItem('treasury-bank-orders', 'عملیات بانکی', <AccountBalanceIcon />, '/treasury/bank-orders', '#14b8a6'),
     ],
   },
   {
-    id: 'treasury-receipts',
-    title: 'دریافت‌ها و انتقال',
-    color: '#0ea5e9',
+    id: 'treasury-pos', title: 'کارت‌خوان و درگاه', color: '#f59e0b',
     items: [
-      { id: 'treasury-receipts', title: 'دریافت‌ها', icon: <CallReceivedIcon />, path: '/treasury/receipts', color: '#0ea5e9', primary: false, ready: true },
-      { id: 'treasury-voucher-book', title: 'دفتر اسناد دریافت و پرداخت', icon: <ReceiptLongIcon />, path: '/treasury/voucher-book', color: '#0284c7', primary: false, ready: true },
-      { id: 'treasury-bank-orders', title: 'دستور پرداخت بین‌بانکی', icon: <AccountBalanceIcon />, path: '/treasury/bank-orders', color: '#0f766e', primary: false, ready: true },
-      { id: 'treasury-transfers', title: 'انتقال‌های وجه', icon: <SwapHorizIcon />, path: '/treasury/transfers', color: '#3b82f6', primary: false, ready: true },
-      { id: 'treasury-advances', title: 'علی‌الحساب‌ها', icon: <RequestQuoteIcon />, path: '/treasury/advances', color: '#f59e0b', primary: false, ready: true },
+      treasuryItem('treasury-terminals', 'پایانه‌ها', <PointOfSaleIcon />, '/treasury/terminals', '#f59e0b'),
+      treasuryItem('treasury-pos-transactions', 'تراکنش‌ها', <ReceiptLongIcon />, '/treasury/receipts?method=pos', '#d97706'),
+      treasuryItem('treasury-pos-settlements', 'تسویه‌ها', <PaymentsIcon />, '/treasury/receipts?method=pos&status=cleared', '#10b981'),
+      treasuryItem('treasury-pos-mismatches', 'مغایرت‌ها', <InsightsIcon />, '/treasury/reconciliation', '#ef4444'),
     ],
   },
   {
-    id: 'treasury-guarantees',
-    title: 'سپرده و ضمانت',
-    color: '#8b5cf6',
+    id: 'treasury-receivable-docs', title: 'اسناد دریافتنی', color: '#10b981',
     items: [
-      { id: 'treasury-guarantees', title: 'سپرده‌ها و ضمانت‌نامه‌ها', icon: <VerifiedUserIcon />, path: '/treasury/guarantees', color: '#8b5cf6', primary: false, ready: true },
+      treasuryItem('treasury-received-checks', 'چک‌های دریافتی', <ReceiptLongIcon />, '/treasury/received-checks', '#10b981'),
+      treasuryItem('treasury-checks-clearing', 'در جریان وصول', <TimelineIcon />, '/treasury/received-checks?status=deposited,clearing', '#7c3aed'),
+      treasuryItem('treasury-checks-cleared', 'وصول‌شده', <VerifiedUserIcon />, '/treasury/received-checks?status=cleared', '#0f766e'),
+      treasuryItem('treasury-checks-bounced', 'برگشتی', <RuleIcon />, '/treasury/received-checks?status=bounced', '#ef4444'),
+      treasuryItem('treasury-checks-returned', 'عودتی', <SyncAltIcon />, '/treasury/received-checks?status=returned_to_customer', '#b45309'),
     ],
   },
   {
-    id: 'treasury-checks',
-    title: 'چک',
-    color: '#8b5cf6',
+    id: 'treasury-payable-docs', title: 'اسناد پرداختنی', color: '#ef4444',
     items: [
-      { id: 'treasury-checkbooks', title: 'دسته‌چک‌ها', icon: <MenuBookIcon />, path: '/treasury/checkbooks', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'treasury-received-checks', title: 'چک‌های دریافتی', icon: <ReceiptLongIcon />, path: '/treasury/received-checks', color: '#10b981', primary: false, ready: true },
-      { id: 'treasury-issued-checks', title: 'چک‌های پرداختی', icon: <PaymentsIcon />, path: '/treasury/issued-checks', color: '#ef4444', primary: false, ready: true },
+      treasuryItem('treasury-issued-checks', 'چک‌های پرداختی', <PaymentsIcon />, '/treasury/issued-checks', '#ef4444'),
+      treasuryItem('treasury-issued-checks-issued', 'صادرشده', <EditNoteIcon />, '/treasury/issued-checks?status=issued', '#0ea5e9'),
+      treasuryItem('treasury-issued-checks-delivered', 'تحویل‌شده', <HandshakeIcon />, '/treasury/issued-checks?status=delivered', '#3b82f6'),
+      treasuryItem('treasury-issued-checks-cleared', 'وصول‌شده', <VerifiedUserIcon />, '/treasury/issued-checks?status=cleared', '#0f766e'),
+      treasuryItem('treasury-issued-checks-bounced', 'برگشتی', <RuleIcon />, '/treasury/issued-checks?status=bounced', '#ef4444'),
     ],
   },
   {
-    id: 'treasury-master',
-    title: 'تعاریف خزانه',
-    color: '#0f766e',
+    id: 'treasury-check-ops', title: 'عملیات چک', color: '#8b5cf6',
     items: [
-      { id: 'treasury-banks', title: 'بانک‌ها', icon: <AccountBalanceIcon />, path: '/treasury/banks', color: '#0ea5e9', primary: false, ready: true },
-      { id: 'treasury-bank-branches', title: 'شعبه‌های بانک', icon: <AltRouteIcon />, path: '/treasury/bank-branches', color: '#0284c7', primary: false, ready: true },
-      { id: 'treasury-accounts', title: 'حساب‌های بانکی', icon: <AccountBalanceWalletIcon />, path: '/treasury/accounts', color: '#0f766e', primary: false, ready: true },
-      { id: 'treasury-cashboxes', title: 'صندوق‌ها', icon: <PaymentsIcon />, path: '/treasury/cashboxes', color: '#14b8a6', primary: false, ready: true },
-      { id: 'treasury-terminals', title: 'پایانه‌های کارت‌خوان', icon: <PointOfSaleIcon />, path: '/treasury/terminals', color: '#f59e0b', primary: false, ready: true },
-      { id: 'treasury-payment-methods', title: 'روش‌های دریافت و پرداخت', icon: <TuneIcon />, path: '/treasury/payment-methods', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'treasury-numbering', title: 'شماره‌گذاری اسناد', icon: <NumbersIcon />, path: '/treasury/numbering', color: '#64748b', primary: false, ready: true },
-      { id: 'treasury-print-templates', title: 'قالب‌های چاپ فیش', icon: <NumbersIcon />, path: '/treasury/print-templates', color: '#8b5cf6', primary: false, ready: true },
+      treasuryItem('treasury-check-register', 'ثبت چک', <PostAddIcon />, '/treasury/received-checks?status=registered', '#8b5cf6'),
+      treasuryItem('treasury-check-assign', 'واگذاری', <AltRouteIcon />, '/treasury/received-checks?status=deposited', '#3b82f6'),
+      treasuryItem('treasury-check-transfer', 'انتقال', <SyncAltIcon />, '/treasury/received-checks?status=transferred', '#0ea5e9'),
+      treasuryItem('treasury-check-collect', 'وصول', <VerifiedUserIcon />, '/treasury/received-checks?status=cleared', '#0f766e'),
+      treasuryItem('treasury-check-bounce', 'برگشت', <RuleIcon />, '/treasury/received-checks?status=bounced', '#ef4444'),
+      treasuryItem('treasury-check-return', 'عودت', <CompareArrowsIcon />, '/treasury/received-checks?status=returned_to_customer', '#b45309'),
+      treasuryItem('treasury-check-cancel', 'ابطال', <LockIcon />, '/treasury/received-checks?status=cancelled', '#64748b'),
     ],
   },
+  {
+    id: 'treasury-cash', title: 'صندوق و وجوه نقد', color: '#14b8a6',
+    items: [
+      treasuryItem('treasury-cashboxes', 'صندوق‌ها', <PointOfSaleIcon />, '/treasury/cashboxes', '#14b8a6'),
+      treasuryItem('treasury-cash-receipts', 'دریافت نقدی', <CallReceivedIcon />, '/treasury/receipts?method=cash', '#10b981'),
+      treasuryItem('treasury-cash-payments', 'پرداخت نقدی', <PaymentsIcon />, '/treasury/transactions?direction=payment&instrument_kind=cash', '#ef4444'),
+      treasuryItem('treasury-cash-count', 'شمارش صندوق', <FactCheckIcon />, '/treasury/cashboxes', '#0ea5e9'),
+      treasuryItem('treasury-cash-mismatch', 'مغایرت صندوق', <InsightsIcon />, '/treasury/reconciliation', '#b45309'),
+    ],
+  },
+  {
+    id: 'treasury-due', title: 'تعهدات و سررسیدها', color: '#b45309',
+    items: [
+      treasuryItem('treasury-commitments', 'تعهدات پرداخت', <EventAvailableIcon />, '/treasury/payment-commitments', '#b45309'),
+      treasuryItem('treasury-commitments-open', 'پرداخت‌های آتی', <CalendarMonthIcon />, '/treasury/payment-commitments?status=open', '#d97706'),
+      treasuryItem('treasury-future-receipts', 'دریافت‌های آتی', <CallReceivedIcon />, '/treasury/receipts?status=expected', '#0ea5e9'),
+      treasuryItem('treasury-checks-due', 'چک‌های سررسید', <PaymentsIcon />, '/treasury/issued-checks?due_soon=1', '#ef4444'),
+      treasuryItem('treasury-due-calendar', 'تقویم سررسید', <CalendarMonthIcon />, '/treasury/forecast', '#8b5cf6'),
+    ],
+  },
+  {
+    id: 'treasury-liquidity', title: 'مدیریت نقدینگی', color: '#0ea5e9',
+    items: [
+      treasuryItem('treasury-cash-flow', 'جریان نقدی', <TimelineIcon />, '/treasury/reports?kind=daily', '#0ea5e9'),
+      treasuryItem('treasury-sources-uses', 'منابع و مصارف', <CompareArrowsIcon />, '/treasury/reports?kind=cash_flow', '#0284c7'),
+      treasuryItem('treasury-forecast', 'پیش‌بینی نقدینگی', <InsightsIcon />, '/treasury/forecast', '#14b8a6'),
+      treasuryItem('treasury-liquidity-gap', 'شکاف نقدینگی', <TrendingUpIcon />, '/treasury', '#8b5cf6'),
+      treasuryItem('treasury-liquidity-scenarios', 'سناریوهای نقدینگی', <PsychologyIcon />, '/treasury/forecast', '#7c3aed'),
+    ],
+  },
+  {
+    id: 'treasury-recon', title: 'مغایرت بانکی', color: '#0f766e',
+    items: [
+      treasuryItem('treasury-reconciliation', 'دوره‌های مغایرت', <InsightsIcon />, '/treasury/reconciliation', '#0f766e'),
+      treasuryItem('treasury-statement-lines', 'صورت‌حساب بانک', <MenuBookIcon />, '/treasury/reconciliation', '#0284c7'),
+      treasuryItem('treasury-recon-auto', 'تطبیق خودکار', <RuleIcon />, '/treasury/reconciliation', '#0ea5e9'),
+      treasuryItem('treasury-recon-manual', 'تطبیق دستی', <HandshakeIcon />, '/treasury/reconciliation', '#3b82f6'),
+      treasuryItem('treasury-recon-open', 'موارد مغایر', <RuleIcon />, '/treasury/reconciliation', '#ef4444'),
+    ],
+  },
+  {
+    id: 'treasury-fx', title: 'عملیات ارزی', color: '#7c3aed',
+    items: [
+      treasuryItem('treasury-currencies', 'ارزها', <NumbersIcon />, '/treasury/accounts', '#7c3aed'),
+      treasuryItem('treasury-fx-accounts', 'حساب‌های ارزی', <AccountBalanceWalletIcon />, '/treasury/accounts', '#8b5cf6'),
+      treasuryItem('treasury-fx-receipts', 'دریافت ارزی', <CallReceivedIcon />, '/treasury/receipts?method=foreign_currency', '#0ea5e9'),
+      treasuryItem('treasury-fx-payments', 'پرداخت ارزی', <PaymentsIcon />, '/treasury/transactions?direction=payment', '#ef4444'),
+      treasuryItem('treasury-fx-revaluation', 'تسعیر ارز', <CalculateIcon />, '/treasury/reports', '#14b8a6'),
+    ],
+  },
+  {
+    id: 'treasury-reports', title: 'گزارش‌ها', color: '#3b82f6',
+    items: [
+      treasuryItem('treasury-reports-main', 'دریافت و پرداخت', <AssessmentIcon />, '/treasury/reports', '#3b82f6'),
+      treasuryItem('treasury-reports-bank', 'بانک', <AccountBalanceIcon />, '/treasury/reports?kind=cash_flow', '#0ea5e9'),
+      treasuryItem('treasury-reports-cash', 'صندوق', <PointOfSaleIcon />, '/treasury/reports?kind=cash_flow', '#14b8a6'),
+      treasuryItem('treasury-reports-cheque', 'چک', <ReceiptLongIcon />, '/treasury/reports?kind=receivables_due', '#ef4444'),
+      treasuryItem('treasury-reports-pos', 'کارت‌خوان', <PointOfSaleIcon />, '/treasury/reports?kind=daily', '#f59e0b'),
+      treasuryItem('treasury-reports-commitments', 'تعهدات', <EventAvailableIcon />, '/treasury/reports?kind=by_party', '#b45309'),
+      treasuryItem('treasury-reports-liquidity', 'نقدینگی', <TrendingUpIcon />, '/treasury/reports?kind=daily', '#8b5cf6'),
+    ],
+  },
+  {
+    id: 'treasury-print', title: 'اسناد و چاپ', color: '#64748b',
+    items: [
+      treasuryItem('treasury-print-receipt', 'فیش دریافت', <CallReceivedIcon />, '/treasury/receipts', '#10b981'),
+      treasuryItem('treasury-print-payment', 'فیش پرداخت', <PaymentsIcon />, '/treasury/payment-orders', '#ef4444'),
+      treasuryItem('treasury-print-slips', 'رسیدها', <ReceiptLongIcon />, '/treasury/voucher-book', '#0284c7'),
+      treasuryItem('treasury-print-notices', 'اعلامیه‌ها', <DescriptionIcon />, '/treasury/bank-orders', '#3b82f6'),
+      treasuryItem('treasury-print-order', 'دستور پرداخت', <PostAddIcon />, '/treasury/payment-orders', '#8b5cf6'),
+      treasuryItem('treasury-print-templates', 'قالب‌های چاپ', <NumbersIcon />, '/treasury/print-templates', '#64748b'),
+    ],
+  },
+  {
+    id: 'treasury-master', title: 'تعاریف', color: '#0f766e',
+    items: [
+      treasuryItem('treasury-banks-master', 'بانک‌ها و شعب', <AccountBalanceIcon />, '/treasury/banks', '#0ea5e9'),
+      treasuryItem('treasury-accounts-master', 'حساب‌های بانکی', <AccountBalanceWalletIcon />, '/treasury/accounts', '#0f766e'),
+      treasuryItem('treasury-cashboxes-master', 'صندوق‌ها', <PaymentsIcon />, '/treasury/cashboxes', '#14b8a6'),
+      treasuryItem('treasury-payment-methods', 'روش‌های دریافت و پرداخت', <TuneIcon />, '/treasury/payment-methods', '#8b5cf6'),
+      treasuryItem('treasury-document-types', 'انواع اسناد', <CategoryIcon />, '/treasury/voucher-book', '#0284c7'),
+      treasuryItem('treasury-numbering', 'شماره‌گذاری', <NumbersIcon />, '/treasury/numbering', '#64748b'),
+      treasuryItem('treasury-approval-rules', 'سطوح تأیید', <FactCheckOutlinedIcon />, '/treasury/approval-rules', '#b45309'),
+      treasuryItem('treasury-print-templates-master', 'قالب چاپ', <NumbersIcon />, '/treasury/print-templates', '#7c3aed'),
+    ],
+  },
+
+
+
 ];
 
 const procurementMenu = [

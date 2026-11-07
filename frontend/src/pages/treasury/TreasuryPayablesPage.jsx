@@ -1,5 +1,7 @@
 import React from 'react';
-import { PayablesSection } from './treasurySections';
+import { TreasuryListPage } from './treasuryListUi';
+import { PAYABLES_CONFIG } from './treasuryListConfigs2';
 
-const TreasuryPayablesPage = () => <PayablesSection />;
+const TreasuryPayablesPage = () => <TreasuryListPage {...PAYABLES_CONFIG} />;
+
 export default TreasuryPayablesPage;

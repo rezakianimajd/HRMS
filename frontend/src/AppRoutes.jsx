@@ -165,7 +165,8 @@ import TreasuryPrintTemplatesPage from './pages/treasury/TreasuryPrintTemplatesP
 import TreasuryReportsPage from './pages/treasury/TreasuryReportsPage';
 import TreasuryReconciliationPage from './pages/treasury/TreasuryReconciliationPage';
 import TreasuryVerifyPage from './pages/treasury/TreasuryVerifyPage';
-import TreasuryEntitiesPage from './pages/treasury/TreasuryEntitiesPage';
+import TreasuryPaymentOrdersPage from './pages/treasury/TreasuryPaymentOrdersPage';
+import TreasuryApprovalRulesPage from './pages/treasury/TreasuryApprovalRulesPage';
 import TreasuryTransactionsPage from './pages/treasury/TreasuryTransactionsPage';
 import TreasuryPayablesPage from './pages/treasury/TreasuryPayablesPage';
 import TreasuryCheckBooksPage from './pages/treasury/TreasuryCheckBooksPage';
@@ -334,7 +335,9 @@ const AppRoutes = () => {
       <Route path="/procurement/invoices" element={<ProtectedLayout><ProcurementInvoicesPage /></ProtectedLayout>} />
       <Route path="/procurement/payments" element={<ProtectedLayout><ProcurementPaymentsPage /></ProtectedLayout>} />
       <Route path="/treasury" element={<ProtectedLayout><TreasuryPage /></ProtectedLayout>} />
-      <Route path="/treasury/entities" element={<ProtectedLayout><TreasuryEntitiesPage /></ProtectedLayout>} />
+      <Route path="/treasury/entities" element={<ProtectedLayout><TreasuryBankAccountsPage /></ProtectedLayout>} />
+      <Route path="/treasury/payment-orders" element={<ProtectedLayout><TreasuryPaymentOrdersPage /></ProtectedLayout>} />
+      <Route path="/treasury/approval-rules" element={<ProtectedLayout><TreasuryApprovalRulesPage /></ProtectedLayout>} />
       <Route path="/treasury/accounts" element={<ProtectedLayout><TreasuryBankAccountsPage /></ProtectedLayout>} />
       <Route path="/treasury/cashboxes" element={<ProtectedLayout><TreasuryCashBoxesPage /></ProtectedLayout>} />
       <Route path="/treasury/banks" element={<ProtectedLayout><TreasuryBanksPage /></ProtectedLayout>} />

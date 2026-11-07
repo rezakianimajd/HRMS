@@ -1,5 +1,7 @@
 import React from 'react';
-import { GuaranteesSection } from './operationSections';
+import { TreasuryListPage } from './treasuryListUi';
+import { GUARANTEES_CONFIG } from './treasuryListConfigs2';
 
-const TreasuryGuaranteesPage = () => <GuaranteesSection />;
+const TreasuryGuaranteesPage = () => <TreasuryListPage {...GUARANTEES_CONFIG} />;
+
 export default TreasuryGuaranteesPage;

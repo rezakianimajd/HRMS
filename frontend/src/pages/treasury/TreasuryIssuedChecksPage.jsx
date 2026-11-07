@@ -1,5 +1,7 @@
 import React from 'react';
-import { IssuedChecksSection } from './checkSections';
+import { TreasuryListPage } from './treasuryListUi';
+import { ISSUED_CHECKS_CONFIG } from './treasuryCheckConfigs';
 
-const TreasuryIssuedChecksPage = () => <IssuedChecksSection />;
+const TreasuryIssuedChecksPage = () => <TreasuryListPage {...ISSUED_CHECKS_CONFIG} />;
+
 export default TreasuryIssuedChecksPage;

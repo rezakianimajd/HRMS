@@ -84,6 +84,22 @@ class PaymentCommitmentViewSet(BaseViewSet):
     search_fields = ['number', 'title', 'party__name']
     ordering = ['due_date', 'created_at']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('status'):
+            values = [item for item in params['status'].split(',') if item]
+            qs = qs.filter(status__in=values)
+        if str(params.get('due_soon') or '').lower() in ('1', 'true'):
+            from datetime import date, timedelta
+
+            qs = qs.filter(due_date__lte=date.today() + timedelta(days=7))
+        if params.get('date_from'):
+            qs = qs.filter(due_date__gte=params['date_from'])
+        if params.get('date_to'):
+            qs = qs.filter(due_date__lte=params['date_to'])
+        return qs
+
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_approve')
         return super().create(request, *args, **kwargs)
@@ -116,9 +132,19 @@ class PaymentRequestViewSet(BaseViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        st = self.request.query_params.get('status')
+        params = self.request.query_params
+        st = params.get('status')
         if st:
-            qs = qs.filter(status=st)
+            values = [item for item in st.split(',') if item]
+            qs = qs.filter(status__in=values)
+        if params.get('date_from'):
+            qs = qs.filter(requested_date__gte=params['date_from'])
+        if params.get('date_to'):
+            qs = qs.filter(requested_date__lte=params['date_to'])
+        if str(params.get('due_soon') or '').lower() in ('1', 'true'):
+            from datetime import date, timedelta
+
+            qs = qs.filter(due_date__lte=date.today() + timedelta(days=7))
         return qs
 
     def create(self, request, *args, **kwargs):
@@ -263,7 +289,24 @@ class PaymentOrderViewSet(BaseViewSet):
         'request', 'request__party', 'request__project', 'request__contract',
         'entity', 'issued_check', 'payment_method', 'accounting_document',
     )
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['number', 'request__number', 'request__title',
+                     'request__party__name', 'reference', 'tracking_number']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('status'):
+            values = [item for item in params['status'].split(',') if item]
+            qs = qs.filter(status__in=values)
+        if params.get('entity'):
+            qs = qs.filter(entity_id=params['entity'])
+        if params.get('date_from'):
+            qs = qs.filter(execution_date__gte=params['date_from'])
+        if params.get('date_to'):
+            qs = qs.filter(execution_date__lte=params['date_to'])
+        return qs
 
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')

@@ -133,6 +133,8 @@ class TreasuryTransactionViewSet(BaseViewSet):
         if status_param:
             values = [item for item in status_param.split(',') if item]
             qs = qs.filter(status__in=values)
+        if params.get('instrument_kind'):
+            qs = qs.filter(instrument_kind=params['instrument_kind'])
         date_from = params.get('date_from')
         if date_from:
             qs = qs.filter(date__gte=date_from)

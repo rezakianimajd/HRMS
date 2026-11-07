@@ -129,6 +129,12 @@ ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شو�
 - `PageHeader` — `icon={<Icon/>}` **عنصر** می‌گیرد؛ badge/actions دارد و از `headers` تم پیروی می‌کند.
 - `ModuleToolbar`, `ModuleTable`, `ModulePager` — نوار جست‌وجو/فیلتر/مرتب‌سازی، جدول تم‌محور، صفحه‌بندی فارسی.
 - `InfoCard`, `DataTable` — کارت اطلاعات و جدول عمومی (توکن‌محور).
+- **موتور فهرست خزانه**: `pages/treasury/treasuryListUi.jsx` (`TreasuryListPage` + `statusChip` + `STATUS_TONE`)
+  — هدر تطبیق‌پذیر (`PageHeader`) + نوار جست‌وجو/فیلتر (جست‌وجوی debounce، فیلترهای select/تاریخ، `?status=…` از URL)
+  + `ModuleTable` + `ModulePager` سروری + KPI strip + row actions (POST/GET یا `onRun` برای چاپ/دیالوگ)
+  + `quickCreate`. کانفیگ‌ها: `treasuryListConfigs.jsx` (دریافت‌ها، عملیات)، `treasuryListConfigs2.jsx`
+  (درخواست/دستور پرداخت، تعهدات، انتقال، علی‌الحساب، سپرده، دسته‌چک، قابل‌پرداخت)، `treasuryCheckConfigs.jsx`
+  (چک دریافتی/پرداختی با همهٔ وضعیت‌های منو). صفحهٔ جدید = یک `<TreasuryListPage {...CONFIG} />`.
 - `AttachmentPreviewDialog` — پیش‌نمایش PDF/عکس/متن بدون دانلود + «باز کردن در تب جدید»/«دریافت».
 - الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
 
@@ -436,7 +442,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `fa44809d5 perf(correspondence): light list payload, no N+1 and comprehensive search`
-- **Live:** frontend `main.eb4fb4b4.js` (HTTP 200) · backend deployed، gunicorn active.
+- **Live:** frontend `main.cc44dfb4.js` (HTTP 200) · backend deployed، gunicorn active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
@@ -450,6 +456,16 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   داشبورد نقدینگی (`/api/treasury/dashboard/`)، چرخهٔ کامل چک (صندوق اسناد/واگذاری/وصول/برگشت/عودت/واگذاری به شخص).
   صفحات فرانت: `/treasury/accounts`, `/treasury/cashboxes`, `/treasury/banks`, `/treasury/bank-branches`,
   `/treasury/terminals`, `/treasury/payment-methods`, `/treasury/numbering`, `/treasury/verify`.
+- **خزانه‌داری — منوی بازچینی‌شده و صفحات تم‌محور (۲۰۲۶-۱۱-۰۷):** `treasuryMenu` در `core/config/menuConfig.js`
+  ۱۶ گروه دارد: خانه / دریافت و پرداخت / درخواست و دستور پرداخت / بانک و حساب‌ها / کارت‌خوان و درگاه /
+  اسناد دریافتنی / اسناد پرداختنی / عملیات چک / صندوق و وجوه نقد / تعهدات و سررسیدها / مدیریت نقدینگی /
+  مغایرت بانکی / عملیات ارزی / گزارش‌ها / اسناد و چاپ / تعاریف. آیتم‌های «نمای فیلترشده» با کوئری‌استرینگ
+  به همان صفحهٔ واقعی می‌روند (`?status=deposited,clearing`, `?direction=payment`, `?method=pos`, `?due_soon=1`, …).
+  همهٔ فهرست‌ها روی موتور مشترک `TreasuryListPage` سوار شده‌اند (هدر تطبیق‌پذیر + نوار جست‌وجو/فیلتر + `ModuleTable` + `ModulePager`).
+  صفحات جدید: `/treasury/payment-orders` (دستورهای پرداخت) و `/treasury/approval-rules` (سطوح تأیید + تنظیمات تفکیک وظایف).
+  `/treasury/entities` حذف و به حساب‌های بانکی نگاشت شد؛ بخش‌های قدیمی `*Sections.jsx` حذف شدند.
+  بک‌اند: فیلترهای `status` (چندمقداری)، `date_from/date_to`, `entity`, `due_soon`, `instrument_kind`،
+  جست‌وجو در دستور پرداخت‌ها و فیلترهای تعهدات/انتقال/علی‌الحساب/سپرده اضافه شد.
 - **دریافت/پرداخت پیشرفته:** دفتر اسناد (`/treasury/voucher-book` با انواع چک/نقدی/شبا/سند و حساب بدهکار)،
   دستور پرداخت بین‌بانکی پایا/ساتنا (`/treasury/bank-orders` + اعتبارسنجی شبا mod 97 و تشخیص بانک از کد شبا)،
   کسورات چندگانهٔ پرداخت (`PaymentDeduction`، مبلغ خالص، `/payment-requests/{id}/distribution/`),

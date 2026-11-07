@@ -1,5 +1,7 @@
 import React from 'react';
-import { AdvancesSection } from './operationSections';
+import { TreasuryListPage } from './treasuryListUi';
+import { ADVANCES_CONFIG } from './treasuryListConfigs2';
 
-const TreasuryAdvancesPage = () => <AdvancesSection />;
+const TreasuryAdvancesPage = () => <TreasuryListPage {...ADVANCES_CONFIG} />;
+
 export default TreasuryAdvancesPage;

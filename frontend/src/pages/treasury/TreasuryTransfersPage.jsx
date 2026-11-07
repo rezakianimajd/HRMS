@@ -1,5 +1,7 @@
 import React from 'react';
-import { TransfersSection } from './operationSections';
+import { TreasuryListPage } from './treasuryListUi';
+import { TRANSFERS_CONFIG } from './treasuryListConfigs2';
 
-const TreasuryTransfersPage = () => <TransfersSection />;
+const TreasuryTransfersPage = () => <TreasuryListPage {...TRANSFERS_CONFIG} />;
+
 export default TreasuryTransfersPage;

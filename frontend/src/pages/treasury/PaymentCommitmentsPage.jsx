@@ -1,5 +1,7 @@
 import React from 'react';
-import { PaymentCommitmentsSection } from './paymentSections';
+import { TreasuryListPage } from './treasuryListUi';
+import { COMMITMENTS_CONFIG } from './treasuryListConfigs2';
 
-const PaymentCommitmentsPage = () => <PaymentCommitmentsSection />;
+const PaymentCommitmentsPage = () => <TreasuryListPage {...COMMITMENTS_CONFIG} />;
+
 export default PaymentCommitmentsPage;

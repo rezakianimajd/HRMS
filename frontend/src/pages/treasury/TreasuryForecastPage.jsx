@@ -1,113 +1,287 @@
-import React, { useState, useEffect } from 'react';
-import axiosInstance from '../../core/api/axiosConfig';
+import React, { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Box, Typography, Paper, Avatar, Grid, CircularProgress, Chip, Button,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Box, Button, Chip, CircularProgress, Paper, Stack, Typography,
 } from '@mui/material';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import InsightsIcon from '@mui/icons-material/Insights';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import axiosInstance from '../../core/api/axiosConfig';
+import PageHeader from '../../core/components/ui/PageHeader';
+import { ModuleTable, useModuleTheme, useRowHeight } from '../contracts/contractModuleUi';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
-import InfoCard from '../../core/components/ui/InfoCard';
-import { toJalali } from '../../core/utils/dateUtils';
+import { asList, chipSx, dateLabel, useTreasuryTheme } from './treasuryMasterUi';
+import { STATUS_TONE, statusChip } from './treasuryListUi';
 
-const FONT = 'Vazirmatn, IRANSans, sans-serif';
-const COLOR = '#14b8a6';
-const COLOR_DARK = '#0f766e';
+/**
+ * پیش‌بینی نقدینگی و تقویم سررسید — تمام ظاهر از توکن‌های استودیو تم.
+ */
 
-const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.46))',
-  backdropFilter: 'blur(22px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 14px 40px rgba(20,184,166,0.12)',
-  borderRadius: '16px',
-};
-
-const Kpi = ({ label, value, color }) => (
-  <InfoCard label={label} value={value} color={color} />
-);
-
-const Header = ({ icon, title, subtitle, extra }) => (
-  <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-    background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-    <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})` }}>{icon}</Avatar>
-    <Box sx={{ flex: 1, minWidth: 200 }}>
-      <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>{title}</Typography>
-      <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>{subtitle}</Typography>
-    </Box>
-    {extra}
+const KpiTile = ({ label, value, color, hint }) => (
+  <Paper elevation={0} sx={{
+    p: 1,
+    borderRadius: 'var(--hrms-info-card-radius, 14px)',
+    border: '1px solid',
+    borderColor: 'divider',
+    minWidth: 0,
+  }}>
+    <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 700, opacity: 0.75 }}>{label}</Typography>
+    <Typography noWrap sx={{
+      fontSize: 15,
+      fontWeight: 900,
+      color,
+      fontFamily: 'var(--hrms-table-number-font, inherit)',
+    }}>
+      {value}
+    </Typography>
+    {hint ? <Typography noWrap sx={{ fontSize: 9.5, opacity: 0.65 }}>{hint}</Typography> : null}
   </Paper>
 );
 
+const CheckSection = ({ title, endpoint, queryKey, accent }) => {
+  const tableTheme = useModuleTheme();
+  const query = useQuery({
+    queryKey: [queryKey],
+    queryFn: () => axiosInstance.get(endpoint, {
+      params: { due_soon: 1, page_size: 20, ordering: 'due_date' },
+    }).then((response) => response.data),
+    staleTime: 60_000,
+  });
+  const rows = asList(query.data);
+  const { ref, rowHeight, tableHeight } = useRowHeight(
+    tableTheme.tableTheme, Math.max(1, rows.length),
+  );
+
+  const columns = useMemo(() => ([
+    { key: 'number', label: 'شماره چک', width: '16%' },
+    { key: 'party', label: 'طرف حساب', width: '28%', render: (row) => row.party || '—' },
+    {
+      key: 'due_date',
+      label: 'سررسید',
+      width: '16%',
+      render: (row) => dateLabel(row.due_date),
+    },
+    {
+      key: 'amount',
+      label: 'مبلغ',
+      width: '20%',
+      align: 'center',
+      render: (row) => formatPersianNumber(row.amount),
+    },
+    {
+      key: 'status',
+      label: 'وضعیت',
+      width: '20%',
+      align: 'center',
+      render: (row) => statusChip(row),
+    },
+  ]), []);
+
+  return (
+    <Paper elevation={0} sx={{
+      p: 1.25,
+      borderRadius: 'var(--hrms-table-radius, 16px)',
+      border: '1px solid',
+      borderColor: 'divider',
+    }}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.75 }}>
+        <Chip size="small" label={title} sx={chipSx(accent)} />
+        <Typography sx={{ fontSize: 10.5, opacity: 0.7 }}>
+          {`${formatPersianNumber(rows.length)} سند نزدیک سررسید`}
+        </Typography>
+        {query.isFetching ? <CircularProgress size={12} sx={{ color: accent }} /> : null}
+      </Stack>
+      <ModuleTable
+        tableTheme={tableTheme.tableTheme}
+        ariaLabel={title}
+        containerRef={ref}
+        tableHeight={Math.min(tableHeight, 320)}
+        rowHeight={rowHeight}
+        rows={rows}
+        rowKey={(row) => row.id}
+        dimmed={query.isFetching}
+        emptyText="سندی نزدیک سررسید نیست."
+        columns={columns}
+        minWidth={640}
+      />
+    </Paper>
+  );
+};
+
 const TreasuryForecastPage = () => {
-  const [fc, setFc] = useState(null);
-  const [recons, setRecons] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const moduleTheme = useTreasuryTheme();
+  const tableTheme = useModuleTheme();
   const [days, setDays] = useState(90);
 
-  const loadForecast = (d) => axiosInstance.get('/treasury/cash-flow-forecast/', { params: { days: d } }).then(r => setFc(r.data));
-  const loadRecons = () => axiosInstance.get('/treasury/treasury-reconciliations/').then(r => {
-    setRecons(Array.isArray(r.data) ? r.data : r.data?.results || []);
+  const forecastQuery = useQuery({
+    queryKey: ['treasury-forecast', days],
+    queryFn: () => axiosInstance.get('/treasury/cash-flow-forecast/', { params: { days } })
+      .then((response) => response.data),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const reconciliationQuery = useQuery({
+    queryKey: ['treasury-reconciliations'],
+    queryFn: () => axiosInstance.get('/treasury/treasury-reconciliations/')
+      .then((response) => response.data),
+    staleTime: 60_000,
   });
 
-  useEffect(() => {
-    Promise.all([loadForecast(days), loadRecons()]).finally(() => setLoading(false));
-  }, []);
+  const forecast = forecastQuery.data;
+  const reconciliations = asList(reconciliationQuery.data);
+  const { ref: reconRef, rowHeight: reconRow, tableHeight: reconHeight } = useRowHeight(
+    tableTheme.tableTheme, Math.max(1, reconciliations.length),
+  );
 
-  const refreshForecast = (d) => { setDays(d); loadForecast(d); };
+  const reconColumns = useMemo(() => ([
+    {
+      key: 'entity_name',
+      label: 'حساب/صندوق',
+      width: '22%',
+      render: (row) => row.entity_name || '—',
+    },
+    { key: 'as_of', label: 'تاریخ', width: '12%', render: (row) => dateLabel(row.as_of) },
+    {
+      key: 'statement_balance',
+      label: 'موجودی اعلامی',
+      width: '18%',
+      align: 'center',
+      render: (row) => formatPersianNumber(row.statement_balance),
+    },
+    {
+      key: 'book_balance',
+      label: 'مانده دفتری',
+      width: '18%',
+      align: 'center',
+      render: (row) => formatPersianNumber(row.book_balance),
+    },
+    {
+      key: 'difference',
+      label: 'اختلاف',
+      width: '16%',
+      align: 'center',
+      render: (row) => (
+        <Typography sx={{
+          fontSize: 11,
+          fontWeight: 800,
+          color: Number(row.difference) === 0 ? STATUS_TONE.cleared : STATUS_TONE.bounced,
+        }}>
+          {formatPersianNumber(row.difference)}
+        </Typography>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'وضعیت',
+      width: '14%',
+      align: 'center',
+      render: (row) => statusChip(row),
+    },
+  ]), []);
 
-  if (loading) return <Box textAlign="center" py={8}><CircularProgress sx={{ color: COLOR }} /></Box>;
+  const balance = Number(forecast?.forecast_balance || 0);
 
   return (
     <Box>
-      <Header icon={<InsightsIcon sx={{ fontSize: 28, color: '#fff' }} />} title="برنامه‌ریزی نقدینگی"
+      <PageHeader
+        icon={<InsightsIcon />}
+        title="پیش‌بینی نقدینگی و تقویم سررسید"
         subtitle="منابع + دریافت‌های آتی − پرداخت‌های قطعی − تعهدات آینده"
-        extra={<>
-          {[7, 30, 90].map(d => <Button key={d} size="small" variant={days === d ? 'contained' : 'outlined'} onClick={() => refreshForecast(d)} sx={{ fontFamily: FONT, borderRadius: '8px' }}>{d} روز</Button>)}
-        </>} />
-
-      {fc && (
-        <Grid container spacing={2} sx={{ mb: 2.5 }}>
-          <Grid item xs={6} sm={3}><Kpi label="موجودی نقد فعلی" value={formatPersianNumber(fc.current_cash)} color="#10b981" /></Grid>
-          <Grid item xs={6} sm={3}><Kpi label="دریافت‌های آتی" value={formatPersianNumber(fc.expected_in)} color="#3b82f6" /></Grid>
-          <Grid item xs={6} sm={3}><Kpi label="پرداخت‌های قطعی" value={formatPersianNumber(fc.scheduled_out)} color="#f59e0b" /></Grid>
-          <Grid item xs={6} sm={3}><Kpi label="ماندهٔ پیش‌بینی‌شده" value={formatPersianNumber(fc.forecast_balance)} color={fc.forecast_balance >= 0 ? '#10b981' : '#ef4444'} /></Grid>
-        </Grid>
-      )}
-
-      <Header icon={<CompareArrowsIcon sx={{ fontSize: 28, color: '#fff' }} />} title="مغایرت خزانه"
-        subtitle="تطبیق ماندهٔ دفتری نهادها با موجودی اعلامی" />
-
-      <Paper sx={{ ...glass, p: 2 }}>
-        {recons.length === 0 ? (
-          <Typography color="textSecondary" textAlign="center" py={4} sx={{ fontFamily: FONT }}>هنوز مغایرتی ثبت نشده است.</Typography>
-        ) : (
-          <TableContainer><Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>نهاد</TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>تاریخ</TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>موجودی اعلامی</TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>مانده دفتری</TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>اختلاف</TableCell>
-              <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>وضعیت</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {recons.map(r => (
-                <TableRow key={r.id} hover>
-                  <TableCell sx={{ fontFamily: FONT }}>{r.entity_name}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{toJalali(r.as_of)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(r.statement_balance)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(r.book_balance)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 800, color: r.difference === 0 ? '#10b981' : '#ef4444' }}>{formatPersianNumber(r.difference)}</TableCell>
-                  <TableCell><Chip size="small" label={r.status_display} sx={{ fontFamily: FONT }} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table></TableContainer>
+        actions={(
+          <Stack direction="row" spacing={0.5}>
+            {[7, 30, 90].map((option) => (
+              <Button
+                key={option}
+                size="small"
+                variant={days === option ? 'contained' : 'outlined'}
+                onClick={() => setDays(option)}
+              >
+                {`${formatPersianNumber(option)} روز`}
+              </Button>
+            ))}
+          </Stack>
         )}
+      />
+
+      <Box sx={{
+        display: 'grid',
+        gap: 1,
+        mb: 1.25,
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+      }}>
+        <KpiTile
+          label="موجودی نقد فعلی"
+          value={formatPersianNumber(forecast?.current_cash || 0)}
+          color={STATUS_TONE.cleared}
+        />
+        <KpiTile
+          label="دریافت‌های آتی"
+          value={formatPersianNumber(forecast?.expected_in || 0)}
+          color="#0ea5e9"
+        />
+        <KpiTile
+          label="پرداخت‌های قطعی"
+          value={formatPersianNumber(forecast?.scheduled_out || 0)}
+          color={STATUS_TONE.draft}
+        />
+        <KpiTile
+          label="ماندهٔ پیش‌بینی‌شده"
+          value={formatPersianNumber(balance)}
+          color={balance >= 0 ? STATUS_TONE.cleared : STATUS_TONE.bounced}
+          hint={`افق ${formatPersianNumber(days)} روز`}
+        />
+      </Box>
+
+      <Box sx={{
+        display: 'grid',
+        gap: 1,
+        mb: 1.25,
+        gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' },
+      }}>
+        <CheckSection
+          title="چک‌های پرداختی نزدیک سررسید"
+          endpoint="/treasury/issued-checks/"
+          queryKey="treasury-due-issued-checks"
+          accent={moduleTheme.accent}
+        />
+        <CheckSection
+          title="چک‌های دریافتی نزدیک سررسید"
+          endpoint="/treasury/received-checks/"
+          queryKey="treasury-due-received-checks"
+          accent="#10b981"
+        />
+      </Box>
+
+      <Paper elevation={0} sx={{
+        p: 1.25,
+        borderRadius: 'var(--hrms-table-radius, 16px)',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}>
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.75 }}>
+          <Chip
+            size="small"
+            icon={<CalendarMonthIcon />}
+            label="مغایرت خزانه"
+            sx={chipSx(moduleTheme.accent)}
+          />
+        </Stack>
+        <ModuleTable
+          tableTheme={tableTheme.tableTheme}
+          ariaLabel="مغایرت خزانه"
+          containerRef={reconRef}
+          tableHeight={Math.min(reconHeight, 320)}
+          rowHeight={reconRow}
+          rows={reconciliations}
+          rowKey={(row) => row.id}
+          dimmed={reconciliationQuery.isFetching}
+          emptyText="هنوز مغایرتی ثبت نشده است."
+          columns={reconColumns}
+          minWidth={700}
+        />
       </Paper>
     </Box>
   );
 };
 
 export default TreasuryForecastPage;
+

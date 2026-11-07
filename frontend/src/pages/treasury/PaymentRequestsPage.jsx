@@ -1,5 +1,7 @@
 import React from 'react';
-import { PaymentRequestsSection } from './paymentSections';
+import { TreasuryListPage } from './treasuryListUi';
+import { PAYMENT_REQUESTS_CONFIG } from './treasuryListConfigs2';
 
-const PaymentRequestsPage = () => <PaymentRequestsSection />;
+const PaymentRequestsPage = () => <TreasuryListPage {...PAYMENT_REQUESTS_CONFIG} />;
+
 export default PaymentRequestsPage;

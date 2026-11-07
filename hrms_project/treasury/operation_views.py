@@ -1,6 +1,7 @@
 """Views برای عملیات خزانه (فاز ۲): دریافت، علی‌الحساب، انتقال، سپرده/ضمانت‌نامه."""
 from datetime import date, timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
@@ -138,6 +139,14 @@ class AdvanceAccountViewSet(BaseViewSet):
     search_fields = ['number', 'party__name']
     ordering = ['-date', '-created_at']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('status'):
+            values = [item for item in params['status'].split(',') if item]
+            qs = qs.filter(status__in=values)
+        return qs
+
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')
         return super().create(request, *args, **kwargs)
@@ -169,6 +178,22 @@ class TreasuryTransferViewSet(BaseViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'description']
     ordering = ['-date', '-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('status'):
+            values = [item for item in params['status'].split(',') if item]
+            qs = qs.filter(status__in=values)
+        if params.get('entity'):
+            qs = qs.filter(
+                Q(source_id=params['entity']) | Q(destination_id=params['entity']),
+            )
+        if params.get('date_from'):
+            qs = qs.filter(date__gte=params['date_from'])
+        if params.get('date_to'):
+            qs = qs.filter(date__lte=params['date_to'])
+        return qs
 
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')
@@ -228,6 +253,24 @@ class TreasuryGuaranteeViewSet(BaseViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'issuer', 'beneficiary', 'party__name']
     ordering = ['expiry_date', 'created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('status'):
+            values = [item for item in params['status'].split(',') if item]
+            qs = qs.filter(status__in=values)
+        if params.get('kind'):
+            qs = qs.filter(kind=params['kind'])
+        if str(params.get('expiring') or '').lower() in ('1', 'true'):
+            from datetime import date, timedelta
+
+            days = int(params.get('days') or 30)
+            qs = qs.filter(
+                status='active',
+                expiry_date__lte=date.today() + timedelta(days=days),
+            )
+        return qs
 
     def create(self, request, *args, **kwargs):
         require(request.user, 'treasury_execute')
