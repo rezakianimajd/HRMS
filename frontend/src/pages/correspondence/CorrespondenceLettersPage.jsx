@@ -1083,6 +1083,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     queryKey: [...LETTERS_KEY, listParams],
     queryFn: () => axiosInstance.get('/letters/', { params: listParams }).then((response) => response.data),
     placeholderData: (previous) => previous,
+    staleTime: 30 * 1000,
   });
   const letters = useMemo(() => asList(rawLetters), [rawLetters]);
   const total = useMemo(
@@ -1738,8 +1739,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         search={search}
         onSearch={setSearch}
         searchPlaceholder={mode === 'all'
-          ? 'جستجو در شماره، موضوع، طرف مکاتبه، اندیکاتور یا تنظیم‌کننده…'
-          : `جستجو در ${preset.title}…`}
+          ? 'جستجو در موضوع، شماره، طرف حساب، نام ارجاع‌شده، متن نامه یا پیوست…'
+          : `جستجو در ${preset.title} (موضوع، شماره، طرف حساب، ارجاع‌شده)…`}
         sort={sortBy}
         sortOptions={[
           { value: 'newest', label: 'جدیدترین تاریخ' },

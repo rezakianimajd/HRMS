@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid,
   IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import axiosInstance from '../../core/api/axiosConfig';
 import AttachmentPreviewDialog from '../../core/components/ui/AttachmentPreviewDialog';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
@@ -26,13 +28,21 @@ const cellHead = { fontSize: 10.5, fontWeight: 800, py: 0.5 };
 const cellBody = { fontSize: 10.5, py: 0.4 };
 
 
-const ContractLetterDetailsDialog = ({ letter, onClose }) => {
+const ContractLetterDetailsDialog = ({ letter: incomingLetter, onClose }) => {
   const [previewIndex, setPreviewIndex] = useState(null);
+  // فهرست نامه‌ها سبک است؛ جزئیات کامل (پیوست با بارگذارنده/تاریخ) را می‌گیریم.
+  const { data: detail } = useQuery({
+    queryKey: ['correspondence-letter', incomingLetter?.id],
+    queryFn: () => axiosInstance.get(`/letters/${incomingLetter.id}/`).then((response) => response.data),
+    enabled: Boolean(incomingLetter?.id),
+    staleTime: 60 * 1000,
+  });
+  const letter = detail && detail.id ? detail : incomingLetter;
   const previewFiles = (letter?.attachments || []).filter((file) => file?.file_url);
 
   return (
   <>
-  <Dialog open={Boolean(letter)} onClose={onClose} maxWidth="md" fullWidth
+  <Dialog open={Boolean(incomingLetter)} onClose={onClose} maxWidth="md" fullWidth
     PaperProps={{ sx: { borderRadius: '16px' } }}>
     <DialogTitle sx={{ fontSize: 13.5, fontWeight: 900, pb: 0.75 }}>
       {letter ? `${letter.number || 'بدون شماره'} — ${letter.subject}` : ''}

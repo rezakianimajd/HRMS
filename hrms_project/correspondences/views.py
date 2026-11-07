@@ -139,7 +139,8 @@ from correspondences.models import (  # noqa: E402
 from correspondences.numbering import allocate_number, preview_number, request_number  # noqa: E402
 from correspondences.serializers import (  # noqa: E402
     CorrespondenceNameAliasSerializer, CorrespondentSerializer, LetterAttachmentSerializer,
-    LetterCategorySerializer, LetterEventSerializer, LetterReferralSerializer,
+    LetterCategorySerializer, LetterEventSerializer, LetterListSerializer,
+    LetterReferralSerializer,
     LetterRequestSerializer, LetterRequestTypeSerializer, LetterSeriesSerializer,
     LetterSerializer,
 )
@@ -445,28 +446,118 @@ class LetterViewSet(BaseLetterViewSet):
 
     serializer_class = LetterSerializer
     queryset = Letter.objects.all()
-    search_fields = [
+    # جست‌وجوی جامع دستی انجام می‌شود تا نام ارجاع‌شدگان، طرف حساب، پیوست‌ها و
+    # متن نامه هم پوشش داده شوند.
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['letter_date', 'created_at', 'due_date', 'priority', 'status', 'number']
+    ordering = ['-letter_date', '-id']
+
+    SEARCH_FIELDS = (
         'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject', 'summary',
-        'sender_name', 'sender_title', 'receiver_name', 'drafter_name', 'contract_number',
-        'company_reg_no', 'unit_reg_no', 'unit_name', 'delivered_by_name',
+        'body', 'sender_name', 'sender_title', 'receiver_name', 'drafter_name',
+        'contract_number', 'company_reg_no', 'unit_reg_no', 'unit_name', 'delivered_by_name',
+        'tags', 'source_ref', 'archive_ref', 'entered_by_name',
         'organization__name', 'correspondent__name', 'sender_organization__name',
         'sender_party__name', 'party_account__name',
         'sender_employee__first_name', 'sender_employee__last_name',
         'receiver_employee__first_name', 'receiver_employee__last_name',
         'delivered_by__first_name', 'delivered_by__last_name',
-    ]
-    ordering_fields = ['letter_date', 'created_at', 'due_date', 'priority', 'status', 'number']
-    ordering = ['-letter_date', '-id']
+        'drafter__first_name', 'drafter__last_name',
+        'entered_by__first_name', 'entered_by__last_name',
+    )
+    SEARCH_JOIN_FIELDS = (
+        'referrals__to_name', 'referrals__instruction', 'referrals__note',
+        'referrals__result', 'referrals__response', 'referrals__margin_note',
+        'referrals__to_user__first_name', 'referrals__to_user__last_name',
+        'referrals__to_user__username',
+        'referrals__to_employee__first_name', 'referrals__to_employee__last_name',
+        'referrals__to_employees__first_name', 'referrals__to_employees__last_name',
+        'attachments__title',
+    )
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return LetterListSerializer
+        return LetterSerializer
+
+    def _apply_search(self, qs, term):
+        """جست‌وجوی همه‌جانبه در شماره، موضوع، متن، طرف حساب و ارجاعات.
+
+        برای سرعت، ارجاعات و پیوست‌ها با زیرکوئری (``IN``) جست‌وجو می‌شوند نه با
+        join؛ این کار از تکثیر ردیف‌ها و ``DISTINCT`` سنگین جلوگیری می‌کند.
+        """
+        term = str(term or '').strip()
+        if not term:
+            return qs
+        condition = Q()
+        for field in self.SEARCH_FIELDS:
+            condition |= Q(**{f'{field}__icontains': term})
+
+        referral_condition = Q()
+        attachment_condition = Q()
+        for field in self.SEARCH_JOIN_FIELDS:
+            if field.startswith('attachments__'):
+                attachment_condition |= Q(
+                    **{f'{field.replace("attachments__", "", 1)}__icontains': term},
+                )
+            else:
+                referral_condition |= Q(
+                    **{f'{field.replace("referrals__", "", 1)}__icontains': term},
+                )
+
+        referral_ids = LetterReferral.objects.filter(
+            referral_condition,
+        ).values('letter_id') if referral_condition else LetterReferral.objects.none().values('letter_id')
+        attachment_ids = LetterAttachment.objects.filter(
+            attachment_condition,
+        ).values('letter_id') if attachment_condition else LetterAttachment.objects.none().values('letter_id')
+
+        return qs.filter(
+            condition | Q(id__in=referral_ids) | Q(id__in=attachment_ids),
+        )
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related(
-            'organization', 'sender_organization', 'correspondent', 'category', 'series',
-            'drafter', 'created_by', 'entered_by', 'reply_to',
-            'sender_employee', 'receiver_employee', 'delivered_by', 'sender_party',
-            'party_account',
-        ).prefetch_related('attachments', 'referrals', 'events', 'replies')
         params = self.request.query_params
+        heavy = self.action != 'list'
+        # فقط کلیدهای خارجیِ لازم برای هر حالت join می‌شوند؛ joinهای سنگین
+        # (پرسنل/کاربر/پاسخ) در فهرست حذف می‌شوند تا جست‌وجوی ۲۰ ردیف سریع بماند.
+        related = [
+            'organization', 'sender_organization', 'correspondent', 'category', 'series',
+            'sender_party', 'party_account', 'entered_by',
+        ]
+        if heavy:
+            related += ['drafter', 'created_by', 'reply_to',
+                        'sender_employee', 'receiver_employee', 'delivered_by']
+        qs = super().get_queryset().select_related(*related)
+
+        if heavy:
+            qs = qs.prefetch_related(
+                'attachments', 'referrals', 'referrals__to_user', 'referrals__to_employee',
+                'referrals__to_employees', 'events', 'replies',
+            )
+        else:
+            from django.db.models import Prefetch
+
+            qs = qs.prefetch_related(
+                Prefetch(
+                    'attachments',
+                    queryset=LetterAttachment.objects.only(
+                        'id', 'letter_id', 'title', 'kind', 'file', 'size',
+                    ),
+                ),
+                Prefetch(
+                    'referrals',
+                    queryset=LetterReferral.objects.select_related('to_user', 'to_employee'),
+                ),
+            )
+
+        params = self.request.query_params
+        qs = self._apply_view_filters(qs, params)
+        return self._apply_search(qs, params.get('search') or params.get('q'))
+
+    def _apply_view_filters(self, qs, params):
         user = getattr(self.request, 'user', None)
+        needs_distinct = False
 
         direction = params.get('direction')
         if direction:
@@ -488,7 +579,7 @@ class LetterViewSet(BaseLetterViewSet):
         if party_id:
             qs = qs.filter(
                 Q(party_account_id=party_id) | Q(sender_party_id=party_id),
-            ).distinct()
+            )
 
         status_param = params.get('status')
         if status_param:
@@ -514,19 +605,21 @@ class LetterViewSet(BaseLetterViewSet):
             qs = qs.filter(letter_date__lte=date_to)
 
         if _truthy(params.get('has_attachments')):
-            qs = qs.filter(attachments__isnull=False)
+            qs = qs.filter(id__in=LetterAttachment.objects.values('letter_id'))
         elif str(params.get('has_attachments', '')).lower() in ('0', 'false', 'no', 'off'):
-            qs = qs.filter(attachments__isnull=True)
+            qs = qs.exclude(id__in=LetterAttachment.objects.values('letter_id'))
 
         scope = params.get('scope')
         if scope == 'mine' and user and user.is_authenticated:
             qs = qs.filter(Q(created_by=user) | Q(drafter=user) | Q(referrals__to_user=user))
+            needs_distinct = True
         elif scope == 'referred' and user and user.is_authenticated:
             qs = qs.filter(
                 referrals__to_user=user, referrals__status__in=OPEN_REFERRAL_STATUSES,
             )
+            needs_distinct = True
 
-        return qs.distinct()
+        return qs.distinct() if needs_distinct else qs
 
     # ------------------------------------------------------------------ ساخت
     def _payload_register_flag(self):
@@ -722,17 +815,16 @@ class LetterViewSet(BaseLetterViewSet):
         today = date_cls.today()
         company = _get_company(request)
         user = getattr(request, 'user', None)
-        open_qs = qs.exclude(status__in=FINAL_STATUSES)
 
-        by_direction = {row['direction']: row['c'] for row in
-                        qs.values('direction').annotate(c=Count('id'))}
-        by_status = {row['status']: row['c'] for row in
-                     qs.values('status').annotate(c=Count('id'))}
-        by_priority = {row['priority']: row['c'] for row in
-                       qs.values('priority').annotate(c=Count('id'))}
+        # یک کوئری به‌جای سه کوئری برای تفکیک جهت/وضعیت/اولویت
+        by_direction, by_status, by_priority = {}, {}, {}
+        for row in qs.values('direction', 'status', 'priority').annotate(c=Count('id')).order_by():
+            count = row['c']
+            by_direction[row['direction']] = by_direction.get(row['direction'], 0) + count
+            by_status[row['status']] = by_status.get(row['status'], 0) + count
+            by_priority[row['priority']] = by_priority.get(row['priority'], 0) + count
 
         month_start = today.replace(day=1)
-        overdue_qs = qs.filter(due_date__lt=today).exclude(status__in=FINAL_STATUSES)
 
         my_referrals = LetterReferral.objects.none()
         if company and user and user.is_authenticated:
@@ -784,12 +876,30 @@ class LetterViewSet(BaseLetterViewSet):
             .order_by('-c')[:5]
         )
 
-        # --- آمار کاربردی داشبورد -------------------------------------------
-        next_week = today + timedelta(days=7)
-        due_soon_qs = open_qs.filter(due_date__gte=today, due_date__lte=next_week)
-        with_attachments = qs.filter(attachments__isnull=False).distinct().count()
-        incoming_letters = qs.filter(direction='incoming')
-        without_attachments = incoming_letters.filter(attachments__isnull=True).count()
+        # --- آمار کاربردی داشبورد (شمارش‌ها در کمترین تعداد کوئری) ----------
+        totals_agg = qs.aggregate(
+            all_count=Count('id'),
+            open_count=Count('id', filter=~Q(status__in=FINAL_STATUSES)),
+            overdue_count=Count(
+                'id', filter=Q(due_date__lt=today) & ~Q(status__in=FINAL_STATUSES),
+            ),
+            due_soon_count=Count(
+                'id',
+                filter=Q(due_date__gte=today, due_date__lte=today + timedelta(days=7))
+                & ~Q(status__in=FINAL_STATUSES),
+            ),
+            incoming_month=Count('id', filter=Q(direction='incoming', letter_date__gte=month_start)),
+            outgoing_month=Count('id', filter=Q(direction='outgoing', letter_date__gte=month_start)),
+        )
+        attachment_agg = qs.aggregate(
+            with_attachments=Count('id', filter=Q(attachments__isnull=False), distinct=True),
+            incoming_with=Count(
+                'id', filter=Q(direction='incoming', attachments__isnull=False), distinct=True,
+            ),
+        )
+        without_attachments = max(
+            0, by_direction.get('incoming', 0) - attachment_agg['incoming_with'],
+        )
         by_category = list(
             qs.exclude(category__isnull=True)
             .values('category_id', 'category__name')
@@ -802,36 +912,40 @@ class LetterViewSet(BaseLetterViewSet):
             referral_qs = LetterReferral.objects.filter(
                 company=company, letter__is_active=True,
             )
-            referral_counts = {
-                row['status']: row['c']
-                for row in referral_qs.values('status').annotate(c=Count('id'))
-            }
+            for row in referral_qs.values('status').annotate(c=Count('id')).order_by():
+                referral_counts[row['status']] = row['c']
             referral_overdue = referral_qs.filter(
                 due_date__lt=today,
             ).exclude(status__in=('done', 'canceled', 'returned')).count()
 
+        my_referrals_total = 0
+        my_referrals_overdue = 0
+        if company and user and user.is_authenticated:
+            my_agg = my_referrals.aggregate(
+                total=Count('id'),
+                overdue=Count('id', filter=Q(due_date__lt=today)),
+            )
+            my_referrals_total = my_agg['total'] or 0
+            my_referrals_overdue = my_agg['overdue'] or 0
+
         return Response({
             'totals': {
-                'all': qs.count(),
+                'all': totals_agg['all_count'] or 0,
                 'incoming': by_direction.get('incoming', 0),
                 'outgoing': by_direction.get('outgoing', 0),
                 'internal': by_direction.get('internal', 0),
-                'open': open_qs.count(),
-                'overdue': overdue_qs.count(),
-                'due_soon': due_soon_qs.count(),
+                'open': totals_agg['open_count'] or 0,
+                'overdue': totals_agg['overdue_count'] or 0,
+                'due_soon': totals_agg['due_soon_count'] or 0,
                 'drafts': by_status.get('draft', 0),
                 'archived': by_status.get('archived', 0),
-                'incoming_this_month': qs.filter(
-                    direction='incoming', letter_date__gte=month_start,
-                ).count(),
-                'outgoing_this_month': qs.filter(
-                    direction='outgoing', letter_date__gte=month_start,
-                ).count(),
+                'incoming_this_month': totals_agg['incoming_month'] or 0,
+                'outgoing_this_month': totals_agg['outgoing_month'] or 0,
                 'urgent': by_priority.get('urgent', 0) + by_priority.get('high', 0),
-                'with_attachments': with_attachments,
+                'with_attachments': attachment_agg['with_attachments'] or 0,
                 'without_attachments': without_attachments,
-                'my_referrals': my_referrals.count(),
-                'my_overdue_referrals': my_referrals.filter(due_date__lt=today).count(),
+                'my_referrals': my_referrals_total,
+                'my_overdue_referrals': my_referrals_overdue,
             },
             'by_status': by_status,
             'by_direction': by_direction,

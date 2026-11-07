@@ -651,6 +651,59 @@ class LetterArchiveStorageTests(SimpleTestCase):
         self.assertEqual(profile['root_folder'], 'correspondences')
 
 
+class LetterListPayloadTests(SimpleTestCase):
+    """فهرست نامه‌ها باید سبک باشد تا جدول سریع بارگذاری شود."""
+
+    def test_list_serializer_drops_heavy_fields(self):
+        from correspondences.serializers import LetterListSerializer, LetterSerializer
+
+        list_fields = set(LetterListSerializer().fields)
+        detail_fields = set(LetterSerializer().fields)
+
+        for heavy in ('body', 'events', 'referrals'):
+            self.assertNotIn(heavy, list_fields, heavy)
+            self.assertIn(heavy, detail_fields, heavy)
+        for kept in ('attachments', 'last_referral', 'attachment_count', 'subject', 'number'):
+            self.assertIn(kept, list_fields, kept)
+
+    def test_list_attachment_brief_has_no_uploader_metadata(self):
+        from correspondences.serializers import (
+            LetterAttachmentBriefSerializer, LetterAttachmentSerializer,
+        )
+
+        brief = set(LetterAttachmentBriefSerializer().fields)
+        full = set(LetterAttachmentSerializer().fields)
+
+        self.assertTrue({'id', 'title', 'file_url', 'size'} <= brief)
+        self.assertNotIn('uploaded_by_name', brief)
+        self.assertIn('uploaded_by_name', full)
+
+    def test_viewset_search_covers_referrals_parties_and_attachments(self):
+        from correspondences.views import LetterViewSet
+
+        plain = ' '.join(LetterViewSet.SEARCH_FIELDS)
+        joined = ' '.join(LetterViewSet.SEARCH_JOIN_FIELDS)
+
+        for field in ('subject', 'summary', 'body', 'party_account__name', 'tags'):
+            self.assertIn(field, plain)
+        for field in (
+            'referrals__to_name', 'referrals__instruction',
+            'referrals__to_user__first_name', 'referrals__to_employee__last_name',
+            'referrals__to_employees__first_name', 'attachments__title',
+        ):
+            self.assertIn(field, joined)
+
+    def test_viewset_uses_light_serializer_for_list(self):
+        from correspondences.serializers import LetterListSerializer, LetterSerializer
+        from correspondences.views import LetterViewSet
+
+        view = LetterViewSet()
+        view.action = 'list'
+        self.assertIs(view.get_serializer_class(), LetterListSerializer)
+        view.action = 'retrieve'
+        self.assertIs(view.get_serializer_class(), LetterSerializer)
+
+
 class WorkdeskSchemaTests(SimpleTestCase):
     """ساختار دادهٔ کارتابل: پرسنل/طرف حساب، تحویل نامه و درخواست‌ها."""
 

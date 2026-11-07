@@ -32,7 +32,7 @@ MODULE_LABELS = {
     'hr': 'منابع انسانی', 'contracts': 'مدیریت قراردادها', 'projects': 'مدیریت پروژه‌ها',
     'accounting': 'حسابداری', 'payroll': 'حقوق و دستمزد', 'pettycash': 'تنخواه',
     'procurement': 'خرید و تدارکات', 'treasury': 'خزانه‌داری',
-    'documents': 'مدیریت اسناد و مدارک', 'correspondence': 'مکاتبات رسمی',
+    'documents': 'مدیریت اسناد و مدارک', 'correspondence': 'مکاتبات اداری',
 }
 
 MODULE_COLORS = {
@@ -104,6 +104,9 @@ class SearchProvider:
     icon: str = 'search'
     color: str = ''
     select_related: tuple = field(default_factory=tuple)
+    # شرایط تکمیلی (مثلاً جست‌وجو در روابط/ارجاعات) و distinct برای جلوگیری از تکرار
+    extra_q: Callable[[str], Any] = None
+    distinct: bool = False
 
 
 def _provider_title(provider: SearchProvider, obj: Any) -> str:
@@ -147,9 +150,16 @@ def _search_provider(provider: SearchProvider, query: str, company) -> list:
                 condition |= Q(**{f'{field_name}__icontains': query})
             except Exception:  # noqa: BLE001
                 continue
+        if provider.extra_q:
+            try:
+                condition |= provider.extra_q(query)
+            except Exception:  # noqa: BLE001 — نبود رابطه نباید جست‌وجو را بشکند
+                pass
         if not condition:
             return []
         queryset = queryset.filter(condition)
+        if provider.distinct:
+            queryset = queryset.distinct()
         try:
             queryset = queryset.order_by('-updated_at', '-created_at')
         except Exception:  # noqa: BLE001
@@ -526,6 +536,36 @@ PROVIDERS['documents'] = [
 ]
 
 PROVIDERS['correspondence'] = [
+    SearchProvider(
+        'correspondences.Letter',
+        (
+            'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject',
+            'summary', 'body', 'sender_name', 'receiver_name', 'drafter_name',
+            'unit_name', 'contract_number', 'tags', 'source_ref',
+        ),
+        path=lambda obj: f'/correspondence/letters?q={_q(obj.number or obj.subject)}',
+        title_fields=('number', 'subject'),
+        subtitle_fields=('sender_name', 'receiver_name'),
+        subtitle_display='status',
+        icon='mail', color='#0ea5e9',
+        select_related=('party_account', 'organization', 'sender_party', 'correspondent'),
+        extra_q=lambda term: (
+            Q(party_account__name__icontains=term)
+            | Q(organization__name__icontains=term)
+            | Q(correspondent__name__icontains=term)
+            | Q(sender_organization__name__icontains=term)
+            | Q(sender_party__name__icontains=term)
+            | Q(referrals__to_name__icontains=term)
+            | Q(referrals__instruction__icontains=term)
+            | Q(referrals__note__icontains=term)
+            | Q(referrals__to_user__first_name__icontains=term)
+            | Q(referrals__to_user__last_name__icontains=term)
+            | Q(referrals__to_employee__first_name__icontains=term)
+            | Q(referrals__to_employee__last_name__icontains=term)
+            | Q(attachments__title__icontains=term)
+        ),
+        distinct=True,
+    ),
     SearchProvider(
         'correspondences.IncomingLetter',
         ('number', 'subject', 'sender', 'description'),

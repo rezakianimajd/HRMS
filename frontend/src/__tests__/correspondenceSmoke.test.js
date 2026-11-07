@@ -154,7 +154,7 @@ beforeEach(() => {
   });
 });
 
-const renderPage = async (element) => {
+const renderPage = async (element, entry = '/correspondence/letters?direction=incoming') => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -162,7 +162,7 @@ const renderPage = async (element) => {
   await act(async () => {
     root.render(
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/correspondence/letters?direction=incoming']}>
+        <MemoryRouter initialEntries={[entry]}>
           {element}
         </MemoryRouter>
       </QueryClientProvider>,
@@ -406,6 +406,23 @@ test('letter drawer attachment tab shows a preview action per file', async () =>
     .find((node) => node.querySelector('iframe'));
   expect(dialog).toBeTruthy();
   expect(dialog.textContent).toContain('scan-1404-100.pdf');
+
+  root.unmount();
+  container.remove();
+});
+
+test('letters list request carries the URL search and attachment filters', async () => {
+  const { container, root } = await renderPage(
+    <CorrespondenceLettersPage mode="incoming" />,
+    '/correspondence/incoming?q=آزمایشی&has_attachments=0',
+  );
+
+  const listCalls = axiosInstance.get.mock.calls.filter(([url]) => url === '/letters/');
+  expect(listCalls.length).toBeGreaterThan(0);
+  const params = listCalls[listCalls.length - 1][1].params;
+  expect(params.has_attachments).toBe('0');
+  expect(params.search).toBe('آزمایشی');
+  expect(params.direction).toBe('incoming');
 
   root.unmount();
   container.remove();

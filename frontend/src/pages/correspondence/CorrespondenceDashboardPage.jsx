@@ -49,6 +49,8 @@ const CorrespondenceDashboardPage = () => {
   const statsQuery = useQuery({
     queryKey: ['correspondence-stats'],
     queryFn: () => axiosInstance.get('/letters/stats/').then((response) => response.data),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const { data: stats, isLoading, isFetching, isError, refetch } = statsQuery;
   const { data: myReferrals } = useQuery({
@@ -56,11 +58,15 @@ const CorrespondenceDashboardPage = () => {
     queryFn: () => axiosInstance.get('/letter-referrals/', {
       params: { mine: 1, open_only: 1, page_size: 8 },
     }).then((response) => response.data),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
   const { data: recent } = useQuery({
     queryKey: ['correspondence-recent'],
     queryFn: () => axiosInstance.get('/letters/', { params: { page_size: 12 } })
       .then((response) => response.data),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const totals = stats?.totals || {};

@@ -49,3 +49,36 @@ class ModuleSearchTests(SimpleTestCase):
 
         with patch.object(module_search, 'SearchEngine', BrokenSearchEngine):
             self.assertEqual(module_search._hr_results('آزمایشی', None), [])
+
+
+class CorrespondenceSearchProviderTests(SimpleTestCase):
+    """جست‌وجوی نوار کنار باید نامه، طرف حساب و ارجاع‌شدگان را هم پیدا کند."""
+
+    def _provider(self):
+        return next(
+            provider for provider in module_search.PROVIDERS['correspondence']
+            if provider.model == 'correspondences.Letter'
+        )
+
+    def test_letter_provider_is_registered_first(self):
+        first = module_search.PROVIDERS['correspondence'][0]
+        self.assertEqual(first.model, 'correspondences.Letter')
+        self.assertTrue(first.distinct)
+        self.assertIn('subject', first.fields)
+        self.assertIn('summary', first.fields)
+
+    def test_provider_extra_query_covers_parties_referrals_and_attachments(self):
+        condition = str(self._provider().extra_q('احمدی'))
+
+        for field in (
+            'party_account__name', 'organization__name', 'sender_party__name',
+            'referrals__to_name', 'referrals__to_employee__first_name',
+            'referrals__instruction', 'attachments__title',
+        ):
+            self.assertIn(field, condition)
+
+    def test_provider_links_to_the_letters_page(self):
+        path = self._provider().path(
+            SimpleNamespace(number='1404/1', subject='موضوع آزمایشی'),
+        )
+        self.assertIn('/correspondence/letters?q=', path)

@@ -1,7 +1,14 @@
 import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import axiosInstance from '../core/api/axiosConfig';
 import ContractLetterDetailsDialog from '../pages/contracts/ContractLetterDetailsDialog';
+
+jest.mock('../core/api/axiosConfig', () => ({
+  __esModule: true,
+  default: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
+}));
 
 const wait = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -42,8 +49,9 @@ const render = async (element) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   await act(async () => {
-    root.render(element);
+    root.render(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
     await wait(250);
   });
   return { container, root };
@@ -52,6 +60,19 @@ const render = async (element) => {
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   document.body.innerHTML = '';
+  axiosInstance.get.mockImplementation((url) => {
+    if (url === `/letters/${letter.id}/`) {
+      return Promise.resolve({
+        data: {
+          ...letter,
+          attachments: letter.attachments.map((file) => ({
+            ...file, kind: 'letter', uploaded_by_name: 'خانم حقیقی',
+          })),
+        },
+      });
+    }
+    return Promise.resolve({ data: {} });
+  });
 });
 
 test('contract letter dialog previews its attachments inline', async () => {

@@ -295,6 +295,69 @@ class LetterAttachmentSerializer(serializers.ModelSerializer):
         return user.get_full_name() or user.get_username()
 
 
+class LetterAttachmentBriefSerializer(serializers.ModelSerializer):
+    """نسخهٔ سبک پیوست برای فهرست نامه‌ها (بدون فیلدهای سنگین)."""
+
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        from correspondences.models import LetterAttachment
+
+        model = LetterAttachment
+        fields = ['id', 'title', 'kind', 'kind_display', 'file_url', 'size']
+        read_only_fields = fields
+
+    def get_file_url(self, obj):
+        if not obj.file:
+            return ''
+        request = self.context.get('request')
+        try:
+            url = obj.file.url
+        except ValueError:
+            return ''
+        return request.build_absolute_uri(url) if request else url
+
+
+class LetterReferralBriefSerializer(serializers.ModelSerializer):
+    """نسخهٔ سبک ارجاع (برای خلاصهٔ آخرین ارجاع در فهرست)."""
+
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    purpose_display = serializers.CharField(source='get_purpose_display', read_only=True)
+    to_user_name = serializers.SerializerMethodField()
+    to_employee_name = serializers.CharField(source='to_employee.full_name', read_only=True)
+    target_label = serializers.SerializerMethodField()
+
+    class Meta:
+        from correspondences.models import LetterReferral
+
+        model = LetterReferral
+        fields = [
+            'id', 'seq', 'status', 'status_display', 'purpose', 'purpose_display',
+            'to_name', 'to_user_name', 'to_employee_name', 'target_label',
+            'referred_on', 'due_date', 'instruction',
+        ]
+        read_only_fields = fields
+
+    def get_to_user_name(self, obj):
+        user = obj.to_user
+        if not user:
+            return ''
+        return user.get_full_name() or user.get_username()
+
+    def get_target_label(self, obj):
+        """برچسب گیرنده بدون خواندن M2M (برای جلوگیری از کوئری به‌ازای هر ردیف)."""
+        names = []
+        if obj.to_user_id:
+            names.append(self.get_to_user_name(obj))
+        if obj.to_employee_id and obj.to_employee:
+            names.append(obj.to_employee.full_name)
+        if not names and obj.to_name:
+            names.append(obj.to_name)
+        unique = list(dict.fromkeys(name for name in names if name))
+        return '، '.join(unique) if unique else '—'
+
+
 class LetterReferralSerializer(serializers.ModelSerializer):
     from_user_name = serializers.SerializerMethodField()
     to_user_name = serializers.SerializerMethodField()
@@ -544,6 +607,61 @@ class LetterSerializer(serializers.ModelSerializer):
         if amount is not None and amount < 0:
             raise serializers.ValidationError({'amount': 'مبلغ نمی‌تواند منفی باشد.'})
         return attrs
+
+
+class LetterListSerializer(LetterSerializer):
+    """فهرست سبک نامه‌ها برای جدول‌ها.
+
+    برخلاف ``LetterSerializer`` متن کامل نامه، تاریخچه، ارجاعات کامل و فیلدهای
+    پرهزینه (پرسنل/کاربران/پاسخ) را برنمی‌گرداند؛ در نتیجه هم حجم پاسخ و هم
+    تعداد joinها و کوئری‌های جدول صفحه‌بندی‌شده به‌شدت کم می‌شود.
+    """
+
+    attachments = LetterAttachmentBriefSerializer(many=True, read_only=True)
+    last_referral = serializers.SerializerMethodField()
+
+    class Meta(LetterSerializer.Meta):
+        fields = [
+            'id', 'direction', 'direction_display', 'number', 'external_number',
+            'indicator_no', 'transmittal_no', 'series', 'series_title', 'category',
+            'category_title', 'category_color', 'subject', 'summary',
+            'letter_date', 'received_date', 'sent_date', 'due_date',
+            'entry_method', 'entry_method_display', 'entry_time', 'entered_by',
+            'entered_by_label', 'entered_by_name', 'company_reg_no', 'company_reg_date',
+            'unit_reg_no', 'unit_reg_date', 'unit_name',
+            'organization', 'organization_name', 'correspondent', 'correspondent_name',
+            'sender_organization', 'sender_organization_name', 'sender_title',
+            'sender_name', 'receiver_name', 'source_ref', 'contract_number',
+            'sender_party', 'party_account', 'party_account_name', 'sender_party_name',
+            'delivery_type', 'delivery_type_display', 'delivered_by_name',
+            'priority', 'priority_display', 'confidentiality', 'confidentiality_display',
+            'status', 'status_display', 'amount', 'currency', 'archive_ref', 'tags',
+            'attachments', 'attachment_count', 'referral_count',
+            'last_referral', 'is_overdue', 'days_to_due', 'is_active',
+            'created_at', 'updated_at',
+            'sender_label', 'party_label', 'receiver_label',
+        ]
+        read_only_fields = LetterSerializer.Meta.read_only_fields
+
+    def get_sender_label(self, obj):
+        """نسخهٔ سبک: بدون خواندن FK پرسنل."""
+        return (
+            (obj.sender_party.name if obj.sender_party_id else '')
+            or (obj.sender_organization.name if obj.sender_organization_id else '')
+            or obj.sender_name
+            or ''
+        )
+
+    def get_receiver_label(self, obj):
+        return obj.receiver_name or ''
+
+    def get_last_referral(self, obj):
+        cached = getattr(obj, '_prefetched_objects_cache', {}).get('referrals')
+        rows = list(cached) if cached is not None else []
+        if not rows:
+            return None
+        latest = max(rows, key=lambda row: (row.seq or 0, row.id or 0))
+        return LetterReferralBriefSerializer(latest, context=self.context).data
 
 
 class LetterRequestTypeSerializer(serializers.ModelSerializer):
