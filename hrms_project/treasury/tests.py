@@ -767,3 +767,131 @@ class VoucherComposeTests(SimpleTestCase):
         self.assertEqual(reverse('treasury-voucher-preview'), '/api/treasury/voucher-preview/')
         self.assertEqual(reverse('treasury-voucher-issue'), '/api/treasury/voucher-issue/')
 
+
+
+VALID_SHEBA = 'IR930570201810023000000001'
+
+
+class InterbankAndCashTemplateTests(SimpleTestCase):
+    """قالب‌های «حواله بین‌بانکی (شبا)» و «فیش نقدی» بر پایهٔ الگوی بانک پاسارگاد."""
+
+    def test_kinds_include_interbank_and_cash(self):
+        from treasury.print_templates import KINDS
+
+        values = {row[0] for row in KINDS}
+        self.assertIn('interbank', values)
+        self.assertIn('cash', values)
+
+    def test_placeholders_cover_pasargad_fields(self):
+        from treasury.print_templates import placeholders_for
+
+        interbank = {row['key'] for row in placeholders_for('interbank')}
+        for key in ('transfer_type', 'source_iban', 'destination_iban',
+                    'destination_owner_name', 'destination_national_id',
+                    'destination_bank', 'amount_boxes', 'destination_iban_boxes',
+                    'source_owner_name', 'account_branch'):
+            self.assertIn(key, interbank)
+
+        cash = {row['key'] for row in placeholders_for('cash')}
+        for key in ('operation', 'payer_name', 'receiver_name', 'cashier',
+                    'branch', 'purpose', 'amount_boxes'):
+            self.assertIn(key, cash)
+
+    def test_template_kind_selection_by_instrument(self):
+        from treasury.voucher_compose import template_kind_for
+
+        self.assertEqual(template_kind_for('payment', 'sheba'), 'interbank')
+        self.assertEqual(template_kind_for('payment', 'cash'), 'cash')
+        self.assertEqual(template_kind_for('payment', 'cheque'), 'payment')
+        self.assertEqual(template_kind_for('receipt', method='cash'), 'cash')
+        self.assertEqual(template_kind_for('receipt', method='bank'), 'receipt')
+
+    def test_context_builds_digit_and_iban_boxes(self):
+        from treasury.print_templates import build_context
+
+        context = build_context({
+            'kind': 'payment',
+            'amount': '2500000',
+            'date': '۱۴۰۵/۰۸/۱۶',
+            'destination_iban': VALID_SHEBA,
+            'account': {'sheba_number': VALID_SHEBA, 'name': 'پاسارگاد جاری'},
+            'verification': {'code': 'PY-1405-000001'},
+        })
+
+        self.assertIn('۲', context['amount_boxes'])
+        self.assertEqual(context['amount_boxes'].count('border:1px solid'), 7)
+        self.assertEqual(context['date_boxes'].count('border:1px solid'), 8)
+        self.assertIn('IR', context['destination_iban_boxes'])
+        self.assertEqual(context['destination_iban_boxes'].count('border:1px solid'), 24)
+        self.assertIn('پاسارگاد جاری', context['account_name'])
+        self.assertIn('<svg', context['barcode'])
+
+    def test_default_interbank_layout_contains_pasargad_blocks(self):
+        from treasury.print_templates import build_context, render_template
+
+        context = build_context({
+            'kind': 'interbank',
+            'number': 'PY-1405-000009',
+            'amount': '1200000',
+            'date': '۱۴۰۵/۰۸/۱۶',
+            'destination_owner_name': 'شرکت پیمانکار',
+            'destination_iban': VALID_SHEBA,
+            'bank_name': 'بانک پاسارگاد',
+            'verification': {'code': 'PREVIEW-payment-PY-1405-000009'},
+        })
+        html = render_template(None, context)
+
+        self.assertIn('فرم دستور پرداخت الکترونیکی بین‌بانکی', html)
+        self.assertIn('مشخصات دستور پرداخت', html)
+        self.assertIn('مشخصات حساب مقصد', html)
+        self.assertIn('مهر و امضای بانک', html)
+        self.assertIn('شرکت پیمانکار', html)
+        self.assertNotIn('{{destination_iban}}', html)
+
+    def test_default_cash_layout_contains_receipt_blocks(self):
+        from treasury.print_templates import build_context, render_template
+
+        context = build_context({
+            'kind': 'cash',
+            'operation': 'پرداخت نقدی',
+            'number': 'PY-1405-000010',
+            'amount': '500000',
+            'date': '۱۴۰۵/۰۸/۱۶',
+            'payer_name': 'شرکت نمونه',
+            'receiver_name': 'آقای احمدی',
+            'purpose': 'هزینه‌های جاری',
+            'verification': {'code': 'PREVIEW-payment-PY-1405-000010'},
+        })
+        html = render_template(None, context)
+
+        self.assertIn('برگ دریافت / پرداخت نقدی', html)
+        self.assertIn('پرداخت‌کننده', html)
+        self.assertIn('دریافت‌کننده', html)
+        self.assertIn('آقای احمدی', html)
+        self.assertNotIn('{{receiver_name}}', html)
+
+    def test_render_template_falls_back_to_kind_default(self):
+        from treasury.print_templates import render_template
+
+        html = render_template(None, {'kind': 'cash', 'number': 'X-1'})
+        self.assertIn('برگ دریافت / پرداخت نقدی', html)
+
+    def test_destination_iban_validation(self):
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        from treasury.serializers import TreasuryTransactionSerializer
+
+        serializer = TreasuryTransactionSerializer()
+        self.assertEqual(serializer.validate_destination_iban(''), '')
+        with self.assertRaises(DRFValidationError):
+            serializer.validate_destination_iban('IR000000000000000000000000')
+        self.assertEqual(serializer.validate_destination_iban(VALID_SHEBA), VALID_SHEBA)
+
+    def test_transaction_model_has_destination_fields(self):
+        from treasury.models import TreasuryTransaction
+
+        names = {field.name for field in TreasuryTransaction._meta.get_fields()}
+        for name in ('destination_owner_name', 'destination_national_id',
+                     'destination_account_number', 'destination_iban', 'destination_bank'):
+            self.assertIn(name, names)
+

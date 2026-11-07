@@ -121,11 +121,11 @@ test('composer shows live print preview from the theme template', async () => {
 });
 
 test('issuing from the composer saves the document and opens the printable voucher', async () => {
-  const { root } = await renderDialog({ initialKind: 'payment' });
+  const { root } = await renderDialog({ initialKind: 'receipt' });
 
   const dialog = [...document.querySelectorAll('[role="dialog"]')]
     .find((node) => node.textContent.includes('صدور سند با پیش‌نمایش چاپ'));
-  expect(dialog.textContent).toContain('نوع سند پرداخت');
+  expect(dialog.textContent).toContain('روش دریافت');
 
   const amountInput = dialog.querySelector('input[type="number"]');
   setInputValue(amountInput, '12000000');
@@ -141,7 +141,7 @@ test('issuing from the composer saves the document and opens the printable vouch
 
   const issueCall = axiosInstance.post.mock.calls
     .find(([url]) => url === '/treasury/voucher-issue/');
-  expect(issueCall[1]).toMatchObject({ kind: 'payment', amount: '12000000' });
+  expect(issueCall[1]).toMatchObject({ kind: 'receipt', amount: '12000000' });
 
   const printFrame = await wait(400).then(() => document.querySelector('iframe[title="قالب چاپ سند"]'));
   expect(printFrame).toBeTruthy();

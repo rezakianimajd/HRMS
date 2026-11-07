@@ -23,6 +23,18 @@ from treasury.vouchers import VOUCHER_TITLES, jalali_label
 
 DOC_KINDS = ('receipt', 'payment', 'transfer')
 
+# نوع قالب چاپ بر اساس ابزار سند (شبا → حواله بین‌بانکی، نقدی → فیش نقدی)
+TEMPLATE_KIND_BY_INSTRUMENT = {
+    'sheba': 'interbank',
+    'cash': 'cash',
+}
+
+
+def template_kind_for(kind, instrument_kind='', method=''):
+    """قالب چاپ مناسب برای سند: شبا → interbank، نقدی → cash، بقیه → نوع سند."""
+    instrument = str(instrument_kind or method or '').strip().lower()
+    return TEMPLATE_KIND_BY_INSTRUMENT.get(instrument, kind)
+
 PREVIEW_NOTE = 'پیش‌نمایش — این سند هنوز ثبت نشده و فاقد اعتبار است.'
 
 SIGNATURES = {
@@ -145,6 +157,25 @@ def build_preview_payload(kind, data, company_brief=None, number='', account=Non
             'cheque': data.get('cheque_number') or '',
         },
         'account': account or {},
+        'account_branch': data.get('account_branch') or (account or {}).get('branch_name', ''),
+        'source_owner_name': data.get('source_owner_name') or '',
+        'source_national_id': data.get('source_national_id') or '',
+        'bank_name': data.get('bank_name') or (account or {}).get('bank_name', ''),
+        'destination_owner_name': data.get('destination_owner_name') or '',
+        'destination_national_id': data.get('destination_national_id') or '',
+        'destination_account_number': data.get('destination_account_number') or '',
+        'destination_iban': data.get('destination_iban') or '',
+        'destination_bank': data.get('destination_bank') or '',
+        'destination_branch': data.get('destination_branch') or '',
+        'operation': data.get('operation') or '',
+        'branch': data.get('branch') or '',
+        'cashier': data.get('cashier') or '',
+        'payer_name': data.get('payer_name') or '',
+        'payer_account': data.get('payer_account') or '',
+        'payer_national_id': data.get('payer_national_id') or '',
+        'receiver_name': data.get('receiver_name') or '',
+        'receiver_account': data.get('receiver_account') or '',
+        'receiver_national_id': data.get('receiver_national_id') or '',
         'project': data.get('project_name') or '',
         'contract': data.get('contract_title') or '',
         'accounting_document': data.get('accounting_document') or '',

@@ -232,7 +232,8 @@ class TreasuryTransactionViewSet(BaseViewSet):
         from treasury.vouchers import build_transaction_voucher, build_verification_payload
 
         payload = build_transaction_voucher(obj, request)
-        template = get_default_template(obj.company, kind)
+        template_kind = payload.get('template_kind') or kind
+        template = get_default_template(obj.company, template_kind)
         payload['html'] = render_template(template, build_context(payload))
         payload['template_id'] = getattr(template, 'id', None)
         payload['template_name'] = getattr(template, 'name', '')

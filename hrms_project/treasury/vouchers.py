@@ -281,21 +281,32 @@ def build_transaction_voucher(transaction, request=None):
     instrument_kind = getattr(transaction, 'instrument_kind', '') or ''
     instrument_choices = getattr(type(transaction), 'InstrumentKind', None)
     instrument_labels = dict(instrument_choices.choices) if instrument_choices else {}
+    company = getattr(transaction, 'company', None)
+    account = _entity_brief(entity)
+    template_kind = kind
+    if instrument_kind == 'sheba':
+        template_kind = 'interbank'
+    elif instrument_kind == 'cash':
+        template_kind = 'cash'
+    is_receipt = kind == 'receipt'
     return {
         'kind': kind,
+        'template_kind': template_kind,
         'title': VOUCHER_TITLES[kind],
-        'company': _company_brief(getattr(transaction, 'company', None)),
+        'company': _company_brief(company),
+        'company_national_id': getattr(company, 'code', '') or '',
         'number': document['number'],
         'date': jalali_label(getattr(transaction, 'date', None)),
         'status': document['status'],
-        'received_from': party if kind == 'receipt' else '',
-        'beneficiary': party if kind == 'payment' else '',
+        'received_from': party if is_receipt else '',
+        'beneficiary': party if not is_receipt else '',
         'amount': str(amount),
         'amount_words': amount_in_words(amount, unit=unit),
         'currency': currency,
+        'method': instrument_labels.get(instrument_kind, instrument_kind),
+        'operation': 'دریافت نقدی' if is_receipt else 'پرداخت نقدی',
         'purpose': getattr(transaction, 'description', '') or '',
         'description': getattr(transaction, 'description', '') or '',
-        'method': instrument_labels.get(instrument_kind, instrument_kind),
         'instrument': {
             'reference_no': getattr(transaction, 'reference_no', '') or '',
             'tracking_no': getattr(transaction, 'tracking_no', '') or '',
@@ -303,15 +314,33 @@ def build_transaction_voucher(transaction, request=None):
             'terminal': '',
             'cheque': getattr(transaction, 'cheque_number', '') or '',
         },
+        'cheque_number': getattr(transaction, 'cheque_number', '') or '',
         'cheque_due_date': jalali_label(getattr(transaction, 'cheque_due_date', None)),
-        'account': _entity_brief(entity),
+        'account': account,
+        'account_branch': account.get('branch_name', ''),
+        'source_owner_name': _company_brief(company).get('name', ''),
+        'source_national_id': getattr(company, 'code', '') or '',
+        'bank_name': account.get('bank_name', ''),
+        'transfer_type': 'بین‌بانکی',
+        'fee': '0',
+        'payer_name': _company_brief(company).get('name', '') if not is_receipt else party,
+        'payer_account': account.get('account_number', '') if not is_receipt else '',
+        'payer_national_id': getattr(company, 'code', '') or '' if not is_receipt else '',
+        'receiver_name': party if not is_receipt else _company_brief(company).get('name', ''),
+        'receiver_account': account.get('account_number', '') if is_receipt else '',
+        'receiver_national_id': '',
+        'destination_owner_name': getattr(transaction, 'destination_owner_name', '') or '',
+        'destination_national_id': getattr(transaction, 'destination_national_id', '') or '',
+        'destination_account_number': getattr(transaction, 'destination_account_number', '') or '',
+        'destination_iban': getattr(transaction, 'destination_iban', '') or '',
+        'destination_bank': getattr(transaction, 'destination_bank', '') or '',
         'project': '',
         'contract': '',
         'accounting_document': getattr(
             getattr(transaction, 'accounting_document', None), 'number', '',
         ) or '',
         'signatures': [
-            {'label': 'دریافت‌کننده' if kind == 'receipt' else 'پرداخت‌کننده', 'name': ''},
+            {'label': 'دریافت‌کننده' if is_receipt else 'پرداخت‌کننده', 'name': ''},
             {'label': 'خزانه‌دار', 'name': ''},
             {'label': 'تأییدکننده', 'name': ''},
             {'label': 'مدیر مالی', 'name': ''},

@@ -54,6 +54,16 @@ class TreasuryTransactionSerializer(BaseModelSerializer):
         document = getattr(obj, 'accounting_document', None)
         return getattr(document, 'number', '') if document else ''
 
+    def validate_destination_iban(self, value):
+        """شبا مقصد (در صورت وجود) باید mod 97 معتبر باشد."""
+        from treasury.iban import is_valid
+
+        if not value:
+            return ''
+        if not is_valid(value):
+            raise serializers.ValidationError('شماره شبا مقصد معتبر نیست (کنترل رقم mod 97).')
+        return value
+
 
 class PayableItemSerializer(BaseModelSerializer):
     source_type_display = serializers.CharField(source='get_source_type_display', read_only=True)

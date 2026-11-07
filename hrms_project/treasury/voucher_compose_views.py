@@ -21,7 +21,8 @@ from treasury.operation_serializers import ReceiptSerializer, TreasuryTransferSe
 from treasury.print_templates import get_default_template
 from treasury.serializers import TreasuryTransactionSerializer
 from treasury.voucher_compose import (
-    DOC_KINDS, build_preview_payload, compose_html, parse_date, to_decimal,
+    DOC_KINDS, build_preview_payload, compose_html, parse_date, template_kind_for,
+    to_decimal,
 )
 from treasury.vouchers import post_transfer_documents
 
@@ -95,8 +96,12 @@ class VoucherPreviewView(APIView):
             number=number,
             account=_entity_brief(entity),
         )
-        template = get_default_template(company, kind)
+        template_kind = template_kind_for(
+            kind, data.get('instrument_kind'), data.get('method'),
+        )
+        template = get_default_template(company, template_kind)
         payload['html'] = compose_html(payload, template)
+        payload['template_kind'] = template_kind
         payload['template_id'] = getattr(template, 'id', None)
         payload['template_name'] = getattr(template, 'name', '')
         payload['paper'] = getattr(template, 'paper', 'A5')
@@ -221,9 +226,16 @@ class VoucherIssueView(APIView):
             'description': data.get('description') or data.get('purpose') or '',
             'reference_no': data.get('reference_no') or '',
             'tracking_no': data.get('tracking_no') or '',
+            'destination_owner_name': data.get('destination_owner_name') or '',
+            'destination_national_id': data.get('destination_national_id') or '',
+            'destination_account_number': data.get('destination_account_number') or '',
+            'destination_iban': (data.get('destination_iban') or '').replace(' ', ''),
+            'destination_bank': data.get('destination_bank') or '',
             'debit_account': data.get('debit_account') or None,
         }
         payload = {key: value for key, value in payload.items() if value not in (None, '')}
+        if payload.get('instrument_kind') == 'sheba' and not payload.get('destination_iban'):
+            raise TreasuryGuardError('برای حواله شبا، شماره شبا مقصد الزامی است.')
         serializer = TreasuryTransactionSerializer(data=payload)
         serializer.is_valid(raise_exception=True)
         number = allocate_number('payment', company, payload.get('date'), TreasuryTransaction)

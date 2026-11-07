@@ -160,6 +160,14 @@ class TreasuryTransaction(BaseModel):
     party = models.CharField(max_length=250, blank=True, verbose_name=_('طرف حساب'))
     party_national_id = models.CharField(max_length=20, blank=True,
                                          verbose_name=_('شناسه/کد ملی طرف حساب'))
+    destination_owner_name = models.CharField(max_length=250, blank=True,
+                                             verbose_name=_('نام صاحب حساب مقصد'))
+    destination_national_id = models.CharField(max_length=20, blank=True,
+                                              verbose_name=_('شناسه/کد ملی مقصد'))
+    destination_account_number = models.CharField(max_length=50, blank=True,
+                                                 verbose_name=_('شماره حساب مقصد'))
+    destination_iban = models.CharField(max_length=34, blank=True, verbose_name=_('شبا مقصد'))
+    destination_bank = models.CharField(max_length=120, blank=True, verbose_name=_('بانک مقصد'))
     cheque_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره چک'))
     cheque_due_date = models.DateField(null=True, blank=True, verbose_name=_('سررسید چک'))
     is_guarantee = models.BooleanField(default=False, verbose_name=_('چک تضمینی'))

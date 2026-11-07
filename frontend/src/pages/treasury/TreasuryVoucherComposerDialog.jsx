@@ -70,6 +70,11 @@ const emptyForm = (kind) => ({
   instrument_kind: 'cash',
   cheque_number: '',
   cheque_due_date: '',
+  destination_iban: '',
+  destination_account_number: '',
+  destination_owner_name: '',
+  destination_national_id: '',
+  destination_bank: '',
   source: '',
   destination: '',
   fee: '',
@@ -148,6 +153,11 @@ const TreasuryVoucherComposerDialog = ({
       base.beneficiary = form.beneficiary || undefined;
       base.cheque_number = form.cheque_number || undefined;
       base.cheque_due_date = form.cheque_due_date || undefined;
+      base.destination_iban = form.destination_iban || undefined;
+      base.destination_account_number = form.destination_account_number || undefined;
+      base.destination_owner_name = form.destination_owner_name || undefined;
+      base.destination_national_id = form.destination_national_id || undefined;
+      base.destination_bank = form.destination_bank || undefined;
     }
     if (kind === 'transfer') {
       base.source = form.source || undefined;
@@ -391,6 +401,41 @@ const TreasuryVoucherComposerDialog = ({
                         />
                       </Stack>
                     ) : null}
+                    {form.instrument_kind === 'sheba' ? (
+                      <>
+                        <Field
+                          label="شبا مقصد (IR…)"
+                          value={form.destination_iban}
+                          onChange={(event) => change('destination_iban', event.target.value)}
+                          inputProps={{ dir: 'ltr', maxLength: 26 }}
+                          helperText="۲۶ کاراکتر؛ رقم کنترل mod 97 بررسی می‌شود."
+                        />
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <Field
+                            label="شماره حساب مقصد"
+                            value={form.destination_account_number}
+                            onChange={(event) => change('destination_account_number', event.target.value)}
+                          />
+                          <Field
+                            label="بانک مقصد"
+                            value={form.destination_bank}
+                            onChange={(event) => change('destination_bank', event.target.value)}
+                          />
+                        </Stack>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                          <Field
+                            label="نام صاحب حساب مقصد"
+                            value={form.destination_owner_name}
+                            onChange={(event) => change('destination_owner_name', event.target.value)}
+                          />
+                          <Field
+                            label="کد ملی / شناسه مقصد"
+                            value={form.destination_national_id}
+                            onChange={(event) => change('destination_national_id', event.target.value)}
+                          />
+                        </Stack>
+                      </>
+                    ) : null}
                   </>
                 ) : null}
 
@@ -544,6 +589,7 @@ const TreasuryVoucherComposerDialog = ({
             onClick={issue}
             disabled={issuing || !form.amount
               || (kind === 'payment' && !form.entity)
+              || (kind === 'payment' && form.instrument_kind === 'sheba' && !form.destination_iban)
               || (kind === 'transfer' && (!form.source || !form.destination))}
           >
             {issuing ? 'در حال ثبت…' : 'ثبت و صدور سند'}

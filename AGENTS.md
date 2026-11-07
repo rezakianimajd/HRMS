@@ -142,6 +142,15 @@ ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شو�
   (`kind: receipt|payment|transfer` → `Receipt` / `TreasuryTransaction(payment, posted)` / `TreasuryTransfer(posted)`
   + `print_url`). ماژول‌ها: `treasury/voucher_compose.py` (خالص/قابل تست) و `treasury/voucher_compose_views.py`.
   چاپ نهایی با `TreasuryVoucherDialog` روی همان `print_url` (قالب جای‌نگهدار + بارکد).
+- **قالب‌های الگوی بانک پاسارگاد (۲۰۲۶-۱۱-۰۷):** دو نوع سند چاپی جدید در `treasury/print_templates.py`:
+  `interbank` («حواله بین‌بانکی (شبا)» — فرم دستور پرداخت الکترونیکی بین‌بانکی پایا/ساتنا در A4) و
+  `cash` («فیش نقدی» — برگ دریافت/پرداخت نقدی در A5)؛ هر دو با خانه‌های عددی مبلغ و شبا
+  (`{{amount_boxes}}` / `{{destination_iban_boxes}}` — کلیدهای امن HTML). انتخاب خودکار قالب:
+  `voucher_compose.template_kind_for()` و `vouchers.build_transaction_voucher` →
+  `instrument_kind='sheba'` ⇒ interbank، `'cash'` ⇒ cash. تصاویر مرجع در
+  `docs/refs/pasargad-satna-transfer-form.jpg` و `docs/refs/pasargad-cash-receipt.png`.
+  فیلدهای مقصد (شبا/حساب/نام/کد ملی/بانک) به `TreasuryTransaction` اضافه شد
+  (مایگریشن `0011`) و با `iban.is_valid` (mod 97) اعتبارسنجی می‌شوند؛ seed در `0012`.
 - `AttachmentPreviewDialog` — پیش‌نمایش PDF/عکس/متن بدون دانلود + «باز کردن در تب جدید»/«دریافت».
 - الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
 
@@ -448,8 +457,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `12ba969f4 feat(treasury): issue vouchers from a live print-preview form`
-- **Live:** frontend `main.75d4f27a.js` (HTTP 200) · backend deployed (voucher-preview/issue)، gunicorn/celery/nginx active.
+- **Last commit:** `b4b935920 docs(agents): treasury voucher composer deployed`
+- **Live:** frontend `main.3c093d7c.js` (HTTP 200) · backend deployed (voucher-preview/issue + قالب‌های شبا/نقدی، مایگریشن‌های 0011/0012 روی public و `kpsmi`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`

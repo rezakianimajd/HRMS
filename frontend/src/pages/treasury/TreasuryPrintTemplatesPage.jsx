@@ -19,6 +19,8 @@ const KIND_LABEL = {
   receipt: 'فیش دریافت',
   payment: 'فیش پرداخت',
   bank_order: 'دستور بین‌بانکی',
+  interbank: 'حواله بین‌بانکی (شبا)',
+  cash: 'فیش نقدی',
   transfer: 'رسید انتقال',
   cheque_receipt: 'رسید تحویل چک',
 };

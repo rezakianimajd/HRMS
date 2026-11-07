@@ -88,7 +88,8 @@ class ReceiptViewSet(BaseViewSet):
 
         obj = self.get_object()
         payload = build_receipt_voucher(obj, request)
-        template = get_default_template(obj.company, 'receipt')
+        template_kind = 'cash' if getattr(obj, 'method', '') in ('cash', 'pos') else 'receipt'
+        template = get_default_template(obj.company, template_kind)
         payload['html'] = render_template(template, build_context(payload))
         payload['template_id'] = getattr(template, 'id', None)
         payload['template_name'] = getattr(template, 'name', '')
