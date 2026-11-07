@@ -461,8 +461,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `421b7763e refactor(correspondence): streamline the incoming-letter dialog and link contracts`
-- **Live:** frontend `main.756b6de5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed، gunicorn/celery/nginx active.
+- **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
+- **Live:** frontend `main.1fad571b.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0019`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -472,6 +472,10 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `/external-contracts/` (FK جدید `Letter.contract`، مایگریشن `0018`) و بخش «طرفین مکاتبه» چیدمان دوستونی فشرده دارد.
     پیش‌فرض نامه‌های وارده: گیرنده = **مهدیه جمشیدنیا** و مخاطب = **مرتضی اسدنژاد** (اگر نبود، یک‌بار با
     `POST /correspondents/` ساخته می‌شود).
+  - **نمای جزئیات و ردیف‌های فهرست** هم به همان ساختار جدید درآمدند: «تحویل‌دهنده / ثبت‌کنندهٔ ورود» (با
+    fallback از `entered_by_label` قدیمی)، حذف اندیکاتور/ترنسمیتال/شماره طرف مقابل/سمت ارسال‌کننده/بایگانی/تنظیم‌کننده،
+    و نمایش «قرارداد مرتبط». دادهٔ قدیمی با مایگریشن `0019_backfill_delivered_by` به `delivered_by_name` منتقل شد
+    (۳٬۲۳۵ نامه).
 - **نگاشت نام‌ها (صفحهٔ مستقل `/correspondence/name-mapping`):** کاربردهای تخصصی از رجیستری `correspondences/alias_purposes.py`
   (ارجاع / ارجاع برون‌سازمانی / فرستنده / گیرنده / طرف حساب / تحویل‌دهنده / مخاطب / سازمان / **موضوع → نوع مکاتبه** / همهٔ فیلدها)،
   «نگاشت دو مسیره» (sender ↔ receiver، فقط برای این دو دامنه)، چند مقصد برای یک نام با برچسب خط‌تیره‌ای،

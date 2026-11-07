@@ -499,6 +499,10 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
       DATE_KEYS.forEach((key) => { next[key] = safeDate(initial[key]); });
       next.direction = initial.direction || 'incoming';
       next.sender_kind = initial.sender_party ? 'party' : 'employee';
+      /* ثبت‌کنندهٔ قدیمی → تحویل‌دهنده (مهاجرت نرم در ویرایش) */
+      if (!next.delivered_by && !next.delivered_by_name && initial.entered_by_label) {
+        next.delivered_by_name = initial.entered_by_label;
+      }
       next.register = false;
       setForm(next);
     } else {
@@ -1208,24 +1212,20 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [bulkSaving, setBulkSaving] = useState(false);
 
   const EDITABLE_FIELDS = [
-    'number', 'indicator_no', 'transmittal_no', 'external_number',
-    'company_reg_no', 'company_reg_date', 'unit_reg_no', 'unit_reg_date', 'unit_name',
+    'number', 'company_reg_no', 'company_reg_date', 'unit_reg_no', 'unit_reg_date', 'unit_name',
     'subject', 'category', 'delivery_type', 'entry_method', 'entry_time',
     'delivered_by', 'delivered_by_name',
-    'sender_employee', 'sender_name', 'sender_title', 'sender_party',
-    'party_account', 'receiver_employee', 'receiver_name',
+    'sender_employee', 'sender_name', 'sender_party',
+    'party_account', 'receiver_employee', 'receiver_name', 'contract',
     'letter_date', 'due_date', 'priority', 'status',
   ];
   const NULLABLE_FIELDS = [
     'category', 'sender_employee', 'receiver_employee', 'sender_party', 'party_account',
-    'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time',
+    'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time', 'contract',
   ];
 
   const seedDraft = (letter) => ({
     number: letter.number || '',
-    indicator_no: letter.indicator_no || '',
-    transmittal_no: letter.transmittal_no || '',
-    external_number: letter.external_number || '',
     company_reg_no: letter.company_reg_no || '',
     company_reg_date: safeDate(letter.company_reg_date),
     unit_reg_no: letter.unit_reg_no || '',
@@ -1240,11 +1240,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     delivered_by_name: letter.delivered_by_name || '',
     sender_employee: letter.sender_employee || '',
     sender_name: letter.sender_name || '',
-    sender_title: letter.sender_title || '',
     sender_party: letter.sender_party || '',
     party_account: letter.party_account || '',
     receiver_employee: letter.receiver_employee || '',
     receiver_name: letter.receiver_name || '',
+    contract: letter.contract || '',
     letter_date: safeDate(letter.letter_date),
     due_date: safeDate(letter.due_date),
     priority: letter.priority || 'normal',
@@ -1866,7 +1866,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   const received = letter.received_date ? dateLabel(letter.received_date) : '—';
                   const meta = joinParts(
                     letter.entry_time ? `ساعت ورود ${timeLabel(letter.entry_time)}` : '',
-                    letter.entered_by_label ? `ثبت‌کننده: ${letter.entered_by_label}` : '',
+                    letter.delivered_by_label
+                      ? `تحویل‌دهنده: ${letter.delivered_by_label}`
+                      : (letter.delivered_by_name || letter.entered_by_label
+                        ? `تحویل‌دهنده: ${letter.delivered_by_name || letter.entered_by_label}` : ''),
                     letter.entry_method_display || '',
                   );
                   return (
@@ -1890,9 +1893,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 }
                 const numberText = letter.number ? toPersianDigits(letter.number) : 'بدون شماره';
                 const meta = joinParts(
-                  letter.indicator_no ? `اندیکاتور ${toPersianDigits(letter.indicator_no)}` : '',
-                  letter.transmittal_no ? `ترقیم ${toPersianDigits(letter.transmittal_no)}` : '',
-                  letter.external_number ? toPersianDigits(letter.external_number) : '',
+                  letter.contract_title ? `قرارداد: ${letter.contract_title}` : '',
+                  letter.contract_number ? `شماره قرارداد ${toPersianDigits(letter.contract_number)}` : '',
                 );
                 return (
                   <CellText mono weight={800} title={meta || undefined}>
@@ -2221,8 +2223,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   </Typography>
                   <Typography noWrap sx={{ fontSize: 12.5, color: MUTED, fontWeight: 600 }}>
                     {activeLetter.number ? `شماره: ${toPersianDigits(activeLetter.number)}` : 'بدون شماره'}
-                    {activeLetter.indicator_no ? ` · اندیکاتور: ${activeLetter.indicator_no}` : ''}
-                    {activeLetter.transmittal_no ? ` · ترنسمیتال: ${activeLetter.transmittal_no}` : ''}
+                    {activeLetter.contract_title ? ` · قرارداد: ${activeLetter.contract_title}` : ''}
                     {activeLetter.entry_method_display ? ` · ورود: ${activeLetter.entry_method_display}` : ''}
                   </Typography>
                 </Box>
@@ -2302,7 +2303,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     <InfoTable rows={[
                       ['نحوهٔ ورود', activeLetter.entry_method_display],
                       ['ساعت ورود', activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''],
-                      ['ثبت‌کنندهٔ ورود', activeLetter.entered_by_label],
+                      ['نوع تحویل', activeLetter.delivery_type_display],
+                      ['تحویل‌دهنده / ثبت‌کنندهٔ ورود',
+                        activeLetter.delivered_by_label
+                        || activeLetter.delivered_by_name
+                        || activeLetter.entered_by_label],
                       ['تاریخ ورود', dateLabel(activeLetter.received_date)],
                       ['واحد ثبت‌کننده', activeLetter.unit_name],
                       ['تاریخ نامه', dateLabel(activeLetter.letter_date)],
@@ -2312,31 +2317,32 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   <InfoGroup icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
                     <InfoTable rows={[
                       ['شماره نامه', activeLetter.number ? toPersianDigits(activeLetter.number) : ''],
-                      ['شماره اندیکاتور', activeLetter.indicator_no],
-                      ['ترنسمیتال', activeLetter.transmittal_no],
                       ['شماره ثبت ورود به شرکت',
                         activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''],
                       ['تاریخ ثبت ورود به شرکت', dateLabel(activeLetter.company_reg_date)],
                       ['شماره ثبت ورود به واحد',
                         activeLetter.unit_reg_no ? toPersianDigits(activeLetter.unit_reg_no) : ''],
                       ['تاریخ ثبت ورود به واحد', dateLabel(activeLetter.unit_reg_date)],
-                      ['شماره نامه طرف مقابل', activeLetter.external_number],
                       ['پاسخ به نامه', activeLetter.reply_number],
                     ]} />
                   </InfoGroup>
 
                   <InfoGroup icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
                     <InfoTable rows={[
-                      ['سازمان ارسال‌کننده', activeLetter.sender_organization_name],
-                      ['نام ارسال‌کننده', activeLetter.sender_name],
-                      ['سمت ارسال‌کننده', activeLetter.sender_title],
-                      ['طرف حساب (سازمان)', activeLetter.organization_name],
+                      ['فرستنده', activeLetter.sender_label
+                        || activeLetter.sender_name
+                        || activeLetter.sender_party_name
+                        || activeLetter.sender_organization_name],
+                      ['گیرنده', activeLetter.receiver_employee_label || activeLetter.receiver_name],
                       ['مخاطب', activeLetter.correspondent_name],
-                      ['گیرنده', activeLetter.receiver_name],
+                      ['طرف حساب', activeLetter.party_account_name || activeLetter.organization_name],
+                      ['قرارداد مرتبط', activeLetter.contract_title
+                        || (activeLetter.contract_number
+                          ? `شماره ${toPersianDigits(activeLetter.contract_number)}` : '')],
                     ]} />
                   </InfoGroup>
 
-                  <InfoGroup icon={MailOutlineIcon} title="مشخصات و بایگانی" color={INTERNAL}>
+                  <InfoGroup icon={MailOutlineIcon} title="مشخصات" color={INTERNAL}>
                     <InfoTable rows={[
                       ['نوع مکاتبه', activeLetter.category_title],
                       ['اولویت', activeLetter.priority_display],
@@ -2344,10 +2350,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       ['مهلت پاسخ', activeLetter.due_date
                         ? `${dateLabel(activeLetter.due_date)} (${daysLabel(daysBetween(activeLetter.due_date))})`
                         : ''],
-                      ['شماره قرارداد', activeLetter.contract_number],
-                      ['شماره بایگانی', activeLetter.archive_ref],
-                      ['تنظیم‌کننده', activeLetter.drafter_name],
-                      ['ثبت‌کننده', activeLetter.created_by_name],
+                      ['ثبت‌کننده در سامانه', activeLetter.created_by_name],
                       ['مبلغ', activeLetter.amount
                         ? `${money(activeLetter.amount)} ${activeLetter.currency || 'ریال'}` : ''],
                     ]} />
