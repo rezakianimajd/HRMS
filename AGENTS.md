@@ -523,8 +523,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.c7ae1108.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
+- **Last commit:** `332852d97 refactor(correspondence): extract letter details dialog and write path hook`
+- **Live:** frontend `main.b4253a1d.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
 - **بازطراحی ماژول خرید و تدارکات — مرحلهٔ بک‌اند (۲۰۲۶-۱۱-۰۸):** مدل‌های جدید در `procurement/models.py`
   (به سبک ماژول قراردادها) اضافه شدند و مایگریشن `procurement.0004` روی همهٔ schemaها اعمال شد:
   - **استعلام (RFQ):** `Inquiry` (شماره، موضوع، درخواست مبدأ، پروژه، واحد، مهلت، روش ارزیابی، ارز،
