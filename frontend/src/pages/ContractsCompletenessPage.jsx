@@ -15,7 +15,7 @@ import {
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
-import LaunchIcon from '@mui/icons-material/Launch';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
 import { INK, MUTED } from '../pages/accounting/AccountingDashboardUI';
@@ -26,7 +26,7 @@ import {
   ModulePager, ModuleTable, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import {
-  AMBER, EmptyNote, MetricTile, Panel, RED, SLATE, StatRow, Track, VIOLET, compactMoney, money, num,
+  AMBER, EmptyNote, MetricTile, Panel, RED, SLATE, StatRow, Track, VIOLET, money, num,
 } from './contracts/contractsDashboardKit';
 
 const SEVERITY_META = {
@@ -63,11 +63,16 @@ const ScoreBar = ({ score }) => {
   const value = Math.max(0, Math.min(100, num(score)));
   const color = value >= 80 ? '#0f766e' : (value >= 50 ? AMBER : RED);
   return (
-    <Stack spacing={0.3} sx={{ minWidth: 74 }}>
-      <Typography sx={{ fontSize: 10.5, fontWeight: 800, color, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+    <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.6}>
+      <Typography sx={{
+        fontSize: 11, fontWeight: 900, color,
+        fontFamily: 'var(--hrms-table-number-font, inherit)',
+      }}>
         {formatPersianPercent(value)}
       </Typography>
-      <Track value={value} color={color} height={5} />
+      <Box sx={{ width: 34, flexShrink: 0 }}>
+        <Track value={value} color={color} height={5} />
+      </Box>
     </Stack>
   );
 };
@@ -277,7 +282,7 @@ const ContractsCompletenessPage = () => {
         {rows.length ? (
           <>
             <ModuleTable
-              tableTheme={moduleTheme.tableTheme}
+              tableTheme={{ ...moduleTheme.tableTheme, singleLine: true }}
               ariaLabel="جدول نواقص قراردادها"
               containerRef={tableRef}
               tableHeight={tableHeight}
@@ -287,102 +292,51 @@ const ContractsCompletenessPage = () => {
               rowKey={(row) => row.id}
               onRowClick={(row) => setDetail(row)}
               emptyText="قراردادی با این شرایط پیدا نشد."
-              minWidth={1180}
+              minWidth={980}
               tableLayout="fixed"
               columns={[
                 {
-                  key: 'contract', label: 'قرارداد', width: '22%',
+                  key: 'number', label: 'شماره قرارداد', width: '14%',
                   render: (row) => (
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography noWrap sx={{
-                        fontSize: 11.5, fontWeight: 900, color: INK,
-                        fontFamily: 'var(--hrms-table-number-font, inherit)',
-                      }}>
-                        {row.number ? toPersianDigits(row.number) : `#${toPersianDigits(row.id)}`}
-                      </Typography>
-                      <Typography noWrap title={row.subject} sx={{ fontSize: 11, color: MUTED }}>
-                        {row.subject || '—'}
-                      </Typography>
-                    </Box>
+                    <Typography noWrap sx={{
+                      fontSize: 11.5, fontWeight: 900, color: INK,
+                      fontFamily: 'var(--hrms-table-number-font, inherit)',
+                    }}>
+                      {row.number ? toPersianDigits(row.number) : `#${toPersianDigits(row.id)}`}
+                    </Typography>
                   ),
                 },
                 {
-                  key: 'party', label: 'طرف حساب', width: '15%',
+                  key: 'party', label: 'طرف حساب', width: '24%',
                   render: (row) => (
-                    <Typography noWrap title={row.party_name} sx={{ fontSize: 11.5 }}>
+                    <Typography noWrap title={row.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                       {row.party_name || '—'}
                     </Typography>
                   ),
                 },
                 {
-                  key: 'status', label: 'وضعیت', width: '9%', align: 'center',
+                  key: 'subject', label: 'موضوع', width: '36%',
                   render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: INK }}>
-                      {row.status_label || '—'}
+                    <Typography noWrap title={row.subject} sx={{ fontSize: 11.5, color: INK }}>
+                      {row.subject || '—'}
                     </Typography>
                   ),
                 },
                 {
-                  key: 'amount', label: 'مبلغ', width: '11%', align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{
-                      fontSize: 11, fontFamily: 'var(--hrms-table-number-font, inherit)',
-                    }}>
-                      {row.amount ? compactMoney(row.amount) : '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'documents', label: 'مدارک', width: '6%', align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{
-                      fontSize: 11, fontWeight: 800,
-                      color: row.documents_count ? INK : RED,
-                      fontFamily: 'var(--hrms-table-number-font, inherit)',
-                    }}>
-                      {formatPersianNumber(row.documents_count || 0)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'end_date', label: 'پایان', width: '9%', align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{
-                      fontSize: 10.5, color: MUTED,
-                      fontFamily: 'var(--hrms-table-number-font, inherit)',
-                    }}>
-                      {dateLabel(row.end_date)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'issues', label: 'نواقص', width: '16%',
-                  render: (row) => (
-                    <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
-                      {(row.issues || []).slice(0, 2).map((issue) => (
-                        <SeverityChip key={issue.code} severity={issue.severity} />
-                      ))}
-                      {row.issue_count > 2 ? (
-                        <Chip size="small" label={`+${toPersianDigits(row.issue_count - 2)}`}
-                          sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
-                      ) : null}
-                    </Stack>
-                  ),
-                },
-                {
-                  key: 'score', label: 'امتیاز سلامت', width: '9%', align: 'center',
+                  key: 'score', label: 'امتیاز', width: '12%', align: 'center',
                   render: (row) => <ScoreBar score={row.score} />,
                 },
                 {
-                  key: 'actions', label: 'پرونده', width: '6%', align: 'center',
+                  key: 'actions', label: 'ویرایش پرونده', width: '14%', align: 'center',
                   render: (row) => (
-                    <Button size="small" variant="text" sx={{ minWidth: 0, px: 0.5 }}
-                      aria-label="باز کردن پروندهٔ قرارداد"
+                    <Button size="small" variant="outlined" startIcon={<EditOutlinedIcon />}
+                      aria-label="ویرایش پرونده"
                       onClick={(event) => {
                         event.stopPropagation();
                         navigate(`/external-contracts/${row.id}`);
-                      }}>
-                      <LaunchIcon sx={{ fontSize: 16 }} />
+                      }}
+                      sx={{ fontSize: 10.5, py: 0.15, px: 1, whiteSpace: 'nowrap' }}>
+                      ویرایش پرونده
                     </Button>
                   ),
                 },

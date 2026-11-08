@@ -559,7 +559,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
-- **Live:** frontend `main.3b8c274f.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.46d6e81c.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
@@ -598,9 +598,10 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     تست: `contracts/tests_completeness.py` (۲۲ تست DB-free).
   - **فرانت:** `pages/ContractsCompletenessPage.jsx` روی مسیر `/contracts-completeness` (منوی «پایش قراردادها →
     نواقص قراردادها»)، با کیت مشترک داشبورد: ۵ کاشی شاخص (کل/دارای نقص/بدون مدرک/بدون درصد پروژه/فیلدهای ناقص)،
-    پنل فیلتر (جست‌وجو، شدت، گروه، نوع نقص، چیپ‌های شدت)، `ModuleTable` + `ModulePager` با ستون «نواقص» و
-    «امتیاز سلامت» (Track)، دیالوگ جزئیات نواقص هر قرارداد (گروه‌بندی‌شده + لینک «باز کردن پروندهٔ قرارداد»)
-    و چاپ با موتور چاپ (`printElement`). تست: `__tests__/contractsCompletenessSmoke.test.js`.
+    پنل فیلتر (جست‌وجو، شدت، گروه، نوع نقص، چیپ‌های شدت)، **جدول تک‌ردیفی با پنج ستون** (شمارهٔ قرارداد،
+    طرف حساب، موضوع، امتیاز، «ویرایش پرونده»)، `ModulePager`، دیالوگ جزئیات نواقص هر قرارداد (گروه‌بندی‌شده +
+    لینک «باز کردن پروندهٔ قرارداد») و چاپ با موتور چاپ (`printElement`).
+    تست: `__tests__/contractsCompletenessSmoke.test.js`.
   - **کاتالوگ مجوزها بازتولید شد:** `python scripts/build_permission_catalog.py` → کپی روی
     `core/permission_catalog_data.json` (اکنون **۲۶۵ منو / ۱۰۹۷ کد**). این کار پنج آیتم قدیمی خرید را هم
     که در `menuConfig.js` بودند ولی در کاتالوگ نبودند اضافه کرد (`procurement-inquiries/profiles/proforma/

@@ -132,13 +132,20 @@ test('contracts completeness page lists deficiencies, filters and details', asyn
   expect(container.textContent).toContain('نوع نقص');
   expect(container.textContent).toContain('بحرانی');
 
-  // جدول
+  // جدول تک‌ردیفی با ستون‌های درخواستی
   const table = container.querySelector('[aria-label="جدول نواقص قراردادها"]');
   expect(table).toBeTruthy();
+  expect(table.textContent).toContain('شماره قرارداد');
+  expect(table.textContent).toContain('طرف حساب');
+  expect(table.textContent).toContain('موضوع');
+  expect(table.textContent).toContain('امتیاز');
+  expect(table.textContent).toContain('ویرایش پرونده');
   expect(table.textContent).toContain('C-۱۰۰');
   expect(table.textContent).toContain('قرارداد ساخت سالن تولید');
   expect(table.textContent).toContain('شرکت ساختمانی الف');
-  expect(table.textContent).toContain('امتیاز سلامت');
+  expect(table.querySelector('[aria-label="ویرایش پرونده"]')).toBeTruthy();
+  // ستون‌های حذف‌شده نباید برگردند
+  expect(table.textContent).not.toContain('امتیاز سلامت');
   expect(container.textContent).toContain('قراردادهای نیازمند تکمیل');
 
   // دیالوگ جزئیات با فهرست نواقص و لینک پرونده
