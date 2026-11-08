@@ -19,10 +19,6 @@ const STATUS_COLORS = { active: '#0f766e', inactive: '#64748b', blacklisted: '#b
 
 const money = (value) => `${formatPersianNumber(Math.round(Number(value) || 0))} ریال`;
 
-const cardSx = {
-  p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider',
-  bgcolor: 'background.paper', boxShadow: 'none',
-};
 const tableCardSx = {
   borderRadius: 'var(--hrms-table-radius, 16px)', border: '1px solid',
   borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none',
@@ -109,7 +105,7 @@ const ProcurementProfilesPage = () => {
         )}
       />
 
-      <Paper sx={cardSx}>
+      <Paper sx={{ ...tableCardSx, ...tableFrameSx }}>
         <ModuleToolbar
           theme={moduleTheme}
           search={search}
@@ -138,14 +134,11 @@ const ProcurementProfilesPage = () => {
           activeFilterCount={activeChips.length}
           onReset={() => { setSearch(''); setStatusFilter('all'); setSortBy('documents'); }}
         />
-      </Paper>
-
 
       {error ? (
         <Typography sx={{ color: 'error.main', fontSize: 12, mb: 1 }}>{error}</Typography>
       ) : null}
 
-      <Paper sx={{ ...tableCardSx, ...tableFrameSx }}>
         <Box sx={{ pt: 0.5 }}>
         <ModuleTable
         tableTheme={moduleTheme.tableTheme}
