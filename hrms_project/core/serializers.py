@@ -48,23 +48,47 @@ class UserSerializer(serializers.ModelSerializer):
     employee_gender = serializers.SerializerMethodField()
     employee_gender_display = serializers.SerializerMethodField()
     fine_permissions = serializers.SerializerMethodField()
+    is_full_access = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_superuser', 'is_active', 'date_joined', 'last_login',
-            'companies', 'role', 'permissions', 'fine_permissions',
+            'companies', 'role', 'permissions', 'fine_permissions', 'is_full_access',
             'employee_id', 'employee_name', 'employee_code', 'employee_photo',
             'employee_gender', 'employee_gender_display',
         ]
         read_only_fields = ['id', 'date_joined', 'last_login']
 
-    def get_fine_permissions(self, obj):
-        """مجوزهای ریز (module.menu.action) برای کنترل دکمه‌ها در UI."""
-        from core.engines.permission_engine import fine_permissions_for
+    def get_is_full_access(self, obj):
+        """آیا کاربر «دسترسی کامل» دارد؟ (سوپریوزر یا UserAccess.is_full_access)"""
+        from core.engines.permission_engine import user_access_record
 
-        return fine_permissions_for(obj)
+        if getattr(obj, 'is_superuser', False):
+            return True
+        access = user_access_record(obj)
+        return bool(access and access.is_full_access)
+
+    def get_fine_permissions(self, obj):
+        """کدهای ریز **داده‌شده** (module.menu.action) برای کنترل دکمه‌ها در UI.
+
+        فقط کدهای True برگردانده می‌شوند و برای کاربران «دسترسی کامل» دیکشنری خالی
+        است (UI با ``is_full_access`` همه‌چیز را مجاز می‌بیند) — قبلاً کل ۱۰۷۲ کد
+        در هر پاسخ ``/auth/me`` فرستاده می‌شد (~۴۰KB).
+        """
+        from core.engines.permission_engine import fine_permissions_for, user_access_record
+
+        if getattr(obj, 'is_superuser', False):
+            return {}
+        access = user_access_record(obj)
+        if access is not None and access.is_full_access:
+            return {}
+        return {
+            code: True
+            for code, value in fine_permissions_for(obj).items()
+            if value
+        }
 
     @staticmethod
     def _profile(obj):

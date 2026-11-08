@@ -469,7 +469,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.c4c59b58.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.5dc9ce27.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -504,6 +504,21 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `--fallback-dir` برای مسیرهای شکستهٔ `Z:\Group\Accounting\نامه ها و اسکن ها` و `اداری\بانک` استفاده شد.
     نتیجه: **outgoing ۴ فایل/۴ نامه، bank ۲۰/۲۰، university ۸۰۸/۸۰۲** (۲٫۱ گیگابایت؛ ۱ فایل گم‌شده)؛
     `relocate_letter_attachments --sync-dms` هم ۸۶۱ سند تازه را در DMS ایندکس کرد (کل پیوست‌ها: ۶٬۷۲۵).
+- **نگهداشت‌پذیری مکاتبات — بستهٔ `views/` و سبک‌سازی `/auth/me` (۲۰۲۶-۱۱-۰۸):**
+  - `correspondences/views.py` (۲٬۴۸۹ خط) به بستهٔ `correspondences/views/` شکسته شد:
+    `base.py` (واردات/ثابت‌ها/helperهای ارجاع + `BaseLetterViewSet`)، `legacy.py`، `letters.py`
+    (انواع/سری/مخاطبین + `LetterViewSet`)، `referrals.py`، `attachments.py`، `aliases.py`، `requests.py`.
+    `views/__init__.py` همهٔ ویوست‌ها و helperها را re-export می‌کند، بنابراین
+    `from correspondences.views import LetterViewSet` (و مسیر رشته‌ای `dev_query_profile`) بدون تغییر کار می‌کند.
+  - `/auth/me`: فیلد جدید **`is_full_access`** و `fine_permissions` فقط شامل کدهای **داده‌شده**
+    (برای سوپریوزر/دسترسی‌کامل دیکشنری خالی) → پاسخ از ~۴۰–۵۰KB به **۱٫۴KB** رسید.
+    `correspondencePermissions.js` هم با `is_full_access` کوتاه‌می‌شود.
+  - تست جدید `correspondences/tests_structure.py` (۱۰ تست): نبودِ `views.py`، وجود ماژول‌ها،
+    import همهٔ ویوست‌ها/helperها، صحت `router.registry`، سقف ۱۰۰۰ خط برای هر ماژول، و رفتار
+    `/auth/me` (کدهای داده‌شده/دسترسی کامل/سوپریوزر).
+  - **باقی‌ماندهٔ این فاز:** شکستن `CorrespondenceLettersPage.jsx` (۲٬۹۳۱ خط) به
+    `LetterFormDialog` + `LetterDetailsDrawer` + `LettersTable` + هوک‌های `useLetterListState`/`useLetterMutations`
+    (و شیر کردن جزئیات با تب مکاتبات قرارداد) و افزودن تست‌های DB-محور روی سرور.
 - **بازنشستگی استک قدیمی مکاتبات (۲۰۲۶-۱۱-۰۸):**
   - سمت کاربر: مسیر `/correspondences` حالا به `/correspondence` **ریدایرکت** می‌شود و دو منوی
     «مکاتبات اداری» (ماژول مدارک) و «مکاتبات» (ارتباطات و اسناد) به `/correspondence` اشاره می‌کنند.

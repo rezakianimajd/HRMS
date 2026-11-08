@@ -64,7 +64,7 @@ const legacyAllowed = (user, action) => {
  */
 export const correspondenceCan = (user, action, { direction, menus } = {}) => {
   if (!user) return false;
-  if (user.is_superuser) return true;
+  if (user.is_superuser || user.is_full_access) return true;
 
   const wanted = ACTION_FALLBACKS[action] || [action];
   const targets = menus || (direction ? (DIRECTION_MENUS[direction] || READ_MENUS) : READ_MENUS);
