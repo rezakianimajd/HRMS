@@ -44,6 +44,19 @@ class BaseViewSet(viewsets.ModelViewSet):
         serializer.save(company=_company(self.request))
 
 
+class SupplierFilterMixin:
+    """فیلتر ``?supplier=<id>`` برای اسناد مرتبط با یک طرف حساب (پروندهٔ خرید)."""
+
+    supplier_lookup = 'supplier_id'
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        supplier_id = self.request.query_params.get('supplier')
+        if supplier_id:
+            qs = qs.filter(**{self.supplier_lookup: supplier_id})
+        return qs
+
+
 class SupplierCategoryViewSet(BaseViewSet):
     serializer_class = SupplierCategorySerializer
     queryset = SupplierCategory.objects.all()
@@ -129,7 +142,7 @@ class PurchaseRequestViewSet(BaseViewSet):
         return Response(self.get_serializer(obj).data)
 
 
-class PurchaseOrderViewSet(BaseViewSet):
+class PurchaseOrderViewSet(SupplierFilterMixin, BaseViewSet):
     serializer_class = PurchaseOrderSerializer
     queryset = PurchaseOrder.objects.select_related('supplier', 'source_request').prefetch_related('lines')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -220,7 +233,7 @@ class GoodsReceiptNoteViewSet(BaseViewSet):
         return Response(self.get_serializer(obj).data)
 
 
-class PurchaseInvoiceViewSet(BaseViewSet):
+class PurchaseInvoiceViewSet(SupplierFilterMixin, BaseViewSet):
     serializer_class = PurchaseInvoiceSerializer
     queryset = PurchaseInvoice.objects.select_related('supplier', 'order').prefetch_related('lines')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -255,7 +268,8 @@ class PurchaseInvoiceViewSet(BaseViewSet):
         return Response(self.get_serializer(obj).data)
 
 
-class PurchasePaymentViewSet(BaseViewSet):
+class PurchasePaymentViewSet(SupplierFilterMixin, BaseViewSet):
+    supplier_lookup = 'invoice__supplier_id'
     serializer_class = PurchasePaymentSerializer
     queryset = PurchasePayment.objects.select_related('invoice')
     ordering = ['-date', '-created_at']
@@ -279,7 +293,8 @@ class ProcurementApprovalPolicyViewSet(BaseViewSet):
 # ---------------------------------------------------------------------------
 # استعلام (RFQ) / پیشنهاد قیمت / پیش‌فاکتور / تضامین / اسناد
 # ---------------------------------------------------------------------------
-class InquiryViewSet(BaseViewSet):
+class InquiryViewSet(SupplierFilterMixin, BaseViewSet):
+    supplier_lookup = 'suppliers__supplier_id'
     serializer_class = InquirySerializer
     queryset = Inquiry.objects.select_related(
         'project', 'source_request', 'currency', 'awarded_quotation__supplier',
@@ -360,7 +375,7 @@ class InquiryViewSet(BaseViewSet):
         return Response({'added': added, 'total': inquiry.suppliers.count()})
 
 
-class QuotationViewSet(BaseViewSet):
+class QuotationViewSet(SupplierFilterMixin, BaseViewSet):
     serializer_class = QuotationSerializer
     queryset = Quotation.objects.select_related(
         'supplier', 'inquiry', 'currency',
@@ -375,10 +390,13 @@ class QuotationViewSet(BaseViewSet):
         inquiry_id = self.request.query_params.get('inquiry')
         if inquiry_id:
             qs = qs.filter(inquiry_id=inquiry_id)
+        supplier_id = self.request.query_params.get('supplier')
+        if supplier_id:
+            qs = qs.filter(supplier_id=supplier_id)
         return qs
 
 
-class ProformaInvoiceViewSet(BaseViewSet):
+class ProformaInvoiceViewSet(SupplierFilterMixin, BaseViewSet):
     serializer_class = ProformaInvoiceSerializer
     queryset = ProformaInvoice.objects.select_related(
         'supplier', 'order', 'quotation', 'currency', 'converted_invoice',

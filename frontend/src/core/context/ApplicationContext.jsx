@@ -15,7 +15,14 @@ export const ApplicationProvider = ({ children }) => {
       setApplications(res.data.applications || []);
       const stored = JSON.parse(localStorage.getItem('current_application') || 'null');
       const backendCurrent = res.data.applications?.find(a => a.id === res.data.current_application_id);
-      if (stored) {
+      // نسخهٔ تازهٔ همان ماژول از سرور (عنوان/آیکون/رنگ ممکن است در DB تغییر کرده باشد)
+      const storedFresh = stored
+        ? res.data.applications?.find(a => a.id === stored.id || a.slug === stored.slug)
+        : null;
+      if (storedFresh) {
+        setCurrentApp(storedFresh);
+        localStorage.setItem('current_application', JSON.stringify(storedFresh));
+      } else if (stored) {
         setCurrentApp(stored);
       } else if (backendCurrent) {
         setCurrentApp(backendCurrent);
