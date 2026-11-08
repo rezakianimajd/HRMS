@@ -563,11 +563,10 @@ class LetterViewSet(BaseLetterViewSet):
             )
 
         params = self.request.query_params
-        # ترتیب پیش‌فرض بر اساس «تاریخ ورود» است؛ اگر نامه تاریخ ورود نداشته باشد
-        # (صادره/داخلی) از «تاریخ نامه» استفاده می‌شود.
+        # ترتیب پیش‌فرض: «تاریخ ورود» (وارده) → «تاریخ ارسال» (صادره) → «تاریخ نامه».
         from django.db.models.functions import Coalesce
 
-        qs = qs.annotate(effective_date=Coalesce('received_date', 'letter_date'))
+        qs = qs.annotate(effective_date=Coalesce('received_date', 'sent_date', 'letter_date'))
         qs = self._apply_view_filters(qs, params)
         return self._apply_search(qs, params.get('search') or params.get('q'))
 

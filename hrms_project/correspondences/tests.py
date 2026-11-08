@@ -152,6 +152,17 @@ class LettersMetaTests(SimpleTestCase):
         self.assertEqual(set(choices), {'employee', 'party'})
         self.assertEqual(Letter._meta.get_field('sender_kind').default, 'employee')
 
+    def test_effective_date_prefers_received_then_sent_then_letter_date(self):
+        """ترتیب پیش‌فرض فهرست: تاریخ ورود → تاریخ ارسال → تاریخ نامه."""
+        import inspect
+
+        from correspondences.views import LetterViewSet
+
+        source = inspect.getsource(LetterViewSet.get_queryset)
+        self.assertIn(
+            "Coalesce('received_date', 'sent_date', 'letter_date')", source,
+        )
+
     def test_party_label_falls_back_to_free_text_name(self):
         """برچسب «طرف حساب» وقتی FK خالی است از نام آزاد پر می‌شود."""
         from types import SimpleNamespace

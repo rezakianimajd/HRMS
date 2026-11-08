@@ -655,7 +655,9 @@ const LetterFormDialog = ({
             width: 30, height: 30, borderRadius: '9px', display: 'grid', placeItems: 'center',
             bgcolor: alpha(ACCENT, 0.12), color: ACCENT,
           }}>
-            <InboxIcon sx={{ fontSize: 17 }} />
+            {form.direction === 'outgoing'
+              ? <SendIcon sx={{ fontSize: 17 }} />
+              : <InboxIcon sx={{ fontSize: 17 }} />}
           </Box>
           <Typography sx={{ fontSize: 14, fontWeight: 900 }}>
             {initial ? `ویرایش نامه ${initial.number || '(پیش‌نویس)'}` : 'ثبت نامهٔ جدید'}
@@ -668,14 +670,21 @@ const LetterFormDialog = ({
       <DialogContent dividers sx={{ bgcolor: alpha(SLATE, 0.02) }}>
         {error ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: '10px' }}>{error}</Alert> : null}
 
-        <FormSection icon={InboxIcon} title="ثبت و ورود" color={WARN}>
+        <FormSection
+          icon={form.direction === 'outgoing' ? SendIcon : InboxIcon}
+          title={form.direction === 'outgoing'
+            ? 'ثبت و ارسال'
+            : form.direction === 'internal' ? 'ثبت مکاتبهٔ داخلی' : 'ثبت و ورود'}
+          color={form.direction === 'outgoing' ? OUTGOING : WARN}>
           <FormTable>
             <TextField select size="small" label="جهت نامه" value={form.direction} onChange={set('direction')}>
               {Object.entries(DIRECTION_META).map(([value, item]) => (
                 <MenuItem key={value} value={value}>{item.label}</MenuItem>
               ))}
             </TextField>
-            <TextField select size="small" label="نوع تحویل" value={form.delivery_type}
+            <TextField select size="small"
+              label={form.direction === 'outgoing' ? 'نوع ارسال' : 'نوع تحویل'}
+              value={form.delivery_type}
               onChange={set('delivery_type')}>
               {(meta?.delivery_types?.length
                 ? meta.delivery_types
@@ -684,7 +693,9 @@ const LetterFormDialog = ({
                   <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
                 ))}
             </TextField>
-            <TextField select size="small" label="نحوهٔ ورود" value={form.entry_method}
+            <TextField select size="small"
+              label={form.direction === 'outgoing' ? 'نحوهٔ ثبت / ارسال' : 'نحوهٔ ورود'}
+              value={form.entry_method}
               onChange={set('entry_method')}>
               {(meta?.entry_methods?.length
                 ? meta.entry_methods
@@ -693,7 +704,9 @@ const LetterFormDialog = ({
                   <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
                 ))}
             </TextField>
-            <PersianTimeInput label="ساعت تحویل" value={form.entry_time}
+            <PersianTimeInput
+              label={form.direction === 'outgoing' ? 'ساعت ارسال' : 'ساعت تحویل'}
+              value={form.entry_time}
               onChange={(value) => setForm((prev) => ({ ...prev, entry_time: value }))} />
             <JalaliMaskedDateInput variant="outlined"
               label={form.direction === 'outgoing' ? 'تاریخ ارسال' : 'تاریخ ورود'}
@@ -703,7 +716,7 @@ const LetterFormDialog = ({
                 [form.direction === 'outgoing' ? 'sent_date' : 'received_date']: value,
               }))} />
             <PersonnelPicker
-              label="تحویل‌دهنده (پرسنل)"
+              label={form.direction === 'outgoing' ? 'تحویل‌دهنده به گیرنده (اختیاری)' : 'تحویل‌دهنده (پرسنل)'}
               value={personValue(form.delivered_by, form.delivered_by_name)}
               onChange={(option) => setForm((prev) => ({
                 ...prev,
@@ -711,29 +724,48 @@ const LetterFormDialog = ({
                 delivered_by_name: option ? option.full_name : '',
               }))}
             />
-            <TextField size="small" label="نام تحویل‌دهنده (خارج از سامانه)"
+            <TextField size="small"
+              label={form.direction === 'outgoing'
+                ? 'نام تحویل‌دهنده / پیک (خارج از سامانه)'
+                : 'نام تحویل‌دهنده (خارج از سامانه)'}
               value={form.delivered_by_name}
               onChange={set('delivered_by_name')} />
           </FormTable>
         </FormSection>
 
-        <FormSection icon={EditNoteIcon} title="شماره‌ها و تاریخ ثبت" color={INCOMING}>
+        <FormSection
+          icon={EditNoteIcon}
+          title={form.direction === 'outgoing' ? 'شماره‌ها و تاریخ ارسال' : 'شماره‌ها و تاریخ ثبت'}
+          color={form.direction === 'outgoing' ? OUTGOING : INCOMING}>
           <FormTable>
             <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')} />
             <JalaliMaskedDateInput variant="outlined" label="تاریخ نامه" value={form.letter_date}
               onChange={(value) => setForm((prev) => ({ ...prev, letter_date: value }))} />
-            <TextField size="small" label="شماره ثبت ورود به شرکت" value={form.company_reg_no}
-              onChange={set('company_reg_no')} />
-            <JalaliMaskedDateInput variant="outlined" label="تاریخ ثبت ورود به شرکت"
-              value={form.company_reg_date}
-              onChange={(value) => setForm((prev) => ({ ...prev, company_reg_date: value }))} />
-            <TextField size="small" label="شماره ثبت ورود به واحد" value={form.unit_reg_no}
-              onChange={set('unit_reg_no')} />
-            <JalaliMaskedDateInput variant="outlined" label="تاریخ ثبت ورود به واحد"
-              value={form.unit_reg_date}
-              onChange={(value) => setForm((prev) => ({ ...prev, unit_reg_date: value }))} />
-            <TextField size="small" label="واحد ثبت‌کننده / گیرنده" value={form.unit_name}
-              onChange={set('unit_name')} />
+            {form.direction === 'outgoing' ? (
+              <>
+                <TextField size="small" label="شماره اندیکاتور" value={form.indicator_no}
+                  onChange={set('indicator_no')} />
+                <TextField size="small" label="شماره ترنسمیتال" value={form.transmittal_no}
+                  onChange={set('transmittal_no')} />
+                <TextField size="small" label="شماره نامهٔ طرف مقابل" value={form.external_number}
+                  onChange={set('external_number')} />
+              </>
+            ) : (
+              <>
+                <TextField size="small" label="شماره ثبت ورود به شرکت" value={form.company_reg_no}
+                  onChange={set('company_reg_no')} />
+                <JalaliMaskedDateInput variant="outlined" label="تاریخ ثبت ورود به شرکت"
+                  value={form.company_reg_date}
+                  onChange={(value) => setForm((prev) => ({ ...prev, company_reg_date: value }))} />
+                <TextField size="small" label="شماره ثبت ورود به واحد" value={form.unit_reg_no}
+                  onChange={set('unit_reg_no')} />
+                <JalaliMaskedDateInput variant="outlined" label="تاریخ ثبت ورود به واحد"
+                  value={form.unit_reg_date}
+                  onChange={(value) => setForm((prev) => ({ ...prev, unit_reg_date: value }))} />
+                <TextField size="small" label="واحد ثبت‌کننده / گیرنده" value={form.unit_name}
+                  onChange={set('unit_name')} />
+              </>
+            )}
             <JalaliMaskedDateInput variant="outlined" label="مهلت پاسخ" value={form.due_date}
               onChange={(value) => setForm((prev) => ({ ...prev, due_date: value }))} />
           </FormTable>
@@ -1317,11 +1349,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     'delivered_by', 'delivered_by_name',
     'sender_employee', 'sender_name', 'sender_party',
     'party_account', 'party_name', 'receiver_employee', 'receiver_name', 'contract',
-    'letter_date', 'due_date', 'priority', 'status',
+    'letter_date', 'sent_date', 'due_date', 'priority', 'status',
   ];
   const NULLABLE_FIELDS = [
     'category', 'sender_employee', 'receiver_employee', 'sender_party', 'party_account',
     'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time', 'contract',
+    'sent_date',
   ];
   /* متن‌های آزاد که پاک‌شدن‌شان باید با رشتهٔ خالی ذخیره شود (نه null). */
   const EMPTY_ALLOWED_FIELDS = ['party_name'];
@@ -1349,6 +1382,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     receiver_name: letter.receiver_name || '',
     contract: letter.contract || '',
     letter_date: safeDate(letter.letter_date),
+    sent_date: safeDate(letter.sent_date),
     due_date: safeDate(letter.due_date),
     priority: letter.priority || 'normal',
     status: letter.status || 'registered',
@@ -1695,7 +1729,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     },
     ['incoming', 'all'].includes(mode) && entryMethodFilter !== 'all' && {
       key: 'entry_method',
-      label: `نحوهٔ ورود: ${ENTRY_METHOD_META[entryMethodFilter]?.label || entryMethodFilter}`,
+      label: `${preset.direction === 'outgoing' ? 'نحوهٔ ثبت' : 'نحوهٔ ورود'}: `
+        + `${ENTRY_METHOD_META[entryMethodFilter]?.label || entryMethodFilter}`,
       clear: () => setEntryMethodFilter('all'),
     },
     attachmentFilter !== 'all' && {
@@ -1935,8 +1970,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           : `جستجو در ${preset.title} (موضوع، شماره، طرف حساب، ارجاع‌شده)…`}
         sort={sortBy}
         sortOptions={[
-          { value: 'newest', label: 'جدیدترین تاریخ ورود' },
-          { value: 'oldest', label: 'قدیمی‌ترین تاریخ ورود' },
+          { value: 'newest', label: preset.direction === 'outgoing'
+            ? 'جدیدترین تاریخ نامه/ارسال' : 'جدیدترین تاریخ ورود' },
+          { value: 'oldest', label: preset.direction === 'outgoing'
+            ? 'قدیمی‌ترین تاریخ نامه/ارسال' : 'قدیمی‌ترین تاریخ ورود' },
           { value: 'due', label: 'نزدیک‌ترین مهلت' },
           { value: 'number', label: 'شماره نامه' },
         ]}
@@ -1987,9 +2024,36 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
           })}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
-          minWidth={mode === 'incoming' ? 1120 : 1040}
+          minWidth={mode === 'incoming' ? 1120 : (mode === 'outgoing' ? 1130 : 1040)}
           tableLayout="fixed"
           columns={[
+            /* ── تاریخ ارسال (فقط دفتر صادره) ── */
+            ...(mode === 'outgoing' ? [
+              {
+                key: 'sent_date', label: 'تاریخ ارسال', width: '10%', align: 'center',
+                render: (row) => {
+                  const { letter } = row;
+                  if (rowEditing(letter)) {
+                    return (
+                      <JalaliMaskedDateInput variant="standard" label="" sx={inlineSx}
+                        value={draft.sent_date}
+                        onChange={(value) => patchDraft('sent_date')(value)} />
+                    );
+                  }
+                  const sent = letter.sent_date ? dateLabel(letter.sent_date) : '—';
+                  const meta = joinParts(
+                    letter.entry_time ? `ساعت ${timeLabel(letter.entry_time)}` : '',
+                    letter.delivery_type_display || '',
+                    letter.delivered_by_label ? `تحویل: ${letter.delivered_by_label}` : '',
+                  );
+                  return (
+                    <CellText mono weight={700} title={meta || undefined}>
+                      {sent}
+                    </CellText>
+                  );
+                },
+              },
+            ] : []),
             /* ── تاریخ ورود (فقط دفتر وارده) ── */
             ...(mode === 'incoming' ? [
               {
@@ -2455,16 +2519,26 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             <Box sx={{ p: 1.75, overflowY: 'auto', flex: 1, minWidth: 0 }}>
               {drawerTab === 'info' ? (
                 <Box sx={{ minWidth: 0 }}>
-                  <InfoGroup icon={InboxIcon} title="ثبت و ورود" color={WARN}>
+                  <InfoGroup
+                    icon={activeLetter.direction === 'outgoing' ? SendIcon : InboxIcon}
+                    title={activeLetter.direction === 'outgoing' ? 'ثبت و ارسال' : 'ثبت و ورود'}
+                    color={activeLetter.direction === 'outgoing' ? OUTGOING : WARN}>
                     <InfoTable rows={[
-                      ['نحوهٔ ورود', activeLetter.entry_method_display],
-                      ['ساعت ورود', activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''],
-                      ['نوع تحویل', activeLetter.delivery_type_display],
-                      ['تحویل‌دهنده / ثبت‌کنندهٔ ورود',
-                        activeLetter.delivered_by_label
+                      [activeLetter.direction === 'outgoing' ? 'نحوهٔ ثبت / ارسال' : 'نحوهٔ ورود',
+                        activeLetter.entry_method_display],
+                      [activeLetter.direction === 'outgoing' ? 'ساعت ارسال' : 'ساعت ورود',
+                        activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''],
+                      [activeLetter.direction === 'outgoing' ? 'نوع ارسال' : 'نوع تحویل',
+                        activeLetter.delivery_type_display],
+                      [activeLetter.direction === 'outgoing'
+                        ? 'تحویل‌دهنده / پیک' : 'تحویل‌دهنده / ثبت‌کنندهٔ ورود',
+                      activeLetter.delivered_by_label
                         || activeLetter.delivered_by_name
                         || activeLetter.entered_by_label],
-                      ['تاریخ ورود', dateLabel(activeLetter.received_date)],
+                      ['تاریخ ارسال', activeLetter.direction === 'outgoing'
+                        ? dateLabel(activeLetter.sent_date) : ''],
+                      ['تاریخ ورود', activeLetter.direction === 'outgoing'
+                        ? '' : dateLabel(activeLetter.received_date)],
                       ['واحد ثبت‌کننده', activeLetter.unit_name],
                       ['تاریخ نامه', dateLabel(activeLetter.letter_date)],
                     ]} />
@@ -2473,6 +2547,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   <InfoGroup icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
                     <InfoTable rows={[
                       ['شماره نامه', activeLetter.number ? toPersianDigits(activeLetter.number) : ''],
+                      ['شماره اندیکاتور', activeLetter.indicator_no
+                        ? toPersianDigits(activeLetter.indicator_no) : ''],
+                      ['شماره ترنسمیتال', activeLetter.transmittal_no
+                        ? toPersianDigits(activeLetter.transmittal_no) : ''],
+                      ['شماره نامهٔ طرف مقابل', activeLetter.external_number
+                        ? toPersianDigits(activeLetter.external_number) : ''],
                       ['شماره ثبت ورود به شرکت',
                         activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''],
                       ['تاریخ ثبت ورود به شرکت', dateLabel(activeLetter.company_reg_date)],

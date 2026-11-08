@@ -34,10 +34,10 @@ from correspondences import legacy  # noqa: E402
 
 MAX_COL = 40
 KEY_COLUMNS = {
-    'number': ('شماره نامه', 'شماره'),
+    'number': ('شماره نامه', 'شماره', 'شماره ارسالی مالی', 'شماره وارده'),
     'indicator': ('اندیکاتور', 'شماره اندیکاتور'),
     'external': ('شماره نامه طرف مقابل', 'شماره نامه طرفین'),
-    'subject': ('موضوع', 'موضوع نامه'),
+    'subject': ('موضوع', 'موضوع نامه', 'بابت', 'توضیحات'),
 }
 
 
@@ -127,8 +127,8 @@ def main(argv=None):
 
         keys = {key: pick(row_map, key) for key in KEY_COLUMNS}
         if not any(keys.values()):
+            # ردیف بدون کلید متنی هم با ``source_ref`` قابل تطبیق است؛ فقط گزارش می‌شود
             stats['no_key'] += 1
-            continue
         stats['rows'] += 1
 
         entry = {

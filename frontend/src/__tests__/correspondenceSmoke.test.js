@@ -426,6 +426,39 @@ test('letter drawer attachment tab shows a preview action per file', async () =>
   container.remove();
 });
 
+test('outgoing page shows its own date column and send-oriented labels', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="outgoing" />);
+
+  expect(container.textContent).toContain('نامه‌های صادره');
+  const table = container.querySelector('[aria-label="فهرست مکاتبات اداری"]');
+  expect(table).toBeTruthy();
+  // ستون تاریخ ارسال مخصوص دفتر صادره
+  expect(container.textContent).toContain('تاریخ ارسال');
+  expect(container.textContent).toContain('طرف مکاتبه');
+  // فیلترهای جهت و وضعیت مخصوص این صفحه حذف شده‌اند
+  expect(container.textContent).toContain('تاریخ نامه');
+
+  const newButton = [...container.querySelectorAll('button')]
+    .find((node) => node.textContent.includes('نامه صادره جدید'));
+  expect(newButton).toBeTruthy();
+  await act(async () => {
+    newButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(320);
+  });
+
+  const dialog = [...document.querySelectorAll('[role="dialog"]')]
+    .find((node) => node.textContent.includes('ثبت نامهٔ جدید'));
+  expect(dialog).toBeTruthy();
+  expect(dialog.textContent).toContain('ثبت و ارسال');
+  expect(dialog.textContent).toContain('شماره اندیکاتور');
+  expect(dialog.textContent).toContain('شماره نامهٔ طرف مقابل');
+  expect(dialog.textContent).toContain('نوع ارسال');
+  expect(dialog.textContent).not.toContain('شماره ثبت ورود به شرکت');
+
+  root.unmount();
+  container.remove();
+});
+
 test('delete permission exposes row delete action and attachment delete button', async () => {
   const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
 
