@@ -203,7 +203,7 @@ _AUDIT_MODEL_LABELS = {
     'settings_app': 'تنظیمات',
     'accounting': 'حسابداری',
     'projects': 'پروژه‌ها',
-    'procurement': 'خرید و تدارکات',
+    'procurement': 'مدیریت خریدها',
     'treasury': 'خزانه‌داری',
     'pettycash': 'تنخواه',
     'recruitment': 'جذب و استخدام',

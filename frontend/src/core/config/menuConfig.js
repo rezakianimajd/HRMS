@@ -601,7 +601,7 @@ const procurementMenu = [
     title: 'خانه',
     color: '#f59e0b',
     items: [
-      { id: 'procurement', title: 'داشبورد تدارکات', icon: <ShoppingCartIcon />, path: '/procurement', color: '#f59e0b', primary: true, ready: true },
+      { id: 'procurement', title: 'داشبورد خریدها', icon: <ShoppingCartIcon />, path: '/procurement', color: '#f59e0b', primary: true, ready: true },
     ],
   },
   {

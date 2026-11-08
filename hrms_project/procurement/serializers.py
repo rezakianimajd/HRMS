@@ -1,4 +1,4 @@
-"""Serializers for the Procurement (خرید و تدارکات) module."""
+"""Serializers for the Procurement (مدیریت خریدها) module."""
 from rest_framework import serializers
 from procurement.models import (
     SupplierCategory, Supplier, ItemCategory, UnitOfMeasure, Item,

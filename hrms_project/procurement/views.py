@@ -1,4 +1,4 @@
-"""Views for the Procurement (خرید و تدارکات) module."""
+"""Views for the Procurement (مدیریت خریدها) module."""
 import logging
 
 from django.db.models import Sum

@@ -980,7 +980,7 @@ def _apply_target_category(company, entry):
 AUX_SOURCES = [
     {'kind': 'bank', 'label': 'بانک‌ها و صندوق‌ها', 'module': 'خزانه‌داری', 'category': 'بانک', 'cat_source': 'bank'},
     {'kind': 'employee', 'label': 'پرسنل', 'module': 'منابع انسانی', 'category': 'پرسنل', 'cat_source': 'employee'},
-    {'kind': 'supplier', 'label': 'تأمین‌کنندگان', 'module': 'خرید و تدارکات', 'category': 'تأمین‌کننده', 'cat_source': 'manual'},
+    {'kind': 'supplier', 'label': 'تأمین‌کنندگان', 'module': 'مدیریت خریدها', 'category': 'تأمین‌کننده', 'cat_source': 'manual'},
     {'kind': 'custodian', 'label': 'تنخواه‌داران', 'module': 'تنخواه', 'category': 'تنخواه‌دار', 'cat_source': 'employee'},
     {'kind': 'party', 'label': 'طرف‌حساب‌ها (حقوقی/حقیقی)', 'module': 'قراردادها', 'category': 'طرف حساب', 'cat_source': 'party'},
     {'kind': 'contract', 'label': 'قراردادها', 'module': 'قراردادها', 'category': 'قرارداد', 'cat_source': 'contract'},

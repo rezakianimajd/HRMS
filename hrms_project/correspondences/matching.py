@@ -187,7 +187,53 @@ def best_matches(raw, candidates, limit=5, threshold=0.6, key=None):
 
 # ---------------------------------------------------------------------------
 # نمونه‌های موجود در داده‌ها (برای فهرست «نام‌های نگاشت‌نشده»)
-# ---------------------------------------------------------------------------
+def name_sample_sources():
+    """منابع نمونهٔ نام‌های خام: ``(scope, model_path, field, link_filter)``.
+
+    در تابع به‌صورت lazy به مدل‌ها تبدیل می‌شود تا این ماژول بدون دیتابیس هم
+    قابل کشف/تست باشد. دو دامنهٔ زیر عمداً اضافه شده‌اند:
+    - ``referral_target``: گیرندهٔ ارجاعِ برون‌سازمانی (نامه‌ای که هنوز طرف حساب ندارد)
+    - ``subject``: موضوع نامه‌های بدون «نوع مکاتبه» (برای نگاشت موضوع → نوع مکاتبه)
+    """
+    return (
+        # ارجاعات داخلی (گیرندهٔ ارجاع = پرسنل)
+        ('referral', 'LetterReferral', 'to_name', {'to_employee__isnull': True}),
+        # گیرندهٔ ارجاع برون‌سازمانی → طرف حساب
+        ('referral_target', 'LetterReferral', 'to_name', {
+            'to_employee__isnull': True, 'letter__party_account__isnull': True,
+        }),
+        # پرسنل نامه‌ها
+        ('sender', 'Letter', 'sender_name', {'sender_employee__isnull': True}),
+        ('receiver', 'Letter', 'receiver_name', {'receiver_employee__isnull': True}),
+        ('delivery', 'Letter', 'delivered_by_name', {'delivered_by__isnull': True}),
+        # طرف حساب نامه (وارده از فرستنده / صادره از گیرنده)
+        ('counterparty', 'Letter', 'sender_name', {'party_account__isnull': True}),
+        ('counterparty', 'Letter', 'receiver_name', {'party_account__isnull': True}),
+        # نام آزاد طرف حساب (شرکتی که هنوز در قراردادها نیست) — قابل «تعمیم» به طرف حساب
+        ('counterparty', 'Letter', 'party_name', {'party_account__isnull': True}),
+        # سازمان طرف نامه
+        ('organization', 'Letter', 'sender_name', {'sender_organization__isnull': True}),
+        ('organization', 'Letter', 'receiver_name', {'organization__isnull': True}),
+        # مخاطب نامه
+        ('contact', 'Letter', 'sender_name', {'correspondent__isnull': True}),
+        # سازمان مخاطبین
+        ('organization', 'Correspondent', 'name', {'organization__isnull': True}),
+        # موضوع نامهٔ بدون نوع مکاتبه (نگاشت موضوع → نوع مکاتبه)
+        ('subject', 'Letter', 'subject', {'category__isnull': True}),
+    )
+
+
+def name_sample_models():
+    """نگاشت نام مدل‌ها به کلاس‌های واقعی (فقط زمانی که دیتابیس لازم است)."""
+    from correspondences.models import Correspondent, Letter, LetterReferral
+
+    return {
+        'LetterReferral': LetterReferral,
+        'Letter': Letter,
+        'Correspondent': Correspondent,
+    }
+
+
 def iter_name_samples(company):
     """نام‌های خام موجود در داده‌های مکاتبات → ``[{'scope','raw','count'}]``.
 
@@ -197,30 +243,10 @@ def iter_name_samples(company):
     """
     from django.db.models import Count
 
-    from correspondences.models import Correspondent, Letter, LetterReferral
-
-    sources = [
-        # ارجاعات
-        ('referral', LetterReferral, 'to_name', {'to_employee__isnull': True}),
-        # پرسنل نامه‌ها
-        ('sender', Letter, 'sender_name', {'sender_employee__isnull': True}),
-        ('receiver', Letter, 'receiver_name', {'receiver_employee__isnull': True}),
-        ('delivery', Letter, 'delivered_by_name', {'delivered_by__isnull': True}),
-        # طرف حساب نامه (وارده از فرستنده / صادره از گیرنده)
-        ('counterparty', Letter, 'sender_name', {'party_account__isnull': True}),
-        ('counterparty', Letter, 'receiver_name', {'party_account__isnull': True}),
-        # نام آزاد طرف حساب (شرکتی که هنوز در قراردادها نیست) — قابل «تعمیم» به طرف حساب
-        ('counterparty', Letter, 'party_name', {'party_account__isnull': True}),
-        # سازمان طرف نامه
-        ('organization', Letter, 'sender_name', {'sender_organization__isnull': True}),
-        ('organization', Letter, 'receiver_name', {'organization__isnull': True}),
-        # مخاطب نامه
-        ('contact', Letter, 'sender_name', {'correspondent__isnull': True}),
-        # سازمان مخاطبین
-        ('organization', Correspondent, 'name', {'organization__isnull': True}),
-    ]
+    models_by_name = name_sample_models()
     samples = []
-    for scope, model, name_field, link_filter in sources:
+    for scope, model_name, name_field, link_filter in name_sample_sources():
+        model = models_by_name[model_name]
         qs = model.objects.filter(company=company).exclude(**{f'{name_field}': ''})
         if link_filter:
             qs = qs.filter(**link_filter)

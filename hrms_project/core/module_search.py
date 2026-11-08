@@ -31,7 +31,7 @@ MODULE_ALIASES = {
 MODULE_LABELS = {
     'hr': 'منابع انسانی', 'contracts': 'مدیریت قراردادها', 'projects': 'مدیریت پروژه‌ها',
     'accounting': 'حسابداری', 'payroll': 'حقوق و دستمزد', 'pettycash': 'تنخواه',
-    'procurement': 'خرید و تدارکات', 'treasury': 'خزانه‌داری',
+    'procurement': 'مدیریت خریدها', 'treasury': 'خزانه‌داری',
     'documents': 'مدیریت اسناد و مدارک', 'correspondence': 'مکاتبات اداری',
 }
 

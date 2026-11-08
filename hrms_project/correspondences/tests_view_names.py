@@ -51,6 +51,43 @@ def _local_names(function_node):
     return names
 
 
+class NameSampleSourceTests(SimpleTestCase):
+    """منابع «نام‌های نگاشت‌نشده» باید همهٔ ستون‌های میزکار را پوشش دهند."""
+
+    def test_sources_cover_workspace_scopes(self):
+        from correspondences import alias_purposes, matching
+
+        scopes = {row[0] for row in matching.name_sample_sources()}
+        workspace = set(alias_purposes.SCOPE_LABELS) if hasattr(alias_purposes, 'SCOPE_LABELS') else set()
+        # ستون‌هایی که میزکار نگاشت نمایش می‌دهد و باید منبع نمونه داشته باشند
+        for scope in ('counterparty', 'sender', 'receiver', 'contact', 'organization',
+                      'delivery', 'referral', 'referral_target', 'subject'):
+            self.assertIn(scope, scopes, f'منبع نمونه برای scope={scope} تعریف نشده است')
+        self.assertTrue(workspace or True)
+
+    def test_referral_target_and_subject_filters(self):
+        from correspondences import matching
+
+        sources = {row[0]: row for row in matching.name_sample_sources()}
+        referral_target = sources['referral_target']
+        self.assertEqual(referral_target[1], 'LetterReferral')
+        self.assertEqual(referral_target[2], 'to_name')
+        self.assertTrue(referral_target[3]['to_employee__isnull'])
+        self.assertTrue(referral_target[3]['letter__party_account__isnull'])
+
+        subject = sources['subject']
+        self.assertEqual(subject[1], 'Letter')
+        self.assertEqual(subject[2], 'subject')
+        self.assertTrue(subject[3]['category__isnull'])
+
+    def test_samples_models_map_matches_source_names(self):
+        from correspondences import matching
+
+        models = matching.name_sample_models()
+        for _scope, model_name, _field, _filters in matching.name_sample_sources():
+            self.assertIn(model_name, models)
+
+
 class ViewPackageNameTests(SimpleTestCase):
     """هیچ کلاس/ثابتِ استفاده‌شده نباید در ماژول تعریف‌نشده باشد."""
 

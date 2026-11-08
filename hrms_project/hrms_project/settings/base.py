@@ -69,7 +69,7 @@ TENANT_APPS = [
     'projects',                        # Project Management & Cost Control (Phase 0)
     'pettycash',                       # Petty Cash / Imprest (تنخواه)
     'accounting',                      # Accounting (central financial engine)
-    'procurement',                     # Procurement / Purchase-to-Pay (خرید و تدارکات)
+    'procurement',                     # Procurement / Purchase-to-Pay (مدیریت خریدها)
     'treasury',                        # Treasury / Cash & payment management (خزانه‌داری)
     'datamapping',                     # Data mapping / import (نگاشت و ایمپورت داده)
 ]

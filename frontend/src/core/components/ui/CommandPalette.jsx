@@ -47,7 +47,7 @@ const MODULE_META = {
   payroll: { label: 'حقوق و دستمزد', color: '#10b981' },
   pettycash: { label: 'تنخواه', color: '#f97316' },
   'petty-cash': { label: 'تنخواه', color: '#f97316' },
-  procurement: { label: 'خرید و تدارکات', color: '#06b6d4' },
+  procurement: { label: 'مدیریت خریدها', color: '#06b6d4' },
   treasury: { label: 'خزانه‌داری', color: '#0f766e' },
   documents: { label: 'مدیریت اسناد و مدارک', color: '#0d9488' },
   correspondence: { label: 'مکاتبات رسمی', color: '#0ea5e9' },

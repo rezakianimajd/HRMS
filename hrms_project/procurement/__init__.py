@@ -1,1 +1,1 @@
-# Procurement (خرید و تدارکات) module.
+# Procurement (مدیریت خریدها) module.

@@ -30,7 +30,7 @@ test('DMS library exposes the requested module catalogue and organization submen
 
   expect(library.items.map((item) => item.title)).toEqual([
     'منابع انسانی', 'مدیریت قراردادها', 'مدیریت پروژه‌ها', 'تنخواه',
-    'حقوق و دستمزد', 'حسابداری', 'خرید و تدارکات', 'خزانه‌داری',
+    'حقوق و دستمزد', 'حسابداری', 'مدیریت خریدها', 'خزانه‌داری',
     'اسناد سازمانی', 'مکاتبات اداری',
   ]);
   const correspondence = library.items.find((item) => item.id === 'dms-library-correspondence');

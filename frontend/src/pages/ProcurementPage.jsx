@@ -100,8 +100,8 @@ const ProcurementPage = () => {
           <ShoppingCartIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>داشبورد تدارکات</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>نمای کلی چرخهٔ تدارکات و دسترسی سریع به بخش‌ها</Typography>
+          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>داشبورد خریدها</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>نمای کلی چرخهٔ خرید و دسترسی سریع به بخش‌ها</Typography>
         </Box>
         <Chip label="Procure-to-Pay" sx={{ bgcolor: `${COLOR}14`, color: COLOR_DARK, fontWeight: 700, fontFamily: FONT }} />
       </Paper>

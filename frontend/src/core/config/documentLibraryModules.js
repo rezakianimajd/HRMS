@@ -49,8 +49,8 @@ export const DOCUMENT_LIBRARY_MODULES = [
     keywords: ['حسابداری', 'accounting', 'hrms.accounting'],
   },
   {
-    key: 'procurement', label: 'خرید و تدارکات', color: '#06b6d4', icon: 'procurement',
-    keywords: ['خرید و تدارکات', 'خرید', 'تدارکات', 'procurement', 'purchasing'],
+    key: 'procurement', label: 'مدیریت خریدها', color: '#06b6d4', icon: 'procurement',
+    keywords: ['مدیریت خریدها', 'خرید و تدارکات', 'خرید', 'تدارکات', 'procurement', 'purchasing'],
   },
   {
     key: 'treasury', label: 'خزانه‌داری', color: '#0f766e', icon: 'treasury',

@@ -1,4 +1,4 @@
-/** ابزارهای مشترک صفحات خرید و تدارکات (لیست + دیالوگ + فرم). */
+/** ابزارهای مشترک صفحات مدیریت خریدها (لیست + دیالوگ + فرم). */
 import React, { useCallback, useEffect, useState } from 'react';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
