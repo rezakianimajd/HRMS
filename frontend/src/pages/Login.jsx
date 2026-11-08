@@ -325,19 +325,16 @@ const Login = () => {
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
         }}>
           <Box sx={{ display: { xs: 'grid', md: 'none' }, placeItems: 'center', mb: 2 }}>
-            <CompanyLogo company={selectedCompany} size={62} radius="0px"
+            <CompanyLogo company={selectedCompany} size={78} radius="0px"
               sx={{ border: 'none', bgcolor: 'transparent' }} />
           </Box>
 
           <Typography sx={{ fontSize: 21, fontWeight: 900, color: INK, lineHeight: 1.3 }}>
             خوش آمدید
           </Typography>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.4, mb: 2 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: 'nowrap' }}>
-              ورود اطلاعات
-            </Typography>
-            <Box sx={{ flex: 1, height: 1, bgcolor: BORDER }} />
-          </Stack>
+          <Typography sx={{ mt: 0.4, mb: 2, fontSize: 12, fontWeight: 800, color: MUTED }}>
+            ورود اطلاعات
+          </Typography>
 
           <Box component="form" onSubmit={handleCredentialsSubmit} sx={{ display: 'grid', gap: 1.5 }}>
             {companies.length ? (
@@ -358,7 +355,12 @@ const Login = () => {
                       ...params.InputProps,
                       startAdornment: (
                         <InputAdornment position="start">
-                          <BusinessOutlinedIcon sx={{ fontSize: 19, color: '#94a3b8' }} />
+                          {selectedCompany ? (
+                            <CompanyLogo company={selectedCompany} size={24} radius="6px"
+                              sx={{ border: 'none', bgcolor: 'transparent', ml: 0.25 }} />
+                          ) : (
+                            <BusinessOutlinedIcon sx={{ fontSize: 19, color: '#94a3b8' }} />
+                          )}
                         </InputAdornment>
                       ),
                     }}
@@ -528,7 +530,7 @@ const Login = () => {
           bgcolor: '#fff', borderInlineStart: `1px solid ${BORDER}`,
           p: { md: 3 },
         }}>
-          <CompanyLogo company={selectedCompany} size={176} radius="0px"
+          <CompanyLogo company={selectedCompany} size={240} radius="0px"
             sx={{ border: 'none', bgcolor: 'transparent' }} />
         </Box>
       </Paper>

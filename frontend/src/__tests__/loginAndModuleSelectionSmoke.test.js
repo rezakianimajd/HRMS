@@ -264,6 +264,11 @@ test('login page reads company name and logo from company profile, not tenant DB
   expect(flip.getAttribute('data-flip-step')).toBe('credentials');
   expect(flip.querySelector('[data-testid="login-card"]')).toBeTruthy();
 
+  // در فیلد انتخاب شرکت، لوگوی همان شرکت کنار نامش نمایش داده می‌شود (نه آیکن عمومی)
+  const companyField = container.querySelector('.MuiAutocomplete-root');
+  expect(companyField).toBeTruthy();
+  expect(companyField.querySelector('img')).toBeTruthy();
+
   root.unmount();
   container.remove();
 });

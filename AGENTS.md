@@ -559,7 +559,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.444410f4.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.b49f7895.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **جزئیات بصری کارت ورود (۲۰۲۶-۱۱-۰۸):** خط جداکنندهٔ خاکستری جلوی سربرگ‌های «ورود اطلاعات»/«انتخاب ماژول»
+  حذف شد (فقط `Typography` با `mb`)؛ لوگوی پنل سمت چپ از ۱۷۶ به **۲۴۰px** (موبایل ۷۸px) رسید؛ و در فیلد
+  «شرکت» به‌جای آیکن عمومی، **لوگوی همان شرکت** (`CompanyLogo` سایز ۲۴) با `startAdornment` نمایش داده می‌شود
+  (بدون لوگو → مونوگرام). تست: `__tests__/loginAndModuleSelectionSmoke.test.js` (۵، شامل بررسی `<img>` داخل
+  فیلد شرکت).
 - **ترنزیشن چرخشی ورود ⇄ انتخاب ماژول (۲۰۲۶-۱۱-۰۸):** در `pages/Login.jsx` پس‌زمینهٔ صفحه **بیرون از کارت**
   رندر می‌شود و همیشه mount می‌ماند؛ داخل صحنهٔ `perspective` یک بلوک `data-testid="login-flip"`
   (`data-flip-step`/`data-flip-pose`) قرار دارد که فقط **کارت** را با `rotateY(±84deg) + scale(.94)` می‌چرخاند

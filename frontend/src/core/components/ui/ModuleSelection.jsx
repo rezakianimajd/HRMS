@@ -158,12 +158,9 @@ const ModuleSelectionCard = ({
         <Box sx={{ p: { xs: 2, md: 2.75 } }}>
           {activeApps.length ? (
             <>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.4 }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: 'nowrap' }}>
-                  انتخاب ماژول
-                </Typography>
-                <Box sx={{ flex: 1, height: 1, bgcolor: BORDER }} />
-              </Stack>
+              <Typography sx={{ mb: 1.4, fontSize: 12, fontWeight: 800, color: MUTED }}>
+                انتخاب ماژول
+              </Typography>
               <Box sx={{
                 display: 'grid', gap: 1.25,
                 gridTemplateColumns: {
