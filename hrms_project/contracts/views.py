@@ -287,6 +287,108 @@ class ContractViewSet(BaseContractViewSet):
             'expiring': expiring,
         })
 
+    @action(detail=False, methods=['get'], url_path='completeness')
+    def completeness(self, request):
+        """نواقص قراردادها — فیلدهای خالی، مدارک، درصد پروژه، تاریخ‌ها و مسائل مالی.
+
+        کل صفحه از **سه کوئری** ساخته می‌شود (قراردادها + جمع فاکتورها + عناوین
+        مدارک) و قاعده‌ها در ``contracts.completeness`` (توابع خالص) اعمال می‌شوند.
+        فیلترها: ``?code=a,b`` · ``?severity=high`` · ``?group=documents`` ·
+        ``?search=`` · ``?status=``.
+        """
+        from datetime import date
+
+        from django.db.models import Count
+
+        from contracts import completeness as comp
+
+        company = _company(request)
+
+        def scoped(model):
+            queryset = model.objects.all()
+            return queryset.filter(company=company) if company else queryset
+
+        queryset = scoped(Contract)
+        status = request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        queryset = queryset.select_related('party', 'project', 'currency', 'signatory').annotate(
+            documents_count=Count('documents', distinct=True),
+            guarantees_count=Count('guarantees', distinct=True),
+            invoices_count=Count('invoices', distinct=True),
+            statements_count=Count('statements', distinct=True),
+        )
+
+        invoice_totals = {
+            row['contract_id']: row['total'] or 0
+            for row in scoped(Invoice).values('contract_id').annotate(total=Sum('total'))
+        }
+        document_titles = {}
+        for contract_id, title in scoped(ContractDocument).values_list('contract_id', 'title'):
+            document_titles.setdefault(contract_id, []).append(title or '')
+
+        status_labels = dict(Contract.Status.choices)
+        type_labels = dict(Contract.ContractType.choices)
+        rows = []
+        for contract in queryset[:2000]:
+            rows.append({
+                'id': contract.pk,
+                'number': contract.number,
+                'subject': contract.subject,
+                'status': contract.status,
+                'status_label': str(status_labels.get(contract.status, contract.status)),
+                'contract_type': contract.contract_type,
+                'contract_type_label': str(type_labels.get(contract.contract_type, contract.contract_type)),
+                'party_id': contract.party_id,
+                'party_name': getattr(contract.party, 'name', '') or '',
+                'party_national_id': getattr(contract.party, 'national_id', '') or '',
+                'party_economic_code': getattr(contract.party, 'economic_code', '') or '',
+                'amount': contract.amount,
+                'currency': contract.currency_id,
+                'start_date': contract.start_date,
+                'end_date': contract.end_date,
+                'signing_date': contract.signing_date,
+                'signatory': contract.signatory_id,
+                'project_id': contract.project_id,
+                'project_name': getattr(contract.project, 'name', '') or contract.project_name,
+                'project_allocations': contract.project_allocations or [],
+                'guarantee_amount': contract.guarantee_amount,
+                'guarantee_items': contract.guarantee_items or [],
+                'payment_terms': contract.payment_terms,
+                'penalty_terms': contract.penalty_terms,
+                'insurance_terms': contract.insurance_terms,
+                'delivery_terms': contract.delivery_terms,
+                'category': contract.category,
+                'project_location': contract.project_location,
+                'description': contract.description,
+                'tender_number': contract.tender_number,
+                'retention_percent': contract.retention_percent,
+                'advance_payment': contract.advance_payment,
+                'documents_count': contract.documents_count,
+                'invoices_count': contract.invoices_count,
+                'statements_count': contract.statements_count,
+                'guarantees_count': contract.guarantees_count,
+                'invoices_total': invoice_totals.get(contract.pk, 0),
+                'document_titles': document_titles.get(contract.pk, []),
+            })
+
+        codes = str(request.query_params.get('code') or request.query_params.get('codes') or '')
+        try:
+            limit = int(request.query_params.get('limit') or 500)
+        except (TypeError, ValueError):
+            limit = 500
+
+        payload = comp.build_completeness(
+            rows,
+            today=date.today(),
+            codes=[code.strip() for code in codes.split(',') if code.strip()],
+            severity=request.query_params.get('severity') or None,
+            group=request.query_params.get('group') or None,
+            search=request.query_params.get('search') or request.query_params.get('q') or None,
+            limit=max(1, min(limit, 2000)),
+        )
+        return Response(payload)
+
 
 class ContractTypeMasterViewSet(BaseContractViewSet):
     serializer_class = ContractTypeMasterSerializer

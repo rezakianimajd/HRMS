@@ -559,7 +559,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
-- **Live:** frontend `main.2a8d1de5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.3b8c274f.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
@@ -582,6 +582,33 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     چهار توزیع شماتیک (وضعیت سفارش‌ها، وضعیت استعلام‌ها، تأمین‌کنندگان برتر، خرید در پروژه‌ها).
     تست: `__tests__/procurementDashboardSmoke.test.js`؛ `contractsDashboardSmoke` هم سبز ماند.
 - **صفحهٔ تأمین‌کنندگان هم‌ساخت صفحهٔ «طرف حساب‌ها» (۲۰۲۶-۱۱-۰۸):** `procurementSuppliersList.jsx` بازنویسی شد به
+- **صفحهٔ «نواقص قراردادها» در گروه «پایش قراردادها» (۲۰۲۶-۱۱-۰۸):**
+  - **بک‌اند:** اکشن `GET /api/external-contracts/completeness/` روی `ContractViewSet` + موتور خالص
+    `contracts/completeness.py` با **۲۹ قاعده** در ۷ گروه (فیلدهای ناقص / مدارک / تاریخ‌ها / مالی /
+    پروژه و درصد تخصیص / تضامین / طرف حساب) و شدت `high|medium|low`:
+    `missing_*` (شماره، مبلغ، تاریخ‌ها، امضاکننده، ارز، شرایط پرداخت/جریمه/بیمه/تحویل، طبقه‌بندی، محل اجرا،
+    توضیحات، درصد حسن انجام کار، پیش‌پرداخت)، `party_missing_national_id|economic_code`،
+    `no_project`، **`project_share_missing` (درصد تخصیص پروژه خالی)**، `project_share_invalid` (جمع ≠ ۱۰۰٪)،
+    `no_documents`، `no_contract_document`، `end_before_start`، `signing_after_start`،
+    `expired_but_active`، `tender_number_missing`، `no_financial_documents`، `invoice_over_amount`،
+    `guarantee_missing`، `guarantee_undefined`. امتیاز سلامت هر قرارداد = ۱۰۰ − (بحرانی ۱۲ / متوسط ۶ / کم ۲)
+    و خروجی شامل `summary` (تعداد/شدت/هر قاعده/هر گروه)، `contracts` (مرتب‌شده بر اساس شدت و تعداد نقص) و
+    `rules` است. **سه کوئری** برای کل صفحه (قراردادها با `Count(distinct)` + جمع فاکتورها + عناوین مدارک)؛
+    فیلترها: `?code=a,b`، `?severity=`، `?group=`، `?search=`، `?status=`.
+    تست: `contracts/tests_completeness.py` (۲۲ تست DB-free).
+  - **فرانت:** `pages/ContractsCompletenessPage.jsx` روی مسیر `/contracts-completeness` (منوی «پایش قراردادها →
+    نواقص قراردادها»)، با کیت مشترک داشبورد: ۵ کاشی شاخص (کل/دارای نقص/بدون مدرک/بدون درصد پروژه/فیلدهای ناقص)،
+    پنل فیلتر (جست‌وجو، شدت، گروه، نوع نقص، چیپ‌های شدت)، `ModuleTable` + `ModulePager` با ستون «نواقص» و
+    «امتیاز سلامت» (Track)، دیالوگ جزئیات نواقص هر قرارداد (گروه‌بندی‌شده + لینک «باز کردن پروندهٔ قرارداد»)
+    و چاپ با موتور چاپ (`printElement`). تست: `__tests__/contractsCompletenessSmoke.test.js`.
+  - **کاتالوگ مجوزها بازتولید شد:** `python scripts/build_permission_catalog.py` → کپی روی
+    `core/permission_catalog_data.json` (اکنون **۲۶۵ منو / ۱۰۹۷ کد**). این کار پنج آیتم قدیمی خرید را هم
+    که در `menuConfig.js` بودند ولی در کاتالوگ نبودند اضافه کرد (`procurement-inquiries/profiles/proforma/
+    guarantees/allocations`) — بدون آن‌ها منو برای کاربران با مجوز ریز پنهان می‌ماند.
+  - دادهٔ زندهٔ `kpsmi` هنگام استقرار: ۱۷۱ قرارداد، ۲۱۱۵ نقص، میانگین امتیاز ۴۲٫۱ (بیشترین قواعد:
+    `missing_category`/`missing_description`/`missing_insurance_terms` روی همهٔ ۱۷۱ قرارداد و
+    `no_documents` روی ۱۵).
+
   چیدمان master/detail صفحهٔ `ContractPartiesPage`: سرصفحه + نوار جست‌وجو (نام/کد/شناسه ملی/کد اقتصادی/شماره ثبت/
   موبایل/شخص رابط) + ستون فهرست (md=5، آواتار رنگی بر اساس وضعیت، کد/دسته/موبایل، چیپ وضعیت) + ستون جزئیات
   (md=7) با کارت‌های اطلاعاتی «آمار خرید» (از `GET /api/procurement/suppliers/{id}/profile/`)، «سفارش‌های اخیر»،

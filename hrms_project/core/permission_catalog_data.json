@@ -154,7 +154,7 @@
      {
       "id": "correspondences",
       "title": "مکاتبات اداری",
-      "path": "/correspondences"
+      "path": "/correspondence"
      },
      {
       "id": "bale-messaging",
@@ -1165,8 +1165,18 @@
     "items": [
      {
       "id": "procurement",
-      "title": "داشبورد تدارکات",
+      "title": "داشبورد مدیریت خرید",
       "path": "/procurement"
+     }
+    ]
+   },
+   {
+    "title": "مدیریت خرید",
+    "items": [
+     {
+      "id": "procurement-profiles",
+      "title": "پرونده خرید",
+      "path": "/procurement/profiles"
      }
     ]
    },
@@ -1186,8 +1196,13 @@
     ]
    },
    {
-    "title": "چرخهٔ خرید",
+    "title": "خریدها",
     "items": [
+     {
+      "id": "procurement-inquiries",
+      "title": "استعلام‌ها (RFQ)",
+      "path": "/procurement/inquiries"
+     },
      {
       "id": "procurement-requests",
       "title": "درخواست‌های خرید",
@@ -1212,6 +1227,21 @@
       "id": "procurement-payments",
       "title": "پرداخت‌ها",
       "path": "/procurement/payments"
+     },
+     {
+      "id": "procurement-proforma",
+      "title": "پیش‌فاکتورها",
+      "path": "/procurement/proforma"
+     },
+     {
+      "id": "procurement-guarantees",
+      "title": "تضامین خرید",
+      "path": "/procurement/guarantees"
+     },
+     {
+      "id": "procurement-allocations",
+      "title": "تخصیص پرداخت‌ها",
+      "path": "/procurement/allocations"
      }
     ]
    }
@@ -1446,6 +1476,11 @@
       "path": "/contracts-expiring"
      },
      {
+      "id": "contracts-completeness",
+      "title": "نواقص قراردادها",
+      "path": "/contracts-completeness"
+     },
+     {
       "id": "contracts-guarantees-monitor",
       "title": "پایش تضامین",
       "path": "/contracts-guarantees-monitor"
@@ -1488,7 +1523,7 @@
      {
       "id": "correspondences-c",
       "title": "مکاتبات",
-      "path": "/correspondences"
+      "path": "/correspondence"
      },
      {
       "id": "contracts-docs",
