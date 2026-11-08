@@ -605,6 +605,14 @@ const procurementMenu = [
     ],
   },
   {
+    id: 'procurement-profile',
+    title: 'مدیریت خرید',
+    color: '#f59e0b',
+    items: [
+      { id: 'procurement-profiles', title: 'پرونده خرید', icon: <StorefrontIcon />, path: '/procurement/profiles', color: '#f59e0b', primary: true, ready: true },
+    ],
+  },
+  {
     id: 'procurement-master',
     title: 'اطلاعات پایه',
     color: '#f59e0b',
@@ -618,8 +626,7 @@ const procurementMenu = [
     title: 'خریدها',
     color: '#3b82f6',
     items: [
-      { id: 'procurement-profiles', title: 'پرونده خرید', icon: <StorefrontIcon />, path: '/procurement/profiles', color: '#f59e0b', primary: true, ready: true },
-      { id: 'procurement-inquiries', title: 'استعلام‌ها (RFQ)', icon: <RequestQuoteIcon />, path: '/procurement/inquiries', color: '#f59e0b', primary: false, ready: true },
+      { id: 'procurement-inquiries', title: 'استعلام‌ها (RFQ)', icon: <RequestQuoteIcon />, path: '/procurement/inquiries', color: '#f59e0b', primary: true, ready: true },
       { id: 'procurement-requests', title: 'درخواست‌های خرید', icon: <RequestQuoteIcon />, path: '/procurement/requests', color: '#3b82f6', primary: false, ready: true },
       { id: 'procurement-orders', title: 'سفارش‌های خرید', icon: <ShoppingCartIcon />, path: '/procurement/orders', color: '#8b5cf6', primary: false, ready: true },
       { id: 'procurement-receipts', title: 'رسید کالا', icon: <LocalShippingIcon />, path: '/procurement/receipts', color: '#0ea5e9', primary: false, ready: true },
