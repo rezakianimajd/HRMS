@@ -155,14 +155,7 @@ const ProcurementProfilesPage = () => {
           { key: 'row', label: 'ردیف', width: '4%', align: 'center',
             render: (row, index) => toPersianDigits(page * pageSize + index + 1) },
           { key: 'party', label: 'طرف حساب', width: '22%',
-            render: (row) => (
-              <Stack spacing={0.1}>
-                <Typography sx={{ fontSize: 12, fontWeight: 800 }} noWrap>{row.name}</Typography>
-                <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>
-                  کد {toPersianDigits(row.code || '—')}
-                </Typography>
-              </Stack>
-            ) },
+            render: (row) => `${row.name} · کد ${toPersianDigits(row.code || '—')}` },
           { key: 'status', label: 'وضعیت', width: '8%', align: 'center',
             render: (row) => statusChip(row.status) },
           { key: 'orders', label: 'سفارش', width: '6%', align: 'center',

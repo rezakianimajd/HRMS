@@ -180,19 +180,9 @@ export const ProcurementSuppliersStudio = () => {
               {filtered.map((row) => (
                 <TableRow key={row.id} hover>
                   <TableCell>{digits(row.code || '—')}</TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>{row.name}</Typography>
-                    <Typography sx={{ fontSize: 10.5, color: studio.muted }}>
-                      {row.contact_person || row.email || '—'}
-                    </Typography>
-                  </TableCell>
+                  <TableCell>{row.name} · {row.contact_person || row.email || '—'}</TableCell>
                   <TableCell>{row.categoryLabel}</TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontSize: 11.5 }}>{digits(row.phone || row.mobile || '—')}</Typography>
-                    <Typography sx={{ fontSize: 10.5, color: studio.muted }}>
-                      {digits(row.national_id || '—')}
-                    </Typography>
-                  </TableCell>
+                  <TableCell>{digits(row.phone || row.mobile || '—')} · {digits(row.national_id || '—')}</TableCell>
                   <TableCell align="center">{digits(row.rating || 0)}</TableCell>
                   <TableCell>{money(row.finance.invoices_total || 0)}</TableCell>
                   <TableCell>{money(row.finance.invoices_balance || 0)}</TableCell>

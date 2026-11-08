@@ -147,20 +147,10 @@ const ProcurementGuaranteesPage = () => {
                 <TableRow key={row.id} hover>
                   <TableCell>{digits(row.number || '—')}</TableCell>
                   <TableCell>{row.supplier_name}</TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontSize: 11.5 }}>{row.kind_label}</Typography>
-                    <Typography sx={{ fontSize: 10.5, color: studio.muted }}>{row.instrument_label}</Typography>
-                  </TableCell>
+                  <TableCell>{row.kind_label} · {row.instrument_label}</TableCell>
                   <TableCell>{money(row.amount)}</TableCell>
                   <TableCell>{dateLabel(row.issue_date)}</TableCell>
-                  <TableCell>
-                    {dateLabel(row.valid_until)}
-                    {row.is_check ? (
-                      <Typography sx={{ fontSize: 10, color: studio.muted }}>
-                        سررسید: {dateLabel(row.due_date)}
-                      </Typography>
-                    ) : null}
-                  </TableCell>
+                  <TableCell>{dateLabel(row.valid_until)}{row.is_check ? ` · سررسید: ${dateLabel(row.due_date)}` : ''}</TableCell>
                   <TableCell align="center">{validityChip(row)}</TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={0.25} justifyContent="center">

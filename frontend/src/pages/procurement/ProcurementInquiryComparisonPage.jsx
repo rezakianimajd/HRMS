@@ -132,9 +132,8 @@ const ProcurementInquiryComparisonPage = () => {
     ...supplierColumns.map((supplier) => (
       <TH key={`sup-${supplier.id}`} align="center">
         <Stack spacing={0.25} alignItems="center">
-          <Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: 900 }}>{supplier.supplier}</Typography>
-          <Typography sx={{ fontFamily: FONT, fontSize: 10.5, color: '#64748b' }}>
-            رتبه {digits(supplier.rank || '—')} · {money(supplier.total)}
+          <Typography sx={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 900 }} noWrap>
+            {supplier.supplier} · رتبه {digits(supplier.rank || '—')} · {money(supplier.total)}
           </Typography>
           <Stack direction="row" spacing={0.5} alignItems="center">
             {supplier.status === 'winner' ? (
@@ -221,12 +220,7 @@ const ProcurementInquiryComparisonPage = () => {
               <TD align="center">—</TD>
               {supplierColumns.map((supplier) => (
                 <TD key={`t-${supplier.id}`} align="center" bold>
-                  {money(supplier.total)}
-                  {supplier.delivery_days ? (
-                    <Typography sx={{ fontFamily: FONT, fontSize: 10, color: '#64748b' }}>
-                      تحویل {digits(supplier.delivery_days)} روز
-                    </Typography>
-                  ) : null}
+                  {money(supplier.total)}{supplier.delivery_days ? ` · تحویل ${digits(supplier.delivery_days)} روز` : ''}
                 </TD>
               ))}
             </TableRow>
