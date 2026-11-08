@@ -149,6 +149,8 @@ import ProcurementOrdersPage from './pages/procurement/ProcurementOrdersPage';
 import ProcurementReceiptsPage from './pages/procurement/ProcurementReceiptsPage';
 import ProcurementInvoicesPage from './pages/procurement/ProcurementInvoicesPage';
 import ProcurementPaymentsPage from './pages/procurement/ProcurementPaymentsPage';
+import ProcurementInquiriesPage from './pages/procurement/ProcurementInquiriesPage';
+import ProcurementInquiryComparisonPage from './pages/procurement/ProcurementInquiryComparisonPage';
 import TreasuryPage from './pages/treasury/TreasuryPage';
 import TreasuryBanksPage from './pages/treasury/TreasuryBanksPage';
 import TreasuryBankBranchesPage from './pages/treasury/TreasuryBankBranchesPage';
@@ -333,6 +335,8 @@ const AppRoutes = () => {
       <Route path="/procurement/receipts" element={<ProtectedLayout><ProcurementReceiptsPage /></ProtectedLayout>} />
       <Route path="/procurement/invoices" element={<ProtectedLayout><ProcurementInvoicesPage /></ProtectedLayout>} />
       <Route path="/procurement/payments" element={<ProtectedLayout><ProcurementPaymentsPage /></ProtectedLayout>} />
+      <Route path="/procurement/inquiries" element={<ProtectedLayout><ProcurementInquiriesPage /></ProtectedLayout>} />
+      <Route path="/procurement/inquiries/:id/comparison" element={<ProtectedLayout><ProcurementInquiryComparisonPage /></ProtectedLayout>} />
       <Route path="/treasury" element={<ProtectedLayout><TreasuryPage /></ProtectedLayout>} />
       <Route path="/treasury/entities" element={<ProtectedLayout><TreasuryBankAccountsPage /></ProtectedLayout>} />
       <Route path="/treasury/payment-orders" element={<ProtectedLayout><TreasuryPaymentOrdersPage /></ProtectedLayout>} />
