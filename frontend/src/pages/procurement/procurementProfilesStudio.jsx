@@ -24,7 +24,7 @@ const cardSx = {
   bgcolor: 'background.paper', boxShadow: 'none',
 };
 const tableCardSx = {
-  borderRadius: 'var(--hrms-table-radius, 16px)', overflow: 'hidden', border: '1px solid',
+  borderRadius: 'var(--hrms-table-radius, 16px)', border: '1px solid',
   borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none',
 };
 
@@ -36,6 +36,11 @@ const ProcurementProfilesPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('documents');
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
+  // فاصلهٔ قاب جدول داخل کارت — همان توکن‌های تم که صفحهٔ قراردادها استفاده می‌کند
+  const tableThemeTokens = moduleTheme.tableTheme || {};
+  const tableFrameSx = tableThemeTokens.frame
+    ? { px: `${tableThemeTokens.frameX}px`, py: `${tableThemeTokens.frameY}px` }
+    : { px: 1.25, py: 1.25 };
 
   const { rows: profileRows, isLoading, isFetching, error } = useList(
     '/procurement/supplier-profiles/', { page_size: 500 },
@@ -140,7 +145,8 @@ const ProcurementProfilesPage = () => {
         <Typography sx={{ color: 'error.main', fontSize: 12, mb: 1 }}>{error}</Typography>
       ) : null}
 
-      <Paper sx={tableCardSx}>
+      <Paper sx={{ ...tableCardSx, ...tableFrameSx }}>
+        <Box sx={{ pt: 0.5 }}>
         <ModuleTable
         tableTheme={moduleTheme.tableTheme}
         ariaLabel="پرونده‌های خرید طرف حساب‌ها"
@@ -201,6 +207,7 @@ const ProcurementProfilesPage = () => {
         pageSize={pageSize}
           unit="طرف حساب"
         />
+        </Box>
       </Paper>
     </Box>
   );
