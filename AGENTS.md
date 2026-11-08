@@ -400,6 +400,13 @@ ssh -o BatchMode=yes hradmin@192.168.1.63 'journalctl -u gunicorn -n 50 --no-pag
    `deploy-frontend.ps1 -NoBuild` اجرا شود، `index.html` به `/static/js/...` اشاره می‌کند (404) و کل برنامه سفید می‌شود.
    همیشه بیلد را با خود اسکریپت (`deploy-frontend.ps1` بدون `-NoBuild`) انجام دهید؛ تأیید نهایی:
    `curl /` باید `src="/assets/static/js/main.<hash>.js"` بدهد و همان مسیر ۲۰۰ باشد.
+8. **اسکریپت‌ها را با `-Command` صدا بزنید، نه `-File`:** `powershell -File deploy-backend.ps1` بی‌صدا و بی‌اثر است.
+   شکل درست: `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& 'C:\HRMS\deploy-backend.ps1'"`.
+   `deploy-backend.ps1` وسط کار رمز sudo می‌پرسد و در اجرای غیرتعاملی (CI/Start-Process) هالتی می‌کند؛
+   در چنین حالتی فایل‌های تغییر‌یافته را با `scp` به `/tmp/...` بفرستید، سپس با یک اسکریپت bash روی سرور
+   (`sudo bash /tmp/apply.sh` با `cp` + `chown hrms:hrms` + `systemctl restart gunicorn`) جای‌گذاری کنید.
+   کوئری/تست سمت سرور: `sudo -u hrms bash -c 'set -a; . /opt/hrms/hrms_project/.env; set +a; cd /opt/hrms/hrms_project; PYTHONPATH=/opt/hrms/hrms_project /opt/hrms/venv/bin/python <script>'`
+   (بدون `PYTHONPATH` پیام `No module named 'hrms_project'` می‌گیرید).
 
 
 ---
