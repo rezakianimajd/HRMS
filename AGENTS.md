@@ -469,7 +469,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.5dc9ce27.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.cf1f0a34.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -504,6 +504,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `--fallback-dir` برای مسیرهای شکستهٔ `Z:\Group\Accounting\نامه ها و اسکن ها` و `اداری\بانک` استفاده شد.
     نتیجه: **outgoing ۴ فایل/۴ نامه، bank ۲۰/۲۰، university ۸۰۸/۸۰۲** (۲٫۱ گیگابایت؛ ۱ فایل گم‌شده)؛
     `relocate_letter_attachments --sync-dms` هم ۸۶۱ سند تازه را در DMS ایندکس کرد (کل پیوست‌ها: ۶٬۷۲۵).
+- **شکستن صفحهٔ مکاتبات به ماژول‌های کوچک (۲۰۲۶-۱۱-۰۸):**
+  - `CorrespondenceLettersPage.jsx` از **۲٬۹۳۱ به ۱٬۷۵۴ خط** رسید (۴۰٪ کمتر) و چهار ماژول تازه گرفت:
+    - `correspondenceFormUi.jsx` (۲۶۷ خط): `FormSection`/`FormTable`/`InfoTable`/`InfoGroup`/`PersianTimeInput`/`CellText` و ویجت‌های ویرایش درجا (`InlineText`/`InlineSelect`/`InlineDate` + `inlineSx`).
+    - `correspondenceLetterForm.jsx` (۶۷۸ خط): `LetterFormDialog` + ثابت‌ها و helperهای فرم
+      (`EMPTY_LETTER`، `DATE_KEYS`، `cleanPayload` با `NULLABLE_FIELDS`/`CLEARABLE_TEXT_FIELDS`،
+      `ENTRY_METHOD_META`، `DELIVERY_TYPE_META`، `ensureDefaultCorrespondent`، `asList`، `safeDate`).
+    - `correspondenceReferDialogs.jsx` (۱۷۹ خط): `ReferDialog` + `CompleteReferralDialog` + `REFERRAL_PURPOSE_META`.
+    - `correspondenceQueryKeys.js`: کلیدهای کش React Query (`LETTERS_KEY`، `STATS_KEY`، `META_KEY`، `REFERRALS_KEY`، `CONTACTS_KEY`).
+  - الگوی کار: استخراج با اسکریپت + چک «شناسه‌های بدون import» (`_check_form_imports`) + اجرای سوئیت
+    `correspondence*` بعد از هر گام (سه گام، هر بار ۲۱ تست سبز)؛ importهای بی‌استفاده هم پاک شدند
+    تا بیلد CRA با `CI=true` هشدار ندهد.
+  - **باقی‌مانده:** کشوی جزئیات (بخش inline بزرگ داخل کامپوننت) و هوک‌های
+    `useLetterListState`/`useLetterMutations` تا صفحه به ~۹۰۰ خط برسد.
 - **نگهداشت‌پذیری مکاتبات — بستهٔ `views/` و سبک‌سازی `/auth/me` (۲۰۲۶-۱۱-۰۸):**
   - `correspondences/views.py` (۲٬۴۸۹ خط) به بستهٔ `correspondences/views/` شکسته شد:
     `base.py` (واردات/ثابت‌ها/helperهای ارجاع + `BaseLetterViewSet`)، `legacy.py`، `letters.py`
