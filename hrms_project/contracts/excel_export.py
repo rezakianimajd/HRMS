@@ -20,9 +20,16 @@ except ImportError:  # pragma: no cover
 # کمک‌تابع‌های ایمن (نبود هیچ فیلد/رابطه‌ای نباید خروجی را قطع کند)
 # ----------------------------------------------------------------------------
 def _fa_date(value):
-    """تاریخ شمسی به شکل 1404/01/15."""
+    """تاریخ شمسی به شکل 1404/01/15 (ورودی date یا رشتهٔ ISO)."""
     if not value:
         return ''
+    if isinstance(value, str):
+        from datetime import date as _date
+
+        try:
+            value = _date.fromisoformat(value[:10])
+        except ValueError:
+            return value
     if jdate is None:
         return str(value)
     try:
@@ -365,8 +372,12 @@ def _payment_slots(bundle):
 
 def _guarantee_slots(bundle):
     """ستون‌های «تضمین N»."""
+    from contracts.guarantee_validity import guarantee_validity
+
     slots = []
     for guarantee in bundle['guarantees']:
+        validity = guarantee_validity(guarantee)
+        expiry_label = 'پایان اعتبار چک (۵ سال)' if validity['is_check'] else 'تاریخ انقضا'
         slots.append({
             'number': _attr(guarantee, 'number'),
             'type': _display(guarantee, 'guarantee_type'),
@@ -388,6 +399,7 @@ def _guarantee_slots(bundle):
                 _join('سررسید سفته', _fa_date(getattr(guarantee, 'promissory_due_date', None))),
                 _join('شماره ضمانت‌نامه', _attr(guarantee, 'guarantee_number')),
                 _join('انقضای ضمانت‌نامه', _fa_date(getattr(guarantee, 'guarantee_expiry_date', None))),
+                _join(expiry_label, _fa_date(validity['valid_until'])),
             ),
             'note': _attr(guarantee, 'note'),
         })
