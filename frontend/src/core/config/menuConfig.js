@@ -975,19 +975,51 @@ const correspondenceMenu = [
   },
 ];
 
+/**
+ * حذف آیتم‌های منو که کاربر مجوز «مشاهده» آنها را ندارد.
+ *
+ * قاعدهٔ سازگاری: اگر کاربر برای این ماژول هیچ کد ریز فعالی نداشته باشد
+ * (کاربران قدیمی/نقش‌محور)، منو دست‌نخورده برمی‌گردد تا کسی قفل نشود.
+ */
+const filterMenuByPermissions = (menu, moduleSlug, permissions) => {
+  if (!permissions || typeof permissions !== 'object') return menu;
+  const prefix = `${moduleSlug}.`;
+  const hasCodes = Object.keys(permissions).some(
+    (code) => code.startsWith(prefix) && Boolean(permissions[code]),
+  );
+  if (!hasCodes) return menu;
+
+  const keepItem = (item) => {
+    const id = String(item?.id || '');
+    const key = id.startsWith(`${moduleSlug}-`) ? id.slice(moduleSlug.length + 1) : id;
+    return Boolean(permissions[`${moduleSlug}.${key}.view`]);
+  };
+
+  return menu
+    .map((group) => {
+      if (Array.isArray(group.items)) {
+        return { ...group, items: group.items.filter(keepItem) };
+      }
+      return group;
+    })
+    .filter((group) => (Array.isArray(group.items) ? group.items.length > 0 : true));
+};
+
 export function getMenuForApp(appSlug, options = {}) {
+  let menu;
   if (appSlug === 'documents') {
-    return options.folders?.length ? buildDocumentsMenu(options.folders) : documentsMenu;
-  }
-  if (appSlug === 'contracts') return contractsMenu;
-  if (appSlug === 'settings') return settingsMenu;
-  if (appSlug === 'projects') return projectsMenu;
-  if (appSlug === 'pettycash') return pettycashMenu;
-  if (appSlug === 'accounting') return accountingMenu;
-  if (appSlug === 'procurement') return procurementMenu;
-  if (appSlug === 'treasury') return treasuryMenu;
-  if (appSlug === 'correspondence') return correspondenceMenu;
-  return menuConfig;
+    menu = options.folders?.length ? buildDocumentsMenu(options.folders) : documentsMenu;
+  } else if (appSlug === 'contracts') menu = contractsMenu;
+  else if (appSlug === 'settings') menu = settingsMenu;
+  else if (appSlug === 'projects') menu = projectsMenu;
+  else if (appSlug === 'pettycash') menu = pettycashMenu;
+  else if (appSlug === 'accounting') menu = accountingMenu;
+  else if (appSlug === 'procurement') menu = procurementMenu;
+  else if (appSlug === 'treasury') menu = treasuryMenu;
+  else if (appSlug === 'correspondence') menu = correspondenceMenu;
+  else menu = menuConfig;
+
+  return filterMenuByPermissions(menu, appSlug, options.permissions);
 }
 
 export default menuConfig;

@@ -18,6 +18,8 @@ import SyncAltIcon from '@mui/icons-material/SyncAlt';
 import TuneIcon from '@mui/icons-material/Tune';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import axiosInstance from '../../core/api/axiosConfig';
+import useAuth from '../../core/hooks/useAuth';
+import { mappingCan } from '../../core/utils/correspondencePermissions';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { ModuleTable, useModuleTheme, useRowHeight } from '../contracts/contractModuleUi';
@@ -78,6 +80,7 @@ const panelSx = (theme) => ({
 const CorrespondenceNameMappingPage = () => {
   const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [scope, setScope] = useState(searchParams.get('scope') || '');
   const [onlyUnmapped, setOnlyUnmapped] = useState(false);
@@ -87,6 +90,16 @@ const CorrespondenceNameMappingPage = () => {
   const [toast, setToast] = useState('');
   const [preview, setPreview] = useState(null);
   const debouncedSearch = useDebounced(search);
+
+  /* مجوزهای ریز: اعمال/ثبت نگاشت نیاز به «ویرایش» دارد */
+  const canEditMapping = mappingCan(user, 'edit');
+  const runIfEditable = (fn) => (...args) => {
+    if (!canEditMapping) {
+      setError('برای ثبت یا اعمال نگاشت، مجوز «ویرایش نگاشت نام‌ها» لازم است.');
+      return undefined;
+    }
+    return fn(...args);
+  };
 
   const metaQuery = useQuery({
     queryKey: ['correspondence-alias-meta'],
@@ -543,7 +556,7 @@ const CorrespondenceNameMappingPage = () => {
                   icon={<AutoFixHighIcon sx={{ fontSize: 13 }} />}
                   label={item.label}
                   disabled={quickMap.isPending}
-                  onClick={() => quickMap.mutate({ row, suggestion: item })}
+                  onClick={runIfEditable(() => quickMap.mutate({ row, suggestion: item }))}
                   sx={{ fontSize: 9.5, height: 22, cursor: 'pointer' }}
                 />
               </Tooltip>
@@ -581,14 +594,15 @@ const CorrespondenceNameMappingPage = () => {
               <Tooltip title="اعمال روی داده‌های موجود">
                 <span>
                   <IconButton size="small" aria-label="اعمال نگاشت"
-                    disabled={applyGroup.isPending} onClick={() => applyGroup.mutate(row)}>
+                    disabled={applyGroup.isPending || !canEditMapping}
+                    onClick={runIfEditable(() => applyGroup.mutate(row))}>
                     <PlayCircleOutlineIcon sx={{ fontSize: 15, color: INCOMING }} />
                   </IconButton>
                 </span>
               </Tooltip>
               <Tooltip title="حذف این نگاشت">
                 <IconButton size="small" aria-label="حذف نگاشت"
-                  onClick={() => row.targets.forEach((item) => remove.mutate(item.id))}>
+                  onClick={runIfEditable(() => row.targets.forEach((item) => remove.mutate(item.id)))}>
                   <DeleteOutlineIcon sx={{ fontSize: 15, color: DANGER }} />
                 </IconButton>
               </Tooltip>
@@ -628,7 +642,7 @@ const CorrespondenceNameMappingPage = () => {
             <Button size="small" variant="outlined"
               startIcon={<AutoFixHighIcon sx={{ fontSize: 16 }} />}
               disabled={applyAll.isPending || !summary.aliases}
-              onClick={() => applyAll.mutate(true)}>
+              onClick={runIfEditable(() => applyAll.mutate(true))}>
               اعمال همه روی داده‌ها
             </Button>
             <Button size="small" variant="contained"
@@ -690,7 +704,7 @@ const CorrespondenceNameMappingPage = () => {
           value={formatPersianNumber(summary.applied || 0)}
           hint="اتصال نامه‌ها و ارجاعات"
           color={INTERNAL}
-          onClick={() => applyAll.mutate(true)}
+          onClick={runIfEditable(() => applyAll.mutate(true))}
         />
       </Box>
 
@@ -837,7 +851,8 @@ const CorrespondenceNameMappingPage = () => {
           <Button size="small" variant="outlined"
             startIcon={<PlayCircleOutlineIcon sx={{ fontSize: 15 }} />}
             disabled={applyColumn.isPending || !rows.some((row) => row.mapped)}
-            onClick={() => applyColumn.mutate()}>
+            disabled={applyColumn.isPending || !canEditMapping}
+            onClick={runIfEditable(() => applyColumn.mutate())}>
             اعمال این ستون
           </Button>
           <Button size="small" variant="contained"
@@ -878,7 +893,7 @@ const CorrespondenceNameMappingPage = () => {
         form={form}
         setForm={setForm}
         onClose={() => setForm(EMPTY_MAPPING_FORM)}
-        onSave={() => save.mutate()}
+        onSave={runIfEditable(() => save.mutate())}
         saving={save.isPending}
         error={form.open ? error : ''}
         onClearError={() => setError('')}
@@ -895,7 +910,7 @@ const CorrespondenceNameMappingPage = () => {
       <MappingApplyPreviewDialog
         preview={preview}
         onClose={() => setPreview(null)}
-        onConfirm={() => applyAll.mutate(false)}
+        onConfirm={runIfEditable(() => applyAll.mutate(false))}
         pending={applyAll.isPending}
       />
     </Box>

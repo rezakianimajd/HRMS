@@ -1,5 +1,10 @@
 """Serializers for the Correspondences module."""
+from urllib.parse import quote
+
+from django.urls import reverse
 from rest_framework import serializers
+
+from correspondences.downloads import issue_token
 from correspondences.matching import normalize_name
 from correspondences.models import IncomingLetter, OutgoingLetter, Announcement, Form, Organization, OrganizationalLetter
 
@@ -306,9 +311,30 @@ class CorrespondenceNameAliasListSerializer(serializers.ModelSerializer):
         ]
 
 
-class LetterAttachmentSerializer(serializers.ModelSerializer):
+class AttachmentUrlMixin:
+    """آدرس امن دانلود/پیش‌نمایش پیوست (توکن امضاشده، بدون افشای مسیر فایل)."""
+
+    def attachment_urls(self, obj):
+        request = self.context.get('request')
+        if not request or not getattr(obj, 'pk', None):
+            return '', ''
+        try:
+            path = reverse('letter-attachment-download', args=[obj.pk])
+        except Exception:                              # noqa: BLE001 — مسیر تعریف نشده
+            return '', ''
+        token = issue_token(getattr(request, 'user', None), obj.pk)
+        base = request.build_absolute_uri(path)
+        query = f't={quote(token, safe="")}' if token else ''
+        download = f'{base}?{query}' if query else base
+        preview = f'{download}{"&" if query else "?"}inline=1'
+        return download, preview
+
+
+class LetterAttachmentSerializer(AttachmentUrlMixin, serializers.ModelSerializer):
     kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     file_url = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
+    preview_url = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -316,11 +342,13 @@ class LetterAttachmentSerializer(serializers.ModelSerializer):
 
         model = LetterAttachment
         fields = [
-            'id', 'letter', 'title', 'kind', 'kind_display', 'file', 'file_url', 'size',
-            'uploaded_by', 'uploaded_by_name', 'created_at',
+            'id', 'letter', 'title', 'kind', 'kind_display', 'file', 'file_url',
+            'download_url', 'preview_url', 'size', 'uploaded_by', 'uploaded_by_name',
+            'created_at',
         ]
         read_only_fields = ['id', 'size', 'uploaded_by', 'created_at', 'file_url',
-                            'kind_display', 'uploaded_by_name']
+                            'download_url', 'preview_url', 'kind_display',
+                            'uploaded_by_name']
         extra_kwargs = {'file': {'required': True}}
 
     def get_file_url(self, obj):
@@ -333,6 +361,12 @@ class LetterAttachmentSerializer(serializers.ModelSerializer):
             return ''
         return request.build_absolute_uri(url) if request else url
 
+    def get_download_url(self, obj):
+        return self.attachment_urls(obj)[0]
+
+    def get_preview_url(self, obj):
+        return self.attachment_urls(obj)[1]
+
     def get_uploaded_by_name(self, obj):
         user = obj.uploaded_by
         if not user:
@@ -340,17 +374,18 @@ class LetterAttachmentSerializer(serializers.ModelSerializer):
         return user.get_full_name() or user.get_username()
 
 
-class LetterAttachmentBriefSerializer(serializers.ModelSerializer):
+class LetterAttachmentBriefSerializer(AttachmentUrlMixin, serializers.ModelSerializer):
     """نسخهٔ سبک پیوست برای فهرست نامه‌ها (بدون فیلدهای سنگین)."""
 
     kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     file_url = serializers.SerializerMethodField()
+    preview_url = serializers.SerializerMethodField()
 
     class Meta:
         from correspondences.models import LetterAttachment
 
         model = LetterAttachment
-        fields = ['id', 'title', 'kind', 'kind_display', 'file_url', 'size']
+        fields = ['id', 'title', 'kind', 'kind_display', 'file_url', 'preview_url', 'size']
         read_only_fields = fields
 
     def get_file_url(self, obj):
@@ -362,6 +397,9 @@ class LetterAttachmentBriefSerializer(serializers.ModelSerializer):
         except ValueError:
             return ''
         return request.build_absolute_uri(url) if request else url
+
+    def get_preview_url(self, obj):
+        return self.attachment_urls(obj)[1] or self.get_file_url(obj)
 
 
 class LetterReferralBriefSerializer(serializers.ModelSerializer):

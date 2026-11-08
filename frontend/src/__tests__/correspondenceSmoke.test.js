@@ -27,20 +27,28 @@ jest.mock('../core/context/ApplicationContext', () => ({
   useApplication: () => ({ currentApp: { slug: 'correspondence' }, applications: [] }),
 }));
 
+const mockAuthState = {
+  user: {
+    id: 11,
+    username: 'mahdieh',
+    is_superuser: false,
+    is_full_access: false,
+    permissions: { can_delete_documents: false },
+    fine_permissions: {
+      'correspondence.all.view': true,
+      'correspondence.all.create': true,
+      'correspondence.all.edit': true,
+      'correspondence.all.delete': true,
+    },
+  },
+};
+
 jest.mock('../core/hooks/useAuth', () => ({
   __esModule: true,
-  default: () => ({
-    user: {
-      id: 11,
-      username: 'mahdieh',
-      is_superuser: false,
-      is_full_access: false,
-      permissions: { can_delete_documents: false },
-      fine_permissions: { 'correspondence.incoming.delete': true },
-    },
-    isAuthenticated: true,
-  }),
+  default: () => ({ user: mockAuthState.user, isAuthenticated: true }),
 }));
+
+const FULL_PERMISSIONS = { ...mockAuthState.user.fine_permissions };
 
 const iso = (days) => {
   const date = new Date();
@@ -345,6 +353,38 @@ test('letters table supports grid-style inline row editing', async () => {
 
   root.unmount();
   container.remove();
+});
+
+test('read-only permissions disable creating and inline editing', async () => {
+  mockAuthState.user = { ...mockAuthState.user, fine_permissions: { 'correspondence.all.view': true } };
+
+  try {
+    const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+    const createButton = [...container.querySelectorAll('button')]
+      .find((node) => node.textContent.includes('نامه وارده جدید'));
+    expect(createButton).toBeTruthy();
+    expect(createButton.disabled).toBe(true);
+
+    const exportButton = [...container.querySelectorAll('button')]
+      .find((node) => node.textContent.includes('خروجی اکسل'));
+    // خروجی اکسل با مجوز «مشاهده» هم مجاز است (fallback)، بنابراین فعال می‌ماند
+    expect(exportButton.disabled).toBe(false);
+
+    const editButton = container.querySelector('[aria-label="ویرایش ردیف"]');
+    expect(editButton).toBeTruthy();
+    await act(async () => {
+      editButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await wait(80);
+    });
+    expect(container.querySelector('[aria-label="ذخیرهٔ ردیف"]')).toBeNull();
+    expect(container.textContent).toContain('مجوز «ویرایش مکاتبات» لازم است');
+
+    root.unmount();
+    container.remove();
+  } finally {
+    mockAuthState.user = { ...mockAuthState.user, fine_permissions: FULL_PERMISSIONS };
+  }
 });
 
 test('letters table shows the standard incoming column set', async () => {

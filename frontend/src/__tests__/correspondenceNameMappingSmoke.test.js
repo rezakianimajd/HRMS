@@ -24,6 +24,25 @@ jest.mock('../core/context/ApplicationContext', () => ({
   useApplication: () => ({ currentApp: { slug: 'correspondence' }, applications: [] }),
 }));
 
+jest.mock('../core/hooks/useAuth', () => ({
+  __esModule: true,
+  default: () => ({
+    user: {
+      id: 5,
+      username: 'mapper',
+      is_superuser: false,
+      is_full_access: false,
+      permissions: {},
+      fine_permissions: {
+        'correspondence.name-mapping.view': true,
+        'correspondence.name-mapping.edit': true,
+        'correspondence.name-mapping.delete': true,
+      },
+    },
+    isAuthenticated: true,
+  }),
+}));
+
 const API = '/correspondence-name-aliases/';
 
 const meta = {

@@ -1,5 +1,5 @@
 """Views for the Correspondences module."""
-from rest_framework import viewsets, filters, parsers
+from rest_framework import viewsets, filters, parsers, serializers
 from correspondences.models import IncomingLetter, OutgoingLetter, Announcement, Form, Organization, OrganizationalLetter
 from correspondences.serializers import (
     IncomingLetterSerializer, OutgoingLetterSerializer,
@@ -137,6 +137,30 @@ from correspondences.models import (  # noqa: E402
     LetterSeries,
 )
 from correspondences.numbering import allocate_number, preview_number, request_number  # noqa: E402
+from django.core.exceptions import PermissionDenied  # noqa: E402
+from django.http import FileResponse, Http404  # noqa: E402
+from rest_framework.permissions import AllowAny  # noqa: E402
+from rest_framework_simplejwt.authentication import JWTAuthentication  # noqa: E402
+
+from correspondences.downloads import issue_token, read_token  # noqa: E402
+from correspondences.permissions import (  # noqa: E402
+    REQUESTS_MENUS,
+    CorrespondencePermissionMixin,
+    DefinitionPermissionMixin,
+    can_download_attachment,
+    can_read_confidential,
+    confidential_letter_filter,
+    has_permission as correspondence_has_permission,
+    menus_for_direction,
+    require as require_correspondence,
+    referral_to_me_filter,
+)
+from correspondences.uploads import (  # noqa: E402
+    content_type_of,
+    is_inline_safe,
+    stored_filename,
+    validate_attachment,
+)
 from correspondences.serializers import (  # noqa: E402
     CorrespondenceNameAliasListSerializer, CorrespondenceNameAliasSerializer,
     CorrespondentSerializer, LetterAttachmentSerializer,
@@ -177,6 +201,19 @@ def _log_event(letter, action, user=None, note='', meta=None):
         actor=user if getattr(user, 'is_authenticated', False) else None,
         note=note or '', meta=meta or {},
     )
+
+
+def _delete_media_file(name):
+    """حذف فایل از رسانه (پس از حذف رکورد، برای جلوگیری از فایل‌های سرگردان)."""
+    if not name:
+        return
+    from django.core.files.storage import default_storage
+
+    try:
+        if default_storage.exists(name):
+            default_storage.delete(name)
+    except Exception:                                  # noqa: BLE001 — حذف فایل نباید خطا بدهد
+        pass
 
 
 def _user_employee(user, company):
@@ -389,7 +426,7 @@ class BaseLetterViewSet(viewsets.ModelViewSet):
         serializer.save(company=_get_company(self.request))
 
 
-class LetterCategoryViewSet(BaseLetterViewSet):
+class LetterCategoryViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
     serializer_class = LetterCategorySerializer
     queryset = LetterCategory.objects.all()
     search_fields = ['name', 'code', 'description']
@@ -403,7 +440,7 @@ class LetterCategoryViewSet(BaseLetterViewSet):
         return qs
 
 
-class LetterSeriesViewSet(BaseLetterViewSet):
+class LetterSeriesViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
     serializer_class = LetterSeriesSerializer
     queryset = LetterSeries.objects.all()
     search_fields = ['title', 'prefix']
@@ -422,7 +459,7 @@ class LetterSeriesViewSet(BaseLetterViewSet):
         return Response({'number': preview_number(series, parsed)})
 
 
-class CorrespondentViewSet(BaseLetterViewSet):
+class CorrespondentViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
     serializer_class = CorrespondentSerializer
     queryset = Correspondent.objects.all()
     search_fields = ['name', 'title', 'code', 'national_id', 'phone', 'mobile', 'email',
@@ -442,11 +479,41 @@ class CorrespondentViewSet(BaseLetterViewSet):
         return qs
 
 
-class LetterViewSet(BaseLetterViewSet):
+class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
     """دفتر نامه‌های اداری: جستجو/فیلتر، ثبت شماره، ارجاع، پاسخ، بایگانی و آمار."""
+
+    permission_label = 'مکاتبات'
+    permission_matrix = {
+        'list': ('view', 'letters'),
+        'retrieve': ('view', 'letters'),
+        'stats': ('view', 'letters'),
+        'meta': ('view', 'letters'),
+        'personnel': ('view', 'letters'),
+        'parties': ('view', 'letters'),
+        'number_preview': ('view', 'letters'),
+        'create': ('create', 'letters'),
+        'update': ('edit', 'letters'),
+        'partial_update': ('edit', 'letters'),
+        'destroy': ('delete', 'letters'),
+        'register': ('edit', 'letters'),
+        'archive': ('edit', 'letters'),
+        'close': ('edit', 'letters'),
+        'comment': ('edit', 'letters'),
+        'refer': ('edit', 'letters'),
+        'reply': ('create', 'letters'),
+        'quick_party': ('create', 'fixed'),
+        'export_excel': ('export', 'letters'),
+    }
 
     serializer_class = LetterSerializer
     queryset = Letter.objects.all()
+
+    def _letter_direction_for_request(self):
+        pk = self.kwargs.get('pk')
+        if not pk:
+            return None
+        return Letter.objects.filter(pk=pk).values_list('direction', flat=True).first()
+
     # جست‌وجوی جامع دستی انجام می‌شود تا نام ارجاع‌شدگان، طرف حساب، پیوست‌ها و
     # متن نامه هم پوشش داده شوند.
     filter_backends = [filters.OrderingFilter]
@@ -485,11 +552,15 @@ class LetterViewSet(BaseLetterViewSet):
         return LetterSerializer
 
     def destroy(self, request, *args, **kwargs):
-        """حذف نامه فقط با مجوز «حذف» مکاتبات اداری."""
-        from core.engines.permission_engine import require_module_action
-
-        require_module_action(request.user, 'correspondence', ('delete',), 'حذف مکاتبات')
-        return super().destroy(request, *args, **kwargs)
+        """حذف نامه + فایل‌های پیوست (مجوز «حذف» در ماتریس بررسی شده است)."""
+        letter = self.get_object()
+        file_names = [
+            row.file.name for row in letter.attachments.all() if getattr(row, 'file', None)
+        ]
+        response = super().destroy(request, *args, **kwargs)
+        for name in file_names:
+            _delete_media_file(name)
+        return response
 
     def _apply_search(self, qs, term):
         """جست‌وجوی همه‌جانبه در شماره، موضوع، متن، طرف حساب و ارجاعات.
@@ -540,6 +611,9 @@ class LetterViewSet(BaseLetterViewSet):
             related += ['drafter', 'created_by', 'reply_to',
                         'sender_employee', 'receiver_employee', 'delivered_by']
         qs = super().get_queryset().select_related(*related)
+        # نامه‌های «محرمانه/سری» فقط برای سازنده، تنظیم‌کننده، ارجاع‌شدگان و
+        # دارندگان مجوز تأیید/ویرایش قابل مشاهده‌اند.
+        qs = qs.filter(confidential_letter_filter(self.request.user))
 
         if heavy:
             qs = qs.prefetch_related(
@@ -786,17 +860,30 @@ class LetterViewSet(BaseLetterViewSet):
 
     @action(detail=True, methods=['get', 'post'])
     def attachments(self, request, pk=None):
-        """فهرست یا بارگذاری پیوست‌های نامه."""
+        """فهرست یا بارگذاری پیوست‌های نامه (با اعتبارسنجی امن فایل)."""
         letter = self.get_object()
         if request.method.lower() == 'get':
+            self.check_correspondence_permission('view', direction=letter.direction)
             serializer = LetterAttachmentSerializer(
                 letter.attachments.all(), many=True, context={'request': request},
             )
             return Response(serializer.data)
+
+        self.check_correspondence_permission('edit', direction=letter.direction)
         upload = request.FILES.get('file')
         if not upload:
             return Response({'detail': 'فایل پیوست ارسال نشده است.'},
                             status=http_status.HTTP_400_BAD_REQUEST)
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            validate_attachment(upload)
+        except DjangoValidationError as error:
+            return Response(
+                {'detail': '؛ '.join(error.messages)},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        upload.name = stored_filename(upload)
         attachment = LetterAttachment.objects.create(
             company=letter.company, letter=letter,
             title=request.data.get('title') or getattr(upload, 'name', ''),
@@ -1170,8 +1257,58 @@ class LetterViewSet(BaseLetterViewSet):
         return response
 
 
-class LetterReferralViewSet(BaseLetterViewSet):
+class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
     """ارجاعات نامه‌ها: کارتابل من، مشاهده، حاشیه، دستور، ارجاع بعدی و تکمیل اقدام."""
+
+    permission_label = 'ارجاع مکاتبات'
+    permission_matrix = {
+        'list': ('view', 'referrals'),
+        'retrieve': ('view', 'referrals'),
+        'update': ('edit', 'referrals'),
+        'partial_update': ('edit', 'referrals'),
+        'destroy': ('delete', 'referrals'),
+    }
+
+    def _letter_direction_for_request(self):
+        pk = self.kwargs.get('pk')
+        if not pk:
+            return None
+        return LetterReferral.objects.filter(pk=pk).values_list(
+            'letter__direction', flat=True,
+        ).first()
+
+    def _referral_assigned_to_me(self, referral):
+        """آیا این ارجاع به کاربر/پرسنل جاری است؟ (کاربر، پرسنل، چندنفره، نام متنی)"""
+        from correspondences.matching import normalize_name
+        from correspondences.permissions import employee_of, my_name_variants
+
+        user = self.request.user
+        if referral.to_user_id and referral.to_user_id == user.id:
+            return True
+        employee_id = employee_of(user)
+        if employee_id:
+            if referral.to_employee_id == employee_id:
+                return True
+            if referral.to_employees.filter(id=employee_id).exists():
+                return True
+        to_name = (referral.to_name or '').strip()
+        if to_name and normalize_name(to_name) in my_name_variants(user):
+            return True
+        return False
+
+    def _require_referral_access(self, referral, action='edit'):
+        """ارجاع را فقط صاحب آن، سازنده/تنظیم‌کنندهٔ نامه یا دارندهٔ مجوز لمس می‌کند."""
+        user = self.request.user
+        if self._referral_assigned_to_me(referral):
+            return
+        letter = referral.letter
+        if letter.created_by_id == user.id or letter.drafter_id == user.id:
+            return
+        require_correspondence(
+            user, action,
+            menus=menus_for_direction(letter.direction),
+            label='ارجاع مکاتبات',
+        )
 
     serializer_class = LetterReferralSerializer
     queryset = LetterReferral.objects.all()
@@ -1189,6 +1326,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
             'letter', 'from_user', 'to_user', 'answered_by',
             'to_employee', 'from_employee', 'letter__category', 'letter__organization',
         ).prefetch_related('to_employees').distinct()
+        qs = qs.filter(confidential_letter_filter(self.request.user, prefix='letter__'))
         params = self.request.query_params
         user = getattr(self.request, 'user', None)
         company = _get_company(self.request)
@@ -1228,6 +1366,8 @@ class LetterReferralViewSet(BaseLetterViewSet):
         employee = _user_employee(user, company) or _employee_of_user(user, company)
         base = LetterReferral.objects.filter(
             company=company, letter__is_active=True,
+        ).filter(
+            confidential_letter_filter(user, prefix='letter__'),
         ).select_related(
             'letter', 'from_user', 'to_user', 'to_employee', 'from_employee',
             'letter__category',
@@ -1235,21 +1375,24 @@ class LetterReferralViewSet(BaseLetterViewSet):
         target = _my_referral_filter(user, employee, company)
         base = base.filter(target).distinct()
 
-        open_qs = base.filter(status__in=OPEN_REFERRAL_STATUSES)
-        counts = {
-            'total': base.count(),
-            'action': base.filter(purpose='action').count(),
-            'info': base.filter(purpose='info').count(),
-            'comment': base.filter(purpose='comment').count(),
-            'pending': open_qs.count(),
-            'done': base.filter(status='done').count(),
-            'closed': base.exclude(status__in=OPEN_REFERRAL_STATUSES).count(),
-            'overdue': open_qs.filter(due_date__lt=date_cls.today()).count(),
+        today = date_cls.today()
+        open_status = Q(status__in=OPEN_REFERRAL_STATUSES)
+        # همهٔ شمارنده‌ها در یک کوئری (قبلاً ۱۰ کوئری جدا بود و هر ۳۰ ثانیه از سایدبار صدا می‌شد)
+        aggregated = base.aggregate(
+            total=Count('id'),
+            action=Count('id', filter=Q(purpose='action')),
+            info=Count('id', filter=Q(purpose='info')),
+            comment=Count('id', filter=Q(purpose='comment')),
+            pending=Count('id', filter=open_status),
+            done=Count('id', filter=Q(status='done')),
+            closed=Count('id', filter=~open_status),
+            overdue=Count('id', filter=open_status & Q(due_date__lt=today)),
             # «دیده‌نشده» فقط برای ارجاع‌های باز معنا دارد؛ ارجاع‌های تمام‌شده
             # (مثل ارجاع‌های تاریخی واردشده از اکسل) نباید شمارنده را بالا ببرند.
-            'unseen': open_qs.filter(seen_at__isnull=True).count(),
-            'unseen_all': base.filter(seen_at__isnull=True).count(),
-        }
+            unseen=Count('id', filter=open_status & Q(seen_at__isnull=True)),
+            unseen_all=Count('id', filter=Q(seen_at__isnull=True)),
+        )
+        counts = {key: value or 0 for key, value in aggregated.items()}
 
         qs = base
         status_param = request.query_params.get('status')
@@ -1300,6 +1443,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
     def seen(self, request, pk=None):
         """علامت‌گذاری ارجاع به‌عنوان مشاهده‌شده (رسید مطالعه)."""
         referral = self.get_object()
+        self._require_referral_access(referral, 'view')
         if not referral.seen_at:
             referral.seen_at = timezone.now()
             referral.save(update_fields=['seen_at', 'updated_at'])
@@ -1313,6 +1457,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
     def note(self, request, pk=None):
         """ثبت حاشیه/یادداشت روی ارجاع (بدون تغییر وضعیت)."""
         referral = self.get_object()
+        self._require_referral_access(referral, 'view')
         text = (request.data.get('note') or request.data.get('margin_note') or '').strip()
         if not text:
             return Response({'detail': 'متن حاشیه را وارد کنید.'},
@@ -1333,6 +1478,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
     def instruction(self, request, pk=None):
         """ثبت/ویرایش دستور روی ارجاع."""
         referral = self.get_object()
+        self._require_referral_access(referral, 'edit')
         text = (request.data.get('instruction') or '').strip()
         if not text:
             return Response({'detail': 'متن دستور را وارد کنید.'},
@@ -1352,6 +1498,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
     def forward(self, request, pk=None):
         """ارجاع به سطح بعد (با حفظ زنجیرهٔ ارجاع) و بستن ارجاع جاری."""
         referral = self.get_object()
+        self._require_referral_access(referral, 'edit')
         child, error = _create_referral(referral.letter, request, parent=referral)
         if error:
             return error
@@ -1372,6 +1519,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
 
     def perform_update(self, serializer):
         referral = serializer.instance
+        self._require_referral_access(referral, 'edit')
         previous_status = referral.status
         data = serializer.validated_data
         new_status = data.get('status', previous_status)
@@ -1403,6 +1551,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
     def complete(self, request, pk=None):
         """ثبت پاسخ و نتیجهٔ یک ارجاع (اقدام انجام‌شده)."""
         referral = self.get_object()
+        self._require_referral_access(referral, 'edit')
         response = (request.data.get('response') or '').strip()
         result = (request.data.get('result') or '').strip()
         result_note = (request.data.get('result_note') or '').strip()
@@ -1429,7 +1578,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
         return Response(LetterReferralSerializer(referral, context={'request': request}).data)
 
 
-class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
+class CorrespondenceNameAliasViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
     """نگاشت نام‌های خام (اکسل) به پرسنل / طرف حساب / مخاطب / سازمان / نوع مکاتبه.
 
     - ``list``   فهرست سبک (سریالایزر بدون یادداشت) برای جدول
@@ -1437,6 +1586,24 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
     - ``meta``   فرادادهٔ کاربردهای تخصصی + شمارش‌ها (بدون اسکن سنگین)
     - ``summary``/``unmapped``/``suggestions``/``apply``/``apply-all`` مطابق قبل
     """
+
+    permission_label = 'نگاشت نام‌های مکاتبات'
+    permission_matrix = {
+        'list': ('view', 'aliases'),
+        'retrieve': ('view', 'aliases'),
+        'create': ('edit', 'aliases'),
+        'update': ('edit', 'aliases'),
+        'partial_update': ('edit', 'aliases'),
+        'destroy': ('delete', 'aliases'),
+        'summary': ('view', 'aliases'),
+        'meta': ('view', 'aliases'),
+        'groups': ('view', 'aliases'),
+        'columns': ('view', 'aliases'),
+        'unmapped': ('view', 'aliases'),
+        'suggestions': ('view', 'aliases'),
+        'apply': ('edit', 'aliases'),
+        'apply_all': ('edit', 'aliases'),
+    }
 
     serializer_class = CorrespondenceNameAliasSerializer
     queryset = CorrespondenceNameAlias.objects.all()
@@ -1951,33 +2118,114 @@ class CorrespondenceNameAliasViewSet(BaseLetterViewSet):
         return Response(mapping.apply_all(company, dry_run=dry_run))
 
 
-class LetterAttachmentViewSet(BaseLetterViewSet):
+class LetterAttachmentViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
+    """پیوست‌های نامه: فهرست، بارگذاری امن، دانلود با توکن و حذف با مجوز."""
+
+    permission_label = 'پیوست مکاتبات'
+    permission_matrix = {
+        'list': ('view', 'attachments'),
+        'retrieve': ('view', 'attachments'),
+        'create': ('edit', 'attachments'),
+        'update': ('edit', 'attachments'),
+        'partial_update': ('edit', 'attachments'),
+        'destroy': ('delete', 'attachments'),
+    }
 
     serializer_class = LetterAttachmentSerializer
     queryset = LetterAttachment.objects.all()
     ordering = ['-created_at']
 
-    def destroy(self, request, *args, **kwargs):
-        """حذف پیوست فقط با مجوز «حذف» مکاتبات اداری."""
-        from core.engines.permission_engine import require_module_action
-
-        require_module_action(request.user, 'correspondence', ('delete',), 'حذف پیوست مکاتبات')
-        return super().destroy(request, *args, **kwargs)
+    def _letter_direction_for_request(self):
+        letter_id = None
+        if self.action == 'create':
+            letter_id = (getattr(self.request, 'data', {}) or {}).get('letter')
+        else:
+            pk = self.kwargs.get('pk')
+            if pk:
+                letter_id = LetterAttachment.objects.filter(pk=pk).values_list(
+                    'letter_id', flat=True,
+                ).first()
+        if not letter_id:
+            return None
+        return Letter.objects.filter(pk=letter_id).values_list(
+            'direction', flat=True,
+        ).first()
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('letter', 'uploaded_by')
+        qs = qs.filter(confidential_letter_filter(self.request.user, prefix='letter__'))
         letter_id = self.request.query_params.get('letter')
         if letter_id:
             qs = qs.filter(letter_id=letter_id)
         return qs
 
     def perform_create(self, serializer):
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
         upload = self.request.FILES.get('file')
+        try:
+            validate_attachment(upload)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({'file': error.messages}) from error
+        upload.name = stored_filename(upload)
         serializer.save(
             company=_get_company(self.request),
             size=getattr(upload, 'size', 0),
             uploaded_by=getattr(self.request, 'user', None),
         )
+
+    def perform_destroy(self, instance):
+        file_name = instance.file.name if getattr(instance, 'file', None) else ''
+        super().perform_destroy(instance)
+        _delete_media_file(file_name)
+
+    @action(
+        detail=True, methods=['get'], url_path='download',
+        permission_classes=[AllowAny], authentication_classes=[JWTAuthentication],
+    )
+    def download(self, request, pk=None):
+        """دانلود/پیش‌نمایش پیوست با توکن امضاشده یا JWT (کنترل محرمانگی و مجوز)."""
+        attachment = LetterAttachment.objects.select_related('letter').filter(pk=pk).first()
+        company = _get_company(request)
+        if not attachment or (
+            company and attachment.letter.company_id != getattr(company, 'pk', company)
+        ):
+            raise Http404('پیوست یافت نشد.')
+
+        user = request.user if getattr(request.user, 'is_authenticated', False) else None
+        if user is None:
+            data = read_token(request.query_params.get('t'))
+            if not data:
+                raise PermissionDenied('لینک دانلود نامعتبر یا منقضی شده است.')
+            user_id, attachment_id = data
+            if attachment_id != attachment.pk:
+                raise PermissionDenied('لینک دانلود با این پیوست هم‌خوان نیست.')
+            from django.contrib.auth import get_user_model
+
+            user = get_user_model().objects.filter(pk=user_id, is_active=True).first()
+            if user is None:
+                raise PermissionDenied('کاربر لینک دانلود معتبر نیست.')
+
+        if not can_read_confidential(user, attachment.letter):
+            raise PermissionDenied('دسترسی به فایل نامهٔ محرمانه/سری مجاز نیست.')
+        if not can_download_attachment(user, attachment):
+            raise PermissionDenied('برای دریافت این پیوست مجوز «مشاهده» لازم است.')
+
+        storage_name = getattr(attachment.file, 'name', '') or ''
+        if not storage_name:
+            raise Http404('فایل روی سرور یافت نشد.')
+        try:
+            handle = attachment.file.open('rb')
+        except Exception as error:                      # noqa: BLE001 — فایل جابه‌جا شده
+            raise Http404('فایل روی سرور یافت نشد.') from error
+
+        inline = _truthy(request.query_params.get('inline')) and is_inline_safe(storage_name)
+        file_name = storage_name.rsplit('/', 1)[-1] or 'attachment'
+        response = FileResponse(handle, as_attachment=not inline, filename=file_name)
+        response['Content-Type'] = content_type_of(file_name)
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'private, max-age=600'
+        return response
 
 
 class LetterRequestTypeViewSet(BaseLetterViewSet):
@@ -1989,8 +2237,18 @@ class LetterRequestTypeViewSet(BaseLetterViewSet):
     ordering = ['order', 'name']
 
 
-class LetterRequestViewSet(BaseLetterViewSet):
+class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
     """کارتابل درخواست‌های پرسنل: ثبت، مشاهده، ارجاع، تأیید/رد و لغو."""
+
+    permission_label = 'درخواست‌های کارتابل مکاتبات'
+    permission_matrix = {
+        'update': ('edit', 'requests'),
+        'partial_update': ('edit', 'requests'),
+        'destroy': ('delete', 'requests'),
+        'approve': ('approve', 'requests'),
+        'reject': ('approve', 'requests'),
+        'assign': ('approve', 'requests'),
+    }
 
     serializer_class = LetterRequestSerializer
     queryset = LetterRequest.objects.all()
@@ -2008,6 +2266,13 @@ class LetterRequestViewSet(BaseLetterViewSet):
         user = getattr(self.request, 'user', None)
         company = _get_company(self.request)
         employee = _user_employee(user, company)
+
+        # کاربران بدون مجوز «مشاهدهٔ کارتابل درخواست‌ها» فقط درخواست‌های خودشان را می‌بینند
+        if not correspondence_has_permission(user, 'view', menus=REQUESTS_MENUS):
+            if user and user.is_authenticated:
+                qs = qs.filter(requester=user)
+            else:
+                qs = qs.none()
 
         scope = params.get('scope')
         if scope == 'mine' and user and user.is_authenticated:
@@ -2078,10 +2343,20 @@ class LetterRequestViewSet(BaseLetterViewSet):
 
 
 
+    def _require_own_request(self, instance):
+        """لغو/ثبت درخواست فقط توسط درخواست‌دهنده یا دارندهٔ مجوز ویرایش."""
+        user = getattr(self.request, 'user', None)
+        if instance.requester_id and instance.requester_id == getattr(user, 'id', None):
+            return
+        require_correspondence(
+            user, 'edit', menus=REQUESTS_MENUS, label='درخواست‌های کارتابل',
+        )
+
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         """ثبت نهایی درخواست پیش‌نویس."""
         instance = self.get_object()
+        self._require_own_request(instance)
         if instance.status != 'draft':
             return Response({'detail': 'این درخواست قبلاً ثبت شده است.'},
                             status=http_status.HTTP_400_BAD_REQUEST)
@@ -2132,6 +2407,7 @@ class LetterRequestViewSet(BaseLetterViewSet):
     def cancel(self, request, pk=None):
         """لغو درخواست توسط درخواست‌دهنده."""
         instance = self.get_object()
+        self._require_own_request(instance)
         if instance.status in ('approved', 'rejected', 'canceled'):
             return Response({'detail': 'امکان لغو این درخواست وجود ندارد.'},
                             status=http_status.HTTP_400_BAD_REQUEST)

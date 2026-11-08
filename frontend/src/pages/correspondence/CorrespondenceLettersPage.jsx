@@ -35,6 +35,7 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../core/utils/numberUtils';
 import useAuth from '../../core/hooks/useAuth';
+import { letterCan } from '../../core/utils/correspondencePermissions';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { MUTED } from '../accounting/AccountingDashboardUI';
 import {
@@ -208,15 +209,49 @@ const UI_ONLY_KEYS = new Set([
   'party_create_in_contracts',
 ]);
 
-const cleanPayload = (form) => {
+/* فیلدهایی که خالی‌کردن‌شان در حالت ویرایش باید null ذخیره شود (FK/تاریخ). */
+const NULLABLE_FIELDS = [
+  'category', 'sender_employee', 'receiver_employee', 'sender_party', 'party_account',
+  'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time', 'contract',
+  'sent_date', 'contract_title',
+];
+
+/* متن‌های آزاد که پاک‌شدن‌شان باید با رشتهٔ خالی ذخیره شود (نه null). */
+const EMPTY_ALLOWED_FIELDS = ['party_name'];
+/* متن‌هایی که کاربر باید بتواند در دیالوگ ویرایش خالی کند. */
+const CLEARABLE_TEXT_FIELDS = [
+  'number', 'external_number', 'indicator_no', 'transmittal_no', 'archive_ref',
+  'company_reg_no', 'unit_reg_no', 'unit_name', 'subject', 'summary', 'body',
+  'sender_name', 'receiver_name', 'delivered_by_name', 'contract_number', 'tags',
+];
+
+/**
+ * ساخت payload ثبت/ویرایش.
+ * در حالت «ایجاد» فیلدهای خالی ارسال نمی‌شوند؛ در حالت «ویرایش» خالی‌کردن
+ * فیلدها هم ارسال می‌شود تا کاربر بتواند مقدار قبلی را پاک کند.
+ */
+const cleanPayload = (form, { editing = false } = {}) => {
   const payload = {};
   Object.entries(form).forEach(([key, value]) => {
     if (UI_ONLY_KEYS.has(key)) return;
-    if (value === '' || value === null || value === undefined) return;
-    payload[key] = value;
+    const empty = value === '' || value === null || value === undefined;
+    if (!empty) {
+      payload[key] = value;
+      return;
+    }
+    if (!editing) return;
+    if (EMPTY_ALLOWED_FIELDS.includes(key) || CLEARABLE_TEXT_FIELDS.includes(key)) {
+      payload[key] = '';
+      return;
+    }
+    if (NULLABLE_FIELDS.includes(key)) payload[key] = null;
   });
-  if (payload.amount) payload.amount = Number(payload.amount) || 0;
-  else delete payload.amount;
+  if (payload.amount === '' || payload.amount === null || payload.amount === undefined) {
+    if (editing) payload.amount = null;
+    else delete payload.amount;
+  } else {
+    payload.amount = Number(payload.amount) || 0;
+  }
   return payload;
 };
 
@@ -538,22 +573,32 @@ const LetterFormDialog = ({
 
   const save = useMutation({
     mutationFn: async () => {
-      const payload = cleanPayload(form);
+      const payload = cleanPayload(form, { editing: Boolean(initial) });
       if (!payload.subject) throw new Error('موضوع نامه الزامی است.');
       if (!payload.letter_date) throw new Error('تاریخ نامه الزامی است.');
       const response = initial
         ? await axiosInstance.patch(`/letters/${initial.id}/`, payload)
         : await axiosInstance.post('/letters/', payload);
       const letter = response.data;
-      for (const file of files) {
-        const body = new FormData();
-        body.append('file', file);
-        body.append('title', file.name);
-        body.append('kind', 'attachment');
-        // eslint-disable-next-line no-await-in-loop
-        await axiosInstance.post(`/letters/${letter.id}/attachments/`, body, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
+      // پیوست‌ها موازی آپلود می‌شوند؛ خطای هر فایل جداگانه گزارش می‌شود.
+      if (files.length) {
+        const results = await Promise.allSettled(files.map((file) => {
+          const body = new FormData();
+          body.append('file', file);
+          body.append('title', file.name);
+          body.append('kind', 'attachment');
+          return axiosInstance.post(`/letters/${letter.id}/attachments/`, body, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }));
+        const failed = results.filter((row) => row.status === 'rejected');
+        if (failed.length) {
+          const firstError = failed[0].reason?.response?.data?.detail;
+          const message = firstError
+            || `${failed.length} فایل از ${files.length} فایل آپلود نشد.`;
+          if (failed.length === results.length) throw new Error(message);
+          letter.uploadWarning = message;
+        }
       }
       return letter;
     },
@@ -561,6 +606,10 @@ const LetterFormDialog = ({
       qc.invalidateQueries({ queryKey: LETTERS_KEY });
       qc.invalidateQueries({ queryKey: STATS_KEY });
       if (onSaved) onSaved(letter);
+      if (letter?.uploadWarning) {
+        setError(letter.uploadWarning);
+        return;
+      }
       onClose();
     },
     onError: (err) => {
@@ -1164,17 +1213,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const { user } = useAuth();
   const preset = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
 
-  /** مجوز حذف: سوپر‌یوزر/دسترسی کامل، یا هر کد ریز «حذف» مکاتبات، یا مجوز قدیمی حذف مدارک. */
-  const canDelete = useMemo(() => {
-    if (!user) return false;
-    if (user.is_superuser || user.is_full_access) return true;
-    const fine = user.fine_permissions || {};
-    const fineDelete = Object.entries(fine).some(
-      ([code, granted]) => granted && code.startsWith('correspondence.') && code.endsWith('.delete'),
-    );
-    return fineDelete || Boolean(user.permissions?.can_delete_documents);
-  }, [user]);
-
   const [direction, setDirection] = useState(preset.direction || 'all');
   const [statusFilter, setStatusFilter] = useState(preset.status || 'all');
   const [scope, setScope] = useState(preset.scope || 'all');
@@ -1205,6 +1243,30 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [uploading, setUploading] = useState(false);
   const [previewState, setPreviewState] = useState(null);
   const uploadRef = useRef(null);
+
+  /* مجوزهای ریز این صفحه (بر اساس جهت جاری) */
+  const activeDirection = direction !== 'all' ? direction : (preset.direction || 'incoming');
+  const canDelete = useMemo(
+    () => letterCan(user, 'delete', activeDirection),
+    [user, activeDirection],
+  );
+  const canCreate = useMemo(
+    () => letterCan(user, 'create', activeDirection),
+    [user, activeDirection],
+  );
+  const canEdit = useMemo(
+    () => letterCan(user, 'edit', activeDirection),
+    [user, activeDirection],
+  );
+  const canExport = useMemo(
+    () => letterCan(user, 'export', activeDirection),
+    [user, activeDirection],
+  );
+
+  /** مجوز هر نامه بر اساس جهت خودش (صفحهٔ «همه مکاتبات» چند جهت دارد). */
+  const canEditOf = (letter) => letterCan(user, 'edit', letter?.direction || activeDirection);
+  const canCreateOf = (letter) => letterCan(user, 'create', letter?.direction || activeDirection);
+  const canDeleteOf = (letter) => letterCan(user, 'delete', letter?.direction || activeDirection);
 
   useEffect(() => {
     const next = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
@@ -1351,13 +1413,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     'party_account', 'party_name', 'receiver_employee', 'receiver_name', 'contract',
     'letter_date', 'sent_date', 'due_date', 'priority', 'status',
   ];
-  const NULLABLE_FIELDS = [
-    'category', 'sender_employee', 'receiver_employee', 'sender_party', 'party_account',
-    'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time', 'contract',
-    'sent_date',
-  ];
-  /* متن‌های آزاد که پاک‌شدن‌شان باید با رشتهٔ خالی ذخیره شود (نه null). */
-  const EMPTY_ALLOWED_FIELDS = ['party_name'];
+  const NULLABLE_FIELD_LIST = NULLABLE_FIELDS;
 
   const seedDraft = (letter) => ({
     number: letter.number || '',
@@ -1413,6 +1469,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const letterById = (id) => letters.find((row) => row.letter.id === id)?.letter || null;
 
   const startRowEdit = (letter) => {
+    if (!canEditOf(letter)) {
+      setError('برای ویرایش این نامه مجوز «ویرایش مکاتبات» لازم است.');
+      return;
+    }
     setDrafts((previous) => (previous[letter.id] ? previous : {
       ...previous,
       [letter.id]: seedDraft(letter),
@@ -1625,15 +1685,20 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     URL.revokeObjectURL(url);
   };
 
+  /** آیتم‌های پیش‌نمایش: آدرس امن (توکن‌دار) با fallback مسیر مستقیم. */
+  const previewItems = (files) => (files || [])
+    .filter((file) => file && (file.preview_url || file.file_url))
+    .map((file) => ({ ...file, file_url: file.preview_url || file.file_url }));
+
   const openPreview = (files, index, title) => {
-    const items = (files || []).filter((file) => file && file.file_url);
+    const items = previewItems(files);
     if (!items.length) return;
     setPreviewState({ items, index: Math.min(Math.max(index || 0, 0), items.length - 1), title });
   };
 
   const openRowPreview = async (letter) => {
     if (!letter?.id) return;
-    const cachedFiles = (letter.attachments || []).filter((file) => file?.file_url);
+    const cachedFiles = previewItems(letter.attachments);
     if (cachedFiles.length) {
       openPreview(cachedFiles, 0, letter.subject);
       return;
@@ -1643,7 +1708,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         queryKey: ['correspondence-letter', letter.id],
         queryFn: () => axiosInstance.get(`/letters/${letter.id}/`).then((response) => response.data),
       });
-      const files = (detail?.attachments || []).filter((file) => file?.file_url);
+      const files = previewItems(detail?.attachments);
       if (files.length) {
         openPreview(files, 0, detail.subject || letter.subject);
         return;
@@ -1878,7 +1943,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}>خروجی اکسل</Button>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
+              disabled={!canExport}>خروجی اکسل</Button>
             <Tooltip title="نگاشت نام‌های واردشده از اکسل به پرسنل و طرف‌های حساب">
               <Button variant="outlined" startIcon={<SyncAltIcon />}
                 onClick={() => { window.location.assign('/correspondence/name-mapping'); }}>
@@ -1888,16 +1954,19 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             {mode === 'all' ? (
               <>
                 <Button variant="outlined" startIcon={<InboxIcon />}
+                  disabled={!canCreate}
                   onClick={() => openNew('incoming')}>
                   وارده جدید
                 </Button>
                 <Button variant="contained" startIcon={<SendIcon />} onClick={() => openNew('outgoing')}
+                  disabled={!canCreate}
                   sx={{ bgcolor: OUTGOING, '&:hover': { bgcolor: '#115e59' } }}>
                   نامه صادره
                 </Button>
               </>
             ) : (
               <Button variant="contained" startIcon={<PageIcon />}
+                disabled={!canCreate}
                 onClick={() => openNew(preset.direction || 'incoming')}
                 sx={{ bgcolor: pageAccent, '&:hover': { bgcolor: alpha(pageAccent, 0.85) } }}>
                 {preset.direction === 'outgoing' ? 'نامه صادره جدید'
@@ -2347,6 +2416,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         PaperProps={{ sx: { minWidth: 190, borderRadius: '12px' } }}
       >
         <MenuItem
+          disabled={!canEditOf(rowMenu?.letter)}
           onClick={() => {
             setReferLetter(rowMenu.letter);
             setRowMenu(null);
@@ -2357,6 +2427,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           ارجاع نامه
         </MenuItem>
         <MenuItem
+          disabled={!canEditOf(rowMenu?.letter)}
           onClick={() => {
             setFormLetter(rowMenu.letter);
             setFormOpen(true);
@@ -2368,7 +2439,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           ویرایش کامل در فرم
         </MenuItem>
         <MenuItem
-          disabled={!rowMenu?.letter?.number}
+          disabled={!rowMenu?.letter?.number || !canEditOf(rowMenu?.letter)}
           onClick={() => {
             letterAction.mutate({ id: rowMenu.letter.id, action: 'register' });
             setRowMenu(null);
@@ -2379,7 +2450,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           ثبت شماره
         </MenuItem>
         <MenuItem
-          disabled={['archived', 'canceled'].includes(rowMenu?.letter?.status)}
+          disabled={
+            ['archived', 'canceled'].includes(rowMenu?.letter?.status)
+            || !canCreateOf(rowMenu?.letter)
+          }
           onClick={() => {
             letterAction.mutate({ id: rowMenu.letter.id, action: 'reply', payload: {} });
             setRowMenu(null);
@@ -2390,7 +2464,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           ایجاد پاسخ
         </MenuItem>
         <MenuItem
-          disabled={['closed', 'archived'].includes(rowMenu?.letter?.status)}
+          disabled={
+            ['closed', 'archived'].includes(rowMenu?.letter?.status)
+            || !canEditOf(rowMenu?.letter)
+          }
           onClick={() => {
             letterAction.mutate({ id: rowMenu.letter.id, action: 'close' });
             setRowMenu(null);
@@ -2401,7 +2478,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           بستن پرونده
         </MenuItem>
         <MenuItem
-          disabled={rowMenu?.letter?.status === 'archived'}
+          disabled={rowMenu?.letter?.status === 'archived' || !canEditOf(rowMenu?.letter)}
           onClick={() => {
             letterAction.mutate({ id: rowMenu.letter.id, action: 'archive' });
             setRowMenu(null);
@@ -2411,7 +2488,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           <ArchiveIcon sx={{ fontSize: 16, color: SLATE }} />
           بایگانی
         </MenuItem>
-        {canDelete ? (
+        {canDeleteOf(rowMenu?.letter) ? (
           <MenuItem
             onClick={() => {
               const target = rowMenu?.letter;
@@ -2470,7 +2547,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   sx={chipSx(WARN)} />
               </Stack>
               <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
-                {!activeLetter.number ? (
+                {!activeLetter.number && canEditOf(activeLetter) ? (
                   <Button size="small" variant="outlined" startIcon={<TaskAltIcon />}
                     onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'register' })}>
                     ثبت شماره
@@ -2478,30 +2555,38 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 ) : null}
                 {!['archived', 'closed', 'canceled'].includes(activeLetter.status) ? (
                   <>
-                    <Button size="small" variant="outlined" startIcon={<ForwardToInboxIcon />}
-                      onClick={() => setReferLetter(activeLetter)}>
-                      ارجاع
-                    </Button>
-                    <Button size="small" variant="outlined" startIcon={<ReplyIcon />}
-                      onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'reply', payload: {} })}>
-                      پاسخ
-                    </Button>
-                    <Button size="small" variant="outlined" startIcon={<TaskAltIcon />}
-                      onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'close' })}>
-                      بستن پرونده
-                    </Button>
+                    {canEditOf(activeLetter) ? (
+                      <Button size="small" variant="outlined" startIcon={<ForwardToInboxIcon />}
+                        onClick={() => setReferLetter(activeLetter)}>
+                        ارجاع
+                      </Button>
+                    ) : null}
+                    {canCreateOf(activeLetter) ? (
+                      <Button size="small" variant="outlined" startIcon={<ReplyIcon />}
+                        onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'reply', payload: {} })}>
+                        پاسخ
+                      </Button>
+                    ) : null}
+                    {canEditOf(activeLetter) ? (
+                      <Button size="small" variant="outlined" startIcon={<TaskAltIcon />}
+                        onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'close' })}>
+                        بستن پرونده
+                      </Button>
+                    ) : null}
                   </>
                 ) : null}
-                {activeLetter.status !== 'archived' ? (
+                {activeLetter.status !== 'archived' && canEditOf(activeLetter) ? (
                   <Button size="small" variant="outlined" startIcon={<ArchiveIcon />}
                     onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'archive' })}>
                     بایگانی
                   </Button>
                 ) : null}
-                <Button size="small" variant="outlined" startIcon={<EditNoteIcon />}
-                  onClick={() => { setFormLetter(activeLetter); setFormOpen(true); }}>
-                  ویرایش
-                </Button>
+                {canEditOf(activeLetter) ? (
+                  <Button size="small" variant="outlined" startIcon={<EditNoteIcon />}
+                    onClick={() => { setFormLetter(activeLetter); setFormOpen(true); }}>
+                    ویرایش
+                  </Button>
+                ) : null}
                 <Button size="small" variant="outlined" startIcon={<PrintOutlinedIcon />}
                   onClick={() => window.print()}>
                   چاپ
@@ -2702,7 +2787,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               {drawerTab === 'attachments' ? (
                 <Stack spacing={1}>
                   <Button size="small" variant="outlined" startIcon={<AttachFileIcon />}
-                    disabled={uploading} onClick={() => uploadRef.current?.click()}>
+                    disabled={uploading || !canEditOf(activeLetter)}
+                    onClick={() => uploadRef.current?.click()}>
                     {uploading ? 'در حال بارگذاری…' : 'افزودن پیوست'}
                   </Button>
                   <input ref={uploadRef} type="file" hidden onChange={uploadAttachment} />
@@ -2726,11 +2812,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       </Tooltip>
                       <Tooltip title="دانلود">
                         <IconButton size="small" aria-label="دانلود پیوست"
-                          component="a" href={file.file_url} target="_blank" rel="noreferrer">
+                          component="a" href={file.download_url || file.file_url}
+                          target="_blank" rel="noreferrer">
                           <DownloadIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
-                      {canDelete ? (
+                      {canDeleteOf(activeLetter) ? (
                         <Tooltip title="حذف پیوست">
                           <span>
                             <IconButton size="small" color="error" aria-label="حذف پیوست"
@@ -2756,9 +2843,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 <Stack spacing={1}>
                   <Stack direction="row" spacing={0.75} alignItems="flex-start">
                     <TextField size="small" fullWidth multiline minRows={2} label="یادداشت جدید"
-                      value={comment} onChange={(event) => setComment(event.target.value)} />
+                      value={comment} onChange={(event) => setComment(event.target.value)}
+                      disabled={!canEditOf(activeLetter)} />
                     <Button size="small" variant="contained"
-                      disabled={!comment.trim() || letterAction.isPending}
+                      disabled={!comment.trim() || letterAction.isPending || !canEditOf(activeLetter)}
                       onClick={() => letterAction.mutate({
                         id: activeLetter.id, action: 'comment', payload: { note: comment },
                       })}

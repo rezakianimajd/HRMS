@@ -222,7 +222,10 @@ const Layout = ({ children }) => {
   const dmsFolders = Array.isArray(dmsFoldersQuery.data)
     ? dmsFoldersQuery.data
     : dmsFoldersQuery.data?.results || [];
-  const menu = getMenuForApp(currentApp?.slug, { folders: dmsFolders });
+  const menu = getMenuForApp(currentApp?.slug, {
+    folders: dmsFolders,
+    permissions: user?.fine_permissions,
+  });
 
   const flatMenuItems = (items = []) => items.flatMap((item) => [
     item,

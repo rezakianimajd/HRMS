@@ -462,7 +462,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.fa4657a3.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.178d9968.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -497,6 +497,33 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `--fallback-dir` برای مسیرهای شکستهٔ `Z:\Group\Accounting\نامه ها و اسکن ها` و `اداری\بانک` استفاده شد.
     نتیجه: **outgoing ۴ فایل/۴ نامه، bank ۲۰/۲۰، university ۸۰۸/۸۰۲** (۲٫۱ گیگابایت؛ ۱ فایل گم‌شده)؛
     `relocate_letter_attachments --sync-dms` هم ۸۶۱ سند تازه را در DMS ایندکس کرد (کل پیوست‌ها: ۶٬۷۲۵).
+- **امنیت مکاتبات — مجوز ریز، محرمانگی و دانلود امن (۲۰۲۶-۱۱-۰۸):**
+  - `correspondences/permissions.py` (جدید): گیت per-action + per-direction. کد ریز کاربر تعیین‌کننده است؛
+    کاربر بدون کد ریز (نقش قدیمی) مثل قبل از `module_action_granted` عبور می‌کند تا کسی قفل نشود.
+    میکسین‌ها: `CorrespondencePermissionMixin` (نامه/ارجاع/پیوست/نگاشت/درخواست) و
+    `DefinitionPermissionMixin` (انواع/سری/مخاطبین: فقط ویرایش و حذف گیت شده‌اند).
+    ماتریس‌ها: `LetterViewSet.permission_matrix`، `LetterAttachmentViewSet`، `CorrespondenceNameAliasViewSet`،
+    `LetterRequestViewSet`؛ اکشن‌های شخصی (`cartable`/`seen`/`note`/`instruction`/`complete`) از گیت ماژول
+    معاف‌اند و خودشان «مالِ من» را بررسی می‌کنند (`_referral_assigned_to_me` / `_require_referral_access`).
+  - محرمانگی: `confidential_letter_filter` روی فهرست/جزئیات نامه، ارجاعات، پیوست‌ها و کارتابل اعمال می‌شود
+    (محرمانه/سری فقط برای سازنده، تنظیم‌کننده، ثبت‌کننده، ارجاع‌شدگان و دارندگان `approve`).
+  - آپلود امن: `correspondences/uploads.py` — وایت‌لیست پسوند، سقف حجم
+    (`CORRESPONDENCE_ATTACHMENT_MAX_MB`، پیش‌فرض ۵۰MB)، نام‌گذاری پاک‌سازی‌شده؛
+    `.html/.svg/.js/...` رد می‌شوند. حذف نامه/پیوست حالا فایل دیسک را هم پاک می‌کند.
+  - دانلود با احراز هویت: `GET /api/letter-attachments/{id}/download/?t=<token>&inline=1`
+    (`correspondences/downloads.py`، توکن امضاشدهٔ ۱۲ ساعته) — چون iframe/img هدر JWT نمی‌فرستد.
+    محرمانگی و مجوز «مشاهده» در لحظهٔ دانلود دوباره بررسی می‌شود؛ `inline` فقط برای PDF/تصویر.
+    serializerها `download_url`/`preview_url` می‌دهند و UI از آن‌ها استفاده می‌کند.
+  - فرانت: `core/utils/correspondencePermissions.js` (آینهٔ بک‌اند) → دکمه‌های ثبت/ویرایش/حذف/ارجاع/خروجی
+    و ویرایش درجا و نگاشت نام‌ها با همان کدها فعال/غیرفعال می‌شوند؛ منوها هم با
+    `getMenuForApp(slug, { permissions })` فیلتر می‌شوند (فقط وقتی کاربر کد ریز آن ماژول را دارد).
+  - رفع باگ‌ها: خالی‌کردن فیلدها در دیالوگ ویرایش (`cleanPayload(form, {editing})`)، آپلود موازی پیوست با
+    گزارش خطای هر فایل، و شمارنده‌های کارتابل در **یک کوئری** (قبلاً ۱۰ کوئری، هر ۳۰ ثانیه از سایدبار).
+  - nginx: برای `/media/` هدرهای `X-Content-Type-Options: nosniff` و CSP اضافه شد و پسوندهای اجرایی
+    (`html/svg/js/xml/css/...`) با `Content-Disposition: attachment` سرو می‌شوند (بستن مسیر XSS ذخیره‌شده).
+  - تست‌ها: `correspondences/tests_permissions.py` (۴۰ تست: مجوز/جهت/محرمانگی/آپلود/توکن/ماتریس) +
+    تست فرانت «کاربر فقط-مشاهده». تأیید زنده روی سرور: `list/stats/export=200`،
+    `create/patch/refer/alias=403`، `create` پس از دادن مجوز `=201`، دانلود با توکن `=200` و بدون/با توکن بد `=403`.
 - **برابری صفحهٔ صادره با وارده (۲۰۲۶-۱۱-۰۸):** دیالوگ نامه جهت‌آگاه شد: بخش «ثبت و ارسال» (نوع ارسال، نحوهٔ ثبت،
   ساعت ارسال)، فیلدهای «شماره اندیکاتور / ترنسمیتال / شمارهٔ نامهٔ طرف مقابل» برای صادره (به‌جای شماره‌های ثبت ورود)،
   ستون «تاریخ ارسال» در جدول صادره (ویرایش درجا هم دارد)، برچسب‌های سورت/فیلتر و کشوی جزئیات بر اساس جهت،
