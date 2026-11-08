@@ -158,6 +158,41 @@ const ProcurementInvoicesStudio = () => {
 
   return (
     <Box>
+      <PageHeader
+        icon={<ReceiptLongIcon />}
+        title="صورتحساب‌های خرید"
+        subtitle="فاکتورهای تأمین‌کنندگان با وضعیت پرداخت و مانده"
+        actions={(
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" size="small" startIcon={<PrintOutlinedIcon fontSize="small" />}
+              onClick={() => printElement('main', { title: 'صورتحساب‌های خرید', orientation: 'landscape' })}>
+              چاپ
+            </Button>
+            <Button variant="contained" size="small" startIcon={<AddIcon fontSize="small" />}
+              onClick={openCreate}>صورتحساب جدید</Button>
+          </Stack>
+        )}
+      />
+
+      <ModuleToolbar
+        theme={moduleTheme}
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="جستجو در شماره، فاکتور تأمین‌کننده یا نام تأمین‌کننده…"
+        sort={sortBy}
+        sortOptions={[
+          { value: 'newest', label: 'جدیدترین' },
+          { value: 'oldest', label: 'قدیمی‌ترین' },
+          { value: 'amount', label: 'بیشترین مبلغ' },
+          { value: 'balance', label: 'بیشترین مانده' },
+        ]}
+        onSort={setSortBy}
+        filters={[{ label: 'وضعیت پرداخت', value: paymentFilter, options: FILTERS, onChange: setPaymentFilter }]}
+        activeChips={activeChips}
+        activeFilterCount={activeChips.length}
+        onReset={() => { setSearch(''); setPaymentFilter('all'); setSortBy('newest'); }}
+      />
+
       <Box sx={{ ...cardSx, ...tableFrameSx }}>
         <ModuleTable
           tableTheme={themeTokens}
