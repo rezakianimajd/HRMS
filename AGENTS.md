@@ -163,6 +163,11 @@ ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شو�
   `CompanyProfilePage` کوئری `['company-branding']` باطل می‌شود.
 
 - الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
+- **کیت مشترک داشبورد:** `pages/contracts/contractsDashboardKit.jsx` — `Panel`، `MetricTile`، `StatRow`،
+  `Track`، `SchematicRow`، `TrendChart`، `SparkLine`، `CardPager`، `EmptyNote` + هِلپرهای `money`،
+  `compactMoney`، `daysUntil`/`daysText`/`daysColor`، `num`، `CARDS_PER_PAGE` و رنگ‌های `RIAL_BLUE`/`FOREIGN_VIOLET`/…
+  **هر داشبورد تازه باید از این کیت ساخته شود** (داشبورد قراردادها و خریدها همین کار را می‌کنند):
+  `<Panel theme={moduleTheme} icon={XIcon} color={…} title=… hint=…>…</Panel>`.
 
 ### API access
 - فقط از `axiosInstance` (`core/api/axiosConfig.js`)؛ `baseURL='/api'` و JWT/refresh خودکار. دانلود باینری: `responseType:'blob'` + `URL.createObjectURL`.
@@ -563,6 +568,20 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   و `CompanyProfilePage` پس از آپلود لوگو کش `['company-branding']` را باطل می‌کند.
   تست‌ها: `core/tests_branding.py` (۸) و `__tests__/faviconSync.test.js` (۳). دادهٔ زندهٔ kpsmi:
   `/media/company_logos/لوگو_HJMTNTX.png` (۹۱KB، HTTP 200).
+- **بازطراحی داشبورد خریدها مطابق داشبورد قراردادها (۲۰۲۶-۱۱-۰۸):**
+  - **بک‌اند:** اندپوینت تجمیعی `GET /api/procurement/dashboard/` (`procurement/views.py::dashboard_view`) با
+    منطق خالص در `procurement/dashboard.py` (بدون دیتابیسِ لازم برای تست): تفکیک ریالی/ارزی، مجموع سفارش/صورتحساب/
+    پرداخت، نرخ تسویه، فاکتور معوق، سری زمانی ۶ ماهه (`rial_orders`/`foreign_orders`/`rial_amount`/`foreign_amount`/
+    `invoice_amount`/`payment_amount`)، ترکیب وضعیت سفارش‌ها و استعلام‌ها، تأمین‌کنندگان برتر، تفکیک پروژه،
+    سفارش‌های نزدیک سررسید و خلاصهٔ تضامین (اعتبار با `contracts.guarantee_validity`). هر مدل **یک کوئری**
+    (`values()` تخت + سقف ۲۰۰۰ ردیف) و بدون N+1. تست: `procurement/tests_dashboard.py` (۱۲ تست).
+  - **فرانت:** کیت مشترک `pages/contracts/contractsDashboardKit.jsx` از داشبورد قراردادها استخراج شد
+    (`ContractsDashboardPage.jsx` از ۱٬۰۳۸ به ۷۹۳ خط) و `ProcurementDashboardPage.jsx` با همان زبان بصری بازنویسی شد:
+    نوار ۵ شاخص، پنل‌های «خرید ریالی/ارزی» با SparkLine و ردیف‌های آماری، دو نمودار روند، نوار جست‌وجو/مرتب‌سازی،
+    کارت‌های سفارش ریالی و ارزی با صفحه‌بندی، «سلامت مالی خریدها»، «سررسید تحویل سفارش‌ها»، «تضامین خرید» و
+    چهار توزیع شماتیک (وضعیت سفارش‌ها، وضعیت استعلام‌ها، تأمین‌کنندگان برتر، خرید در پروژه‌ها).
+    تست: `__tests__/procurementDashboardSmoke.test.js`؛ `contractsDashboardSmoke` هم سبز ماند.
+
 - **بازطراحی ماژول خرید و تدارکات — مرحلهٔ بک‌اند (۲۰۲۶-۱۱-۰۸):** مدل‌های جدید در `procurement/models.py`
   (به سبک ماژول قراردادها) اضافه شدند و مایگریشن `procurement.0004` روی همهٔ schemaها اعمال شد:
   - **استعلام (RFQ):** `Inquiry` (شماره، موضوع، درخواست مبدأ، پروژه، واحد، مهلت، روش ارزیابی، ارز،

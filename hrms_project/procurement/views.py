@@ -589,6 +589,127 @@ class ProcurementDocumentViewSet(BaseViewSet):
 
 
 # ---------------------------------------------------------------------------
+# داشبورد مدیریت خریدها — یک اندپوینت تجمیعی (بدون N+1)
+# ---------------------------------------------------------------------------
+ORDER_FIELDS = {
+    'id': 'id', 'number': 'number', 'status': 'status', 'date': 'date',
+    'expected_date': 'expected_date', 'total': 'total', 'exchange_rate': 'exchange_rate',
+    'supplier_name': 'supplier__name', 'currency_code': 'currency__code',
+    'currency_name': 'currency__name', 'project_name': 'project__name',
+}
+INVOICE_FIELDS = {
+    'id': 'id', 'number': 'number', 'status': 'status', 'date': 'date',
+    'due_date': 'due_date', 'total': 'total', 'paid_amount': 'paid_amount',
+    'payment_status': 'payment_status', 'exchange_rate': 'exchange_rate',
+    'supplier_name': 'supplier__name', 'currency_code': 'currency__code',
+    'currency_name': 'currency__name',
+}
+GUARANTEE_FIELDS = {
+    'id': 'id', 'number': 'number', 'kind': 'kind', 'instrument_type': 'instrument_type',
+    'amount': 'amount', 'issue_date': 'issue_date', 'expiry_date': 'expiry_date',
+    'check_due_date': 'check_due_date', 'guarantee_expiry_date': 'guarantee_expiry_date',
+    'is_released': 'is_released', 'supplier_name': 'supplier__name',
+}
+DASHBOARD_ROW_LIMIT = 2000
+
+
+def _dashboard_rows(queryset, fields, limit=DASHBOARD_ROW_LIMIT):
+    """``values()`` با کلیدهای تخت + سقف ردیف (بدون N+1)."""
+    return list(queryset.values(*sorted(set(fields.values())))[:limit])
+
+
+def _flatten(row, fields):
+    return {key: row.get(source) for key, source in fields.items()}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_view(request):
+    """دادهٔ کامل داشبورد «مدیریت خریدها» (شاخص‌ها، تفکیک ارزی، روند، توزیع‌ها).
+
+    همهٔ محاسبات در `procurement.dashboard` (توابع خالص) انجام می‌شود و این ویو
+    فقط ردیف‌ها را با یک کوئری به‌ازای هر مدل می‌خواند.
+    """
+    from datetime import date
+
+    from procurement import dashboard as dash
+
+    company = _company(request)
+    today = date.today()
+
+    def scoped(model):
+        queryset = model.objects.all()
+        return queryset.filter(company=company) if company else queryset
+
+    order_rows = [_flatten(row, ORDER_FIELDS)
+                  for row in _dashboard_rows(scoped(PurchaseOrder).order_by('-date'), ORDER_FIELDS)]
+    orders = []
+    for row in order_rows:
+        document = dash.normalize_document(row)
+        document['expected_date'] = dash.iso(row.get('expected_date'))
+        orders.append(document)
+
+    invoice_rows = [_flatten(row, INVOICE_FIELDS)
+                    for row in _dashboard_rows(scoped(PurchaseInvoice).order_by('-date'), INVOICE_FIELDS)]
+    invoices = []
+    for row in invoice_rows:
+        document = dash.normalize_document(row)
+        rate = document['rate'] if document['group'] == 'foreign' else 1
+        document['paid_amount'] = dash.num(row.get('paid_amount')) * rate
+        due = dash.day(row.get('due_date'))
+        unpaid = (row.get('payment_status') or 'unpaid') != 'paid'
+        document['overdue'] = bool(
+            due and due < today and unpaid and row.get('status') != 'cancelled'
+        )
+        invoices.append(document)
+
+    payments = [
+        {'date': dash.iso(row.get('date')), 'amount': dash.num(row.get('amount'))}
+        for row in _dashboard_rows(
+            scoped(PurchasePayment).order_by('-date'), {'date': 'date', 'amount': 'amount'},
+        )
+    ]
+
+    inquiries = [
+        {'status': row.get('status') or '', 'date': dash.iso(row.get('date'))}
+        for row in _dashboard_rows(
+            scoped(Inquiry).order_by('-date'),
+            {'status': 'status', 'date': 'date', 'deadline': 'deadline'},
+        )
+    ]
+
+    guarantee_rows = [_flatten(row, GUARANTEE_FIELDS)
+                      for row in _dashboard_rows(scoped(ProcurementGuarantee), GUARANTEE_FIELDS)]
+    kind_labels = dict(ProcurementGuarantee.Kind.choices)
+    guarantees = []
+    for row in guarantee_rows:
+        item = dict(row)
+        item['kind_label'] = str(kind_labels.get(row.get('kind'), row.get('kind') or ''))
+        guarantees.append(item)
+
+    counts = {
+        'suppliers': scoped(Supplier).count(),
+        'items': scoped(Item).count(),
+        'requests': scoped(PurchaseRequest).count(),
+        'receipts': scoped(GoodsReceiptNote).count(),
+        'proformas': scoped(ProformaInvoice).count(),
+        'orders': len(orders),
+        'invoices': len(invoices),
+        'payments': len(payments),
+        'inquiries': len(inquiries),
+        'guarantees': len(guarantees),
+    }
+
+    payload = dash.build_dashboard(
+        counts, orders, invoices, payments, inquiries, guarantees,
+        order_status_choices=PurchaseOrder.Status.choices,
+        inquiry_status_choices=Inquiry.Status.choices,
+        today=today,
+    )
+    return Response(payload)
+
+
+# ---------------------------------------------------------------------------
 # پرونده‌های خرید — یک ردیف برای هر طرف حساب (تأمین‌کننده) با جمع اسناد
 # ---------------------------------------------------------------------------
 @api_view(['GET'])
