@@ -559,13 +559,14 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.4b3abdfb.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.38deab89.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
 - **بازطراحی صفحهٔ ورود و صفحهٔ انتخاب ماژول (۲۰۲۶-۱۱-۰۸):**
   - **صفحهٔ ورود (`pages/Login.jsx`):** کارت مستطیلی وسط‌چین روی تصویر پس‌زمینهٔ تنظیمات شرکت — سمت راست
-    فقط فرم (شرکت/نام کاربری/رمز/خطا/دکمهٔ ورود) و سمت چپ **فقط لوگوی شرکت** (بدون متن). هیچ متن
-    تبلیغاتی/توضیحی روی صفحه نمانده است. تاریخ/اعداد فارسی و `fieldSx` مشترک؛ `data-testid="login-page"` با
-    `data-branding-text-color`/`data-branding-accent-color`، `login-card`، `login-logo-panel`،
-    `login-branding-image` (`data-background-url`) و `login-branding-overlay`
+    فرم با عنوان **«خوش آمدید»** + سربرگ **«ورود اطلاعات»** و فیلدهای **شرکت / نام کاربری / رمز عبور** (فیلد شرکت
+    حتی با یک شرکت هم نمایش داده می‌شود)، سمت چپ **پنل کاملاً سفید** (`bgcolor:#fff` + `borderInlineStart`) که
+    فقط لوگوی شرکت (بدون قاب/سایه/گرادیان) در آن است. هیچ متن تبلیغاتی دیگری روی صفحه نیست.
+    `data-testid="login-page"` با `data-branding-text-color`/`data-branding-accent-color`، `login-card`،
+    `login-logo-panel`، `login-branding-image` (`data-background-url`) و `login-branding-overlay`
     (`data-overlay-color`/`data-overlay-opacity`/`data-overlay-blur`).
   - **`overlay_blur` (۰–۲۴px):** در `settings_app/login_branding.py` (`MAX_OVERLAY_BLUR`, default 8,
     `_blur()` + merge در `save_login_branding`) و `core/utils/colorUtils.js`

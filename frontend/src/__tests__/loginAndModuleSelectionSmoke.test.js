@@ -209,9 +209,7 @@ test('login page reads company name and logo from company profile, not tenant DB
   expect(logoPanel).toBeTruthy();
   expect(logoPanel.querySelector('img')).toBeTruthy();
 
-  // هیچ متن تبلیغاتی/نام دیتابیس روی کارت نیست
-  expect(container.textContent).not.toContain('خوش آمدید');
-  expect(container.textContent).not.toContain('سامانه یکپارچه مدیریت کسب و کار');
+  // نام دیتابیس/تنانت هرگز نشان داده نمی‌شود
   expect(container.textContent).not.toContain('DB-TENANT-NAME-MUST-NOT-APPEAR');
 
   // ظاهر صفحهٔ ورود از تنظیمات شرکت خوانده می‌شود: تصویر پس‌زمینه زیر پوشش رنگی + بلور
@@ -222,7 +220,10 @@ test('login page reads company name and logo from company profile, not tenant DB
   expect(overlay.getAttribute('data-overlay-opacity')).toBe('80');
   expect(overlay.getAttribute('data-overlay-blur')).toBe('14');
 
-  // فیلدهای فرم
+  // عنوان‌ها و فیلدهای فرم ورود
+  expect(container.textContent).toContain('خوش آمدید');
+  expect(container.textContent).toContain('ورود اطلاعات');
+  expect(container.textContent).toContain('شرکت');
   expect(container.textContent).toContain('نام کاربری');
   expect(container.textContent).toContain('رمز عبور');
   expect(container.textContent).toContain('ورود');

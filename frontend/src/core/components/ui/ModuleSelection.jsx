@@ -58,16 +58,18 @@ const CompanyIdentity = ({ company }) => {
 };
 
 
-const ModuleCard = ({ app, accent, busy, disabled, onPick }) => {
+const ModuleCard = ({ app, accent, busy, disabled, active, onPick }) => {
   const Icon = getModuleIcon(app.slug);
   return (
     <ButtonBase
       onClick={() => onPick(app)}
       disabled={disabled || busy}
       focusRipple
+      aria-current={active ? 'true' : undefined}
       sx={{
         width: '100%', p: 1.35, borderRadius: '16px', textAlign: 'right',
-        border: `1px solid ${alpha(accent, 0.28)}`, bgcolor: '#fff',
+        border: `${active ? 2 : 1}px solid ${active ? accent : alpha(accent, 0.28)}`,
+        bgcolor: active ? alpha(accent, 0.05) : '#fff',
         transition: 'border-color .16s ease, box-shadow .16s ease, transform .16s ease',
         '&:hover': {
           borderColor: alpha(accent, 0.6), transform: 'translateY(-2px)',
@@ -186,7 +188,8 @@ const ModuleSelection = ({
                 <ModuleCard
                   key={app.id || app.slug}
                   app={app}
-                  accent={currentApp?.slug === app.slug ? '#0f766e' : accentOf(app)}
+                  accent={accentOf(app)}
+                  active={currentApp?.slug === app.slug}
                   busy={loadingAppId === app.id}
                   disabled={loading && loadingAppId !== app.id}
                   onPick={onPick}

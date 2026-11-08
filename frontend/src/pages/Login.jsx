@@ -267,9 +267,9 @@ const Login = () => {
 
       {/* ---- کارت وسط‌چین: راست ورود اطلاعات، چپ لوگوی شرکت ---- */}
       <Paper elevation={0} data-testid="login-card" sx={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 880,
-        display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.08fr 0.92fr' },
-        minHeight: { md: 420 }, borderRadius: '24px', overflow: 'hidden',
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 900,
+        display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.05fr 0.95fr' },
+        minHeight: { md: 440 }, borderRadius: '24px', overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.18)', bgcolor: '#fff',
         boxShadow: '0 44px 94px -44px rgba(2,6,23,0.78)',
       }}>
@@ -279,12 +279,22 @@ const Login = () => {
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
         }}>
           <Box sx={{ display: { xs: 'grid', md: 'none' }, placeItems: 'center', mb: 2 }}>
-            <CompanyLogo company={selectedCompany} size={58} radius="14px"
-              sx={{ bgcolor: '#f8fafc' }} />
+            <CompanyLogo company={selectedCompany} size={62} radius="0px"
+              sx={{ border: 'none', bgcolor: 'transparent' }} />
           </Box>
 
+          <Typography sx={{ fontSize: 21, fontWeight: 900, color: INK, lineHeight: 1.3 }}>
+            خوش آمدید
+          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.4, mb: 2 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: 'nowrap' }}>
+              ورود اطلاعات
+            </Typography>
+            <Box sx={{ flex: 1, height: 1, bgcolor: BORDER }} />
+          </Stack>
+
           <Box component="form" onSubmit={handleCredentialsSubmit} sx={{ display: 'grid', gap: 1.5 }}>
-            {companies.length > 1 ? (
+            {companies.length ? (
               <Autocomplete
                 options={companies}
                 value={selectedCompany}
@@ -466,18 +476,14 @@ const Login = () => {
           </Box>
         </Box>
 
-        {/* لوگوی شرکت (سمت چپ) */}
+        {/* لوگوی شرکت (سمت چپ) — پنل کاملاً سفید */}
         <Box data-testid="login-logo-panel" sx={{
           display: { xs: 'none', md: 'grid' }, placeItems: 'center', position: 'relative',
-          background: `linear-gradient(158deg, ${withAlpha(theme.overlay, 0.94)} 0%, ${withAlpha(theme.accent, 0.55)} 100%)`,
+          bgcolor: '#fff', borderInlineStart: `1px solid ${BORDER}`,
+          p: { md: 3 },
         }}>
-          <Box sx={{
-            p: 2.4, display: 'grid', placeItems: 'center', borderRadius: '28px',
-            bgcolor: 'rgba(255,255,255,0.95)',
-            boxShadow: '0 26px 54px -26px rgba(2,6,23,0.7)',
-          }}>
-            <CompanyLogo company={selectedCompany} size={132} radius="20px" sx={{ bgcolor: '#fff' }} />
-          </Box>
+          <CompanyLogo company={selectedCompany} size={176} radius="0px"
+            sx={{ border: 'none', bgcolor: 'transparent' }} />
         </Box>
       </Paper>
     </Box>
