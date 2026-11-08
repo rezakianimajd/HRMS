@@ -559,7 +559,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
-- **Live:** frontend `main.10f945ca.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.2a8d1de5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/`)، gunicorn/celery/nginx active.
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
@@ -581,7 +581,14 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     کارت‌های سفارش ریالی و ارزی با صفحه‌بندی، «سلامت مالی خریدها»، «سررسید تحویل سفارش‌ها»، «تضامین خرید» و
     چهار توزیع شماتیک (وضعیت سفارش‌ها، وضعیت استعلام‌ها، تأمین‌کنندگان برتر، خرید در پروژه‌ها).
     تست: `__tests__/procurementDashboardSmoke.test.js`؛ `contractsDashboardSmoke` هم سبز ماند.
-- **پروندهٔ خرید هم‌ساخت با پروندهٔ قرارداد (۲۰۲۶-۱۱-۰۸):** اکشن `GET /api/procurement/suppliers/{id}/profile/`
+- **صفحهٔ تأمین‌کنندگان هم‌ساخت صفحهٔ «طرف حساب‌ها» (۲۰۲۶-۱۱-۰۸):** `procurementSuppliersList.jsx` بازنویسی شد به
+  چیدمان master/detail صفحهٔ `ContractPartiesPage`: سرصفحه + نوار جست‌وجو (نام/کد/شناسه ملی/کد اقتصادی/شماره ثبت/
+  موبایل/شخص رابط) + ستون فهرست (md=5، آواتار رنگی بر اساس وضعیت، کد/دسته/موبایل، چیپ وضعیت) + ستون جزئیات
+  (md=7) با کارت‌های اطلاعاتی «آمار خرید» (از `GET /api/procurement/suppliers/{id}/profile/`)، «سفارش‌های اخیر»،
+  «تضامین خرید»، «اطلاعات حقوقی»، «اطلاعات تماس»، «اطلاعات بانکی» و دکمهٔ «باز کردن پروندهٔ خرید».
+  دیالوگ ثبت/ویرایش هم بخش‌بندی همان صفحه را دارد (مشخصات پایه / حقوقی / تماس / بانکی / توضیحات) با کد
+  خودکار (`SUP-xxxxxx`)، تغییر وضعیت با PATCH و حذف با تأیید. `procurementSuppliersStudio.jsx` (نسخهٔ قدیمی و
+  بی‌استفاده) حذف شد. تست: `__tests__/procurementSuppliersSmoke.test.js`.
   روی `SupplierViewSet` یک payload واحد می‌دهد: `supplier` + `summary` (سفارش/صورتحساب/پرداخت/مانده/
   نرخ تسویه/تفکیک ریالی-ارزی) + لیست‌های `orders`، `quotations`، `proformas`، `invoices`، `payments`،
   `guarantees` (با `valid_until`/`days_to_expiry`/`is_expired` از `contracts.guarantee_validity`)
