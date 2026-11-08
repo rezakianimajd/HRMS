@@ -709,9 +709,21 @@ class PersianDisplayFormattingTests(SimpleTestCase):
 
         from correspondences import views
 
-        source = inspect.getsource(views.LetterViewSet.stats)
+        source = inspect.getsource(views.LetterViewSet._stats_global)
         self.assertIn("'label': trend_map[key].get('label', key)", source)
         self.assertIn('_jdate.fromgregorian', source)
+
+    def test_stats_payload_is_shared_via_cache(self):
+        """بخش شرکت‌محور آمار در کش نگه داشته می‌شود (کارایی داشبورد)."""
+        import inspect
+
+        from correspondences import views
+
+        stats_source = inspect.getsource(views.LetterViewSet.stats)
+        self.assertIn('cache.get(cache_key)', stats_source)
+        self.assertIn('cache.set(cache_key, payload', stats_source)
+        global_source = inspect.getsource(views.LetterViewSet._stats_global)
+        self.assertNotIn('my_referrals', global_source)
 
 
 

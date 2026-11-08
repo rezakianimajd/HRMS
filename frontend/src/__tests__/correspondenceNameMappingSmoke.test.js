@@ -243,9 +243,10 @@ test('clicking a suggestion maps that name instantly (create + apply)', async ()
     target_kind: 'party',
     party: 12,
   });
-  const applyNamed = axiosInstance.post.mock.calls
-    .find(([url]) => String(url).endsWith('/9/apply/'));
-  expect(applyNamed).toBeTruthy();
+  const applyBatch = axiosInstance.post.mock.calls
+    .find(([url]) => String(url) === `${API}apply-batch/`);
+  expect(applyBatch).toBeTruthy();
+  expect(applyBatch[1]).toMatchObject({ ids: [9] });
 
   root.unmount();
   container.remove();

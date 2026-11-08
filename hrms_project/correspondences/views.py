@@ -144,6 +144,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication  # noqa: E
 
 from correspondences.downloads import issue_token, read_token  # noqa: E402
 from correspondences.permissions import (  # noqa: E402
+    READ_MENUS as perm_READ_MENUS,
     REQUESTS_MENUS,
     CorrespondencePermissionMixin,
     DefinitionPermissionMixin,
@@ -600,7 +601,8 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
     def get_queryset(self):
         params = self.request.query_params
-        heavy = self.action != 'list'
+        # actionهای «سبک» (فهرست/آمار/خروجی) prefetch سنگین نمی‌گیرند.
+        heavy = self.action not in ('list', 'stats', 'export_excel')
         # فقط کلیدهای خارجیِ لازم برای هر حالت join می‌شوند؛ joinهای سنگین
         # (پرسنل/کاربر/پاسخ) در فهرست حذف می‌شوند تا جست‌وجوی ۲۰ ردیف سریع بماند.
         related = [
@@ -616,9 +618,22 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         qs = qs.filter(confidential_letter_filter(self.request.user))
 
         if heavy:
+            from django.db.models import Prefetch
+
+            from correspondences.models import LetterEvent
+
             qs = qs.prefetch_related(
-                'attachments', 'referrals', 'referrals__to_user', 'referrals__to_employee',
-                'referrals__to_employees', 'events', 'replies',
+                Prefetch(
+                    'attachments',
+                    queryset=LetterAttachment.objects.select_related('uploaded_by'),
+                ),
+                'referrals', 'referrals__to_user', 'referrals__to_employee',
+                'referrals__to_employees',
+                Prefetch(
+                    'events',
+                    queryset=LetterEvent.objects.select_related('actor'),
+                ),
+                'replies',
             )
         else:
             from django.db.models import Prefetch
@@ -910,13 +925,63 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """آمار داشبورد: شمارش جهت‌ها/وضعیت‌ها، معوقات، ارجاعات من و روند ماهانه."""
+        """آمار داشبورد: شمارش جهت‌ها/وضعیت‌ها، معوقات، ارجاعات من و روند ماهانه.
+
+        بخش «شرکت‌محور» ۳۰ ثانیه در کش نگه داشته می‌شود (داشبورد و فهرست هر دو
+        همین اندپوینت را صدا می‌زنند)؛ بخش «من» برای هر کاربر جدا محاسبه می‌شود.
+        """
+        from django.core.cache import cache
+
+        company = _get_company(request)
+        user = getattr(request, 'user', None)
+        today = date_cls.today()
+
+        sees_everything = bool(
+            user and getattr(user, 'is_authenticated', False)
+            and (
+                getattr(user, 'is_superuser', False)
+                or correspondence_has_permission(user, 'approve', menus=perm_READ_MENUS)
+            )
+        )
+        payload = None
+        cache_key = None
+        if sees_everything:
+            cache_key = (
+                f'corr:stats:{getattr(company, "pk", "-")}:'
+                f'{request.META.get("QUERY_STRING", "")}:{today.isoformat()}'
+            )
+            payload = cache.get(cache_key)
+        if payload is None:
+            payload = self._stats_global(request, today)
+            if cache_key:
+                cache.set(cache_key, payload, 30)
+
+        my_referrals_total = 0
+        my_referrals_overdue = 0
+        if company and user and user.is_authenticated:
+            my_referrals = LetterReferral.objects.filter(
+                company=company, to_user=user, letter__is_active=True,
+            ).exclude(status__in=('done', 'canceled', 'returned'))
+            my_agg = my_referrals.aggregate(
+                total=Count('id'),
+                overdue=Count('id', filter=Q(due_date__lt=today)),
+            )
+            my_referrals_total = my_agg['total'] or 0
+            my_referrals_overdue = my_agg['overdue'] or 0
+
+        payload['totals'] = {
+            **payload.get('totals', {}),
+            'my_referrals': my_referrals_total,
+            'my_overdue_referrals': my_referrals_overdue,
+        }
+        return Response(payload)
+
+    def _stats_global(self, request, today):
+        """آمار شرکت‌محور (بدون بخش شخصی) — قابل کش کردن."""
         from django.db.models.functions import TruncMonth
 
         qs = self.get_queryset()
-        today = date_cls.today()
         company = _get_company(request)
-        user = getattr(request, 'user', None)
 
         # یک کوئری به‌جای سه کوئری برای تفکیک جهت/وضعیت/اولویت
         by_direction, by_status, by_priority = {}, {}, {}
@@ -927,12 +992,6 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             by_priority[row['priority']] = by_priority.get(row['priority'], 0) + count
 
         month_start = today.replace(day=1)
-
-        my_referrals = LetterReferral.objects.none()
-        if company and user and user.is_authenticated:
-            my_referrals = LetterReferral.objects.filter(
-                company=company, to_user=user, letter__is_active=True,
-            ).exclude(status__in=('done', 'canceled', 'returned'))
 
         six_months_ago = today - timedelta(days=185)
         trend_rows = (
@@ -1020,17 +1079,7 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
                 due_date__lt=today,
             ).exclude(status__in=('done', 'canceled', 'returned')).count()
 
-        my_referrals_total = 0
-        my_referrals_overdue = 0
-        if company and user and user.is_authenticated:
-            my_agg = my_referrals.aggregate(
-                total=Count('id'),
-                overdue=Count('id', filter=Q(due_date__lt=today)),
-            )
-            my_referrals_total = my_agg['total'] or 0
-            my_referrals_overdue = my_agg['overdue'] or 0
-
-        return Response({
+        return {
             'totals': {
                 'all': totals_agg['all_count'] or 0,
                 'incoming': by_direction.get('incoming', 0),
@@ -1046,8 +1095,6 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
                 'urgent': by_priority.get('urgent', 0) + by_priority.get('high', 0),
                 'with_attachments': attachment_agg['with_attachments'] or 0,
                 'without_attachments': without_attachments,
-                'my_referrals': my_referrals_total,
-                'my_overdue_referrals': my_referrals_overdue,
             },
             'by_status': by_status,
             'by_direction': by_direction,
@@ -1083,7 +1130,7 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
                     )[:6]
                 ),
             },
-        })
+        }
 
     # ------------------------------------------------------------------ گزارش‌ها
 
@@ -1603,6 +1650,7 @@ class CorrespondenceNameAliasViewSet(CorrespondencePermissionMixin, BaseLetterVi
         'suggestions': ('view', 'aliases'),
         'apply': ('edit', 'aliases'),
         'apply_all': ('edit', 'aliases'),
+        'apply_batch': ('edit', 'aliases'),
     }
 
     serializer_class = CorrespondenceNameAliasSerializer
@@ -2104,6 +2152,27 @@ class CorrespondenceNameAliasViewSet(CorrespondencePermissionMixin, BaseLetterVi
             alias, context=self.get_serializer_context(),
         ).data
         return Response(result)
+
+    @action(detail=False, methods=['post'], url_path='apply-batch')
+    def apply_batch(self, request):
+        """اعمال گروهی نگاشت‌ها (یک ستون یا چند شناسه) در **یک** درخواست."""
+        from correspondences import mapping
+
+        company = self._company()
+        if not company:
+            return Response({'detail': 'شرکت مشخص نیست.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        dry_run = str(request.data.get('dry_run') or '').lower() in ('1', 'true', 'yes')
+        scope = (request.data.get('scope') or '').strip() or None
+        alias_ids = request.data.get('ids') or []
+        if isinstance(alias_ids, str):
+            alias_ids = [item.strip() for item in alias_ids.split(',') if item.strip()]
+        if not scope and not alias_ids:
+            return Response({'detail': 'ستون یا شناسهٔ نگاشت را مشخص کنید.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        return Response(mapping.apply_batch(
+            company, alias_ids=alias_ids, scope=scope, dry_run=dry_run,
+        ))
 
     @action(detail=False, methods=['post'], url_path='apply-all')
     def apply_all(self, request):

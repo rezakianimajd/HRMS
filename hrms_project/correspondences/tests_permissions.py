@@ -305,6 +305,18 @@ class ViewsetPermissionMatrixTests(SimpleTestCase):
 
         self.assertTrue(hasattr(LetterAttachmentViewSet, 'download'))
 
+    def test_download_url_template_is_rendered_without_repeated_reverse(self):
+        """مسیر دانلود باید از قالب کش‌شده ساخته شود (reverse فقط یک بار)."""
+        from correspondences.serializers import attachment_download_path, _download_path_template
+
+        first = attachment_download_path(11)
+        second = attachment_download_path(22)
+        self.assertIn('/11/', first)
+        self.assertIn('/22/', second)
+        self.assertEqual(first.count('/11/download/'), 1)
+        self.assertEqual(second.count('/22/download/'), 1)
+        self.assertIs(_download_path_template, _download_path_template)
+
     def test_download_url_is_exposed_on_attachment_serializers(self):
         from correspondences.serializers import (
             LetterAttachmentBriefSerializer, LetterAttachmentSerializer,

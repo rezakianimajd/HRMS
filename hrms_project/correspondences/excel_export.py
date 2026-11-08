@@ -8,6 +8,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from django.db.models import Prefetch
+
 try:
     from jdatetime import date as jdate
 except Exception:  # noqa: BLE001
@@ -63,6 +65,8 @@ def _user_name(user):
 
 def build_letters_workbook(queryset):
     """ساخت Workbook اکسل از مجموعهٔ نامه‌ها."""
+    from correspondences.models import LetterAttachment, LetterReferral
+
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = 'دفتر مکاتبات'
@@ -80,7 +84,18 @@ def build_letters_workbook(queryset):
 
     rows = queryset.select_related(
         'organization', 'correspondent', 'category', 'drafter',
-    ).prefetch_related('attachments', 'referrals')
+    ).prefetch_related(
+        Prefetch(
+            'attachments',
+            queryset=LetterAttachment.objects.only('id', 'letter_id'),
+        ),
+        Prefetch(
+            'referrals',
+            queryset=LetterReferral.objects.select_related('to_user').defer(
+                'instruction', 'note', 'margin_note', 'response', 'result', 'result_note',
+            ),
+        ),
+    )
     for number, letter in enumerate(rows, start=1):
         referrals = list(letter.referrals.all())
         last_referral = max(referrals, key=lambda row: (row.seq or 0, row.id or 0)) if referrals else None

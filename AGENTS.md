@@ -469,7 +469,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.178d9968.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.5f618951.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -504,6 +504,23 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `--fallback-dir` برای مسیرهای شکستهٔ `Z:\Group\Accounting\نامه ها و اسکن ها` و `اداری\بانک` استفاده شد.
     نتیجه: **outgoing ۴ فایل/۴ نامه، bank ۲۰/۲۰، university ۸۰۸/۸۰۲** (۲٫۱ گیگابایت؛ ۱ فایل گم‌شده)؛
     `relocate_letter_attachments --sync-dms` هم ۸۶۱ سند تازه را در DMS ایندکس کرد (کل پیوست‌ها: ۶٬۷۲۵).
+- **کارایی مکاتبات — نگاشت گروهی، کش آمار و حذف N+1 (۲۰۲۶-۱۱-۰۸):**
+  - موتور اعمال نگاشت بازنویسی شد (`mapping.py`): کشِ «مقادیر خام متمایز» (`_raw_values`/`_values_matching`)
+    به‌جای خواندن کل جدول در حافظه، و `queryset.update(...)` به‌جای `bulk_update` روی نمونه‌ها.
+    اعداد واقعی (۶٬۲۶۸ نامه، ۴٬۱۱۱ ارجاع، ۳۹ نگاشت): `apply_all(dry_run)` = **۳۲۵ms / ۱۱۸ کوئری**،
+    `apply_batch(scope=counterparty, dry)` = **۸۸ms / ۲۶ کوئری** (قبلاً هر نگاشت تمام جدول را اسکن می‌کرد).
+  - اندپوینت جدید `POST /api/correspondence-name-aliases/apply-batch/` با `{scope}` یا `{ids}` و `dry_run`;
+    فرانت دیگر برای «اعمال ستون / اعمال گروه / نگاشت سریع» حلقهٔ درخواست نمی‌زند (یک call).
+  - `/api/letters/stats/`: بخش شرکت‌محور با کش Redis (۳۰ ثانیه) و بخش «ارجاعات من» جدا → از ۲۶ کوئری به
+    **۴ کوئری در حالت کش‌شده** (`stats` حدود ۵ms). `get_queryset` برای `stats`/`export_excel` prefetch سنگین نمی‌گیرد.
+  - N+1 حذف شد: رویدادهای نامه با `Prefetch(...select_related('actor'))` و پیوست‌ها با `select_related('uploaded_by')`؛
+    خروجی اکسل با `Prefetch` + `select_related('to_user')` (۲۰۰ ردیف ≈ ۲۰۰ms / ۶ کوئری).
+  - **کشف مهم:** اولین `reverse()` مسیر `letter-attachment-download` در هر worker ~۰٫۶ ثانیه طول می‌کشید و
+    ساخت `download_url`/`preview_url` برای هر پیوست دوباره آن را صدا می‌زد. حالا قالب مسیر با `lru_cache`
+    یک بار ساخته و در `CorrespondencesConfig.ready()` گرم می‌شود → فهرست ۲۰ ردیفی از **۸۷۳ms به ۲۷۶ms (cold)**
+    و **~۱۵۰–۲۵۰ms (warm)** با ۱۰ کوئری رسید.
+  - تست‌ها: `correspondences/tests_mapping.py` (۹ تست: کش نام‌ها، کش فیلترها، ماتریس apply-batch، پذیرش `index` در همهٔ handlerها)
+    و تست کش‌شدن آمار در `tests.py`.
 - **امنیت مکاتبات — مجوز ریز، محرمانگی و دانلود امن (۲۰۲۶-۱۱-۰۸):**
   - `correspondences/permissions.py` (جدید): گیت per-action + per-direction. کد ریز کاربر تعیین‌کننده است؛
     کاربر بدون کد ریز (نقش قدیمی) مثل قبل از `module_action_granted` عبور می‌کند تا کسی قفل نشود.

@@ -1,4 +1,10 @@
-"""اعمال نگاشت نام‌ها روی داده‌های مکاتبات و استفاده از آن‌ها در ورود اکسل."""
+"""اعمال نگاشت نام‌ها روی داده‌های مکاتبات — نسخهٔ کارا (بدون اسکن کل جدول).
+
+طرح قبلی برای هر نگاشت **همهٔ** نامه‌ها/ارجاعات را در حافظه می‌خواند و در پایتون
+فیلتر می‌کرد (O(نگاشت‌ها × ردیف‌ها)). اکنون مقادیر خام متمایز هر فیلد **یک بار**
+خوانده و کش می‌شود و فقط ردیف‌های هم‌نام با ``<field>__in=[...]`` و
+``queryset.update(...)`` به‌روزرسانی می‌شوند (بدون load در حافظه).
+"""
 from django.utils import timezone
 
 from correspondences.alias_purposes import paired_scope, resolve_scopes
@@ -83,172 +89,185 @@ def effective_scopes(alias, scope_map):
 
 
 def _matches(value, normalized):
+    """مقایسهٔ یک مقدار خام با کلید نرمال‌شده (برای تست‌ها و مصرف‌کننده‌های بیرونی)."""
     return bool(value) and normalize_name(value) == normalized
 
 
-def _apply_employee(alias, dry_run=False):
-    """اتصال ردیف‌های هم‌نام به پرسنل نگاشت‌شده."""
+# ---------------------------------------------------------------------------
+# کش مقادیر خام (مشترک در یک batch)
+# ---------------------------------------------------------------------------
+def _filters_key(filters):
+    parts = []
+    for key, value in sorted(filters.items()):
+        parts.append((key, str(getattr(value, 'pk', value))))
+    return tuple(parts)
+
+
+def _raw_values(index, model, field, filters):
+    """مقادیر خام متمایز یک فیلد (کش‌شده) — یک کوئری برای هر ترکیب فیلتر."""
+    key = (model._meta.label, field, _filters_key(filters))
+    cached = index.get(key)
+    if cached is None:
+        qs = model.objects.filter(**filters).exclude(**{field: ''})
+        cached = [value for value in qs.values_list(field, flat=True).distinct() if value]
+        index[key] = cached
+    return cached
+
+
+def _values_matching(index, model, field, filters, normalized):
+    """مقادیر خامی که نام نرمال‌شده‌شان با این نگاشت برابر است."""
+    if not normalized:
+        return []
+    return [
+        value for value in _raw_values(index, model, field, filters)
+        if normalize_name(value) == normalized
+    ]
+
+
+def _apply_employee(alias, dry_run=False, index=None):
+    """اتصال ردیف‌های هم‌نام به پرسنل نگاشت‌شده (بدون اسکن کل جدول)."""
     from correspondences.models import Letter, LetterReferral
 
+    index = {} if index is None else index
     employee = alias.employee
-    full_name = getattr(employee, 'full_name', '') or alias.raw_name
+    full_name = (getattr(employee, 'full_name', '') or alias.raw_name or '')[:200]
     scopes = effective_scopes(alias, EMPLOYEE_SCOPES)
     normalized = alias.normalized
     company = alias.company
     counts = {'referrals': 0, 'letters': 0}
 
     if 'referral' in scopes:
-        rows = list(
-            LetterReferral.objects.filter(company=company).exclude(to_name='').prefetch_related(
-                'to_employees',
-            ),
+        values = _values_matching(
+            index, LetterReferral, 'to_name', {'company': company}, normalized,
         )
-        matched = [row for row in rows if _matches(row.to_name, normalized)]
-        primary, extras = [], []
-        for row in matched:
-            existing = set(row.to_employees.values_list('id', flat=True))
-            if row.to_employee_id == employee.id or employee.id in existing:
-                continue
-            if row.to_employee_id or existing:
-                # ارجاع قبلاً به یک/چند نفر وصل شده؛ این مقصد «نفر بعدی» است
-                extras.append(row)
-            else:
-                primary.append(row)
-        if not dry_run:
-            if primary:
-                for row in primary:
-                    row.to_employee = employee
-                    row.to_name = full_name[:200]
-                LetterReferral.objects.bulk_update(primary, ['to_employee', 'to_name'],
-                                                   batch_size=300)
-            if extras:
-                through = LetterReferral.to_employees.through
-                through.objects.bulk_create(
-                    [through(letterreferral_id=row.id, employee_id=employee.id)
-                     for row in extras],
-                    ignore_conflicts=True, batch_size=300,
-                )
-        counts['referrals'] = len(primary) + len(extras)
+        if values:
+            qs = LetterReferral.objects.filter(company=company, to_name__in=values)
+            through = LetterReferral.to_employees.through
+            ids = list(qs.values_list('id', flat=True))
+            linked = set(
+                through.objects.filter(letterreferral_id__in=ids)
+                .values_list('letterreferral_id', flat=True),
+            ) if ids else set()
+            mine = set(
+                through.objects.filter(letterreferral_id__in=ids, employee_id=employee.id)
+                .values_list('letterreferral_id', flat=True),
+            ) if ids else set()
+            primary_ids = [
+                row_id for row_id in qs.filter(to_employee__isnull=True)
+                .values_list('id', flat=True)
+                if row_id not in linked
+            ]
+            primary_set = set(primary_ids)
+            extra_ids = [row_id for row_id in ids
+                         if row_id not in primary_set and row_id not in mine]
+            if not dry_run:
+                if primary_ids:
+                    LetterReferral.objects.filter(id__in=primary_ids).update(
+                        to_employee=employee, to_name=full_name,
+                    )
+                if extra_ids:
+                    through.objects.bulk_create(
+                        [through(letterreferral_id=row_id, employee_id=employee.id)
+                         for row_id in extra_ids],
+                        ignore_conflicts=True, batch_size=300,
+                    )
+            counts['referrals'] = len(primary_ids) + len(extra_ids)
 
     for scope in scopes:
         link_field, name_field = LETTER_FIELDS.get(scope, (None, None))
         if not link_field:
             continue
-        rows = list(
-            Letter.objects.filter(
-                company=company, **{f'{link_field}__isnull': True},
-            ).exclude(**{name_field: ''}),
-        )
-        matched = [row for row in rows if _matches(getattr(row, name_field), normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                setattr(row, link_field, employee)
-                setattr(row, name_field, full_name[:200])
-            Letter.objects.bulk_update(matched, [link_field, name_field], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, f'{link_field}__isnull': True}
+        values = _values_matching(index, Letter, name_field, filters, normalized)
+        if not values:
+            continue
+        qs = Letter.objects.filter(**filters, **{f'{name_field}__in': values})
+        if dry_run:
+            counts['letters'] += qs.count()
+        else:
+            counts['letters'] += qs.update(**{link_field: employee, name_field: full_name})
     return counts
 
 
-def _apply_party(alias, dry_run=False):
+def _apply_party(alias, dry_run=False, index=None):
     """اتصال نامه‌های هم‌نام به طرف حساب قراردادها."""
-    from correspondences.models import Letter
+    from correspondences.models import Letter, LetterReferral
 
+    index = {} if index is None else index
     party = alias.party
     scopes = effective_scopes(alias, PARTY_SCOPES)
     normalized = alias.normalized
     company = alias.company
     counts = {'referrals': 0, 'letters': 0}
+    party_name = (party.name or '')[:250]
 
     if 'sender' in scopes or 'receiver' in scopes:
         # نام آزاد طرف حساب (شرکتی که هنوز در قراردادها ثبت نشده) → «تعمیم» به طرف حساب
-        rows = list(
-            Letter.objects.filter(
-                company=company, party_account__isnull=True,
-            ).exclude(party_name=''),
-        )
-        matched = [row for row in rows if _matches(row.party_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.party_account = party
-                if row.direction == 'incoming' and not row.sender_party_id:
-                    row.sender_party = party
-                row.party_name = party.name[:250]
-            Letter.objects.bulk_update(
-                matched, ['party_account', 'sender_party', 'party_name'], batch_size=300,
-            )
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'party_account__isnull': True}
+        values = _values_matching(index, Letter, 'party_name', filters, normalized)
+        if values:
+            qs = Letter.objects.filter(**filters, party_name__in=values)
+            incoming = qs.filter(direction='incoming', sender_party__isnull=True)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                incoming.update(sender_party=party)
+                counts['letters'] += qs.update(party_account=party, party_name=party_name)
 
     if 'sender' in scopes:
-        rows = list(
-            Letter.objects.filter(
-                company=company, sender_party__isnull=True, direction='incoming',
-            ).exclude(sender_name=''),
-        )
-        matched = [row for row in rows if _matches(row.sender_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.sender_party = party
-                if not row.party_account_id:
-                    row.party_account = party
-            Letter.objects.bulk_update(matched, ['sender_party', 'party_account'],
-                                       batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'sender_party__isnull': True, 'direction': 'incoming'}
+        values = _values_matching(index, Letter, 'sender_name', filters, normalized)
+        if values:
+            qs = Letter.objects.filter(**filters, sender_name__in=values)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                qs.filter(party_account__isnull=True).update(party_account=party)
+                counts['letters'] += qs.update(sender_party=party)
 
-        rows = list(
-            Letter.objects.filter(
-                company=company, party_account__isnull=True,
-            ).exclude(sender_name=''),
-        )
-        matched = [row for row in rows if _matches(row.sender_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.party_account = party
-            Letter.objects.bulk_update(matched, ['party_account'], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'party_account__isnull': True}
+        values = _values_matching(index, Letter, 'sender_name', filters, normalized)
+        if values:
+            qs = Letter.objects.filter(**filters, sender_name__in=values)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                counts['letters'] += qs.update(party_account=party)
 
     if 'receiver' in scopes:
-        rows = list(
-            Letter.objects.filter(
-                company=company, party_account__isnull=True, direction='outgoing',
-            ).exclude(receiver_name=''),
-        )
-        matched = [row for row in rows if _matches(row.receiver_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.party_account = party
-            Letter.objects.bulk_update(matched, ['party_account'], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'party_account__isnull': True, 'direction': 'outgoing'}
+        values = _values_matching(index, Letter, 'receiver_name', filters, normalized)
+        if values:
+            qs = Letter.objects.filter(**filters, receiver_name__in=values)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                counts['letters'] += qs.update(party_account=party)
 
     if alias.scope == 'referral_target':
         # گیرندهٔ ارجاع یک طرف حساب خارج از سامانه است → طرف حساب نامه هم ثبت شود
-        from correspondences.models import LetterReferral
-
-        referral_rows = LetterReferral.objects.filter(
-            company=company,
-        ).exclude(to_name='').values_list('letter_id', 'to_name')
-        matching_letters = {
-            letter_id for letter_id, to_name in referral_rows
-            if _matches(to_name, normalized)
-        }
-        if matching_letters:
-            rows = list(
-                Letter.objects.filter(
-                    company=company, party_account__isnull=True,
-                    id__in=matching_letters,
-                ),
+        values = _values_matching(
+            index, LetterReferral, 'to_name', {'company': company}, normalized,
+        )
+        if values:
+            letter_ids = LetterReferral.objects.filter(
+                company=company, to_name__in=values,
+            ).values('letter_id')
+            qs = Letter.objects.filter(
+                company=company, party_account__isnull=True, id__in=letter_ids,
             )
-            if rows and not dry_run:
-                for row in rows:
-                    row.party_account = party
-                Letter.objects.bulk_update(rows, ['party_account'], batch_size=300)
-            counts['letters'] += len(rows)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                counts['letters'] += qs.update(party_account=party)
     return counts
 
 
-def _apply_correspondent(alias, dry_run=False):
+def _apply_correspondent(alias, dry_run=False, index=None):
     """اتصال نامه‌ها به مخاطب تعریف‌شدهٔ مکاتبات."""
     from correspondences.models import Letter
 
+    index = {} if index is None else index
     correspondent = alias.correspondent
     normalized = alias.normalized
     company = alias.company
@@ -259,24 +278,23 @@ def _apply_correspondent(alias, dry_run=False):
         name_field = field_map.get(scope)
         if not name_field:
             continue
-        rows = list(
-            Letter.objects.filter(
-                company=company, correspondent__isnull=True,
-            ).exclude(**{name_field: ''}),
-        )
-        matched = [row for row in rows if _matches(getattr(row, name_field), normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.correspondent = correspondent
-            Letter.objects.bulk_update(matched, ['correspondent'], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'correspondent__isnull': True}
+        values = _values_matching(index, Letter, name_field, filters, normalized)
+        if not values:
+            continue
+        qs = Letter.objects.filter(**filters, **{f'{name_field}__in': values})
+        if dry_run:
+            counts['letters'] += qs.count()
+        else:
+            counts['letters'] += qs.update(correspondent=correspondent)
     return counts
 
 
-def _apply_organization(alias, dry_run=False):
+def _apply_organization(alias, dry_run=False, index=None):
     """اتصال سازمان طرف نامه (و سازمان مخاطبین) به سازمان نگاشت‌شده."""
     from correspondences.models import Correspondent, Letter
 
+    index = {} if index is None else index
     organization = alias.organization
     normalized = alias.normalized
     company = alias.company
@@ -284,48 +302,42 @@ def _apply_organization(alias, dry_run=False):
     counts = {'referrals': 0, 'letters': 0}
 
     if 'sender' in scopes:
-        rows = list(
-            Letter.objects.filter(
-                company=company, sender_organization__isnull=True,
-            ).exclude(sender_name=''),
-        )
-        matched = [row for row in rows if _matches(row.sender_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.sender_organization = organization
-            Letter.objects.bulk_update(matched, ['sender_organization'], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'sender_organization__isnull': True}
+        values = _values_matching(index, Letter, 'sender_name', filters, normalized)
+        if values:
+            qs = Letter.objects.filter(**filters, sender_name__in=values)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                counts['letters'] += qs.update(sender_organization=organization)
 
     if 'receiver' in scopes:
-        rows = list(
-            Letter.objects.filter(
-                company=company, organization__isnull=True, direction='outgoing',
-            ).exclude(receiver_name=''),
-        )
-        matched = [row for row in rows if _matches(row.receiver_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.organization = organization
-            Letter.objects.bulk_update(matched, ['organization'], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'organization__isnull': True, 'direction': 'outgoing'}
+        values = _values_matching(index, Letter, 'receiver_name', filters, normalized)
+        if values:
+            qs = Letter.objects.filter(**filters, receiver_name__in=values)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                counts['letters'] += qs.update(organization=organization)
 
     if alias.scope in ('organization', 'contact', 'any'):
-        rows = list(
-            Correspondent.objects.filter(company=company, organization__isnull=True),
-        )
-        matched = [row for row in rows if _matches(row.name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.organization = organization
-            Correspondent.objects.bulk_update(matched, ['organization'], batch_size=300)
-        counts['letters'] += len(matched)
+        filters = {'company': company, 'organization__isnull': True}
+        values = _values_matching(index, Correspondent, 'name', filters, normalized)
+        if values:
+            qs = Correspondent.objects.filter(**filters, name__in=values)
+            if dry_run:
+                counts['letters'] += qs.count()
+            else:
+                counts['letters'] += qs.update(organization=organization)
     return counts
 
 
-def _apply_category(alias, dry_run=False):
+def _apply_category(alias, dry_run=False, index=None):
     """اتصال نامه‌های هم‌موضوع به «نوع مکاتبه» نگاشت‌شده (نگاشت موضوع نامه)."""
     from correspondences.models import Letter
 
+    index = {} if index is None else index
     category = alias.category
     normalized = alias.normalized
     company = alias.company
@@ -334,19 +346,18 @@ def _apply_category(alias, dry_run=False):
     if category is None or 'subject' not in scopes:
         return counts
 
-    rows = list(
-        Letter.objects.filter(company=company, category__isnull=True).exclude(subject=''),
-    )
-    matched = [row for row in rows if _matches(row.subject, normalized)]
-    if matched and not dry_run:
-        for row in matched:
-            row.category = category
-        Letter.objects.bulk_update(matched, ['category'], batch_size=300)
-    counts['letters'] += len(matched)
+    filters = {'company': company, 'category__isnull': True}
+    values = _values_matching(index, Letter, 'subject', filters, normalized)
+    if values:
+        qs = Letter.objects.filter(**filters, subject__in=values)
+        if dry_run:
+            counts['letters'] += qs.count()
+        else:
+            counts['letters'] += qs.update(category=category)
     return counts
 
 
-def apply_alias(alias, dry_run=False):
+def apply_alias(alias, dry_run=False, index=None):
     """یک نگاشت را روی داده‌های موجود اعمال می‌کند و آمار را برمی‌گرداند."""
     handlers = {
         'employee': _apply_employee,
@@ -356,7 +367,7 @@ def apply_alias(alias, dry_run=False):
         'category': _apply_category,
     }
     handler = handlers.get(alias.target_kind)
-    counts = handler(alias, dry_run=dry_run) if handler else None
+    counts = handler(alias, dry_run=dry_run, index=index) if handler else None
     if not isinstance(counts, dict):
         counts = {'referrals': 0, 'letters': 0}
     total = counts.get('referrals', 0) + counts.get('letters', 0)
@@ -377,16 +388,20 @@ def apply_alias(alias, dry_run=False):
     }
 
 
-def apply_all(company, dry_run=False, aliases=None):
-    """اعمال همهٔ نگاشت‌های فعال شرکت."""
+def _alias_queryset(company):
     from correspondences.models import CorrespondenceNameAlias
 
-    rows = list(aliases) if aliases is not None else list(
-        CorrespondenceNameAlias.objects.filter(
-            company=company, is_active=True,
-        ).select_related('employee', 'party', 'correspondent', 'organization', 'category')
-    )
-    results = [apply_alias(alias, dry_run=dry_run) for alias in rows]
+    return CorrespondenceNameAlias.objects.filter(
+        company=company, is_active=True,
+    ).select_related(
+        'employee', 'party', 'correspondent', 'organization', 'category',
+    ).order_by('order', 'id')
+
+
+def _run_aliases(aliases, dry_run=False):
+    """اعمال چند نگاشت با **یک** کش مشترک از نام‌های خام."""
+    index = {}
+    results = [apply_alias(alias, dry_run=dry_run, index=index) for alias in aliases]
     return {
         'dry_run': bool(dry_run),
         'aliases': len(results),
@@ -395,6 +410,29 @@ def apply_all(company, dry_run=False, aliases=None):
         'total': sum(item['total'] for item in results),
         'items': results,
     }
+
+
+def apply_all(company, dry_run=False, aliases=None):
+    """اعمال همهٔ نگاشت‌های فعال شرکت (یک پیمایش مشترک برای کش نام‌ها)."""
+    rows = list(aliases) if aliases is not None else list(_alias_queryset(company))
+    return _run_aliases(rows, dry_run=dry_run)
+
+
+def apply_batch(company, alias_ids=None, scope=None, dry_run=False):
+    """اعمال گروهی: یک ستون (scope) یا مجموعه‌ای از شناسه‌ها، در **یک** درخواست.
+
+    جایگزین حلقهٔ درخواست‌های فرانت (که برای هر نگاشت یک HTTP call می‌زد).
+    """
+    qs = _alias_queryset(company)
+    if scope:
+        qs = qs.filter(scope=scope)
+    if alias_ids:
+        ids = [int(item) for item in alias_ids if str(item).strip().isdigit()]
+        qs = qs.filter(id__in=ids)
+    rows = list(qs)
+    payload = _run_aliases(rows, dry_run=dry_run)
+    payload['scope'] = scope or ''
+    return payload
 
 
 def load_alias_map(company):

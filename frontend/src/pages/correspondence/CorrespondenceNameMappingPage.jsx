@@ -381,18 +381,16 @@ const CorrespondenceNameMappingPage = () => {
 
   const applyGroup = useMutation({
     mutationFn: async (row) => {
-      let total = 0;
-      for (const item of row.targets) {
-        // eslint-disable-next-line no-await-in-loop
-        const response = await axiosInstance.post(`${API}${item.id}/apply/`, {});
-        total += response.data.total || 0;
-      }
-      return total;
+      const ids = (row.targets || []).map((item) => item.id).filter(Boolean);
+      const response = await axiosInstance.post(`${API}apply-batch/`, { ids });
+      return response.data?.total || 0;
     },
     onSuccess: (total) => {
       refresh();
+      setError('');
       setToast(`${formatPersianNumber(total)} ردیف اصلاح و متصل شد.`);
     },
+    onError: (err) => setError(err?.response?.data?.detail || 'اعمال نگاشت این نام ممکن نشد.'),
   });
 
   /** نگاشت سریع: پیشنهاد سامانه → ثبت نگاشت + اعمال همان لحظه. */
@@ -407,7 +405,9 @@ const CorrespondenceNameMappingPage = () => {
           value: { id: suggestion.id, name: suggestion.label },
         }),
       });
-      const applied = await axiosInstance.post(`${API}${created.data.id}/apply/`, {});
+      const applied = await axiosInstance.post(`${API}apply-batch/`, {
+        ids: [created.data.id],
+      });
       return { row, suggestion, applied: applied.data };
     },
     onSuccess: ({ row, suggestion, applied }) => {
@@ -421,24 +421,22 @@ const CorrespondenceNameMappingPage = () => {
     ),
   });
 
-  /** اعمال همهٔ نگاشت‌های همین ستون روی داده‌های موجود. */
+  /** اعمال همهٔ نگاشت‌های همین ستون روی داده‌های موجود — یک درخواست. */
   const applyColumn = useMutation({
     mutationFn: async () => {
-      let total = 0;
-      const mappedRows = rows.filter((row) => row.mapped && row.targets?.length);
-      for (const row of mappedRows) {
-        for (const item of row.targets) {
-          // eslint-disable-next-line no-await-in-loop
-          const response = await axiosInstance.post(`${API}${item.id}/apply/`, {});
-          total += response.data.total || 0;
-        }
-      }
-      return total;
+      const response = await axiosInstance.post(`${API}apply-batch/`, {
+        scope: selectedColumn?.key || scope,
+      });
+      return response.data?.total || 0;
     },
     onSuccess: (total) => {
       refresh();
+      setError('');
       setToast(`${formatPersianNumber(total)} ردیف در ستون «${selectedColumn?.label || ''}» اصلاح شد.`);
     },
+    onError: (err) => setError(
+      err?.response?.data?.detail || 'اعمال این ستون ممکن نشد.',
+    ),
   });
 
   const applyAll = useMutation({
