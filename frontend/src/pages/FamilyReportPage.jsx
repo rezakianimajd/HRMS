@@ -9,10 +9,10 @@ import DownloadIcon from '@mui/icons-material/Download';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
-import PrintIcon from '@mui/icons-material/Print';
+import PageHeader from '../core/components/ui/PageHeader';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import BadgeIcon from '@mui/icons-material/Badge';
-import PageHeader from '../core/components/ui/PageHeader';
+import PrintButton from '../core/print/PrintButton';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import fetchAllPages from '../core/api/fetchAllPages';
 import downloadFile from '../core/utils/downloadUtils';
@@ -327,9 +327,12 @@ const FamilyReportPage = () => {
               </span>
             </Tooltip>
             <Tooltip title="چاپ">
-              <Button variant="outlined" onClick={() => window.print()} sx={{ minWidth: 40, px: 1 }}>
-                <PrintIcon fontSize="small" />
-              </Button>
+              <PrintButton
+                label=""
+                icon
+                title="گزارش خانواده"
+                sx={{ minWidth: 40, px: 1 }}
+              />
             </Tooltip>
             <Button
               variant="outlined"

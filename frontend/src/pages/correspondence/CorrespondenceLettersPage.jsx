@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
@@ -57,6 +56,9 @@ import {
   asList, safeDate,
 } from './correspondenceLetterForm';
 import { CONTACTS_KEY, LETTERS_KEY, META_KEY, REFERRALS_KEY, STATS_KEY } from './correspondenceQueryKeys';
+import useLetterListState from './useLetterListState';
+import usePrintDocument from '../../core/print/usePrintDocument';
+import PrintPreviewDialog from '../../core/print/PrintPreviewDialog';
 import { CompleteReferralDialog, ReferDialog } from './correspondenceReferDialogs';
 
 export const LETTER_PAGE_PRESETS = {
@@ -114,27 +116,11 @@ export const LETTER_PAGE_PRESETS = {
 const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const preset = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
+  const print = usePrintDocument();
 
-  const [direction, setDirection] = useState(preset.direction || 'all');
-  const [statusFilter, setStatusFilter] = useState(preset.status || 'all');
-  const [scope, setScope] = useState(preset.scope || 'all');
-  const [overdueOnly, setOverdueOnly] = useState(Boolean(preset.overdue));
-  const [archivedOnly, setArchivedOnly] = useState(Boolean(preset.archived));
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [entryMethodFilter, setEntryMethodFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [search, setSearch] = useState(() => searchParams.get('q') || '');
-  const [attachmentFilter, setAttachmentFilter] = useState(() => {
-    const value = searchParams.get('has_attachments');
-    if (value === '0') return 'without';
-    if (value === '1') return 'with';
-    return 'all';
-  });
-  const [sortBy, setSortBy] = useState('newest');
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const [drawerLetter, setDrawerLetter] = useState(null);
   const [drawerTab, setDrawerTab] = useState('info');
   const [formOpen, setFormOpen] = useState(false);
@@ -148,6 +134,49 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [uploading, setUploading] = useState(false);
   const [previewState, setPreviewState] = useState(null);
   const uploadRef = useRef(null);
+
+  /* فیلترها، جست‌وجوی دی‌بانس‌شده، صفحه‌بندی و کوئری فهرست در یک هوک مستقل */
+  const {
+    archivedOnly, setArchivedOnly, attachmentFilter, setAttachmentFilter, categoryFilter,
+    setCategoryFilter, debouncedSearch, direction, setDirection, entryMethodFilter,
+    setEntryMethodFilter, filtersOpen, setFiltersOpen, isFetching, isLoading, letters,
+    listParams, page, setPage, pageNumbers, priorityFilter, setPriorityFilter, overdueOnly,
+    setOverdueOnly, refetch, scope, setScope, search, setSearch, sortBy, setSortBy,
+    statusFilter, setStatusFilter, total, totalPages,
+  } = useLetterListState({
+    preset,
+    pageSize,
+    onNewRequested: () => {
+      setFormLetter(null);
+      setFormOpen(true);
+    },
+  });
+
+  /* با تغییر mode، فیلترها به پیش‌فرض همان صفحه برمی‌گردند.
+     در رندر اول اجرا نمی‌شود تا مقادیر آمده از URL (?q=…&has_attachments=…) حفظ شوند. */
+  const previousModeRef = useRef(mode);
+  useEffect(() => {
+    if (previousModeRef.current === mode) return;
+    previousModeRef.current = mode;
+    const next = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
+    setDirection(next.direction || 'all');
+    setStatusFilter(next.status || 'all');
+    setScope(next.scope || 'all');
+    setOverdueOnly(Boolean(next.overdue));
+    setArchivedOnly(Boolean(next.archived));
+    setCategoryFilter('all');
+    setPriorityFilter('all');
+    setEntryMethodFilter('all');
+    setSearch('');
+    setSortBy('newest');
+    setFiltersOpen(false);
+    // eslint-disable-next-line
+  }, [mode]);
+
+  useEffect(() => {
+    setDrawerTab('info');
+  }, [drawerLetter?.id]);
+
 
   /* مجوزهای ریز این صفحه (بر اساس جهت جاری) */
   const activeDirection = direction !== 'all' ? direction : (preset.direction || 'incoming');
@@ -172,101 +201,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const canEditOf = (letter) => letterCan(user, 'edit', letter?.direction || activeDirection);
   const canCreateOf = (letter) => letterCan(user, 'create', letter?.direction || activeDirection);
   const canDeleteOf = (letter) => letterCan(user, 'delete', letter?.direction || activeDirection);
-
-  useEffect(() => {
-    const next = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
-    setDirection(next.direction || 'all');
-    setStatusFilter(next.status || 'all');
-    setScope(next.scope || 'all');
-    setOverdueOnly(Boolean(next.overdue));
-    setArchivedOnly(Boolean(next.archived));
-    setCategoryFilter('all');
-    setPriorityFilter('all');
-    setEntryMethodFilter('all');
-    setSearch('');
-    setSortBy('newest');
-    setFiltersOpen(false);
-  }, [mode]);
-
-  useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setFormLetter(null);
-      setFormOpen(true);
-    }
-  }, [searchParams]);
-
-  // پارامترهای ورودی از داشبورد/میان‌بُرها (جست‌وجو و وضعیت پیوست)
-  const incomingQuery = searchParams.get('q');
-  const incomingAttachments = searchParams.get('has_attachments');
-  useEffect(() => {
-    if (incomingQuery !== null) setSearch(incomingQuery);
-    setAttachmentFilter(
-      incomingAttachments === '0' ? 'without' : incomingAttachments === '1' ? 'with' : 'all',
-    );
-  }, [incomingQuery, incomingAttachments]);
-
-  useEffect(() => {
-    setDrawerTab('info');
-  }, [drawerLetter?.id]);
-
-
-  const pageSize = moduleTheme.tableTheme.rowsPerPage;
-  const [page, setPage] = useState(0);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch, direction, statusFilter, scope, overdueOnly, archivedOnly,
-    categoryFilter, priorityFilter, entryMethodFilter, sortBy, pageSize]);
-
-  const listParams = useMemo(() => {
-    const ordering = {
-      newest: '-effective_date',
-      oldest: 'effective_date',
-      due: 'due_date',
-      number: 'number',
-    }[sortBy] || '-effective_date';
-    const params = { page: page + 1, page_size: pageSize, ordering };
-    if (direction !== 'all') params.direction = direction;
-    if (statusFilter !== 'all') params.status = statusFilter;
-    if (scope !== 'all') params.scope = scope;
-    if (overdueOnly) params.overdue = '1';
-    if (archivedOnly) params.archived = '1';
-    if (categoryFilter !== 'all') params.category = categoryFilter;
-    if (priorityFilter !== 'all') params.priority = priorityFilter;
-    if (entryMethodFilter !== 'all') params.entry_method = entryMethodFilter;
-    if (attachmentFilter !== 'all') params.has_attachments = attachmentFilter === 'with' ? '1' : '0';
-    if (debouncedSearch) params.search = debouncedSearch;
-    return params;
-  }, [page, pageSize, sortBy, direction, statusFilter, scope, overdueOnly, archivedOnly,
-    categoryFilter, priorityFilter, entryMethodFilter, attachmentFilter, debouncedSearch]);
-
-  const { data: rawLetters, isLoading, isFetching, refetch } = useQuery({
-    queryKey: [...LETTERS_KEY, listParams],
-    queryFn: () => axiosInstance.get('/letters/', { params: listParams }).then((response) => response.data),
-    placeholderData: (previous) => previous,
-    staleTime: 30 * 1000,
-  });
-  const letters = useMemo(() => asList(rawLetters), [rawLetters]);
-  const total = useMemo(
-    () => (typeof rawLetters?.count === 'number' ? rawLetters.count : letters.length),
-    [rawLetters, letters.length],
-  );
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  useEffect(() => {
-    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [page, totalPages]);
-  const pageNumbers = useMemo(() => {
-    const size = 5;
-    const start = Math.max(0, Math.min(page - 2, totalPages - size));
-    const end = Math.min(totalPages, start + size);
-    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
-  }, [page, totalPages]);
 
 
   const { data: meta } = useQuery({
@@ -1493,7 +1427,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   </Button>
                 ) : null}
                 <Button size="small" variant="outlined" startIcon={<PrintOutlinedIcon />}
-                  onClick={() => window.print()}>
+                  onClick={() => print.openDocument({ document: 'letter', payload: { id: activeLetter.id } })}>
                   چاپ
                 </Button>
               </Stack>
@@ -1798,6 +1732,15 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         title={previewState?.title || ''}
         accent={pageAccent}
         onClose={() => setPreviewState(null)}
+      />
+
+      <PrintPreviewDialog
+        open={print.open}
+        title={print.title || 'چاپ نامه'}
+        html={print.html}
+        loading={print.loading}
+        error={print.error}
+        onClose={print.close}
       />
 
       <LetterFormDialog

@@ -245,6 +245,7 @@ const { data, isLoading } = useQuery({
 ```
 **بک‌اند**: `ModelViewSet` + `filter_backends=[OrderingFilter]` + `get_serializer_class()` که برای `action == 'list'` سریالایزر سبک می‌دهد + `get_queryset()` که فقط FKهای لازم را `select_related` می‌کند.
 
+
 ### 7.2 داشبورد استودیویی
 ```jsx
 const { accent } = useStudio();                       // یا useModulePalette + fallback
@@ -317,6 +318,34 @@ PROVIDERS['<module>'] = [
 
 
 ---
+
+### 7.7 چاپ — موتور چاپ یکپارچه (اجباری برای هر چاپ جدید)
+**قاعده:** هیچ `window.print()` مستقیم و هیچ قالب HTML چاپی مستقل نسازید. همهٔ چاپ‌ها از موتور چاپ استفاده می‌کنند.
+
+**بک‌اند** `core/print_engine/`:
+- `components.py`: `esc` · `fa_digits` · `jalali` · `money` (جداکنندهٔ فارسی + واحد) · `amount_words` · `barcode` (Code 39) · `field_grid([(label, value)])` · `data_table(columns, rows, {total_row})` · `signatures([...])` · `watermark` · `raw(html)` (برای محتوای از قبل ایمن؛ مقدار متنی همیشه escape می‌شود).
+- `layout.py`: `render_document(document, options)` → HTML کامل RTL با `@page` (A4/A5/A3/Letter، عمودی/افقی)، سرصفحهٔ برند + badge + meta، بخش‌ها، کادر مبلغ به حروف، بارکد، امضا، پاصفحه با شمارهٔ صفحه و تاریخ چاپ، واترمارک.
+- `registry.py`: `render(document, payload, options, request=request)` با انواع `letter` / `table` / `custom`؛ مجوز با `can_print(user, module)` (سوپریوزر یا `view/export`؛ کاربر بدون کد ریز مسدود نمی‌شود).
+- اندپوینت‌ها: `POST /api/print/preview/` `{document, payload, options}` → `{html}` و `GET /api/print/options/`.
+- تست: `core/tests_print_engine.py` (۲۶ تست، بدون دیتابیس).
+
+**فرانت** `core/print/`:
+- `printEngine.js`: `printHtml(html)` (iframe مخفی، بدون پاپ‌آپ) · `printElement(target, {title, paper, orientation})` · `buildElementDocument`.
+- `PrintPreviewDialog.jsx`: پیش‌نمایش iframe + دکمهٔ چاپ.
+- `usePrintDocument.js`: `openDocument({document, payload, options})` / `printDocument` / `printCurrent` / `close`.
+- `PrintButton.jsx`: `<PrintButton target="main" title="…" />` برای گزارش‌های کلاینتی.
+
+```jsx
+// سند رسمی از سرور (نامه/فیش/گزارش سروری)
+const print = usePrintDocument();
+<Button onClick={() => print.openDocument({ document: 'letter', payload: { id } })}>چاپ</Button>
+<PrintPreviewDialog open={print.open} html={print.html} loading={print.loading}
+  error={print.error} title={print.title} onClose={print.close} />
+
+// گزارش کلاینتی
+<PrintButton target={tableRef} title="ترازنامه" orientation="landscape" />
+```
+مهاجرت چاپ‌های قدیمی: `window.print()` → `PrintButton`/`printElement` (فوری) و در گام بعد سند به `registry` بک‌اند منتقل شود.
 
 ## 8) Performance playbook — کارایی
 
@@ -469,7 +498,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.cf1f0a34.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.2213ac05.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **موتور چاپ یکپارچه (۲۰۲۶-۱۱-۰۸):** `core/print_engine/` (components/layout/registry/views) +
+  `POST /api/print/preview/`، `GET /api/print/options/` و کلاینت `core/print/`
+  (`printEngine.js`، `PrintPreviewDialog`، `PrintButton`، `usePrintDocument`).
+  اول از همه، چاپ نامهٔ مکاتبات (کشوی جزئیات) از `window.print()` به سند سروری منتقل شد؛
+  گزارش‌های کلاینتی هنوز `window.print()` دارند و باید تدریجاً به `PrintButton`/`printElement` مهاجرت کنند
+  (فهرست فعلی: ~۲۳ فایل، از جمله `pages/accounting/reports/*`، `Contract*Page`، `DashboardPage`،
+  `SalaryPayslip`، `StatementEditorPage`). تست‌ها: `core/tests_print_engine.py` (۲۶) و
+  `__tests__/printEngineSmoke.test.js` (۵).
+- **فاز ۴ نگهداشت‌پذیری فرانت (ادامه):** وضعیت فهرست نامه‌ها به هوک `useLetterListState.js` منتقل شد
+  (فیلترها، جست‌وجوی ۳۵۰ms، صفحه‌بندی، مرتب‌سازی، پارامترهای سرور، `?q`/`?has_attachments`/`?new=1`) و
+  `CorrespondenceLettersPage.jsx` فقط UI ماند. باقی‌ماندهٔ این فاز: استخراج کشوی جزئیات
+  (`correspondenceLetterDetails.jsx`) و هوک `useLetterMutations` (هدف: ~۹۰۰ خط).
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،

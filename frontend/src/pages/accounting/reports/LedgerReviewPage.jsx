@@ -9,6 +9,7 @@ import {
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PrintIcon from '@mui/icons-material/Print';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import { printElement } from '../../../core/print/printEngine';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
@@ -333,7 +334,8 @@ const LedgerReviewPage = () => {
           <>
             <Button size="small" variant="outlined" startIcon={<RestartAltIcon />} onClick={resetAll}
               sx={{ fontFamily: FONT }}>بازنشانی</Button>
-            <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}
+            <Button size="small" variant="contained" startIcon={<PrintIcon />}
+              onClick={() => printElement(document.querySelector('main'))}
               sx={{ fontFamily: FONT }}>چاپ</Button>
           </>
         )}

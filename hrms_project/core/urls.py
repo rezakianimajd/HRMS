@@ -7,6 +7,7 @@ from core import application_views
 from core import access_views
 from core import system_views
 from core import updates_views
+from core.print_engine import views as print_views
 
 urlpatterns = [
     # Health & version (public, no auth — used by monitoring and the updater)
@@ -74,4 +75,8 @@ urlpatterns = [
     # (سازگاری) فهرست نقش‌های سیستمی — صفحهٔ جدید از آن استفاده نمی‌کند
     path('users/roles/', access_views.roles_overview_view, name='api-user-roles'),
     path('users/roles/catalog/', access_views.permission_catalog_view, name='api-permission-catalog'),
+
+    # موتور چاپ یکپارچه (پیش‌نمایش/چاپ اسناد و گزارش‌ها)
+    path('print/preview/', print_views.preview_view, name='api-print-preview'),
+    path('print/options/', print_views.options_view, name='api-print-options'),
 ]
