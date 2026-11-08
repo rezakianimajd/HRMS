@@ -240,7 +240,7 @@ const ProcurementDashboardPage = () => {
   const rialSlice = data.rialCards.slice(rialPage * CARDS_PER_PAGE, (rialPage + 1) * CARDS_PER_PAGE);
   const foreignSlice = data.foreignCards
     .slice(foreignPage * CARDS_PER_PAGE, (foreignPage + 1) * CARDS_PER_PAGE);
-  const openOrder = (row) => navigate(`/procurement/orders?order=${row.id}`);
+  const openOrder = () => navigate('/procurement/orders');
 
   if (dashboardQuery.isLoading) {
     return (
