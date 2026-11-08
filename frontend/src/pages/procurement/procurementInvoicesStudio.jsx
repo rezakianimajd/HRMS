@@ -152,6 +152,10 @@ const ProcurementInvoicesStudio = () => {
     );
   };
 
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
+    themeTokens, Math.max(1, pagedRows.length),
+  );
+
   return (
     <Box>
       <Box sx={{ ...cardSx, ...tableFrameSx }}>
