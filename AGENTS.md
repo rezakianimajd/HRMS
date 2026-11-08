@@ -572,6 +572,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `_blur()` + merge در `save_login_branding`) و `core/utils/colorUtils.js`
     (`resolveLoginBranding` → `theme.blur`)؛ در «تنظیمات → مشخصات شرکت → ظاهر صفحهٔ ورود» اسلایدر
     «میزان بلور تصویر پس‌زمینه» + پیش‌نمایش کارت اضافه شد. تست: `settings_app/tests_login_branding.py` (۲۷).
+    **مستقر شد (۲۰۲۶-۱۱-۰۸):** `manage.py check` پاک، gunicorn ری‌استارت و
+    `GET /api/auth/login-companies/` کلید `overlay_blur` را در `login_branding` برمی‌گرداند.
   - **صفحهٔ انتخاب ماژول (`core/components/ui/ModuleSelection.jsx`) — بازطراحی، نه حذف:** همان قابلیت‌ها
     (سلام/نام کاربر، هویت شرکت، کارت ماژول‌های مجاز با accent ماژول، حالت بارگذاری هر ماژول، خطا، بازگشت) با
     زبان بصری صفحهٔ ورود: پس‌زمینهٔ تصویری `company.login_branding` + پوشش/بلور، کارت وسط‌چین
