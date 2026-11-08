@@ -1,5 +1,5 @@
 import React from 'react';
-import { PurchaseInvoicesSection } from './procurementSections';
+import ProcurementInvoicesStudio from './procurementInvoicesStudio';
 
-const ProcurementInvoicesPage = () => <PurchaseInvoicesSection />;
+const ProcurementInvoicesPage = () => <ProcurementInvoicesStudio />;
 export default ProcurementInvoicesPage;
