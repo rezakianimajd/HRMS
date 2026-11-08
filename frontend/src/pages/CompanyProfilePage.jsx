@@ -141,6 +141,7 @@ const CompanyProfilePage = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['company-profile'] });
       qc.invalidateQueries({ queryKey: ['company-profile-layout'] });
+      qc.invalidateQueries({ queryKey: ['company-branding'] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     },
@@ -157,6 +158,7 @@ const CompanyProfilePage = () => {
       setForm(p => ({ ...p, logo_url: res.data.logo_url, logo: res.data.logo }));
       qc.invalidateQueries({ queryKey: ['company-profile'] });
       qc.invalidateQueries({ queryKey: ['company-profile-layout'] });
+      qc.invalidateQueries({ queryKey: ['company-branding'] });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
       setUploading(false);

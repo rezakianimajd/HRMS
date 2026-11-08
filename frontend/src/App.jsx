@@ -17,6 +17,7 @@ import GummyBearOverlay from './core/components/ui/GummyBearOverlay';
 import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
 import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
+import FaviconSync from './core/components/ui/FaviconSync';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
 import { mixHex } from './core/theme/tokens';
 import { DEFAULT_TYPOGRAPHY, fontStack } from './core/theme/appearanceDefaults';
@@ -521,6 +522,7 @@ const ThemedApp = () => {
     <ThemeProvider theme={theme}>
       <DesignTokenProvider tokens={resolvedDesign}>
         <CssBaseline />
+        <FaviconSync />
         <ErrorBoundary>
           <GummyBearOverlay />
           <HelpDialog />

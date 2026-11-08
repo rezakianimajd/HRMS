@@ -50,6 +50,9 @@ urlpatterns = [
     path('companies/current/', views.current_company_view, name='api-company-current'),
     path('companies/switch/', views.switch_company_view, name='api-company-switch'),
 
+    # Company branding for the browser tab (public: favicon is fetched without JWT)
+    path('company/branding/', views.company_branding_view, name='api-company-branding'),
+
     # Languages
     path('languages/', views.language_list_view, name='api-language-list'),
     path('languages/current/', views.current_language_view, name='api-language-current'),

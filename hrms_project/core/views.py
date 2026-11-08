@@ -188,6 +188,79 @@ def login_companies_view(request):
 
 
 # =============================================================================
+# Company branding (public) — لوگوی تب مرورگر / favicon
+# =============================================================================
+
+def company_branding_payload(company, profile):
+    """برند شرکت برای آیکن تب مرورگر (تابع خالص و قابل تست).
+
+    منبع لوگو: ابتدا `CompanyProfile.logo` (همان چیزی که در «تنظیمات → مشخصات
+    شرکت» بارگذاری می‌شود) و در نبود آن `Company.logo`.
+    """
+    legal_name = (getattr(profile, 'legal_name', '') or '').strip() if profile else ''
+    name = (legal_name or (getattr(company, 'name', '') or '')).strip()
+
+    logo_field = None
+    for candidate in (getattr(profile, 'logo', None), getattr(company, 'logo', None)):
+        if candidate:
+            logo_field = candidate
+            break
+
+    logo_url = None
+    if logo_field is not None:
+        try:
+            logo_url = logo_field.url
+        except (ValueError, AttributeError):
+            logo_url = None
+
+    version = None
+    if logo_url:
+        stamp = getattr(profile, 'updated_at', None) if profile else None
+        if hasattr(stamp, 'timestamp'):
+            version = int(stamp.timestamp())
+
+    return {
+        'name': name,
+        'legal_name': legal_name,
+        'logo_url': logo_url,
+        # نسخهٔ زمانی برای شکستن کش مرورگر وقتی لوگو عوض می‌شود
+        'favicon_url': ('%s?v=%s' % (logo_url, version)) if (logo_url and version) else logo_url,
+        'version': version,
+    }
+
+
+def load_company_branding(company):
+    """پروفایل شرکتِ schema جاری را می‌خواند؛ نبودِ پروفایل/جدول، برند را خالی می‌کند."""
+    from settings_app.models import CompanyProfile
+
+    profile = None
+    try:
+        profile = CompanyProfile.objects.filter(company_id=company.id).first()
+    except Exception:  # noqa: BLE001 — نبود پروفایل نباید آیکن تب را بشکند
+        profile = None
+    return company_branding_payload(company, profile)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def company_branding_view(request):
+    """برند شرکتِ دامنهٔ جاری (عمومی، بدون احراز هویت).
+
+    مرورگر favicon را بدون هدر JWT درخواست می‌کند و صفحهٔ ورود هم باید لوگو را
+    نشان دهد؛ بنابراین این اندپوینت عمومی است و فقط نام حقوقی/لوگوی عمومی شرکت
+    را برمی‌گرداند (همان داده‌ای که صفحهٔ ورود هم نمایش می‌دهد).
+    """
+    from django.db import connection
+
+    tenant = getattr(connection, 'tenant', None)
+    schema_name = (getattr(tenant, 'schema_name', '') or '').strip()
+    if not schema_name or schema_name == 'public':
+        return Response(company_branding_payload(None, None))
+
+    return Response(load_company_branding(tenant))
+
+
+# =============================================================================
 # Company (Tenant) Views
 # =============================================================================
 

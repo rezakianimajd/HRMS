@@ -155,6 +155,12 @@ ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شو�
 - `LetterDetailsDialog` (`pages/correspondence/correspondenceLetterDetails.jsx`) — پروندهٔ نامه (هدر + تب‌های
   مشخصات/ارجاعات/پیوست‌ها/تاریخچه) **کاملاً پراپ‌محور**؛ برای استفادهٔ مجدد در تب مکاتبات پروندهٔ قرارداد:
   `<LetterDetailsDialog open letter={x} tab onTabChange onClose onAction={(name, payload) => …} canEditOf … />`.
+- `FaviconSync` (`core/components/ui/FaviconSync.jsx`) — آیکن تب مرورگر را از **لوگوی شرکت**
+  (`تنظیمات → مشخصات شرکت`) ست می‌کند. منبع داده: اندپوینت عمومی `GET /api/company/branding/`
+  (`core.views.company_branding_view` / `company_branding_payload`) که `favicon_url` را با
+  `?v=<updated_at>` برای شکستن کش برمی‌گرداند. بدون لوگو، هیچ لینکی تزریق نمی‌شود.
+  در `App.jsx` داخل `ThemedApp` سوار است (صفحهٔ ورود هم پوشش داده می‌شود)؛ بعد از آپلود لوگو در
+  `CompanyProfilePage` کوئری `['company-branding']` باطل می‌شود.
 
 - الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
 
@@ -536,13 +542,27 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 15. **هوک‌های نوشتن را با نام `refetch`های واقعی صدا بزنید**: در صفحهٔ مکاتبات، ری‌فچ‌ها `refetchStats` و
    `refetchReferrals` هستند (نه `refresh…`)؛ و هر stateای که هوک برمی‌گرداند (مثل `editRowId`) باید در صفحه
    destructure شود وگرنه `ReferenceError` فقط در رندر اول دیده می‌شود (تست smoke سریع می‌گیرد).
+16. **اسکریپت bash که برای سرور می‌سازید باید LF باشد.** فایلی که ادیتور ویندوز می‌سازد CRLF است و
+   `sudo bash /var/tmp/x.sh` با `$'\r': command not found` یا اجرای ناقص برمی‌گردد؛ اول
+   `sed -i 's/\r$//' /var/tmp/x.sh` بزنید (یا دستور را تک‌خطی با `;` بفرستید).
+   همچنین `deploy-frontend.ps1` در اجرای detached می‌تواند در مرحلهٔ ۳/۴ روی SSH معلق بماند؛ در آن حالت
+   `tar -czf` + `scp` بفرستید و جای‌گذاری اتمیک را با یک دستور تک‌خطی ssh انجام دهید
+   (`mv build build.old.$(date +%s)` → `mv $TMP/build build` → `chmod -R u=rwX,g=rX,o=rX`).
 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `332852d97 refactor(correspondence): extract letter details dialog and write path hook`
-- **Live:** frontend `main.db6ce534.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.afd1e33d.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
+- **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
+  (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
+  نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
+  منبع لوگو اول `CompanyProfile.logo` (مشخصات شرکت) و بعد `Company.logo`. فرانت: `FaviconSync` در
+  `App.jsx` یک `<link rel="icon" id="hrms-company-favicon">` می‌سازد/به‌روز می‌کند (بدون لوگو → بدون لینک)
+  و `CompanyProfilePage` پس از آپلود لوگو کش `['company-branding']` را باطل می‌کند.
+  تست‌ها: `core/tests_branding.py` (۸) و `__tests__/faviconSync.test.js` (۳). دادهٔ زندهٔ kpsmi:
+  `/media/company_logos/لوگو_HJMTNTX.png` (۹۱KB، HTTP 200).
 - **بازطراحی ماژول خرید و تدارکات — مرحلهٔ بک‌اند (۲۰۲۶-۱۱-۰۸):** مدل‌های جدید در `procurement/models.py`
   (به سبک ماژول قراردادها) اضافه شدند و مایگریشن `procurement.0004` روی همهٔ schemaها اعمال شد:
   - **استعلام (RFQ):** `Inquiry` (شماره، موضوع، درخواست مبدأ، پروژه، واحد، مهلت، روش ارزیابی، ارز،
