@@ -30,7 +30,8 @@ export const glass = {
 
 export const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
 export const money = (value, unit = 'ریال') => `${formatPersianNumber(Math.round(Number(value) || 0))} ${unit}`.trim();
-export const dateLabel = (value) => (value ? toJalali(value) : '—');
+/** تاریخ شمسی با اعداد فارسی — همهٔ تاریخ‌های ماژول از همین تابع استفاده می‌کنند. */
+export const dateLabel = (value) => (value ? toPersianDigits(toJalali(value)) : '—');
 export const num = (value) => Number(value) || 0;
 
 /** هوک بارگذاری فهرست با پارامترها. */

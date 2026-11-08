@@ -176,7 +176,7 @@ export const PurchaseRequestsSection = () => {
               <TableBody>
                 {rows.map(r => (
                   <TableRow key={r.id} hover>
-                    <TD bold>{r.number || `#${r.id}`}</TD><TD>{toJalali(r.date)}</TD><TD>{r.department || '—'}</TD>
+                    <TD bold>{r.number || `#${r.id}`}</TD><TD>{toPersianDigits(toJalali(r.date))}</TD><TD>{r.department || '—'}</TD>
                     <TD>{formatPersianNumber(r.total)}</TD><TD><StatusChip status={r.status} /></TD>
                     <TD>
                       {r.status === 'draft' && <IconButton size="small" onClick={() => act(r.id, 'submit')}><SendIcon fontSize="small" /></IconButton>}
@@ -211,7 +211,7 @@ export const PurchaseOrdersSection = () => {
               <TableBody>
                 {rows.map(o => (
                   <TableRow key={o.id} hover>
-                    <TD bold>{o.number || `#${o.id}`}</TD><TD>{o.supplier_name}</TD><TD>{toJalali(o.date)}</TD>
+                    <TD bold>{o.number || `#${o.id}`}</TD><TD>{o.supplier_name}</TD><TD>{toPersianDigits(toJalali(o.date))}</TD>
                     <TD>{formatPersianNumber(o.total)}</TD><TD><StatusChip status={o.status} /></TD>
                     <TD>
                       {o.status === 'draft' && <IconButton size="small" onClick={() => act(o.id, 'submit')}><SendIcon fontSize="small" /></IconButton>}
@@ -246,7 +246,7 @@ export const GoodsReceiptsSection = () => {
               <TableBody>
                 {rows.map(g => (
                   <TableRow key={g.id} hover>
-                    <TD bold>{g.number || `#${g.id}`}</TD><TD>{g.order_number || g.order}</TD><TD>{toJalali(g.date)}</TD><TD><StatusChip status={g.status} /></TD>
+                    <TD bold>{g.number || `#${g.id}`}</TD><TD>{g.order_number || g.order}</TD><TD>{toPersianDigits(toJalali(g.date))}</TD><TD><StatusChip status={g.status} /></TD>
                   </TableRow>
                 ))}
               </TableBody>
@@ -327,7 +327,7 @@ export const PurchasePaymentsSection = () => {
               <TableBody>
                 {rows.map(p => (
                   <TableRow key={p.id} hover>
-                    <TD>#{p.invoice}</TD><TD>{toJalali(p.date)}</TD><TD>{formatPersianNumber(p.amount)}</TD><TD>{p.method_display}</TD>
+                    <TD>#{p.invoice}</TD><TD>{toPersianDigits(toJalali(p.date))}</TD><TD>{formatPersianNumber(p.amount)}</TD><TD>{p.method_display}</TD>
                   </TableRow>
                 ))}
               </TableBody>
