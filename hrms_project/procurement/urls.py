@@ -5,6 +5,9 @@ from procurement.views import (
     UnitOfMeasureViewSet, ItemViewSet, PurchaseRequestViewSet,
     PurchaseOrderViewSet, GoodsReceiptNoteViewSet, PurchaseInvoiceViewSet,
     PurchasePaymentViewSet, ProcurementApprovalPolicyViewSet,
+    InquiryViewSet, QuotationViewSet, ProformaInvoiceViewSet,
+    ProcurementGuaranteeViewSet, PurchasePaymentAllocationViewSet,
+    ProcurementDocumentViewSet,
 )
 
 router = DefaultRouter()
@@ -19,6 +22,13 @@ router.register(r'good-receipts', GoodsReceiptNoteViewSet, basename='goods-recei
 router.register(r'purchase-invoices', PurchaseInvoiceViewSet, basename='purchase-invoice')
 router.register(r'purchase-payments', PurchasePaymentViewSet, basename='purchase-payment')
 router.register(r'procurement-policies', ProcurementApprovalPolicyViewSet, basename='procurement-policy')
+# استعلام و زنجیرهٔ خرید
+router.register(r'inquiries', InquiryViewSet, basename='inquiry')
+router.register(r'quotations', QuotationViewSet, basename='quotation')
+router.register(r'proforma-invoices', ProformaInvoiceViewSet, basename='proforma-invoice')
+router.register(r'procurement-guarantees', ProcurementGuaranteeViewSet, basename='procurement-guarantee')
+router.register(r'payment-allocations', PurchasePaymentAllocationViewSet, basename='payment-allocation')
+router.register(r'procurement-documents', ProcurementDocumentViewSet, basename='procurement-document')
 
 urlpatterns = [
     path('', include(router.urls)),

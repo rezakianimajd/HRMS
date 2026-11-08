@@ -516,7 +516,34 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.c7ae1108.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.c7ae1108.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
+- **بازطراحی ماژول خرید و تدارکات — مرحلهٔ بک‌اند (۲۰۲۶-۱۱-۰۸):** مدل‌های جدید در `procurement/models.py`
+  (به سبک ماژول قراردادها) اضافه شدند و مایگریشن `procurement.0004` روی همهٔ schemaها اعمال شد:
+  - **استعلام (RFQ):** `Inquiry` (شماره، موضوع، درخواست مبدأ، پروژه، واحد، مهلت، روش ارزیابی، ارز،
+    پیشنهاد برنده، تاریخچه) + `InquiryLine` (کالا/خدمت، مشخصات فنی، مقدار، قیمت هدف، WBS/CBS) +
+    `InquirySupplier` (تأمین‌کنندهٔ دعوت‌شده با وضعیت دعوت/ارسال/پاسخ).
+  - **پیشنهاد قیمت:** `Quotation` (تأمین‌کننده، اعتبار پیشنهاد، ارز/نرخ، تخفیف، نرخ ارزش افزوده،
+    زمان تحویل، شرایط پرداخت، دورهٔ تضمین، امتیاز فنی، برنده) + `QuotationLine` (قیمت واحد، تخفیف،
+    زمان تحویل، انطباق فنی؛ مبلغ در `save()` محاسبه می‌شود).
+  - **پیش‌فاکتور:** `ProformaInvoice` + `ProformaInvoiceLine` با تبدیل مستقیم به `PurchaseInvoice`
+    (`POST /api/procurement/proforma-invoices/{id}/convert/`).
+  - **تضامین خرید:** `ProcurementGuarantee` (شرکت در استعلام/حسن انجام تعهدات/پیش‌پرداخت/حسن پرداخت/
+    دورهٔ تضمین؛ ابزار چک/سفته/ضمانت‌نامه/وجه نقد) + `ProcurementGuaranteeAction`؛ اعتبار با همان
+    `contracts.guarantee_validity` (چک = ۵ سال از صدور) و اکشن `POST .../procurement-guarantees/{id}/action/`
+    و گزارش `GET .../procurement-guarantees/overview/`.
+  - **پرداخت و اسناد:** `PurchasePaymentAllocation` (تخصیص پرداخت به فاکتور/پیش‌فاکتور با بازمحاسبهٔ
+    `paid_amount` و `payment_status`) و `ProcurementDocument` (پیوست استعلام/پیشنهاد/پیش‌فاکتور/فاکتور/
+    تضمین با `file_url` مطلق).
+  - **غنی‌سازی موجود:** `Item` (مشخصات فنی، قیمت استاندارد، حداقل سفارش، سازنده، پارت‌نامبر)،
+    `PurchaseOrder` (پیشنهاد مبدأ، ارز، نرخ)، `PurchaseInvoice` (ارز، نرخ، نرخ ارزش افزوده، وضعیت پرداخت).
+  - **API:** `/api/procurement/inquiries/` (+`comparison/`، `award/`، `add_suppliers/`)،
+    `/quotations/`، `/proforma-invoices/` (+`convert/`)، `/procurement-guarantees/` (+`action/`، `overview/`)،
+    `/payment-allocations/`، `/procurement-documents/`.
+  - محاسبات در `procurement/pricing.py` (خالص): `line_amount`، `document_totals`، `payment_status_of`،
+    `compare_quotations` (ماتریس قیمت هر سطر + رتبه‌بندی + پیشنهاد برنده با نادیده‌گرفتن رد‌شده‌ها).
+  - تست: `procurement/tests_inquiry.py` (۹ تست DB-free) — سبز.
+  - **باقی‌مانده (گام بعد):** فرانت‌اند ماژول (داشبورد تدارکات، فهرست/docs استعلام، فرم استعلام،
+    صفحهٔ مقایسهٔ پیشنهادها، پیش‌فاکتور، تضامین، تخصیص پرداخت، پروندهٔ خرید با تب‌ها) + منوی ماژول.
 - **موتور چاپ — اسناد سروری فیش حقوقی و سند خزانه (۲۰۲۶-۱۱-۰۸):** `core/print_engine/builders/`
   (`payslip.py`، `voucher.py`) با الگوی «تابع خالص سند + loader دیتابیس» اضافه شد؛ انواع جدید
   `document:'payslip'` و `document:'voucher'` (receipt/payment/payment_order/transfer/transaction)
