@@ -1,7 +1,7 @@
 /** پرونده خرید — فهرست طرف حساب‌ها با همان کیت مدیریت قراردادها (هدر/سرچ/جدول/صفحه‌بندی). */
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Chip, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import BusinessIcon from '@mui/icons-material/Business';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
@@ -11,22 +11,26 @@ import {
   ModulePager, ModuleTable, ModuleToolbar,
   useModuleTableState, useModuleTheme, useRowHeight,
 } from '../contracts/contractModuleUi';
-import { useModulePalette } from '../../core/context/ModulePaletteContext';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { useList } from './procurementUi';
-
-const FALLBACK_ACCENT = '#f59e0b';
 
 const STATUS_LABELS = { active: 'فعال', inactive: 'غیرفعال', blacklisted: 'لیست سیاه' };
 const STATUS_COLORS = { active: '#0f766e', inactive: '#64748b', blacklisted: '#be123c' };
 
 const money = (value) => `${formatPersianNumber(Math.round(Number(value) || 0))} ریال`;
 
+const cardSx = {
+  p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider',
+  bgcolor: 'background.paper', boxShadow: 'none',
+};
+const tableCardSx = {
+  borderRadius: 'var(--hrms-table-radius, 16px)', overflow: 'hidden', border: '1px solid',
+  borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none',
+};
+
 const ProcurementProfilesPage = () => {
   const navigate = useNavigate();
   const moduleTheme = useModuleTheme();
-  const palette = useModulePalette();
-  const accent = palette?.getPalette?.('procurement')?.accent || FALLBACK_ACCENT;
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -100,20 +104,21 @@ const ProcurementProfilesPage = () => {
         )}
       />
 
-      <ModuleToolbar
-        theme={moduleTheme}
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="جستجو در نام، کد یا تلفن طرف حساب…"
-        sort={sortBy}
-        sortOptions={[
+      <Paper sx={cardSx}>
+        <ModuleToolbar
+          theme={moduleTheme}
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="جستجو در نام، کد یا تلفن طرف حساب…"
+          sort={sortBy}
+          sortOptions={[
           { value: 'documents', label: 'بیشترین اسناد' },
           { value: 'amount', label: 'بیشترین مبلغ فاکتور' },
           { value: 'balance', label: 'بیشترین مانده' },
           { value: 'name', label: 'نام طرف حساب' },
-        ]}
-        onSort={setSortBy}
-        filters={[{
+          ]}
+          onSort={setSortBy}
+          filters={[{
           label: 'وضعیت',
           value: statusFilter,
           options: [
@@ -123,30 +128,20 @@ const ProcurementProfilesPage = () => {
             { value: 'blacklisted', label: 'لیست سیاه' },
           ],
           onChange: setStatusFilter,
-        }]}
-        activeChips={activeChips}
-        activeFilterCount={activeChips.length}
-        onReset={() => { setSearch(''); setStatusFilter('all'); setSortBy('documents'); }}
-      />
+          }]}
+          activeChips={activeChips}
+          activeFilterCount={activeChips.length}
+          onReset={() => { setSearch(''); setStatusFilter('all'); setSortBy('documents'); }}
+        />
+      </Paper>
 
-      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ pb: 1.25 }}>
-        <Chip size="small" label={`طرف حساب: ${toPersianDigits(rows.length)}`}
-          sx={{ height: 22, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(accent, 0.12), color: accent }} />
-        <Chip size="small" label={`اسناد: ${toPersianDigits(totals.documents)}`}
-          sx={{ height: 22, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(accent, 0.12), color: accent }} />
-        <Chip size="small" label={`مبلغ فاکتورها: ${money(totals.invoices)}`}
-          sx={{ height: 22, fontSize: 10.5, fontWeight: 800, bgcolor: 'rgba(15,118,110,0.12)', color: '#0f766e' }} />
-        <Chip size="small" label={`مانده: ${money(totals.balance)}`}
-          sx={{ height: 22, fontSize: 10.5, fontWeight: 800, bgcolor: 'rgba(180,83,9,0.12)', color: '#b45309' }} />
-        <Chip size="small" label={`تضامین: ${money(totals.guarantees)}`}
-          sx={{ height: 22, fontSize: 10.5, fontWeight: 800, bgcolor: 'rgba(139,92,246,0.12)', color: '#8b5cf6' }} />
-      </Stack>
 
       {error ? (
         <Typography sx={{ color: 'error.main', fontSize: 12, mb: 1 }}>{error}</Typography>
       ) : null}
 
-      <ModuleTable
+      <Paper sx={tableCardSx}>
+        <ModuleTable
         tableTheme={moduleTheme.tableTheme}
         ariaLabel="پرونده‌های خرید طرف حساب‌ها"
         containerRef={tableRef}
@@ -196,7 +191,7 @@ const ProcurementProfilesPage = () => {
             ) },
         ]}
       />
-      <ModulePager
+        <ModulePager
         tableTheme={moduleTheme.tableTheme}
         page={page}
         onPage={setPage}
@@ -204,8 +199,9 @@ const ProcurementProfilesPage = () => {
         pageNumbers={pageNumbers}
         total={rows.length}
         pageSize={pageSize}
-        unit="طرف حساب"
-      />
+          unit="طرف حساب"
+        />
+      </Paper>
     </Box>
   );
 };
