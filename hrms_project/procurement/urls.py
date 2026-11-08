@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from procurement.views import (
+    supplier_profiles_view,
     SupplierCategoryViewSet, SupplierViewSet, ItemCategoryViewSet,
     UnitOfMeasureViewSet, ItemViewSet, PurchaseRequestViewSet,
     PurchaseOrderViewSet, GoodsReceiptNoteViewSet, PurchaseInvoiceViewSet,
@@ -31,5 +32,6 @@ router.register(r'payment-allocations', PurchasePaymentAllocationViewSet, basena
 router.register(r'procurement-documents', ProcurementDocumentViewSet, basename='procurement-document')
 
 urlpatterns = [
+    path('supplier-profiles/', supplier_profiles_view, name='supplier-profiles'),
     path('', include(router.urls)),
 ]

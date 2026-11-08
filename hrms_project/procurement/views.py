@@ -4,7 +4,8 @@ import logging
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import viewsets, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 logger = logging.getLogger('procurement')
@@ -585,3 +586,74 @@ class ProcurementDocumentViewSet(BaseViewSet):
             uploaded_by=user if user.is_authenticated else None,
         )
 
+
+
+# ---------------------------------------------------------------------------
+# پرونده‌های خرید — یک ردیف برای هر طرف حساب (تأمین‌کننده) با جمع اسناد
+# ---------------------------------------------------------------------------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def supplier_profiles_view(request):
+    """فهرست پرونده‌های خرید به‌ازای هر تأمین‌کننده.
+
+    برای هر طرف حساب: تعداد و مبلغ سفارش‌ها، فاکتورها (با پرداخت‌شده)،
+    پیش‌فاکتورها، پیشنهادها و تضامین — همه در **یک کوئری** با Subquery
+    (بدون N+1).
+    """
+    from django.db.models import Count, OuterRef, Subquery, Sum
+    from django.db.models.functions import Coalesce
+
+    supplier_id = request.query_params.get('supplier')
+    queryset = Supplier.objects.filter(company=_company(request)).order_by('name')
+    if supplier_id:
+        queryset = queryset.filter(pk=supplier_id)
+
+    def _total(model, field):
+        return Coalesce(
+            Subquery(
+                model.objects.filter(supplier=OuterRef('pk'))
+                .values('supplier').annotate(total=Sum(field)).values('total')[:1]
+            ),
+            0,
+        )
+
+    queryset = queryset.annotate(
+        orders_count=Count('purchase_orders', distinct=True),
+        orders_total=_total(PurchaseOrder, 'total'),
+        invoices_count=Count('invoices', distinct=True),
+        invoices_total=_total(PurchaseInvoice, 'total'),
+        invoices_paid=_total(PurchaseInvoice, 'paid_amount'),
+        proformas_count=Count('proforma_invoices', distinct=True),
+        proformas_total=_total(ProformaInvoice, 'total'),
+        quotations_count=Count('quotations', distinct=True),
+        guarantees_count=Count('guarantees', distinct=True),
+        guarantees_total=_total(ProcurementGuarantee, 'amount'),
+    )
+
+    rows = []
+    for supplier in queryset:
+        rows.append({
+            'id': supplier.pk,
+            'name': supplier.name,
+            'code': supplier.code,
+            'status': supplier.status,
+            'status_label': supplier.get_status_display(),
+            'phone': supplier.phone,
+            'rating': float(supplier.rating or 0),
+            'orders_count': supplier.orders_count,
+            'orders_total': float(supplier.orders_total or 0),
+            'invoices_count': supplier.invoices_count,
+            'invoices_total': float(supplier.invoices_total or 0),
+            'invoices_paid': float(supplier.invoices_paid or 0),
+            'invoices_balance': float(supplier.invoices_total or 0) - float(supplier.invoices_paid or 0),
+            'proformas_count': supplier.proformas_count,
+            'proformas_total': float(supplier.proformas_total or 0),
+            'quotations_count': supplier.quotations_count,
+            'guarantees_count': supplier.guarantees_count,
+            'guarantees_total': float(supplier.guarantees_total or 0),
+            'documents_count': (
+                supplier.orders_count + supplier.invoices_count + supplier.proformas_count
+                + supplier.quotations_count + supplier.guarantees_count
+            ),
+        })
+    return Response({'count': len(rows), 'results': rows})

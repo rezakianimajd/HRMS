@@ -598,10 +598,11 @@ const treasuryMenu = [
 const procurementMenu = [
   {
     id: 'procurement-home',
-    title: 'خانه',
+    title: 'مدیریت خریدها',
     color: '#f59e0b',
     items: [
-      { id: 'procurement', title: 'داشبورد خریدها', icon: <ShoppingCartIcon />, path: '/procurement', color: '#f59e0b', primary: true, ready: true },
+      { id: 'procurement-profiles', title: 'پرونده‌های خرید', icon: <StorefrontIcon />, path: '/procurement/profiles', color: '#f59e0b', primary: true, ready: true },
+      { id: 'procurement', title: 'داشبورد خریدها', icon: <ShoppingCartIcon />, path: '/procurement', color: '#f59e0b', primary: false, ready: true },
     ],
   },
   {
@@ -627,7 +628,6 @@ const procurementMenu = [
       { id: 'procurement-proforma', title: 'پیش‌فاکتورها', icon: <ReceiptLongIcon />, path: '/procurement/proforma', color: '#8b5cf6', primary: false, ready: true },
       { id: 'procurement-guarantees', title: 'تضامین خرید', icon: <RequestQuoteIcon />, path: '/procurement/guarantees', color: '#0f766e', primary: false, ready: true },
       { id: 'procurement-allocations', title: 'تخصیص پرداخت‌ها', icon: <PaymentsIcon />, path: '/procurement/allocations', color: '#0ea5e9', primary: false, ready: true },
-      { id: 'procurement-supplier-profile', title: 'پروندهٔ خرید طرف حساب', icon: <StorefrontIcon />, path: '/procurement/supplier-profile', color: '#f59e0b', primary: false, ready: true },
     ],
   },
 ];
