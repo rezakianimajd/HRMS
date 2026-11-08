@@ -831,8 +831,19 @@ const CoverageGauge = ({ percent = 0, size = 132, thickness = 14, color = '#2563
 const guaranteeState = (item) => {
   if (item.is_released) return { label: 'آزادشده', color: '#64748b' };
   if (item.days_to_expiry !== null && item.days_to_expiry !== undefined) {
-    if (item.days_to_expiry < 0) return { label: 'منقضی', color: '#b91c1c' };
-    if (item.days_to_expiry <= 30) return { label: `${toPersianDigits(item.days_to_expiry)} روز تا سررسید`, color: '#b45309' };
+    if (item.days_to_expiry < 0) {
+      return item.is_check
+        ? { label: 'پایان اعتبار چک', color: '#b91c1c' }
+        : { label: 'منقضی', color: '#b91c1c' };
+    }
+    if (item.days_to_expiry <= 30) {
+      return {
+        label: item.is_check
+          ? `${toPersianDigits(item.days_to_expiry)} روز تا پایان اعتبار`
+          : `${toPersianDigits(item.days_to_expiry)} روز تا سررسید`,
+        color: '#b45309',
+      };
+    }
   }
   return { label: 'فعال', color: '#047857' };
 };

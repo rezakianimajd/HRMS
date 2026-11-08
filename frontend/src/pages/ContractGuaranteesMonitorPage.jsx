@@ -31,6 +31,7 @@ import {
   useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import { printElement } from '../core/print/printEngine';
+import { guaranteeValidity, guaranteeDueDate, guaranteeIsExpiring } from '../core/utils/guaranteeValidity';
 
 const ACCENT = '#f59e0b';
 const OK = '#0f766e';
@@ -61,7 +62,7 @@ const GUARANTEE_TYPE_LABELS = {
 const STATUS_META = {
   active: { label: 'معتبر', color: OK, bg: '#ecfdf5' },
   expiring: { label: 'نزدیک انقضا', color: WARN, bg: '#fffbeb' },
-  expired: { label: 'منقضی', color: DANGER, bg: '#fff1f2' },
+  expired: { label: 'منقضی / پایان اعتبار', color: DANGER, bg: '#fff1f2' },
   returned: { label: 'استرداد شده', color: SLATE, bg: '#f1f5f9' },
   released: { label: 'آزادشده', color: OK, bg: '#ecfdf5' },
   executed: { label: 'اجرا / ضبط شده', color: DANGER, bg: '#fff1f2' },
@@ -81,14 +82,9 @@ const compactMoney = (value, currency = '') => {
   return `${formatPersianNumber(Math.round(amount))} ${currency}`.trim();
 };
 
-const daysUntil = (value) => {
-  if (!value) return null;
-  const target = new Date(`${String(value).slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(target.getTime())) return null;
-  return Math.ceil((target - new Date()) / 86400000);
-};
-
-const dueOf = (row) => row.guarantee_expiry_date || row.check_due_date || row.promissory_due_date || row.expiry_date;
+const dueOf = (row) => guaranteeDueDate(row);
+/* اعتبار: چک ۵ سال از تاریخ صدور معتبر است؛ سررسید ≠ انقضا */
+const validityOf = (row) => guaranteeValidity(row);
 const numberFor = (row) => row.number || row.check_number || row.promissory_number || row.guarantee_number || '—';
 
 const daysLabel = (days) => {
@@ -113,9 +109,9 @@ const statusOf = (row) => {
   }
   if (row.last_action === 'executed') return { key: 'executed', ...STATUS_META.executed };
   if (row.last_action === 'canceled') return { key: 'canceled', ...STATUS_META.canceled };
-  const days = daysUntil(dueOf(row));
-  if (days !== null && days < 0) return { key: 'expired', ...STATUS_META.expired };
-  if (days !== null && days <= 30) return { key: 'expiring', ...STATUS_META.expiring };
+  const { days, expired } = validityOf(row);
+  if (expired) return { key: 'expired', ...STATUS_META.expired };
+  if (guaranteeIsExpiring(row)) return { key: 'expiring', ...STATUS_META.expiring };
   return { key: 'active', ...STATUS_META.active };
 };
 
@@ -205,12 +201,16 @@ const ContractGuaranteesMonitorPage = () => {
   );
 
   const rows = useMemo(() => guarantees.map((guarantee) => {
-    const due = dueOf(guarantee);
-    const days = daysUntil(due);
+    const validity = validityOf(guarantee);
+    const due = validity.dueDate || dueOf(guarantee);
+    const days = validity.days;
     return {
       g: guarantee,
       due,
       days,
+      validUntil: validity.validUntil,
+      isCheck: validity.isCheck,
+      expired: validity.expired,
       amount: Number(guarantee.amount) || 0,
       number: numberFor(guarantee),
       status: statusOf(guarantee),
@@ -551,9 +551,12 @@ const ContractGuaranteesMonitorPage = () => {
                     sx={{ fontSize: 11, fontWeight: 800, lineHeight: 1.5 }}>
                     {row.g.guarantee_type_display || 'تضمین'} · {row.number}
                   </Typography>
-                  <Typography noWrap title={`${row.g.contract_subject || '—'} — سررسید ${dateLabel(row.due)}`}
+                  <Typography noWrap
+                    title={`${row.g.contract_subject || '—'} — سررسید ${dateLabel(row.due)}`
+                      + (row.isCheck && row.validUntil ? ` — اعتبار تا ${dateLabel(row.validUntil)}` : '')}
                     sx={{ fontSize: 10, color: MUTED, lineHeight: 1.5 }}>
                     {row.g.contract_subject || '—'} · {dateLabel(row.due)}
+                    {row.isCheck && row.validUntil ? ` · اعتبار تا ${dateLabel(row.validUntil)}` : ''}
                   </Typography>
                 </Box>
                 <Typography noWrap title={`${money(row.amount)} ${currency}`}
@@ -695,15 +698,26 @@ const ContractGuaranteesMonitorPage = () => {
                 {
                   key: 'expiry', label: 'سررسید', width: '9%', align: 'center',
                   render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {dateLabel(row.due)}
-                    </Typography>
+                    <Stack spacing={0.1} alignItems="center">
+                      <Typography noWrap sx={{ fontSize: 11, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                        {dateLabel(row.due)}
+                      </Typography>
+                      {row.isCheck && row.validUntil ? (
+                        <Typography noWrap
+                          title="پایان اعتبار قانونی چک (۵ سال از تاریخ صدور)"
+                          sx={{ fontSize: 9.5, color: MUTED }}>
+                          اعتبار تا {dateLabel(row.validUntil)}
+                        </Typography>
+                      ) : null}
+                    </Stack>
                   ),
                 },
                 {
                   key: 'days', label: 'روز مانده', width: '8.5%', align: 'center',
                   render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: daysColor(row.days) }}>
+                    <Typography noWrap
+                      title={row.isCheck ? 'مانده تا پایان اعتبار چک' : 'مانده تا انقضا'}
+                      sx={{ fontSize: 11, fontWeight: 800, color: daysColor(row.days) }}>
                       {['released', 'returned'].includes(row.status.key) ? '—' : daysLabel(row.days)}
                     </Typography>
                   ),

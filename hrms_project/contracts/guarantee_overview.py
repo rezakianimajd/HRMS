@@ -34,7 +34,7 @@ def contract_overview_row(contract, compliance):
                 continue
             if next_days is None or days < next_days:
                 next_days = days
-                next_expiry = item.get('expiry_date')
+                next_expiry = item.get('valid_until') or item.get('expiry_date')
 
     return {
         'contract': getattr(contract, 'id', None),

@@ -49,9 +49,14 @@ def _display(obj, attr):
 
 
 def guarantee_payload(guarantee):
-    """نمایش فشردهٔ یک تضمین برای فهرست‌های پرونده."""
-    expiry = _day(getattr(guarantee, 'expiry_date', None))
-    days_left = (expiry - date.today()).days if expiry else None
+    """نمایش فشردهٔ یک تضمین برای فهرست‌های پرونده.
+
+    نکته: برای چک، ``days_to_expiry`` بر اساس **سرآمد اعتبار ۵ ساله** محاسبه می‌شود،
+    نه تاریخ سررسید؛ تاریخ سررسید جداگانه در ``due_date`` برمی‌گردد.
+    """
+    from contracts.guarantee_validity import guarantee_validity
+
+    validity = guarantee_validity(guarantee)
     return {
         'id': getattr(guarantee, 'id', None),
         'contract_guarantee_index': getattr(guarantee, 'contract_guarantee_index', None),
@@ -63,8 +68,15 @@ def guarantee_payload(guarantee):
         'amount': _num(getattr(guarantee, 'amount', None)) or 0.0,
         'bank': getattr(guarantee, 'bank', '') or '',
         'issue_date': _iso(getattr(guarantee, 'issue_date', None)),
-        'expiry_date': _iso(expiry),
-        'days_to_expiry': days_left,
+        'expiry_date': _iso(getattr(guarantee, 'expiry_date', None)),
+        'due_date': validity['due_date'],
+        'due_days': validity['due_days'],
+        'valid_until': validity['valid_until'],
+        'validity_years': validity['validity_years'],
+        'is_check': validity['is_check'],
+        'expiry_kind': validity['expiry_kind'],
+        'days_to_expiry': validity['days_to_expiry'],
+        'is_expired': validity['is_expired'],
         'is_released': bool(getattr(guarantee, 'is_released', False)),
         'release_date': _iso(getattr(guarantee, 'release_date', None)),
         'note': getattr(guarantee, 'note', '') or '',
@@ -247,10 +259,35 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
             )
         for row in active:
             name = row['number'] or row['instrument_label'] or row['type_label']
-            if row['days_to_expiry'] is not None and row['days_to_expiry'] < 0:
-                warnings.append(f'تضمین {name} منقضی شده است.')
-            elif row['days_to_expiry'] is not None and row['days_to_expiry'] <= EXPIRY_SOON_DAYS:
-                warnings.append(f'تضمین {name} تا {row["days_to_expiry"]} روز دیگر منقضی می‌شود.')
+            days_left = row['days_to_expiry']
+            if days_left is None:
+                continue
+            if row.get('is_expired'):
+                if row.get('is_check'):
+                    warnings.append(
+                        f'اعتبار قانونی چک {name} (۵ سال از تاریخ صدور) به پایان رسیده است.'
+                    )
+                else:
+                    warnings.append(f'تضمین {name} منقضی شده است.')
+            elif days_left <= EXPIRY_SOON_DAYS:
+                if row.get('is_check'):
+                    warnings.append(
+                        f'اعتبار قانونی چک {name} تا {days_left} روز دیگر به پایان می‌رسد.'
+                    )
+                else:
+                    warnings.append(f'تضمین {name} تا {days_left} روز دیگر منقضی می‌شود.')
+            elif row.get('is_check') and row.get('due_days') is not None:
+                due_left = row['due_days']
+                if 0 <= due_left <= EXPIRY_SOON_DAYS:
+                    warnings.append(
+                        f'سررسید چک {name} تا {due_left} روز دیگر است؛ '
+                        f'اعتبار قانونی آن تا {row.get("valid_until") or "—"} ادامه دارد.'
+                    )
+                elif due_left < 0:
+                    warnings.append(
+                        f'سررسید چک {name} گذشته است؛ طبق قانون تا '
+                        f'{row.get("valid_until") or "—"} معتبر است (منقضی نشده).'
+                    )
 
     unrequired = [row for row in items if row['id'] not in used_ids]
     required_total = round(sum(row['required'] for row in requirements), 2)

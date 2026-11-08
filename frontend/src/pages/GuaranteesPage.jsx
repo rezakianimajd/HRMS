@@ -59,6 +59,7 @@ import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles'
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 import { CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
 import { printElement } from '../core/print/printEngine';
+import { guaranteeValidity, guaranteeDueDate, guaranteeIsExpiring } from '../core/utils/guaranteeValidity';
 
 const EMPTY = {
   id: null, contract: '', contract_guarantee_index: null,
@@ -86,7 +87,7 @@ const REDUCIBLE_INSTRUMENTS = ['bank_guarantee', 'undertaking_guarantee'];
 const STATUS_META = {
   active: { label: 'معتبر', color: '#0f766e', bg: '#ecfdf5' },
   expiring: { label: 'نزدیک انقضا', color: '#b45309', bg: '#fffbeb' },
-  expired: { label: 'منقضی', color: '#be123c', bg: '#fff1f2' },
+  expired: { label: 'منقضی / پایان اعتبار', color: '#be123c', bg: '#fff1f2' },
   returned: { label: 'استرداد شده', color: '#475569', bg: '#f1f5f9' },
   released: { label: 'آزادشده', color: '#0f766e', bg: '#ecfdf5' },
   executed: { label: 'اجرا / ضبط شده', color: '#be123c', bg: '#fff1f2' },
@@ -129,13 +130,10 @@ const allowedActions = (instrumentType) => {
 
 const dateLabel = (value) => (value ? toJalali(value) : '—');
 const money = (value, currency = 'ریال') => `${formatPersianNumber(Number(value) || 0)} ${currency}`;
-const dueOf = (row) => row.guarantee_expiry_date || row.check_due_date || row.promissory_due_date || row.expiry_date;
-const daysUntil = (value) => {
-  if (!value) return null;
-  const target = new Date(`${String(value).slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(target.getTime())) return null;
-  return Math.ceil((target - new Date()) / 86400000);
-};
+const dueOf = (row) => guaranteeDueDate(row);
+/* اعتبار: چک ۵ سال از تاریخ صدور معتبر است؛ سررسید ≠ انقضا */
+const validityOf = (row) => guaranteeValidity(row);
+const daysOf = (row) => guaranteeValidity(row).days;
 
 const statusOf = (row) => {
   if (row.last_action === 'released') return { key: 'released', ...STATUS_META.released };
@@ -144,9 +142,9 @@ const statusOf = (row) => {
   }
   if (row.last_action === 'executed') return { key: 'executed', ...STATUS_META.executed };
   if (row.last_action === 'canceled') return { key: 'canceled', ...STATUS_META.canceled };
-  const days = daysUntil(dueOf(row));
-  if (days !== null && days < 0) return { key: 'expired', ...STATUS_META.expired };
-  if (days !== null && days <= 30) return { key: 'expiring', ...STATUS_META.expiring };
+  const { days, expired } = validityOf(row);
+  if (expired) return { key: 'expired', ...STATUS_META.expired };
+  if (guaranteeIsExpiring(row)) return { key: 'expiring', ...STATUS_META.expiring };
   return { key: 'active', ...STATUS_META.active };
 };
 
@@ -232,7 +230,7 @@ const GuaranteeArchiveTable = ({
           const InstrumentIcon = instrument.icon;
           const status = statusOf(row);
           const due = dueOf(row);
-          const remaining = daysUntil(due);
+          const remaining = daysOf(row);
           return (
             <TableRow key={row.id} hover onClick={() => onView(row)} sx={{ cursor: 'pointer' }}>
               <TableCell align="center">
@@ -639,7 +637,8 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
   const meta = instrumentMeta(row);
   const Icon = meta.icon;
   const status = statusOf(row);
-  const days = daysUntil(dueOf(row));
+  const validity = validityOf(row);
+  const days = validity.days;
   return (
     <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
       PaperProps={{ sx: { width: { xs: '100%', sm: 430 }, bgcolor: SOFT_BG } }}>
@@ -677,9 +676,14 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={ScheduleIcon} title="زمان‌بندی" color={status.color} />
               <InfoLine label="تاریخ صدور" value={dateLabel(row.issue_date)} />
-              <InfoLine label="تاریخ انقضا / سررسید" value={dateLabel(dueOf(row))} strong />
+              <InfoLine label={validity.isCheck ? 'تاریخ سررسید چک' : 'تاریخ انقضا'}
+                value={dateLabel(validity.dueDate || dueOf(row))} strong />
+              {validity.isCheck && validity.validUntil ? (
+                <InfoLine label="پایان اعتبار قانونی (۵ سال از صدور)"
+                  value={dateLabel(validity.validUntil)} strong />
+              ) : null}
               {days !== null ? (
-                <InfoLine label="مانده تا انقضا"
+                <InfoLine label={validity.isCheck ? 'مانده تا پایان اعتبار' : 'مانده تا انقضا'}
                   value={days < 0 ? `${toPersianDigits(Math.abs(days))} روز گذشته` : days === 0 ? 'امروز' : `${toPersianDigits(days)} روز`} />
               ) : null}
               <InfoLine label="آخرین اقدام" value={row.last_action_display || '—'} />
@@ -1111,7 +1115,7 @@ const GuaranteesPage = () => {
   const expiringRows = useMemo(() => (
     [...list]
       .filter((row) => statusOf(row).key === 'expiring')
-      .sort((a, b) => (daysUntil(dueOf(a)) ?? 9999) - (daysUntil(dueOf(b)) ?? 9999))
+      .sort((a, b) => (daysOf(a) ?? 9999) - (daysOf(b) ?? 9999))
       .slice(0, 8)
   ), [list]);
   /* فهرست قراردادها فوراً از خود تضامین ساخته می‌شود تا جدول منتظر پاسخ
@@ -1192,8 +1196,8 @@ const GuaranteesPage = () => {
     result = [...result].sort((a, b) => {
       if (sortBy === 'amount') return Number(b.amount || 0) - Number(a.amount || 0);
       if (sortBy === 'newest') return String(b.issue_date || '').localeCompare(String(a.issue_date || ''));
-      const aDays = daysUntil(dueOf(a));
-      const bDays = daysUntil(dueOf(b));
+      const aDays = daysOf(a);
+      const bDays = daysOf(b);
       return (aDays ?? 999999) - (bDays ?? 999999);
     });
     return result;

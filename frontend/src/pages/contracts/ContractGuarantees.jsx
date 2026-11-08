@@ -41,9 +41,14 @@ const GuaranteeRow = ({ item, currencyLabel }) => (
     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap sx={{ mt: 0.45 }}>
       <Typography sx={{ fontSize: 12, color: '#334155', fontWeight: 700 }}>{formatPersianNumber(item.amount)} {currencyLabel}</Typography>
       <Typography sx={{ fontSize: 12, color: MUTED }}>
-        انقضا: {toJalali(item.expiry_date)}
+        {item.is_check ? 'سررسید: ' : 'انقضا: '}{toJalali(item.due_date || item.expiry_date)}
+        {item.is_check && item.valid_until
+          ? ` · اعتبار تا ${toJalali(item.valid_until)}`
+          : ''}
         {item.days_to_expiry != null && !item.is_released
-          ? (item.days_to_expiry < 0 ? ' · منقضی' : ` · ${toPersianDigits(item.days_to_expiry)} روز`)
+          ? (item.days_to_expiry < 0
+            ? (item.is_check ? ' · پایان اعتبار' : ' · منقضی')
+            : ` · ${toPersianDigits(item.days_to_expiry)} روز`)
           : ''}
       </Typography>
     </Stack>

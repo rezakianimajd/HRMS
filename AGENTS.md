@@ -512,7 +512,22 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.efa50edd.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.3d427709.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **اعتبار تضامین — چک منقضی نمی‌شود (۲۰۲۶-۱۱-۰۸):** قاعدهٔ کسب‌وکار در `contracts/guarantee_validity.py`
+  (`guarantee_validity`, `CHECK_VALIDITY_YEARS = 5`) پیاده شد: برای ابزارهای چک‌محور
+  (`check`, `check_and_guarantee`) «سرآمد اعتبار» = **تاریخ صدور + ۵ سال** و «تاریخ سررسید» فقط هشدار
+  عملیاتی است؛ ضمانت‌نامه‌ها همان `guarantee_expiry_date` را ملاک انقضا دارند.
+  - `guarantee_status.guarantee_payload` و `GuaranteeSerializer` حالا `valid_until`، `due_date`،
+    `due_days`، `days_to_expiry`، `is_expired`، `expiry_kind`، `validity_years`، `is_check` می‌دهند
+    (`days_to_expiry` = روز تا **پایان اعتبار**). زنجیرهٔ هشدارها: «اعتبار قانونی چک … به پایان رسیده»،
+    «سررسید چک … گذشته است؛ طبق قانون تا … معتبر است (منقضی نشده)».
+  - فرانت: `core/utils/guaranteeValidity.js` (`guaranteeValidity`, `guaranteeIsExpiring`, `addYears`،
+    fallback محلی برای پاسخ قدیمی/کش) در `GuaranteesPage`، `ContractGuaranteesMonitorPage`،
+    `contracts/ContractGuarantees` و `ContractProfileTabs` استفاده می‌شود؛ ستون سررسید چک
+    «اعتبار تا …» را هم نشان می‌دهد. چکِ با سررسید نزدیک همچنان در گروه «نزدیک انقضا» می‌ماند.
+  - دادهٔ زندهٔ `kpsmi`: چک #۳۸ (سررسید ۲۰۲۵-۰۷-۲۰) → `valid_until` ۲۰۳۰-۰۷-۲۰، `is_expired=false`
+    (قبلاً «منقضی» نشان داده می‌شد). تست‌ها: `contracts/tests_guarantee_validity.py` (۱۴) و
+    `__tests__/guaranteeValidity.test.js` (۱۰).
 - **موتور چاپ یکپارچه (۲۰۲۶-۱۱-۰۸، مهاجرت کامل):** `core/print_engine/` (components/layout/registry/views) +
   `POST /api/print/preview/`، `GET /api/print/options/` و کلاینت `core/print/`
   (`printEngine.js`، `PrintPreviewDialog`، `PrintButton`، `usePrintDocument`). **همهٔ ۲۴ فایل `window.print()`**

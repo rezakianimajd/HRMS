@@ -1146,6 +1146,14 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     reduction_count = serializers.SerializerMethodField()
     last_extension_date = serializers.SerializerMethodField()
     last_reduction_date = serializers.SerializerMethodField()
+    # اعتبار محاسبه‌شده (چک: ۵ سال از تاریخ صدور) — منبع واحد با guarantee_validity
+    valid_until = serializers.SerializerMethodField()
+    due_date = serializers.SerializerMethodField()
+    days_to_expiry = serializers.SerializerMethodField()
+    is_expired = serializers.SerializerMethodField()
+    expiry_kind = serializers.SerializerMethodField()
+    validity_years = serializers.SerializerMethodField()
+    is_check = serializers.SerializerMethodField()
 
     class Meta:
         model = Guarantee
@@ -1158,6 +1166,8 @@ class GuaranteeSerializer(serializers.ModelSerializer):
             'check_number', 'check_bank', 'check_due_date',
             'promissory_number', 'promissory_due_date',
             'guarantee_number', 'guarantee_expiry_date',
+            'valid_until', 'due_date', 'days_to_expiry', 'is_expired',
+            'expiry_kind', 'validity_years', 'is_check',
             'last_action', 'last_action_display', 'last_action_date', 'note', 'documents',
             'actions', 'action_count', 'extension_count', 'reduction_count',
             'last_extension_date', 'last_reduction_date',
@@ -1170,6 +1180,40 @@ class GuaranteeSerializer(serializers.ModelSerializer):
         if rows is not None:
             return list(rows)
         return list(obj.actions.all())
+
+    def _validity(self, obj):
+        """محاسبهٔ یک‌بارهٔ اعتبار برای هر ردیف (چک: ۵ سال از تاریخ صدور)."""
+        cached = getattr(obj, '_guarantee_validity_cache', None)
+        if cached is None:
+            from contracts.guarantee_validity import guarantee_validity
+
+            cached = guarantee_validity(obj)
+            try:
+                obj._guarantee_validity_cache = cached
+            except AttributeError:
+                pass
+        return cached
+
+    def get_valid_until(self, obj):
+        return self._validity(obj)['valid_until']
+
+    def get_due_date(self, obj):
+        return self._validity(obj)['due_date']
+
+    def get_days_to_expiry(self, obj):
+        return self._validity(obj)['days_to_expiry']
+
+    def get_is_expired(self, obj):
+        return self._validity(obj)['is_expired']
+
+    def get_expiry_kind(self, obj):
+        return self._validity(obj)['expiry_kind']
+
+    def get_validity_years(self, obj):
+        return self._validity(obj)['validity_years']
+
+    def get_is_check(self, obj):
+        return self._validity(obj)['is_check']
 
     def _count(self, obj, action):
         return sum(1 for row in self._action_rows(obj) if row.action == action)
