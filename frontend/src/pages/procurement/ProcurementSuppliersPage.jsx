@@ -1,5 +1,5 @@
 import React from 'react';
-import { SuppliersSection } from './procurementSections';
+import { ProcurementSuppliersStudio } from './procurementSuppliersStudio';
 
-const ProcurementSuppliersPage = () => <SuppliersSection />;
+const ProcurementSuppliersPage = () => <ProcurementSuppliersStudio />;
 export default ProcurementSuppliersPage;
