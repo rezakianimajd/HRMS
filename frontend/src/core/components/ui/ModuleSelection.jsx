@@ -96,13 +96,11 @@ const ModuleCard = ({ app, accent, busy, disabled, active, onPick }) => {
   );
 };
 
-const ModuleSelection = ({
+const ModuleSelectionCard = ({
   applications = [], currentApp = null, user = null, company = null,
   loadingAppId = null, loading = false, error = '', onPick, onBack, backLabel = 'بازگشت',
 }) => {
   const { getPalette } = useModulePalette();
-  const theme = resolveLoginBranding(company?.login_branding);
-  const hasImage = Boolean(theme.backgroundUrl);
   const greeting = greetingForHour();
   const fullName = fullNameOf(user);
   const activeApps = applications.filter((app) => !app.is_coming_soon && app.accessible);
@@ -113,26 +111,7 @@ const ModuleSelection = ({
   };
 
   return (
-    <Box data-testid="module-selection" sx={{
-      position: 'relative', minHeight: '100vh', display: 'grid', placeItems: 'center',
-      px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 5 }, overflow: 'hidden',
-      background: hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND,
-    }}>
-      {hasImage ? (
-        <>
-          <Box aria-hidden data-testid="module-branding-image" data-background-url={theme.backgroundUrl}
-            sx={{
-              position: 'absolute', inset: 0,
-              backgroundImage: `url("${theme.backgroundUrl}")`,
-              backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
-              filter: theme.blur ? `blur(${theme.blur}px)` : 'none',
-              transform: theme.blur ? 'scale(1.08)' : 'none',
-            }} />
-          <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
-        </>
-      ) : null}
-
-      <Paper elevation={0} data-testid="module-selection-card" sx={{
+    <Paper elevation={0} data-testid="module-selection-card" sx={{
         position: 'relative', zIndex: 1, width: '100%', maxWidth: 960,
         borderRadius: '24px', overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.18)', bgcolor: '#fff',
@@ -178,24 +157,32 @@ const ModuleSelection = ({
 
         <Box sx={{ p: { xs: 2, md: 2.75 } }}>
           {activeApps.length ? (
-            <Box sx={{
-              display: 'grid', gap: 1.25,
-              gridTemplateColumns: {
-                xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))',
-              },
-            }}>
-              {activeApps.map((app) => (
-                <ModuleCard
-                  key={app.id || app.slug}
-                  app={app}
-                  accent={accentOf(app)}
-                  active={currentApp?.slug === app.slug}
-                  busy={loadingAppId === app.id}
-                  disabled={loading && loadingAppId !== app.id}
-                  onPick={onPick}
-                />
-              ))}
-            </Box>
+            <>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.4 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, whiteSpace: 'nowrap' }}>
+                  انتخاب ماژول
+                </Typography>
+                <Box sx={{ flex: 1, height: 1, bgcolor: BORDER }} />
+              </Stack>
+              <Box sx={{
+                display: 'grid', gap: 1.25,
+                gridTemplateColumns: {
+                  xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))',
+                },
+              }}>
+                {activeApps.map((app) => (
+                  <ModuleCard
+                    key={app.id || app.slug}
+                    app={app}
+                    accent={accentOf(app)}
+                    active={currentApp?.slug === app.slug}
+                    busy={loadingAppId === app.id}
+                    disabled={loading && loadingAppId !== app.id}
+                    onPick={onPick}
+                  />
+                ))}
+              </Box>
+            </>
           ) : loading ? (
             <Stack alignItems="center" sx={{ py: 5 }}><CircularProgress size={22} /></Stack>
           ) : (
@@ -204,10 +191,44 @@ const ModuleSelection = ({
             </Typography>
           )}
         </Box>
-      </Paper>
+    </Paper>
+  );
+};
+
+/**
+ * صفحهٔ انتخاب ماژول: پس‌زمینهٔ برند + کارت وسط‌چین.
+ * برای ترنزیشن چرخشی داخل صفحهٔ ورود، فقط `ModuleSelectionCard` لازم است.
+ */
+const ModuleSelection = (props) => {
+  const theme = resolveLoginBranding(props.company?.login_branding);
+  const hasImage = Boolean(theme.backgroundUrl);
+  return (
+    <Box data-testid="module-selection" sx={{
+      position: 'relative', minHeight: '100vh', display: 'grid', placeItems: 'center',
+      px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 5 }, overflow: 'hidden',
+      background: hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND,
+    }}>
+      {hasImage ? (
+        <>
+          <Box aria-hidden data-testid="module-branding-image" data-background-url={theme.backgroundUrl}
+            sx={{
+              position: 'absolute', inset: 0,
+              backgroundImage: `url("${theme.backgroundUrl}")`,
+              backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+              filter: theme.blur ? `blur(${theme.blur}px)` : 'none',
+              transform: theme.blur ? 'scale(1.08)' : 'none',
+            }} />
+          <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
+        </>
+      ) : null}
+
+      <Box sx={{ position: 'relative', zIndex: 1, width: '100%', display: 'grid', placeItems: 'center' }}>
+        <ModuleSelectionCard {...props} />
+      </Box>
     </Box>
   );
 };
 
+export { ModuleSelectionCard };
 export default ModuleSelection;
 

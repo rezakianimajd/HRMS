@@ -559,7 +559,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.38deab89.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.444410f4.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **ترنزیشن چرخشی ورود ⇄ انتخاب ماژول (۲۰۲۶-۱۱-۰۸):** در `pages/Login.jsx` پس‌زمینهٔ صفحه **بیرون از کارت**
+  رندر می‌شود و همیشه mount می‌ماند؛ داخل صحنهٔ `perspective` یک بلوک `data-testid="login-flip"`
+  (`data-flip-step`/`data-flip-pose`) قرار دارد که فقط **کارت** را با `rotateY(±84deg) + scale(.94)` می‌چرخاند
+  (خروج ۲۰۰ms، ورود ۳۶۰ms؛ `prefers-reduced-motion` خاموش می‌شود) و با `goToStep(next, direction)` تعویض
+  می‌شود. برای همین، کارت انتخاب ماژول به دو بخش شکسته شد: `ModuleSelectionCard` (فقط کارت، برای صحنهٔ چرخش)
+  و `ModuleSelection` پیش‌فرض (کارت + پس‌زمینهٔ مستقل، برای `AppSelectPage` و مسیر مستقل). سربرگ
+  «انتخاب ماژول» هم به کارت اضافه شد. تست: `__tests__/loginAndModuleSelectionSmoke.test.js` (۵) و
+  `__tests__/documentModulePlaces.test.js` (۲).
 - **بازطراحی صفحهٔ ورود و صفحهٔ انتخاب ماژول (۲۰۲۶-۱۱-۰۸):**
   - **صفحهٔ ورود (`pages/Login.jsx`):** کارت مستطیلی وسط‌چین روی تصویر پس‌زمینهٔ تنظیمات شرکت — سمت راست
     فرم با عنوان **«خوش آمدید»** + سربرگ **«ورود اطلاعات»** و فیلدهای **شرکت / نام کاربری / رمز عبور** (فیلد شرکت

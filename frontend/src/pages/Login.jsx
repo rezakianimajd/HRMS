@@ -6,7 +6,7 @@
  * - کارت مستطیلی وسط صفحه: سمت راست ورود اطلاعات، سمت چپ لوگوی شرکت.
  * - هیچ متن توضیحی/تبلیغاتی روی صفحه نیست؛ فقط برچسب فیلدها، خطا و دکمهٔ ورود.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -25,7 +25,7 @@ import useCompany from '../core/hooks/useCompany';
 import { useApplication } from '../core/context/ApplicationContext';
 import CompanyEngine from '../core/engines/companyEngine';
 import axiosInstance from '../core/api/axiosConfig';
-import ModuleSelection from '../core/components/ui/ModuleSelection';
+import { ModuleSelectionCard } from '../core/components/ui/ModuleSelection';
 import CompanyLogo, { companyLabel } from '../core/components/ui/CompanyLogo';
 import { getModuleLandingPath } from '../core/constants/moduleIcons';
 import {
@@ -92,6 +92,37 @@ const Login = () => {
   const [selectedApp, setSelectedApp] = useState(null);
   const [loggedInUser, setLoggedInUser] = useState(null);
   const [applicationsLoading, setApplicationsLoading] = useState(false);
+
+  // ترنزیشن چرخشی بین دو کارت: 0 = مستقر، ±1 = چرخیده (جهت چرخش)
+  const [flipPose, setFlipPose] = useState(0);
+  const flipTimers = useRef([]);
+  const flipFrame = useRef(null);
+  const clearFlipWork = () => {
+    flipTimers.current.forEach((id) => clearTimeout(id));
+    flipTimers.current = [];
+    if (flipFrame.current) {
+      cancelAnimationFrame(flipFrame.current);
+      flipFrame.current = null;
+    }
+  };
+  useEffect(() => clearFlipWork, []);
+
+  /**
+   * جابه‌جایی بین کارت ورود و کارت انتخاب ماژول با چرخش حول محور Y.
+   * پس‌زمینهٔ صفحه بیرون از این کارت است، پس ثابت می‌ماند و فقط کارت می‌چرخد.
+   */
+  const goToStep = (nextStep, direction = 1) => {
+    if (nextStep === step) return;
+    clearFlipWork();
+    setFlipPose(direction);
+    flipTimers.current.push(setTimeout(() => {
+      setStep(nextStep);
+      // یک فریم صبر می‌کنیم تا کارت جدید در حالت چرخیده رندر شود و بعد برگردد.
+      flipFrame.current = requestAnimationFrame(() => {
+        flipFrame.current = requestAnimationFrame(() => setFlipPose(0));
+      });
+    }, 210));
+  };
 
   const { data: companyProfile } = useQuery({
     queryKey: ['login-company-profile', selectedCompany?.id],
@@ -181,7 +212,7 @@ const Login = () => {
         setError('ورود انجام شد، اما دریافت دسترسی ماژول‌ها ناموفق بود. دوباره تلاش کنید.');
       } finally {
         setApplicationsLoading(false);
-        setStep('application');
+        goToStep('application', 1);
       }
     } catch (err) {
       setError(mapLoginError(err, t('auth.loginError')));
@@ -206,9 +237,9 @@ const Login = () => {
   };
 
   const handleBack = () => {
-    setStep('credentials');
     setSelectedApp(null);
     setError('');
+    goToStep('credentials', -1);
   };
 
   const activeCompany = {
@@ -219,22 +250,6 @@ const Login = () => {
     id: selectedCompany?.id,
     login_branding: selectedCompany?.login_branding || null,
   };
-
-  if (step === 'application') {
-    return (
-      <ModuleSelection
-        applications={applications}
-        currentApp={selectedApp}
-        user={loggedInUser || selectedUser}
-        company={activeCompany}
-        loadingAppId={selectedApp?.id}
-        loading={applicationsLoading}
-        error={error}
-        onPick={handleAppSelect}
-        onBack={handleBack}
-      />
-    );
-  }
 
   const theme = resolveLoginBranding(selectedCompany?.login_branding);
   const hasImage = Boolean(theme.backgroundUrl);
@@ -265,8 +280,39 @@ const Login = () => {
         </>
       ) : null}
 
-      {/* ---- کارت وسط‌چین: راست ورود اطلاعات، چپ لوگوی شرکت ---- */}
-      <Paper elevation={0} data-testid="login-card" sx={{
+      {/* ---- صحنهٔ چرخش: پس‌زمینه ثابت است و فقط کارت می‌چرخد ---- */}
+      <Box sx={{
+        position: 'relative', zIndex: 1, width: '100%', display: 'grid', placeItems: 'center',
+        perspective: { xs: '1100px', sm: '1600px', md: '2000px' },
+      }}>
+        <Box data-testid="login-flip" data-flip-step={step} data-flip-pose={flipPose} sx={{
+          width: '100%', display: 'grid', placeItems: 'center',
+          transformOrigin: 'center center', transformStyle: 'preserve-3d',
+          transform: flipPose ? `rotateY(${flipPose * 84}deg) scale(0.94)` : 'rotateY(0deg) scale(1)',
+          opacity: flipPose ? 0.12 : 1,
+          transition: flipPose
+            ? 'transform 200ms cubic-bezier(.45,.05,.8,.5), opacity 180ms ease-in'
+            : 'transform 360ms cubic-bezier(.16,.84,.28,1), opacity 300ms ease-out',
+          willChange: 'transform, opacity',
+          '@media (prefers-reduced-motion: reduce)': {
+            transition: 'none', transform: 'none', opacity: 1,
+          },
+        }}>
+          {step === 'application' ? (
+            <ModuleSelectionCard
+              applications={applications}
+              currentApp={selectedApp}
+              user={loggedInUser || selectedUser}
+              company={activeCompany}
+              loadingAppId={selectedApp?.id}
+              loading={applicationsLoading}
+              error={error}
+              onPick={handleAppSelect}
+              onBack={handleBack}
+            />
+          ) : (
+            /* کارت وسط‌چین: راست ورود اطلاعات، چپ لوگوی شرکت */
+            <Paper elevation={0} data-testid="login-card" sx={{
         position: 'relative', zIndex: 1, width: '100%', maxWidth: 900,
         display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1.05fr 0.95fr' },
         minHeight: { md: 440 }, borderRadius: '24px', overflow: 'hidden',
@@ -486,6 +532,9 @@ const Login = () => {
             sx={{ border: 'none', bgcolor: 'transparent' }} />
         </Box>
       </Paper>
+          )}
+        </Box>
+      </Box>
     </Box>
   );
 };

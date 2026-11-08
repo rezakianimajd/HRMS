@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
-import ModuleSelection, { greetingForHour } from '../core/components/ui/ModuleSelection';
+import ModuleSelection, { ModuleSelectionCard, greetingForHour } from '../core/components/ui/ModuleSelection';
 import Login from '../pages/Login';
 import { getModuleLandingPath } from '../core/constants/moduleIcons';
 import { loginOverlayGradient, resolveLoginBranding } from '../core/utils/colorUtils';
@@ -183,6 +183,36 @@ test('module selection uses outlined module cards, full name and time greeting w
   container.remove();
 });
 
+test('module selection card renders standalone inside the login flip stage', async () => {
+  const onPick = jest.fn();
+  const { container, root } = await mount(
+    <ModuleSelectionCard
+      applications={applications}
+      user={testUser}
+      company={testCompany}
+      onPick={onPick}
+    />,
+  );
+
+  // کارت بدون پس‌زمینهٔ مستقل (پس‌زمینهٔ ثابتِ صفحهٔ ورود) رندر می‌شود
+  expect(container.querySelector('[data-testid="module-selection-card"]')).toBeTruthy();
+  expect(container.querySelector('[data-testid="module-selection"]')).toBeFalsy();
+  expect(container.querySelector('[data-testid="module-branding-image"]')).toBeFalsy();
+  expect(container.textContent).toContain('منابع انسانی');
+  expect(container.textContent).toContain('شرکت نمونه کیان');
+
+  const hrmsCard = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('منابع انسانی'));
+  await act(async () => {
+    hrmsCard.click();
+    await wait(40);
+  });
+  expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ slug: 'hrms' }));
+
+  root.unmount();
+  container.remove();
+});
+
 test('login page reads company name and logo from company profile, not tenant DB name', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const { container, root } = await mount(
@@ -227,6 +257,12 @@ test('login page reads company name and logo from company profile, not tenant DB
   expect(container.textContent).toContain('نام کاربری');
   expect(container.textContent).toContain('رمز عبور');
   expect(container.textContent).toContain('ورود');
+
+  // کارت ورود روی همان صحنهٔ چرخش می‌نشیند (پس‌زمینه بیرون از کارت است)
+  const flip = container.querySelector('[data-testid="login-flip"]');
+  expect(flip).toBeTruthy();
+  expect(flip.getAttribute('data-flip-step')).toBe('credentials');
+  expect(flip.querySelector('[data-testid="login-card"]')).toBeTruthy();
 
   root.unmount();
   container.remove();
