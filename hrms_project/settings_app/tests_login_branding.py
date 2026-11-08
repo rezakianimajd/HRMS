@@ -49,6 +49,43 @@ class LoginBrandingSanitizeTests(SimpleTestCase):
             DEFAULT_LOGIN_BRANDING['overlay_opacity'],
         )
 
+    def test_overlay_blur_is_clamped(self):
+        self.assertEqual(sanitize_login_branding({'overlay_blur': -5})['overlay_blur'], 0)
+        self.assertEqual(sanitize_login_branding({'overlay_blur': 90})['overlay_blur'], 24)
+        self.assertEqual(sanitize_login_branding({'overlay_blur': '12.4'})['overlay_blur'], 12)
+        self.assertEqual(
+            sanitize_login_branding({'overlay_blur': 'abc'})['overlay_blur'],
+            DEFAULT_LOGIN_BRANDING['overlay_blur'],
+        )
+        self.assertEqual(DEFAULT_LOGIN_BRANDING['overlay_blur'], 8)
+
+    def test_save_merges_overlay_blur(self):
+        """صرفه‌جویی: کلیدهای مجاز از payload روی تنظیمات فعلی merge می‌شوند."""
+        from settings_app import login_branding as module
+
+        saved = {}
+
+        class _Engine:
+            @staticmethod
+            def get_setting(key, company, default=None):  # noqa: ARG004
+                return saved or default
+
+            @staticmethod
+            def set_setting(key, value, company, **kwargs):  # noqa: ARG004
+                saved.update(value)
+
+        original = module.SettingsEngine
+        module.SettingsEngine = _Engine
+        try:
+            result = module.save_login_branding(SimpleNamespace(pk=1), {'overlay_blur': 18})
+        finally:
+            module.SettingsEngine = original
+        self.assertEqual(result['overlay_blur'], 18)
+        self.assertEqual(saved['overlay_blur'], 18)
+        self.assertEqual(saved['background_url'], '')
+        self.assertEqual(saved['overlay_opacity'], DEFAULT_LOGIN_BRANDING['overlay_opacity'])
+        self.assertNotIn('hack', saved)
+
     def test_unsafe_background_urls_are_rejected(self):
         for value in ('javascript:alert(1)', 'data:image/svg+xml;base64,AAA', 'https://x/y.png" onload="alert(1)'):
             self.assertEqual(sanitize_login_branding({'background_url': value})['background_url'], '')

@@ -29,11 +29,13 @@ UPLOAD_DIR = 'login_branding'
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_BYTES = 6 * 1024 * 1024
 MAX_OVERLAY_OPACITY = 95
+MAX_OVERLAY_BLUR = 24
 
 DEFAULT_LOGIN_BRANDING = {
     'background_url': '',
     'overlay_color': '#07101f',
     'overlay_opacity': 72,
+    'overlay_blur': 8,
     'text_color': '#ffffff',
     'accent_color': '#a5b4fc',
 }
@@ -57,6 +59,14 @@ def _opacity(value, fallback):
     return max(0, min(MAX_OVERLAY_OPACITY, number))
 
 
+def _blur(value, fallback):
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        return fallback
+    return max(0, min(MAX_OVERLAY_BLUR, number))
+
+
 def _url(value, fallback=''):
     if not isinstance(value, str):
         return fallback
@@ -71,6 +81,7 @@ def sanitize_login_branding(raw):
         'background_url': _url(source.get('background_url'), DEFAULT_LOGIN_BRANDING['background_url']),
         'overlay_color': _color(source.get('overlay_color'), DEFAULT_LOGIN_BRANDING['overlay_color']),
         'overlay_opacity': _opacity(source.get('overlay_opacity'), DEFAULT_LOGIN_BRANDING['overlay_opacity']),
+        'overlay_blur': _blur(source.get('overlay_blur'), DEFAULT_LOGIN_BRANDING['overlay_blur']),
         'text_color': _color(source.get('text_color'), DEFAULT_LOGIN_BRANDING['text_color']),
         'accent_color': _color(source.get('accent_color'), DEFAULT_LOGIN_BRANDING['accent_color']),
     }
@@ -106,7 +117,7 @@ def save_login_branding(company, payload):
     current = read_login_branding(company)
     incoming = payload if isinstance(payload, dict) else {}
     merged = dict(current)
-    for key in ('overlay_color', 'overlay_opacity', 'text_color', 'accent_color'):
+    for key in ('overlay_color', 'overlay_opacity', 'overlay_blur', 'text_color', 'accent_color'):
         if key in incoming:
             merged[key] = incoming[key]
     if 'background_url' in incoming and not incoming.get('background_url'):

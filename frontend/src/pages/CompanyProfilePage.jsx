@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Grid, TextField, Button, CircularProgress,
-  Alert, Stack, Tooltip, Chip, alpha, Slider, IconButton,
+  Alert, Stack, Tooltip, Chip, alpha, Slider,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -93,25 +93,38 @@ const LoginPanelPreview = ({ branding }) => {
           <Box aria-hidden sx={{
             position: 'absolute', inset: 0, backgroundImage: `url("${theme.backgroundUrl}")`,
             backgroundSize: 'cover', backgroundPosition: 'center',
+            filter: theme.blur ? `blur(${theme.blur}px)` : 'none',
+            transform: theme.blur ? 'scale(1.08)' : 'none',
           }} />
           <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
         </>
       ) : null}
       <Box sx={{ position: 'relative' }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 800, color: theme.accent }}>
-          پیش‌نمایش صفحهٔ ورود
+        <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: theme.accent }}>
+          پیش‌نمایش کارت ورود
         </Typography>
-        <Typography sx={{ mt: 1.1, fontSize: 15, fontWeight: 900, color: theme.text, lineHeight: 1.6 }}>
-          یک فضای کاری،
-        </Typography>
-        <Typography sx={{ fontSize: 15, fontWeight: 900, color: theme.accent, lineHeight: 1.6 }}>
-          همهٔ کسب‌وکار شما.
-        </Typography>
-        <Typography sx={{ mt: 1, fontSize: 12, color: theme.muted, lineHeight: 1.9 }}>
-          داده‌ها، فرایندها و تصمیم‌های سازمان در یک تجربهٔ منسجم.
-        </Typography>
+        <Box sx={{
+          mt: 1, display: 'grid', gridTemplateColumns: '1fr 74px', borderRadius: '14px',
+          overflow: 'hidden', bgcolor: '#fff', color: '#0f172a',
+          boxShadow: '0 22px 44px -26px rgba(2,6,23,0.7)',
+        }}>
+          <Box sx={{ p: 1.4 }}>
+            <Box sx={{ height: 12, borderRadius: '4px', bgcolor: '#e8edf5' }} />
+            <Box sx={{ mt: 0.8, height: 12, borderRadius: '4px', bgcolor: '#e8edf5' }} />
+            <Box sx={{
+              mt: 1.1, height: 15, borderRadius: '6px',
+              background: `linear-gradient(135deg, ${theme.accent}, ${theme.overlay})`,
+            }} />
+          </Box>
+          <Box sx={{
+            display: 'grid', placeItems: 'center',
+            background: `linear-gradient(158deg, ${theme.overlay}, ${theme.accent})`,
+          }}>
+            <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.9)' }} />
+          </Box>
+        </Box>
         {hasImage ? null : (
-          <Typography sx={{ mt: 1.2, fontSize: 12, color: theme.faint }}>
+          <Typography sx={{ mt: 1, fontSize: 11.5, color: theme.faint }}>
             تصویری انتخاب نشده؛ پس‌زمینهٔ پیش‌فرض سامانه نمایش داده می‌شود.
           </Typography>
         )}
@@ -403,11 +416,25 @@ const CompanyProfilePage = () => {
                   <Chip size="small" label={`${toPersianDigits(Number(panelBranding.overlay_opacity ?? 0))}٪`} />
                 </Stack>
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 0.4 }}>
+                  میزان بلور تصویر پس‌زمینه
+                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Slider
+                    size="small" min={0} max={24} step={1}
+                    value={Number(panelBranding.overlay_blur ?? 0)}
+                    onChange={(_, value) => setBrandingField('overlay_blur', value)}
+                    sx={{ flex: 1 }}
+                  />
+                  <Chip size="small" label={`${toPersianDigits(Number(panelBranding.overlay_blur ?? 0))}px`} />
+                </Stack>
+              </Grid>
             </Grid>
 
             <Alert severity="info" sx={{ mt: 1, borderRadius: '10px', fontSize: 12 }}>
-              هرچه درصد پوشش بیشتر باشد تصویر محو‌تر و متن خواناتر می‌شود؛ رنگ متن را طوری انتخاب کنید
-              که روی رنگ پوشش به‌خوبی دیده شود.
+              هرچه درصد پوشش بیشتر باشد تصویر محو‌تر و متن خواناتر می‌شود؛ «بلور» تصویر را نرم می‌کند
+              (۰ = تصویر شارپ، ۲۴ = حداکثر نرمی). رنگ متن را طوری انتخاب کنید که روی رنگ پوشش خوانا باشد.
             </Alert>
 
             <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap alignItems="center">

@@ -100,6 +100,7 @@ beforeEach(() => {
             background_url: '/media/login_branding/company_1/office.jpg',
             overlay_color: '#0b3b2e',
             overlay_opacity: 80,
+            overlay_blur: 14,
             text_color: '#f8fafc',
             accent_color: '#fbbf24',
           },
@@ -115,12 +116,14 @@ test('login branding colors are sanitized and turned into a fade gradient', () =
     background_url: ' /media/login_branding/bg.jpg ',
     overlay_color: '#0B3B2E',
     overlay_opacity: 200,
+    overlay_blur: 40,
     text_color: 'red',
     accent_color: '#fbbf24',
   });
   expect(theme.backgroundUrl).toBe('/media/login_branding/bg.jpg');
   expect(theme.overlay).toBe('#0b3b2e');
   expect(theme.opacity).toBe(95);
+  expect(theme.blur).toBe(24);
   expect(theme.text).toBe('#ffffff');
   expect(theme.accent).toBe('#fbbf24');
   expect(loginOverlayGradient(theme)).toContain('rgba(11,59,46,0.95)');
@@ -129,6 +132,7 @@ test('login branding colors are sanitized and turned into a fade gradient', () =
   expect(defaults.backgroundUrl).toBe('');
   expect(defaults.overlay).toBe('#07101f');
   expect(defaults.opacity).toBe(72);
+  expect(defaults.blur).toBe(8);
   expect(loginOverlayGradient(defaults)).toContain('rgba(7,16,31');
 });
 
@@ -194,22 +198,34 @@ test('login page reads company name and logo from company profile, not tenant DB
     await act(async () => { await wait(150); });
   }
 
-  expect(container.textContent).toContain('سامانه یکپارچه مدیریت کسب و کار کیان');
-  expect(container.textContent).toContain('شرکت نمونه کیان');
-  expect(container.textContent).not.toContain('DB-TENANT-NAME-MUST-NOT-APPEAR');
-  expect(container.querySelector('img')).toBeTruthy();
-  expect(container.textContent).toContain('خوش آمدید');
+  // صفحهٔ ورود بازطراحی‌شده: پس‌زمینهٔ تصویری + کارت وسط‌چین (فرم + لوگوی شرکت)
+  const page = container.querySelector('[data-testid="login-page"]');
+  expect(page).toBeTruthy();
+  expect(page.getAttribute('data-branding-text-color')).toBe('#f8fafc');
+  expect(page.getAttribute('data-branding-accent-color')).toBe('#fbbf24');
 
-  // ظاهر صفحهٔ ورود از تنظیمات شرکت خوانده می‌شود: تصویر پس‌زمینه زیر پوشش رنگی + رنگ متن‌ها
-  const panel = container.querySelector('[data-testid="login-brand-panel"]');
-  expect(panel).toBeTruthy();
-  expect(panel.getAttribute('data-branding-text-color')).toBe('#f8fafc');
-  expect(panel.getAttribute('data-branding-accent-color')).toBe('#fbbf24');
+  expect(container.querySelector('[data-testid="login-card"]')).toBeTruthy();
+  const logoPanel = container.querySelector('[data-testid="login-logo-panel"]');
+  expect(logoPanel).toBeTruthy();
+  expect(logoPanel.querySelector('img')).toBeTruthy();
+
+  // هیچ متن تبلیغاتی/نام دیتابیس روی کارت نیست
+  expect(container.textContent).not.toContain('خوش آمدید');
+  expect(container.textContent).not.toContain('سامانه یکپارچه مدیریت کسب و کار');
+  expect(container.textContent).not.toContain('DB-TENANT-NAME-MUST-NOT-APPEAR');
+
+  // ظاهر صفحهٔ ورود از تنظیمات شرکت خوانده می‌شود: تصویر پس‌زمینه زیر پوشش رنگی + بلور
   const image = container.querySelector('[data-testid="login-branding-image"]');
   expect(image.getAttribute('data-background-url')).toBe('/media/login_branding/company_1/office.jpg');
   const overlay = container.querySelector('[data-testid="login-branding-overlay"]');
   expect(overlay.getAttribute('data-overlay-color')).toBe('#0b3b2e');
   expect(overlay.getAttribute('data-overlay-opacity')).toBe('80');
+  expect(overlay.getAttribute('data-overlay-blur')).toBe('14');
+
+  // فیلدهای فرم
+  expect(container.textContent).toContain('نام کاربری');
+  expect(container.textContent).toContain('رمز عبور');
+  expect(container.textContent).toContain('ورود');
 
   root.unmount();
   container.remove();

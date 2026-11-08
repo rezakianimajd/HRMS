@@ -10,6 +10,7 @@ export const DEFAULT_LOGIN_BRANDING = {
   background_url: '',
   overlay_color: '#07101f',
   overlay_opacity: 72,
+  overlay_blur: 8,
   text_color: '#ffffff',
   accent_color: '#a5b4fc',
 };
@@ -58,11 +59,16 @@ export const resolveLoginBranding = (branding) => {
   const opacity = Number.isFinite(rawOpacity)
     ? Math.min(95, Math.max(0, Math.round(rawOpacity)))
     : DEFAULT_LOGIN_BRANDING.overlay_opacity;
+  const rawBlur = Number(source.overlay_blur);
+  const blur = Number.isFinite(rawBlur)
+    ? Math.min(24, Math.max(0, Math.round(rawBlur)))
+    : DEFAULT_LOGIN_BRANDING.overlay_blur;
   const backgroundUrl = typeof source.background_url === 'string' ? source.background_url.trim() : '';
   return {
     backgroundUrl,
     overlay,
     opacity,
+    blur,
     text,
     accent,
     muted: withAlpha(text, 0.66),

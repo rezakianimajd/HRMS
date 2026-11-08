@@ -558,8 +558,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
-- **Live:** frontend `main.46d6e81c.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Last commit:** `feat(auth): redesign login page with branding background and centered card`
+- **Live:** frontend `main.4b3abdfb.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **بازطراحی صفحهٔ ورود و صفحهٔ انتخاب ماژول (۲۰۲۶-۱۱-۰۸):**
+  - **صفحهٔ ورود (`pages/Login.jsx`):** کارت مستطیلی وسط‌چین روی تصویر پس‌زمینهٔ تنظیمات شرکت — سمت راست
+    فقط فرم (شرکت/نام کاربری/رمز/خطا/دکمهٔ ورود) و سمت چپ **فقط لوگوی شرکت** (بدون متن). هیچ متن
+    تبلیغاتی/توضیحی روی صفحه نمانده است. تاریخ/اعداد فارسی و `fieldSx` مشترک؛ `data-testid="login-page"` با
+    `data-branding-text-color`/`data-branding-accent-color`، `login-card`، `login-logo-panel`،
+    `login-branding-image` (`data-background-url`) و `login-branding-overlay`
+    (`data-overlay-color`/`data-overlay-opacity`/`data-overlay-blur`).
+  - **`overlay_blur` (۰–۲۴px):** در `settings_app/login_branding.py` (`MAX_OVERLAY_BLUR`, default 8,
+    `_blur()` + merge در `save_login_branding`) و `core/utils/colorUtils.js`
+    (`resolveLoginBranding` → `theme.blur`)؛ در «تنظیمات → مشخصات شرکت → ظاهر صفحهٔ ورود» اسلایدر
+    «میزان بلور تصویر پس‌زمینه» + پیش‌نمایش کارت اضافه شد. تست: `settings_app/tests_login_branding.py` (۲۷).
+  - **صفحهٔ انتخاب ماژول (`core/components/ui/ModuleSelection.jsx`) — بازطراحی، نه حذف:** همان قابلیت‌ها
+    (سلام/نام کاربر، هویت شرکت، کارت ماژول‌های مجاز با accent ماژول، حالت بارگذاری هر ماژول، خطا، بازگشت) با
+    زبان بصری صفحهٔ ورود: پس‌زمینهٔ تصویری `company.login_branding` + پوشش/بلور، کارت وسط‌چین
+    (`module-selection-card`) با شبکهٔ سه‌ستونی کارت‌های outlined و شِورون. تست:
+    `__tests__/loginAndModuleSelectionSmoke.test.js` (۴ تست، شامل بلور و حذف متن‌های تبلیغاتی).
+
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.

@@ -1,14 +1,26 @@
+/**
+ * انتخاب ماژول پس از ورود — همان زبان بصری صفحهٔ ورود:
+ * پس‌زمینهٔ تصویری (با پوشش/بلور از تنظیمات ظاهر ورود) + کارت وسط‌چین.
+ *
+ * قابلیت‌ها بدون تغییر: سلام/نام کاربر، هویت شرکت، کارت ماژول‌های مجاز،
+ * حالت بارگذاری هر ماژول، خطا و دکمهٔ بازگشت.
+ */
 import React from 'react';
 import {
-  Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, Container,
-  Divider, Stack, Typography, alpha,
+  Alert, Avatar, Box, Button, ButtonBase, CircularProgress, Paper, Stack, Typography, alpha,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import CompanyLogo, { companyLabel } from './CompanyLogo';
 import { getModuleIcon } from '../../constants/moduleIcons';
 import { MODULE_DEFAULT_ACCENTS, useModulePalette } from '../../context/ModulePaletteContext';
-import { toPersianDigits } from '../../utils/numberUtils';
+import {
+  LOGIN_PANEL_DEFAULT_BACKGROUND, loginOverlayGradient, resolveLoginBranding,
+} from '../../utils/colorUtils';
+
+const INK = '#0f172a';
+const MUTED = '#64748b';
+const BORDER = 'rgba(15,23,42,0.10)';
 
 export const greetingForHour = (hour = new Date().getHours()) => {
   if (hour >= 5 && hour < 11) return 'صبح بخیر';
@@ -26,27 +38,17 @@ const initialsOf = (user) => (
   `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}` || user?.username?.[0] || 'ک'
 );
 
-const BrandMark = ({ size = 38 }) => (
-  <Box sx={{
-    width: size, height: size, borderRadius: '11px', flexShrink: 0,
-    bgcolor: '#0f172a', color: '#fff', display: 'flex',
-    alignItems: 'center', justifyContent: 'center',
-    fontSize: Math.max(12, size * 0.42), fontWeight: 900, letterSpacing: '-0.06em',
-    boxShadow: '0 8px 20px -12px rgba(15,23,42,0.65)',
-  }}>K</Box>
-);
-
-const CompanyIdentity = ({ company, compact = false }) => {
+const CompanyIdentity = ({ company }) => {
   const label = companyLabel(company) || 'شرکت شما';
   return (
     <Stack direction="row" alignItems="center" spacing={0.9} sx={{ minWidth: 0 }}>
-      <CompanyLogo company={company} size={compact ? 34 : 40} radius="10px" />
+      <CompanyLogo company={company} size={34} radius="10px" sx={{ bgcolor: '#f8fafc' }} />
       <Box sx={{ minWidth: 0 }}>
-        <Typography noWrap sx={{ fontSize: compact ? 10.5 : 11.5, fontWeight: 800, color: '#0f172a' }}>
+        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>
           {label}
         </Typography>
         {company?.code ? (
-          <Typography sx={{ fontSize: 12, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
+          <Typography sx={{ fontSize: 10.5, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
             {company.code}
           </Typography>
         ) : null}
@@ -55,237 +57,151 @@ const CompanyIdentity = ({ company, compact = false }) => {
   );
 };
 
+
+const ModuleCard = ({ app, accent, busy, disabled, onPick }) => {
+  const Icon = getModuleIcon(app.slug);
+  return (
+    <ButtonBase
+      onClick={() => onPick(app)}
+      disabled={disabled || busy}
+      focusRipple
+      sx={{
+        width: '100%', p: 1.35, borderRadius: '16px', textAlign: 'right',
+        border: `1px solid ${alpha(accent, 0.28)}`, bgcolor: '#fff',
+        transition: 'border-color .16s ease, box-shadow .16s ease, transform .16s ease',
+        '&:hover': {
+          borderColor: alpha(accent, 0.6), transform: 'translateY(-2px)',
+          boxShadow: `0 16px 30px -22px ${alpha(accent, 0.9)}`,
+        },
+        '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.55)}`, outlineOffset: 2 },
+        '&.Mui-disabled': { opacity: 0.55 },
+      }}
+    >
+      <Stack direction="row" alignItems="center" spacing={1.1} sx={{ width: '100%', minWidth: 0 }}>
+        <Box sx={{
+          width: 38, height: 38, borderRadius: '12px', flexShrink: 0,
+          display: 'grid', placeItems: 'center',
+          bgcolor: alpha(accent, 0.1), color: accent,
+        }}>
+          {busy ? <CircularProgress size={17} sx={{ color: accent }} /> : <Icon sx={{ fontSize: 19 }} />}
+        </Box>
+        <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 900, color: INK }}>
+          {app.title}
+        </Typography>
+        <ChevronLeftIcon sx={{ fontSize: 17, color: alpha(accent, 0.75), flexShrink: 0 }} />
+      </Stack>
+    </ButtonBase>
+  );
+};
+
 const ModuleSelection = ({
   applications = [], currentApp = null, user = null, company = null,
   loadingAppId = null, loading = false, error = '', onPick, onBack, backLabel = 'بازگشت',
 }) => {
   const { getPalette } = useModulePalette();
+  const theme = resolveLoginBranding(company?.login_branding);
+  const hasImage = Boolean(theme.backgroundUrl);
   const greeting = greetingForHour();
   const fullName = fullNameOf(user);
   const activeApps = applications.filter((app) => !app.is_coming_soon && app.accessible);
-  const count = applications.length;
+
+  const accentOf = (app) => {
+    const palette = typeof getPalette === 'function' ? getPalette(app.slug) : null;
+    return palette?.accent || MODULE_DEFAULT_ACCENTS[app.slug] || '#6366f1';
+  };
 
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      background: 'radial-gradient(1200px 540px at 92% -12%, rgba(99,102,241,0.10), transparent 62%), #f6f8fc',
-      pb: 5,
+    <Box data-testid="module-selection" sx={{
+      position: 'relative', minHeight: '100vh', display: 'grid', placeItems: 'center',
+      px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 5 }, overflow: 'hidden',
+      background: hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND,
     }}>
-      <Container maxWidth="lg">
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          alignItems={{ xs: 'stretch', md: 'center' }}
-          justifyContent="space-between"
-          spacing={1.5}
-          sx={{ py: { xs: 2, md: 2.5 } }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1.1}>
-            <BrandMark />
-            <Box>
-              <Typography sx={{ fontSize: 14, fontWeight: 900, color: '#0f172a', lineHeight: 1.25 }}>
-                کیان
-              </Typography>
-              <Typography sx={{ fontSize: 12, color: '#94a3b8', letterSpacing: '0.08em', fontWeight: 700 }}>
-                KIAN BUSINESS SUITE
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Stack direction="row" alignItems="center" justifyContent="flex-end" spacing={1.1} flexWrap="wrap" useFlexGap>
-            {company ? <CompanyIdentity company={company} compact /> : null}
-            {company ? <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} /> : null}
-            <Stack direction="row" alignItems="center" spacing={0.7} sx={{ minWidth: 0 }}>
-              <Avatar sx={{
-                width: 30, height: 30, fontSize: 12, fontWeight: 900,
-                bgcolor: '#eef2ff', color: '#4f46e5',
-              }}>
-                {initialsOf(user)}
-              </Avatar>
-              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: '#334155', maxWidth: 150 }}>
-                {fullName}
-              </Typography>
-            </Stack>
-            {onBack ? (
-              <Button size="small" variant="outlined" startIcon={<ArrowForwardIcon />} onClick={onBack}
-                sx={{
-                  height: 32, px: 1.2, fontSize: 12, fontWeight: 800, color: '#475569',
-                  borderColor: 'rgba(15,23,42,0.12)', borderRadius: '9px',
-                  '&:hover': { borderColor: 'rgba(15,23,42,0.28)', bgcolor: '#fff' },
-                }}>
-                {backLabel}
-              </Button>
-            ) : null}
-          </Stack>
-        </Stack>
-
-        <Box sx={{ pt: { xs: 2, md: 4 }, pb: { xs: 2.5, md: 3.5 } }}>
-          <Chip
-            label={`${greeting} · ${new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}`}
+      {hasImage ? (
+        <>
+          <Box aria-hidden data-testid="module-branding-image" data-background-url={theme.backgroundUrl}
             sx={{
-              mb: 1.4, height: 25, fontSize: 12, fontWeight: 800,
-              bgcolor: 'rgba(15,23,42,0.05)', color: '#475569',
-            }}
-          />
-          <Typography
-            component="h1"
-            sx={{
-              fontSize: { xs: 24, sm: 31, md: 38 },
-              fontWeight: 900,
-              lineHeight: 1.35,
-              letterSpacing: '-0.035em',
-              color: '#0f172a',
-            }}
-          >
-            {greeting}، {fullName}
-          </Typography>
-          <Typography sx={{
-            mt: 0.7, fontSize: { xs: 11.5, md: 13 }, color: '#64748b', lineHeight: 1.9,
+              position: 'absolute', inset: 0,
+              backgroundImage: `url("${theme.backgroundUrl}")`,
+              backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+              filter: theme.blur ? `blur(${theme.blur}px)` : 'none',
+              transform: theme.blur ? 'scale(1.08)' : 'none',
+            }} />
+          <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
+        </>
+      ) : null}
+
+      <Paper elevation={0} data-testid="module-selection-card" sx={{
+        position: 'relative', zIndex: 1, width: '100%', maxWidth: 960,
+        borderRadius: '24px', overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.18)', bgcolor: '#fff',
+        boxShadow: '0 44px 94px -44px rgba(2,6,23,0.78)',
+      }}>
+        {/* هدر: سلام و نام کاربر، هویت شرکت و بازگشت */}
+        <Box sx={{
+          px: { xs: 2, md: 2.75 }, py: 1.75,
+          display: 'flex', alignItems: 'center', gap: 1.4, flexWrap: 'wrap',
+          borderBottom: `1px solid ${BORDER}`,
+        }}>
+          <Avatar sx={{
+            width: 40, height: 40, fontSize: 13, fontWeight: 900,
+            bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5',
           }}>
-            به سامانه یکپارچه مدیریت کسب و کار کیان خوش آمدید.
-          </Typography>
+            {initialsOf(user)}
+          </Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography noWrap sx={{ fontSize: 13.5, fontWeight: 900, color: INK }}>
+              {`${greeting}، ${fullName}`}
+            </Typography>
+            <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+              به سامانه یکپارچه مدیریت کسب و کار کیان خوش آمدید
+            </Typography>
+          </Box>
+          <CompanyIdentity company={company} />
+          {onBack ? (
+            <Button size="small" variant="outlined" startIcon={<ArrowForwardIcon />}
+              onClick={onBack}
+              sx={{ fontSize: 11.5, fontWeight: 800, borderRadius: '10px', textTransform: 'none' }}>
+              {backLabel}
+            </Button>
+          ) : null}
         </Box>
 
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.4 }}>
-          <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>
-            انتخاب ماژول
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: '#94a3b8' }}>
-            {toPersianDigits(activeApps.length)} ماژول فعال از {toPersianDigits(count)}
-          </Typography>
-        </Stack>
-
-        {error ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: '12px', fontSize: 12 }}>{error}</Alert> : null}
-
-
-        {loading ? (
-          <Box sx={{ py: 9, textAlign: 'center' }}>
-            <CircularProgress size={28} sx={{ color: '#4f46e5' }} />
-            <Typography sx={{ mt: 1.5, fontSize: 12, color: '#64748b' }}>در حال دریافت ماژول‌ها…</Typography>
-          </Box>
-        ) : !count ? (
-          <Box sx={{
-            py: 8, textAlign: 'center', bgcolor: '#fff', borderRadius: '16px',
-            border: '1px solid rgba(15,23,42,0.07)',
+        {error ? (
+          <Alert severity="error" sx={{
+            mx: { xs: 2, md: 2.75 }, mt: 1.5, borderRadius: '12px', fontSize: 12,
           }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>
-              ماژولی در دسترس نیست
+            {error}
+          </Alert>
+        ) : null}
+
+        <Box sx={{ p: { xs: 2, md: 2.75 } }}>
+          {activeApps.length ? (
+            <Box sx={{
+              display: 'grid', gap: 1.25,
+              gridTemplateColumns: {
+                xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))',
+              },
+            }}>
+              {activeApps.map((app) => (
+                <ModuleCard
+                  key={app.id || app.slug}
+                  app={app}
+                  accent={currentApp?.slug === app.slug ? '#0f766e' : accentOf(app)}
+                  busy={loadingAppId === app.id}
+                  disabled={loading && loadingAppId !== app.id}
+                  onPick={onPick}
+                />
+              ))}
+            </Box>
+          ) : loading ? (
+            <Stack alignItems="center" sx={{ py: 5 }}><CircularProgress size={22} /></Stack>
+          ) : (
+            <Typography sx={{ py: 4, textAlign: 'center', fontSize: 12, color: MUTED }}>
+              ماژولی برای این کاربر فعال نیست.
             </Typography>
-            <Typography sx={{ mt: 0.4, fontSize: 12, color: '#94a3b8' }}>
-              دسترسی‌های کاربری خود را بررسی کنید.
-            </Typography>
-          </Box>
-        ) : (
-          <Box sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: 'repeat(2, minmax(0, 1fr))',
-              sm: 'repeat(3, minmax(0, 1fr))',
-              md: 'repeat(4, minmax(0, 1fr))',
-            },
-            gap: { xs: 1, sm: 1.25, md: 1.5 },
-          }}>
-            {applications.map((app) => {
-              const Icon = getModuleIcon(app.slug);
-              const accent = getPalette(app.slug)?.accent || MODULE_DEFAULT_ACCENTS[app.slug] || app.color || '#4f46e5';
-              const disabled = Boolean(app.is_coming_soon || !app.accessible);
-              const active = currentApp?.id === app.id;
-              const loading = loadingAppId === app.id;
-
-              return (
-                <ButtonBase
-                  key={app.id}
-                  disabled={disabled || Boolean(loadingAppId)}
-                  onClick={() => !disabled && onPick?.(app)}
-                  sx={{
-                    position: 'relative',
-                    width: '100%',
-                    minHeight: { xs: 139, md: 158 },
-                    p: { xs: 1.3, md: 1.6 },
-                    pb: { xs: 1.2, md: 1.35 },
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
-                    textAlign: 'right',
-                    overflow: 'hidden',
-                    borderRadius: '17px',
-                    border: `1px solid ${alpha(accent, disabled ? 0.07 : 0.17)}`,
-                    bgcolor: disabled ? '#f8fafc' : '#fff',
-                    background: disabled
-                      ? '#f8fafc'
-                      : `linear-gradient(150deg, ${alpha(accent, 0.05)}, #ffffff 58%)`,
-                    boxShadow: '0 1px 2px rgba(15,23,42,0.025)',
-                    opacity: disabled ? 0.52 : 1,
-                    filter: disabled ? 'grayscale(0.7)' : 'none',
-                    transition: 'transform .18s ease, border-color .18s ease, box-shadow .18s ease',
-                    '&:hover': !disabled ? {
-                      transform: 'translateY(-3px)',
-                      borderColor: alpha(accent, 0.42),
-                      boxShadow: `0 18px 34px -24px ${accent}b3`,
-                    } : {},
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      insetInlineStart: 0,
-                      bottom: 0,
-                      height: 3,
-                      width: disabled ? '0%' : '48%',
-                      background: `linear-gradient(90deg, ${accent}, ${alpha(accent, 0)})`,
-                      opacity: 0.75,
-                    },
-                    '&.Mui-disabled': { color: 'inherit' },
-                  }}
-                >
-                  <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-                    <Box sx={{
-                      width: { xs: 42, md: 48 },
-                      height: { xs: 42, md: 48 },
-                      borderRadius: '13px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: alpha(accent, 0.085),
-                      border: `1px solid ${alpha(accent, 0.16)}`,
-                      color: accent,
-                    }}>
-                      {loading
-                        ? <CircularProgress size={20} sx={{ color: accent }} />
-                        : <Icon sx={{ fontSize: { xs: 23, md: 27 } }} />}
-                    </Box>
-                    {active ? (
-                      <Chip icon={<CheckCircleRoundedIcon />} label="فعال" size="small"
-                        sx={{
-                          height: 20, fontSize: 12, fontWeight: 800,
-                          bgcolor: alpha(accent, 0.08), color: accent,
-                          '& .MuiChip-icon': { fontSize: 12, color: accent },
-                        }} />
-                    ) : null}
-                  </Stack>
-
-                  <Box sx={{ flex: 1, minHeight: 10 }} />
-
-                  <Typography sx={{
-                    fontSize: { xs: 11.3, md: 12.5 },
-                    fontWeight: 900,
-                    color: disabled ? '#94a3b8' : '#172033',
-                    lineHeight: 1.5,
-                  }}>
-                    {app.title}
-                  </Typography>
-
-                  {(app.is_coming_soon || (!app.accessible && !app.is_coming_soon)) ? (
-                    <Chip size="small" label={app.is_coming_soon ? 'به‌زودی' : 'عدم دسترسی'}
-                      sx={{
-                        mt: 0.7, alignSelf: 'flex-start', height: 19,
-                        fontSize: 12, fontWeight: 700, color: '#94a3b8',
-                        bgcolor: 'rgba(15,23,42,0.045)',
-                      }} />
-                  ) : null}
-                </ButtonBase>
-              );
-            })}
-          </Box>
-        )}
-      </Container>
+          )}
+        </Box>
+      </Paper>
     </Box>
   );
 };
