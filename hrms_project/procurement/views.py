@@ -73,6 +73,160 @@ class SupplierViewSet(BaseViewSet):
     search_fields = ['name', 'code', 'economic_code', 'national_id', 'tax_id']
     ordering = ['name']
 
+    @action(detail=True, methods=['get'], url_path='profile')
+    def profile(self, request, pk=None):
+        """پروندهٔ خرید یک تأمین‌کننده — شاخص‌ها + همهٔ اسناد + خط زمانی.
+
+        یک payload واحد (به‌جای هفت درخواست جدا در فرانت) و یک کوئری سبک
+        (``values()``) به‌ازای هر رابطه؛ محاسبات در ``procurement.profile``.
+        """
+        from datetime import date as _date
+
+        from django.db.models import Q
+
+        from contracts.guarantee_validity import guarantee_validity
+        from procurement import dashboard as dash
+        from procurement import profile as prof
+
+        supplier = self.get_object()
+        today = _date.today()
+
+        def light(queryset, fields, limit=300):
+            rows = queryset.values(*sorted(set(fields.values())))[:limit]
+            return [_flatten(row, fields) for row in rows]
+
+        order_status = dict(PurchaseOrder.Status.choices)
+        orders = []
+        for row in light(PurchaseOrder.objects.filter(supplier=supplier).order_by('-date'), ORDER_FIELDS):
+            document = dash.normalize_document(row)
+            document['expected_date'] = dash.iso(row.get('expected_date'))
+            document['status_label'] = str(order_status.get(row.get('status'), row.get('status') or ''))
+            orders.append(document)
+
+        invoice_status = dict(PurchaseInvoice.Status.choices)
+        invoices = []
+        for row in light(PurchaseInvoice.objects.filter(supplier=supplier).order_by('-date'), INVOICE_FIELDS):
+            document = dash.normalize_document(row)
+            rate = document['rate'] if document['group'] == 'foreign' else 1
+            document['paid_amount'] = dash.num(row.get('paid_amount')) * rate
+            document['due_date'] = dash.iso(row.get('due_date'))
+            document['payment_status'] = row.get('payment_status') or 'unpaid'
+            document['status_label'] = str(invoice_status.get(row.get('status'), row.get('status') or ''))
+            due = dash.day(row.get('due_date'))
+            unpaid = document['payment_status'] != 'paid'
+            document['overdue'] = bool(
+                due and due < today and unpaid and row.get('status') != 'cancelled'
+            )
+            invoices.append(document)
+
+        payment_methods = dict(PurchasePayment.Method.choices)
+        payment_fields = {
+            'id': 'id', 'date': 'date', 'amount': 'amount', 'method': 'method',
+            'reference': 'reference', 'bank': 'bank',
+            'invoice_id': 'invoice_id', 'invoice_number': 'invoice__number',
+        }
+        payments = []
+        for row in light(
+            PurchasePayment.objects.filter(invoice__supplier=supplier).order_by('-date'), payment_fields,
+        ):
+            payments.append({
+                'id': row.get('id'),
+                'date': dash.iso(row.get('date')),
+                'amount': dash.num(row.get('amount')),
+                'method': row.get('method') or '',
+                'method_label': str(payment_methods.get(row.get('method'), row.get('method') or '')),
+                'reference': row.get('reference') or '',
+                'bank': row.get('bank') or '',
+                'invoice_id': row.get('invoice_id'),
+                'invoice_number': row.get('invoice_number') or '',
+            })
+
+        kind_labels = dict(ProcurementGuarantee.Kind.choices)
+        guarantees = []
+        for row in light(
+            ProcurementGuarantee.objects.filter(supplier=supplier).order_by('-issue_date'), GUARANTEE_FIELDS,
+        ):
+            item = dict(row)
+            item['kind_label'] = str(kind_labels.get(row.get('kind'), row.get('kind') or ''))
+            item['issue_date'] = dash.iso(row.get('issue_date'))
+            item['expiry_date'] = dash.iso(row.get('expiry_date'))
+            item.update(guarantee_validity(row, today=today))
+            guarantees.append(item)
+
+        proforma_status = dict(ProformaInvoice.Status.choices)
+        proforma_fields = {
+            'id': 'id', 'number': 'number', 'date': 'date', 'status': 'status', 'total': 'total',
+            'exchange_rate': 'exchange_rate', 'currency_code': 'currency__code',
+            'currency_name': 'currency__name',
+        }
+        proformas = []
+        for row in light(
+            ProformaInvoice.objects.filter(supplier=supplier).order_by('-date'), proforma_fields,
+        ):
+            document = dash.normalize_document(row)
+            document['status_label'] = str(proforma_status.get(row.get('status'), row.get('status') or ''))
+            proformas.append(document)
+
+        quotation_status = dict(Quotation.Status.choices)
+        quotation_fields = {
+            'id': 'id', 'number': 'number', 'date': 'date', 'status': 'status', 'total': 'total',
+            'exchange_rate': 'exchange_rate', 'currency_code': 'currency__code',
+            'currency_name': 'currency__name', 'is_winner': 'is_winner',
+            'delivery_days': 'delivery_days', 'inquiry_number': 'inquiry__number',
+        }
+        quotations = []
+        for row in light(
+            Quotation.objects.filter(supplier=supplier).order_by('-date'), quotation_fields,
+        ):
+            document = dash.normalize_document(row)
+            document['status_label'] = str(quotation_status.get(row.get('status'), row.get('status') or ''))
+            document['is_winner'] = bool(row.get('is_winner'))
+            document['delivery_days'] = row.get('delivery_days') or 0
+            document['inquiry_number'] = row.get('inquiry_number') or ''
+            quotations.append(document)
+
+        document_kinds = dict(ProcurementDocument.Kind.choices)
+        document_rows = ProcurementDocument.objects.filter(
+            Q(order__supplier=supplier)
+            | Q(invoice__supplier=supplier)
+            | Q(proforma__supplier=supplier)
+            | Q(quotation__supplier=supplier)
+            | Q(guarantee__supplier=supplier)
+        ).order_by('-created_at')[:200]
+        documents = []
+        for row in document_rows:
+            try:
+                file_url = request.build_absolute_uri(row.file.url) if row.file else None
+            except ValueError:
+                file_url = None
+            documents.append({
+                'id': row.id,
+                'title': row.title,
+                'kind': row.kind,
+                'kind_label': str(document_kinds.get(row.kind, row.kind or '')),
+                'file_url': file_url,
+                'size': row.size,
+                'note': row.note,
+                'created_at': dash.iso(row.created_at),
+            })
+
+        return Response({
+            'supplier': SupplierSerializer(supplier).data,
+            'summary': prof.supplier_summary(
+                orders, invoices, payments, guarantees, proformas, quotations, today=today,
+            ),
+            'orders': orders,
+            'invoices': invoices,
+            'payments': payments,
+            'guarantees': guarantees,
+            'proformas': proformas,
+            'quotations': quotations,
+            'documents': documents,
+            'timeline': prof.build_timeline(
+                orders, invoices, payments, guarantees, proformas, documents,
+            ),
+        })
+
 
 class ItemCategoryViewSet(BaseViewSet):
     serializer_class = ItemCategorySerializer

@@ -559,7 +559,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
-- **Live:** frontend `main.c736f2b5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + اندپوینت `GET /api/procurement/dashboard/`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.b61846d6.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/`)، gunicorn/celery/nginx active.
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
@@ -581,6 +581,17 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     کارت‌های سفارش ریالی و ارزی با صفحه‌بندی، «سلامت مالی خریدها»، «سررسید تحویل سفارش‌ها»، «تضامین خرید» و
     چهار توزیع شماتیک (وضعیت سفارش‌ها، وضعیت استعلام‌ها، تأمین‌کنندگان برتر، خرید در پروژه‌ها).
     تست: `__tests__/procurementDashboardSmoke.test.js`؛ `contractsDashboardSmoke` هم سبز ماند.
+- **پروندهٔ خرید هم‌ساخت با پروندهٔ قرارداد (۲۰۲۶-۱۱-۰۸):** اکشن `GET /api/procurement/suppliers/{id}/profile/`
+  روی `SupplierViewSet` یک payload واحد می‌دهد: `supplier` + `summary` (سفارش/صورتحساب/پرداخت/مانده/
+  نرخ تسویه/تفکیک ریالی-ارزی) + لیست‌های `orders`، `quotations`، `proformas`، `invoices`، `payments`،
+  `guarantees` (با `valid_until`/`days_to_expiry`/`is_expired` از `contracts.guarantee_validity`)
+  و `documents`/`timeline`. هر رابطه **یک کوئری** `values()` (بدون N+1) و محاسبات در
+  `procurement/profile.py` (خالص؛ ۱۴ تست در `procurement/tests_profile.py`).
+  فرانت: `ProcurementSupplierProfilePage` با الگوی «پروندهٔ قرارداد» بازنویسی شد — کارت هویت + کاشی‌های مالی +
+  دسترسی سریع + ۹ تب (نمای کلی/سفارش‌ها/پیشنهادها/پیش‌فاکتورها/صورتحساب‌ها/پرداخت‌ها/تضامین/اسناد/خط زمانی)
+  روی کیت مشترک داشبورد. مسیر همان `/procurement/supplier-profile?supplier=<id>` است (لینک فهرست پرونده‌ها
+  دست‌نخورده). تست: `__tests__/procurementProfileSmoke.test.js`.
+
 
 - **بازطراحی ماژول خرید و تدارکات — مرحلهٔ بک‌اند (۲۰۲۶-۱۱-۰۸):** مدل‌های جدید در `procurement/models.py`
   (به سبک ماژول قراردادها) اضافه شدند و مایگریشن `procurement.0004` روی همهٔ schemaها اعمال شد:
