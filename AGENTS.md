@@ -447,10 +447,21 @@ ssh -o BatchMode=yes hradmin@192.168.1.63 'journalctl -u gunicorn -n 50 --no-pag
 4. `/tmp` سرور **tmpfs (۷.۶GB)** است؛ فایل بزرگ را در `/var/tmp` یا `/opt/hrms/import` بگذارید.
 5. فایل‌های کپی‌شده در `correspondences/` و `core/` را طبق الگو `cp /tmp/x.py …; chown hrms:hrms …; systemctl restart gunicorn` جای‌گذاری کنید و **همیشه قبلش backup** بگیرید.
 6. بعد از هر تغییر بک‌اند، `manage.py check` روی سرور (با `.env` sourced) و سپس restart.
-7. **صفحهٔ سفید = بیلد بدون `PUBLIC_URL=/assets`.** اگر بیلد محلی (`react-scripts build` بدون env) انجام شود و بعد
-   `deploy-frontend.ps1 -NoBuild` اجرا شود، `index.html` به `/static/js/...` اشاره می‌کند (404) و کل برنامه سفید می‌شود.
-   همیشه بیلد را با خود اسکریپت (`deploy-frontend.ps1` بدون `-NoBuild`) انجام دهید؛ تأیید نهایی:
-   `curl /` باید `src="/assets/static/js/main.<hash>.js"` بدهد و همان مسیر ۲۰۰ باشد.
+7. **صفحهٔ سفید = بیلد بدون `PUBLIC_URL=/assets`.**
+   - حالت ۱: بیلد محلی (`react-scripts build` بدون env) و بعد `deploy-frontend.ps1 -NoBuild` ⇒ `index.html` به
+     `/static/js/...` اشاره می‌کند (404) و کل برنامه سفید می‌شود.
+   - حالت ۲ (۲۰۲۶-۱۱-۰۸ برای ما رخ داد): **`PUBLIC_URL` را با `cmd.exe` ست نکنید.** دستور
+     `cmd /c "cd /d C:\HRMS\frontend && set PUBLIC_URL=/assets && npm run build"` مقدار را با **فاصلهٔ انتهایی**
+     ذخیره می‌کند (`'/assets '`) و خروجی می‌شود
+     `<script src="/assets /static/js/main.<hash>.js">` — یک فاصلهٔ اضافه، URL نامعتبر، ۴۰۴ و **صفحهٔ سفید**،
+     در حالی که `curl` خودِ باندل را ۲۰۰ نشان می‌دهد (چون فایل هست، آدرس غلط است).
+   - همیشه بیلد را با خود اسکریپت (`deploy-frontend.ps1` بدون `-NoBuild`) انجام دهید و **قبل از آپلود** بیلد را چک کنید:
+     ```powershell
+     Select-String -Path C:\HRMS\frontend\build\index.html -Pattern '/assets /'   # باید خروجی خالی بدهد
+     Select-String -Path C:\HRMS\frontend\build\index.html -Pattern 'src="/assets/static/js/main\.'
+     ```
+     تأیید نهایی بعد از استقرار: `curl /` باید `src="/assets/static/js/main.<hash>.js"` (بدون فاصله) بدهد و
+     همان مسیر + فایل CSS + یک chunk (`/assets/static/js/949.<hash>.chunk.js`) هر سه ۲۰۰ باشند.
 8. **اسکریپت‌ها را با `-Command` صدا بزنید، نه `-File`:** `powershell -File deploy-backend.ps1` بی‌صدا و بی‌اثر است.
    شکل درست: `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& 'C:\HRMS\deploy-backend.ps1'"`.
    `deploy-backend.ps1` وسط کار رمز sudo می‌پرسد و در اجرای غیرتعاملی (CI/Start-Process) هالتی می‌کند؛
@@ -518,13 +529,20 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    آن متد دیده می‌شود؛ مثلاً `Organization` در `views/aliases.py` → اندپوینت `unmapped/` با 500 و
    «نگاشت‌نشده‌ها» خالی). برای همین تست `correspondences/tests_view_names.py` هر نام کلاس‌مانندِ
    تعریف‌نشده در بستهٔ views را با `ast` می‌گیرد؛ بعد از هر split این تست را اجرا کنید.
+14. **`cmd.exe set VAR=value && next` فاصلهٔ انتهایی را وارد مقدار می‌کند** → `PUBLIC_URL='/assets '` →
+   `index.html` با `<script src="/assets /static/js/main.<hash>.js">` → ۴۰۴ و **صفحهٔ سفید**، در حالی که
+   `curl` باندل را ۲۰۰ می‌دهد. بیلد را فقط با `deploy-frontend.ps1` (که `$env:PUBLIC_URL = '/assets'` را در
+   PowerShell ست می‌کند) بزنید و همیشه `Select-String -Path build\index.html -Pattern '/assets /'` را چک کنید.
+15. **هوک‌های نوشتن را با نام `refetch`های واقعی صدا بزنید**: در صفحهٔ مکاتبات، ری‌فچ‌ها `refetchStats` و
+   `refetchReferrals` هستند (نه `refresh…`)؛ و هر stateای که هوک برمی‌گرداند (مثل `editRowId`) باید در صفحه
+   destructure شود وگرنه `ReferenceError` فقط در رندر اول دیده می‌شود (تست smoke سریع می‌گیرد).
 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `332852d97 refactor(correspondence): extract letter details dialog and write path hook`
-- **Live:** frontend `main.b4253a1d.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.db6ce534.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
 - **بازطراحی ماژول خرید و تدارکات — مرحلهٔ بک‌اند (۲۰۲۶-۱۱-۰۸):** مدل‌های جدید در `procurement/models.py`
   (به سبک ماژول قراردادها) اضافه شدند و مایگریشن `procurement.0004` روی همهٔ schemaها اعمال شد:
   - **استعلام (RFQ):** `Inquiry` (شماره، موضوع، درخواست مبدأ، پروژه، واحد، مهلت، روش ارزیابی، ارز،
