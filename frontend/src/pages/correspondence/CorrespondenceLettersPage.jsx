@@ -2088,7 +2088,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       placeholder="شماره نامه" align="center" />
                   );
                 }
-                const numberText = letter.number ? toPersianDigits(letter.number) : 'بدون شماره';
+                const numberText = letter.number
+                  ? toPersianDigits(letter.number)
+                  : (letter.archive_ref
+                    ? toPersianDigits(letter.archive_ref)
+                    : 'بدون شماره');
                 const meta = joinParts(
                   letter.contract_title ? `قرارداد: ${letter.contract_title}` : '',
                   letter.contract_number ? `شماره قرارداد ${toPersianDigits(letter.contract_number)}` : '',
@@ -2442,7 +2446,9 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     {activeLetter.subject || 'بدون موضوع'}
                   </Typography>
                   <Typography noWrap sx={{ fontSize: 12.5, color: MUTED, fontWeight: 600 }}>
-                    {activeLetter.number ? `شماره: ${toPersianDigits(activeLetter.number)}` : 'بدون شماره'}
+                    {activeLetter.number || activeLetter.archive_ref
+                      ? `شماره: ${toPersianDigits(activeLetter.number || activeLetter.archive_ref)}`
+                      : 'بدون شماره'}
                     {activeLetter.contract_title ? ` · قرارداد: ${activeLetter.contract_title}` : ''}
                     {activeLetter.entry_method_display ? ` · ورود: ${activeLetter.entry_method_display}` : ''}
                   </Typography>
@@ -2553,6 +2559,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                         ? toPersianDigits(activeLetter.transmittal_no) : ''],
                       ['شماره نامهٔ طرف مقابل', activeLetter.external_number
                         ? toPersianDigits(activeLetter.external_number) : ''],
+                      ['شماره بایگانی / ارسالی', activeLetter.archive_ref
+                        ? toPersianDigits(activeLetter.archive_ref) : ''],
                       ['شماره ثبت ورود به شرکت',
                         activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''],
                       ['تاریخ ثبت ورود به شرکت', dateLabel(activeLetter.company_reg_date)],
