@@ -105,8 +105,7 @@ const ProcurementProfilesPage = () => {
         )}
       />
 
-      <Paper sx={{ ...tableCardSx, ...tableFrameSx }}>
-        <ModuleToolbar
+      <ModuleToolbar
           theme={moduleTheme}
           search={search}
           onSearch={setSearch}
@@ -139,6 +138,7 @@ const ProcurementProfilesPage = () => {
         <Typography sx={{ color: 'error.main', fontSize: 12, mb: 1 }}>{error}</Typography>
       ) : null}
 
+      <Paper sx={{ ...tableCardSx, ...tableFrameSx }}>
         <Box sx={{ pt: 0.5 }}>
         <ModuleTable
         tableTheme={moduleTheme.tableTheme}
