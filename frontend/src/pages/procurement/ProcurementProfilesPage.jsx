@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Button, CircularProgress, Stack, Table, TableBody, TableCell, TableHead,
   TableRow, TextField, Typography } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { digits, money, useList } from './procurementUi';
 import { StudioCard, StudioChip, StudioHeader, StudioKpi, studioTableSx, useProcurementStudio } from './procurementStudioUi';
@@ -31,8 +32,8 @@ const ProcurementProfilesPage = () => {
 
   return (
     <Box>
-      <StudioHeader icon={<BusinessIcon />} title="پرونده‌های خرید"
-        subtitle="برای هر طرف حساب (تأمین‌کننده) یک پرونده: سفارش‌ها، پیش‌فاکتور، فاکتور، تضامین و پرداخت‌ها"
+      <StudioHeader icon={<StorefrontIcon />} title="پرونده خرید"
+        subtitle="فهرست طرف حساب‌ها؛ برای هر تأمین‌کننده یک پرونده با سفارش‌ها، پیش‌فاکتور، فاکتور، تضامین و پرداخت‌ها"
         actions={(
           <TextField size="small" placeholder="جست‌وجوی طرف حساب…" value={search}
             onChange={(event) => setSearch(event.target.value)} sx={{ width: 230 }} />

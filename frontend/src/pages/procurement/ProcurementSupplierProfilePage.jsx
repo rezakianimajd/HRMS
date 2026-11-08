@@ -118,7 +118,7 @@ const ProcurementSupplierProfilePage = () => {
 
   return (
     <Box>
-      <StudioHeader icon={<BusinessIcon />} title="پروندهٔ خرید طرف حساب"
+      <StudioHeader icon={<BusinessIcon />} title="پرونده خرید طرف حساب"
         subtitle="همهٔ اسناد خرید یک تأمین‌کننده: استعلام، پیشنهاد، سفارش، پیش‌فاکتور، فاکتور، تضامین و پرداخت‌ها"
         actions={(
           <TextField size="small" select label="طرف حساب" value={supplierId} sx={{ minWidth: 240 }}
