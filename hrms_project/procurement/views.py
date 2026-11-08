@@ -600,7 +600,7 @@ def supplier_profiles_view(request):
     پیش‌فاکتورها، پیشنهادها و تضامین — همه در **یک کوئری** با Subquery
     (بدون N+1).
     """
-    from django.db.models import Count, OuterRef, Subquery, Sum
+    from django.db.models import Count, DecimalField, OuterRef, Subquery, Sum, Value
     from django.db.models.functions import Coalesce
 
     supplier_id = request.query_params.get('supplier')
@@ -608,13 +608,16 @@ def supplier_profiles_view(request):
     if supplier_id:
         queryset = queryset.filter(pk=supplier_id)
 
+    amount_field = DecimalField(max_digits=20, decimal_places=2)
+
     def _total(model, field):
         return Coalesce(
             Subquery(
                 model.objects.filter(supplier=OuterRef('pk'))
                 .values('supplier').annotate(total=Sum(field)).values('total')[:1]
             ),
-            0,
+            Value(0),
+            output_field=amount_field,
         )
 
     queryset = queryset.annotate(
