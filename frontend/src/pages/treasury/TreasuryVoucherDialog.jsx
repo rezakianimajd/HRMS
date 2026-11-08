@@ -8,6 +8,8 @@ import PrintIcon from '@mui/icons-material/Print';
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined';
 import axiosInstance from '../../core/api/axiosConfig';
 import { printElement, printHtml } from '../../core/print/printEngine';
+import usePrintDocument from '../../core/print/usePrintDocument';
+import PrintPreviewDialog from '../../core/print/PrintPreviewDialog';
 import { chipSx, moneyLabel } from './treasuryMasterUi';
 
 const PRINT_CSS = `
@@ -124,12 +126,24 @@ const TreasuryVoucherDialog = ({ open, endpoint, onClose }) => {
   const data = voucherQuery.data;
   const frameRef = React.useRef(null);
   const contentRef = React.useRef(null);
+  const print = usePrintDocument();
 
-  /* چاپ از موتور چاپ یکپارچه: HTML سرور (قالب) یا ناحیهٔ دیدهٔ سند */
-  const printFrame = () => {
+  /* چاپ از موتور چاپ یکپارچه:
+     ۱) قالب اختصاصی شرکت (HTML سرور)  ۲) سند استاندارد موتور چاپ  ۳) ناحیهٔ دیدهٔ سند */
+  const printFrame = async () => {
     if (data?.html) {
       printHtml(data.html, { title: 'سند خزانه‌داری' });
       return;
+    }
+    const voucherId = data?.id || data?.voucher_id;
+    if (voucherId) {
+      const html = await print.openDocument({
+        document: 'voucher',
+        payload: { id: voucherId, kind: data?.kind || 'receipt' },
+        options: { paper: data?.paper || 'A5' },
+      });
+      if (html) return;
+      print.close();
     }
     printElement(contentRef.current, { title: 'سند خزانه‌داری' });
   };
@@ -172,6 +186,15 @@ const TreasuryVoucherDialog = ({ open, endpoint, onClose }) => {
           چاپ
         </Button>
       </DialogActions>
+
+      <PrintPreviewDialog
+        open={print.open}
+        title={print.title || 'سند خزانه‌داری'}
+        html={print.html}
+        loading={print.loading}
+        error={print.error}
+        onClose={print.close}
+      />
     </Dialog>
   );
 };

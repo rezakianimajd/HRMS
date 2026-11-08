@@ -226,6 +226,23 @@ def build_custom(payload, options, request=None):
 DOCUMENTS.update({'letter': build_letter, 'table': build_table, 'custom': build_custom})
 
 
+def build_payslip(payload, options, request=None):
+    """فیش حقوقی (سند سروری با سرصفحهٔ برند، مبلغ به حروف و بارکد)."""
+    from core.print_engine.builders.payslip import load_payslip
+
+    return load_payslip(payload, options, request)
+
+
+def build_voucher(payload, options, request=None):
+    """فیش دریافت / حواله پرداخت / رسید انتقال خزانه‌داری."""
+    from core.print_engine.builders.voucher import load_voucher
+
+    return load_voucher(payload, options, request)
+
+
+DOCUMENTS.update({'payslip': build_payslip, 'voucher': build_voucher})
+
+
 def render(document_key, payload, options=None, request=None):
     """سند کامل HTML برای یک نوع سند."""
     builder = DOCUMENTS.get(document_key)
@@ -238,5 +255,7 @@ def available_documents():
     return [
         {'key': 'letter', 'label': 'نامهٔ اداری'},
         {'key': 'table', 'label': 'گزارش جدولی'},
+        {'key': 'payslip', 'label': 'فیش حقوقی'},
+        {'key': 'voucher', 'label': 'سند خزانه‌داری'},
         {'key': 'custom', 'label': 'سند آماده (HTML)'},
     ]

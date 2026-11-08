@@ -97,6 +97,8 @@ def build_verification(kind, obj, request=None, path='/treasury/verify'):
 def _document_brief(kind, obj, request=None):
     verification = build_verification(kind, obj, request)
     return {
+        'id': getattr(obj, 'pk', None),
+        'kind': kind,
         'number': getattr(obj, 'number', '') or '',
         'status': getattr(obj, 'get_status_display', lambda: '')()
         if hasattr(obj, 'get_status_display') else '',

@@ -193,4 +193,4 @@ class PrintApiTests(SimpleTestCase):
 
     def test_available_documents_payload(self):
         keys = {item['key'] for item in registry.available_documents()}
-        self.assertEqual(keys, {'letter', 'table', 'custom'})
+        self.assertEqual(keys, {'letter', 'table', 'payslip', 'voucher', 'custom'})

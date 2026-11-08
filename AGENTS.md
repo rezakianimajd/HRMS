@@ -325,9 +325,13 @@ PROVIDERS['<module>'] = [
 **بک‌اند** `core/print_engine/`:
 - `components.py`: `esc` · `fa_digits` · `jalali` · `money` (جداکنندهٔ فارسی + واحد) · `amount_words` · `barcode` (Code 39) · `field_grid([(label, value)])` · `data_table(columns, rows, {total_row})` · `signatures([...])` · `watermark` · `raw(html)` (برای محتوای از قبل ایمن؛ مقدار متنی همیشه escape می‌شود).
 - `layout.py`: `render_document(document, options)` → HTML کامل RTL با `@page` (A4/A5/A3/Letter، عمودی/افقی)، سرصفحهٔ برند + badge + meta، بخش‌ها، کادر مبلغ به حروف، بارکد، امضا، پاصفحه با شمارهٔ صفحه و تاریخ چاپ، واترمارک.
-- `registry.py`: `render(document, payload, options, request=request)` با انواع `letter` / `table` / `custom`؛ مجوز با `can_print(user, module)` (سوپریوزر یا `view/export`؛ کاربر بدون کد ریز مسدود نمی‌شود).
+- `registry.py`: `render(document, payload, options, request=request)` با انواع `letter` / `table` / `custom` / `payslip` / `voucher`؛ مجوز با `can_print(user, module)` (سوپریوزر یا `view/export`؛ کاربر بدون کد ریز مسدود نمی‌شود).
+- `builders/` (اسناد رسمی سروری، از ۲۰۲۶-۱۱-۰۸):
+  - `payslip.py` — `payslip_document(data)` خالص + `load_payslip`؛ فیش حقوقی با مشخصات پرسنل، دو جدول مزایا/کسورات، «جمع» هر دو، مبلغ به حروف، بارکد و امضا (A5).
+  - `voucher.py` — `voucher_document(data)` خالص + `load_voucher`؛ فیش دریافت / حواله پرداخت / رسید انتقال / تراکنش خزانه از دادهٔ `treasury.vouchers` (شماره، تاریخ شمسی، مبلغ به حروف، اطلاعات ابزار، کد اعتبارسنجی، واترمارک «پیش‌نویس» برای اسناد ثبت‌نشده).
+  - `treasury.vouchers._document_brief` حالا `id` و `kind` هم می‌دهد تا دیالوگ سند بتواند سند استاندارد موتور چاپ را درخواست کند.
 - اندپوینت‌ها: `POST /api/print/preview/` `{document, payload, options}` → `{html}` و `GET /api/print/options/`.
-- تست: `core/tests_print_engine.py` (۲۶ تست، بدون دیتابیس).
+- تست: `core/tests_print_engine.py` (۲۶) + `core/tests_print_documents.py` (۸ تست فیش/سند خزانه) — همه بدون دیتابیس.
 
 **فرانت** `core/print/`:
 - `printEngine.js`: `printHtml(html)` (iframe مخفی، بدون پاپ‌آپ) · `printElement(target, {title, paper, orientation})` · `buildElementDocument`.
@@ -354,9 +358,9 @@ const print = usePrintDocument();
 |---|---|
 | نامهٔ مکاتبات (کشوی جزئیات) | سند سروری `document:'letter'` + `PrintPreviewDialog` |
 | ۱۸ صفحهٔ گزارش/داشبورد (حسابداری، قراردادها، تقویم، چارت سازمانی، پروژه، بیمه، داشبورد) | `printElement('main', {title, orientation})` — جدول‌های عریض `landscape` |
-| `SalaryPayslip` | `printElement(payslipRef, {paper:'A5'})` |
+| `SalaryPayslip` | سند سروری `document:'payslip'` + `PrintPreviewDialog` (A5)؛ fallback: `printElement(payslipRef)` |
 | `LedgerDrillDialog` | `printElement(contentRef, {orientation:'landscape'})` |
-| `TreasuryVoucherDialog` | `printHtml(data.html)` (قالب سرور) با fallback به محتوای دیالوگ |
+| `TreasuryVoucherDialog` | قالب شرکت `printHtml(data.html)` → سند استاندارد `document:'voucher'` → `printElement(contentRef)` |
 | `StatementEditorPage` | رستر `html2canvas` + `printHtml` (یک صفحهٔ A4، پیکسل‌به‌پیکسل مثل پیش‌نمایش) |
 
 قاعدهٔ جدید: هر دکمهٔ چاپ یا `PrintButton` است یا `printElement`/`printHtml`؛ افزودن `window.print()` ممنوع.
@@ -512,7 +516,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.3d427709.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.c7ae1108.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **موتور چاپ — اسناد سروری فیش حقوقی و سند خزانه (۲۰۲۶-۱۱-۰۸):** `core/print_engine/builders/`
+  (`payslip.py`، `voucher.py`) با الگوی «تابع خالص سند + loader دیتابیس» اضافه شد؛ انواع جدید
+  `document:'payslip'` و `document:'voucher'` (receipt/payment/payment_order/transfer/transaction)
+  در `registry`. `SalaryPayslip` و `TreasuryVoucherDialog` به سند سروری وصل شدند (با fallback مرحله‌ای).
 - **اعتبار تضامین — چک منقضی نمی‌شود (۲۰۲۶-۱۱-۰۸):** قاعدهٔ کسب‌وکار در `contracts/guarantee_validity.py`
   (`guarantee_validity`, `CHECK_VALIDITY_YEARS = 5`) پیاده شد: برای ابزارهای چک‌محور
   (`check`, `check_and_guarantee`) «سرآمد اعتبار» = **تاریخ صدور + ۵ سال** و «تاریخ سررسید» فقط هشدار

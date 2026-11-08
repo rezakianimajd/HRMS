@@ -11,6 +11,8 @@ import axiosInstance from '../../api/axiosConfig';
 import { formatPersianNumber, toPersianDigits } from '../../utils/numberUtils';
 import { useQuery } from '@tanstack/react-query';
 import { printElement } from '../../print/printEngine';
+import usePrintDocument from '../../print/usePrintDocument';
+import PrintPreviewDialog from '../../print/PrintPreviewDialog';
 
 const MONTH_NAMES = {
   '1': 'فروردین', '2': 'اردیبهشت', '3': 'خرداد', '4': 'تیر',
@@ -59,8 +61,20 @@ const SalaryPayslip = ({ record, onClose }) => {
   const companyName = profile?.legal_name || profile?.company_name || 'شرکت';
   const r = record || {};
   const payslipRef = React.useRef(null);
+  const print = usePrintDocument();
 
-  const handlePrint = () => {
+  /* چاپ از موتور چاپ: سند سروری (سرصفحهٔ برند، مبلغ به حروف، بارکد) و در صورت
+     خطا/نبود شناسه، چاپ ناحیهٔ فیش همان‌طور که دیده می‌شود. */
+  const handlePrint = async () => {
+    if (r.id) {
+      const html = await print.openDocument({
+        document: 'payslip',
+        payload: { id: r.id },
+        options: { paper: 'A5' },
+      });
+      if (html) return;
+      print.close();
+    }
     printElement(payslipRef.current, { title: 'فیش حقوقی', paper: 'A5' });
   };
 
@@ -227,6 +241,15 @@ const SalaryPayslip = ({ record, onClose }) => {
           .payslip-root { position: absolute; right: 0; top: 0; width: 100%; }
         }
       `}</style>
+
+      <PrintPreviewDialog
+        open={print.open}
+        title={print.title || 'فیش حقوقی'}
+        html={print.html}
+        loading={print.loading}
+        error={print.error}
+        onClose={print.close}
+      />
     </Dialog>
   );
 };
