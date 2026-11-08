@@ -510,6 +510,10 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 10. **`git add -A`** فایل موقت را می‌آورد؛ قبل از کامیت `git status` ببینید.
 11. **`PageHeader.icon` عنصر ≠ `SectionCard.icon` کامپوننت** → React #130.
 12. جابه‌جایی فایل رسانه بدون به‌روزرسانی `file.name` در DB = لینک ۴۰۴.
+13. **شکستن `views.py` به بستهٔ `views/` می‌تواند import جاافتاده بسازد** (`NameError` فقط در زمان اجرای
+   آن متد دیده می‌شود؛ مثلاً `Organization` در `views/aliases.py` → اندپوینت `unmapped/` با 500 و
+   «نگاشت‌نشده‌ها» خالی). برای همین تست `correspondences/tests_view_names.py` هر نام کلاس‌مانندِ
+   تعریف‌نشده در بستهٔ views را با `ast` می‌گیرد؛ بعد از هر split این تست را اجرا کنید.
 
 ---
 

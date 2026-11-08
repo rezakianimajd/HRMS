@@ -125,6 +125,8 @@ class CorrespondenceNameAliasViewSet(CorrespondencePermissionMixin, BaseLetterVi
         return list(ContractParty.objects.filter(company=company, is_active=True))
 
     def _organization_candidates(self, company):
+        from correspondences.models import Organization
+
         return list(Organization.objects.filter(company=company, is_active=True))
 
     def _correspondent_candidates(self, company):
