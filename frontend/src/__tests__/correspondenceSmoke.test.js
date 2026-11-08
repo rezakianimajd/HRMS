@@ -525,6 +525,12 @@ test('delete permission exposes row delete action and attachment delete button',
     await wait(320);
   });
   expect(document.querySelector('[aria-label="حذف پیوست"]')).toBeTruthy();
+
+  // دکمهٔ «حذف نامه» باید در سرصفحهٔ پروندهٔ نامه هم دیده شود (مجوز حذف دارد)
+  const drawerDelete = [...document.querySelectorAll('[role="dialog"] button')]
+    .find((node) => node.textContent.includes('حذف نامه'));
+  expect(drawerDelete).toBeTruthy();
+
   expect(document.body.textContent).not.toContain('دسترسی غیرمجاز');
 
   root.unmount();

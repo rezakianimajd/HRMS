@@ -58,6 +58,7 @@ const LetterDetailsDialog = ({
   onUpload,
   uploadRef,
   uploading,
+  onDelete,
   onDeleteAttachment,
   deleteAttachmentPending,
 }) => (
@@ -145,6 +146,12 @@ const LetterDetailsDialog = ({
                   onClick={onPrint}>
                   چاپ
                 </Button>
+                {canDeleteOf(letter) ? (
+                  <Button size="small" variant="outlined" color="error" startIcon={<DeleteOutlineIcon />}
+                    onClick={onDelete}>
+                    حذف نامه
+                  </Button>
+                ) : null}
               </Stack>
             </Box>
 

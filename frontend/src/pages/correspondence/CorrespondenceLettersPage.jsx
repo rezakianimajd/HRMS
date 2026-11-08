@@ -1128,6 +1128,16 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         onUpload={uploadAttachment}
         uploadRef={uploadRef}
         uploading={uploading}
+        onDelete={() => {
+          const target = activeLetter;
+          if (!target?.id) return;
+          const label = target.number
+            ? `شماره ${toPersianDigits(target.number)}`
+            : (target.subject || 'بدون موضوع');
+          if (window.confirm(`نامه «${label}» حذف شود؟ این عمل بازگشت‌ناپذیر است.`)) {
+            deleteLetter.mutate(target.id);
+          }
+        }}
         onDeleteAttachment={(file) => deleteAttachment.mutate(file.id)}
         deleteAttachmentPending={deleteAttachment.isPending}
       />

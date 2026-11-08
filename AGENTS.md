@@ -559,7 +559,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
-- **Live:** frontend `main.b61846d6.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.10f945ca.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/`)، gunicorn/celery/nginx active.
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
@@ -589,6 +589,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `procurement/profile.py` (خالص؛ ۱۴ تست در `procurement/tests_profile.py`).
   فرانت: `ProcurementSupplierProfilePage` با الگوی «پروندهٔ قرارداد» بازنویسی شد — کارت هویت + کاشی‌های مالی +
   دسترسی سریع + ۹ تب (نمای کلی/سفارش‌ها/پیشنهادها/پیش‌فاکتورها/صورتحساب‌ها/پرداخت‌ها/تضامین/اسناد/خط زمانی)
+- **مجوزهای ریز در UI همیشه تازه می‌مانند (۲۰۲۶-۱۱-۰۸):** `AuthContext` تابع `refreshUser` را دارد و
+  `/auth/me` را **روی `focus` پنجره و هر ۶۰ ثانیه** دوباره می‌گیرد (`USER_REFRESH_MS`)، بنابراین مجوزی که
+  مدیر در «مجوزهای کاربران» می‌دهد/می‌گیرد بدون خروج-ورود مجدد اعمال می‌شود (قبلاً تا رفرش صفحه دکمه‌ها عوض نمی‌شدند).
+  همچنین «حذف نامه» در سرصفحهٔ **پروندهٔ نامه** (`correspondenceLetterDetails.jsx`، پراپ `onDelete`) هم اضافه شد؛
+  تا قبل از آن حذف فقط در منوی ردیف جدول بود. تست‌ها: `__tests__/authRefresh.test.js` و بررسی دکمه در
+  `correspondenceSmoke` (۱۶ تست).
+  نکتهٔ تست: CRA گزینهٔ **`resetMocks: true`** دارد؛ پیاده‌سازی هر mock باید در `beforeEach` دوباره ست شود،
+  وگرنه `jest.fn(() => value)` داخل `jest.mock` بی‌اثر می‌شود (همین باعث شد `AuthEngine.isAuthenticated` ناموفق شود).
+
   روی کیت مشترک داشبورد. مسیر همان `/procurement/supplier-profile?supplier=<id>` است (لینک فهرست پرونده‌ها
   دست‌نخورده). تست: `__tests__/procurementProfileSmoke.test.js`.
 
