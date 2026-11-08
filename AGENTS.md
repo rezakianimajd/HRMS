@@ -1,7 +1,7 @@
 # AGENTS.md — handoff brief for the next coding agent
 
 **Repo:** `C:\HRMS` (Kian ERP / HRMS) · **Remote:** `https://github.com/rezakianimajd/HRMS.git` (branch `main`)
-**Last updated:** 2026-11-07 · **Baseline commit:** `fa44809d5`
+**Last updated:** 2026-11-08 · **Baseline commit:** `32d0d0e09`
 
 > هدف این سند: هر ایجنتی که تازه به پروژه می‌آید، بدون کشف دوباره، سریع و امن کار کند.
 > Structure/headings are English; explanations and warnings are Persian; all code/commands are English and copy‑paste ready.
@@ -152,6 +152,10 @@ ThemeProvider (MUI)               ← از palettes/mode ساخته می‌شو�
   فیلدهای مقصد (شبا/حساب/نام/کد ملی/بانک) به `TreasuryTransaction` اضافه شد
   (مایگریشن `0011`) و با `iban.is_valid` (mod 97) اعتبارسنجی می‌شوند؛ seed در `0012`.
 - `AttachmentPreviewDialog` — پیش‌نمایش PDF/عکس/متن بدون دانلود + «باز کردن در تب جدید»/«دریافت».
+- `LetterDetailsDialog` (`pages/correspondence/correspondenceLetterDetails.jsx`) — پروندهٔ نامه (هدر + تب‌های
+  مشخصات/ارجاعات/پیوست‌ها/تاریخچه) **کاملاً پراپ‌محور**؛ برای استفادهٔ مجدد در تب مکاتبات پروندهٔ قرارداد:
+  `<LetterDetailsDialog open letter={x} tab onTabChange onClose onAction={(name, payload) => …} canEditOf … />`.
+
 - الگوهای داشبورد: `pages/accounting/AccountingDashboardUI.jsx` (`SurfaceCard`, `KpiTile`, `KpiTileLine`, `ProgressBar`, `QuickTile`) و نسخهٔ مکاتبات `pages/correspondence/correspondenceStudioUi.jsx` (`StudioKpi`, `StudioCard`, `StudioRow`, `StudioBar`, `QuickAction`, `deltaPercent`).
 
 ### API access
@@ -589,6 +593,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (فیلترها، جست‌وجوی ۳۵۰ms، صفحه‌بندی، مرتب‌سازی، پارامترهای سرور، `?q`/`?has_attachments`/`?new=1`) و
   `CorrespondenceLettersPage.jsx` فقط UI ماند. باقی‌ماندهٔ این فاز: استخراج کشوی جزئیات
   (`correspondenceLetterDetails.jsx`) و هوک `useLetterMutations` (هدف: ~۹۰۰ خط).
+- **فاز ۴ مکاتبات — کشوی جزئیات و هوک نوشتن جدا شدند (۲۰۲۶-۱۱-۰۸):** `CorrespondenceLettersPage.jsx`
+  از **۱٬۷۸۵ به ۱٬۱۷۴ خط** رسید (۳۴٪ کمتر) و دو ماژول تازه گرفت:
+  - `correspondenceLetterDetails.jsx` (۴۴۳ خط): `LetterDetailsDialog` — همان پروندهٔ نامه با هدر، تب‌های
+    مشخصات/ارجاعات/پیوست‌ها/تاریخچه، آپلود و پیش‌نمایش و حذف پیوست، ثبت یادداشت و «ثبت پاسخ و نتیجه».
+    **کاملاً پراپ‌محور است** (بدون state محلی): `onAction(name, payload)` مثل `onAction('register')`،
+    `onOpen/onClose/onTabChange/onEdit/onPrint/onRefer/onCompleteReferral/onPreview/onUpload/onDeleteAttachment`
+    و `canEditOf/canCreateOf/canDeleteOf` → همان پرونده را می‌توان در «تب مکاتبات پروندهٔ قرارداد» هم رندر کرد.
+  - `useLetterMutations.js` (۳۳۰ خط): همهٔ مسیرهای نوشتن — ویرایش درجای ردیف‌ها (`EDITABLE_FIELDS`,
+    `seedLetterDraft`, `buildLetterPatch`, drafts/savingIds/bulkSaving، `saveRowEdit`/`saveAllEdits`),
+    `letterAction` (ثبت/ارجاع/پاسخ/بستن/بایگانی/یادداشت)، `referralComplete`, `deleteLetter`,
+    `deleteAttachment` و `uploadAttachment` (+`uploading`/`uploadRef`) و `refreshAll`.
+    ورودی‌ها: `letters`, `qc`, `refreshList/refreshStats/refreshReferrals`, `setError/setToast/setComment/
+    setDrawerLetter/setCompleteReferral`, `activeLetterId`, `canEditOf`.
+  - نکتهٔ دام: `refetch`های صفحه `refetchStats`/`refetchReferrals` نام دارند (نه `refresh…`) و
+    `editRowId` هم باید از هوک destructure شود؛ `handleRowClick`/`handleRowDoubleClick` (کلیک تکی = پرونده،
+    دوبار = ویرایش درجا) در صفحه ماندند و از `editRowId`/`startRowEdit` هوک استفاده می‌کنند.
+  - اعتبارسنجی: `npx react-scripts test --testPathPattern=correspondence` → **۲۱ تست / ۲ سوئیت سبز**؛
+    `npm run build` با `PUBLIC_URL=/assets` = «Compiled successfully»؛ ESLint (`no-undef`) بدون خطا و
+    هشدارهای باقی‌مانده همان ۵ هشدار قبلی HEAD است (۸ → ۵).
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Dialog, IconButton, Menu, MenuItem,
-  Paper, Stack, Tab, Tabs, TextField,
+  Alert, Box, Button, Chip, CircularProgress, IconButton, Menu, MenuItem,
+  Paper, Stack,
   Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
@@ -23,7 +23,6 @@ import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SaveIcon from '@mui/icons-material/Save';
@@ -40,26 +39,29 @@ import {
   ModulePager, ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../contracts/contractModuleUi';
 import {
-  ACCENT, CONFIDENTIALITY_META, DANGER, DIRECTION_META, EVENT_META, INCOMING, INTERNAL, KpiTile,
+  ACCENT, DANGER, DIRECTION_META, INCOMING, INTERNAL, KpiTile,
   OK, OUTGOING, PRIORITY_META, REFERRAL_STATUS_META, SLATE, STATUS_META, WARN, chipSx,
-  dateLabel, dateTimeLabel, daysBetween, daysColor, daysLabel, money, timeLabel, MetaChip,
+  dateLabel, daysBetween, daysColor, daysLabel, timeLabel,
 } from './correspondenceUi';
 import {
   PartyPicker, partyValue,
 } from './correspondenceLookups';
 import {
-  CellText, InfoGroup, InfoTable, InlineDate, InlineSelect,
+  CellText, InlineDate, InlineSelect,
   InlineText, inlineSx, joinParts,
 } from './correspondenceFormUi';
 import {
-  EMPTY_ALLOWED_FIELDS, ENTRY_METHOD_META, LetterFormDialog, NULLABLE_FIELDS,
-  asList, safeDate,
+  ENTRY_METHOD_META, LetterFormDialog,
+  asList,
 } from './correspondenceLetterForm';
-import { CONTACTS_KEY, LETTERS_KEY, META_KEY, REFERRALS_KEY, STATS_KEY } from './correspondenceQueryKeys';
+import { CONTACTS_KEY, META_KEY, REFERRALS_KEY, STATS_KEY } from './correspondenceQueryKeys';
 import useLetterListState from './useLetterListState';
 import usePrintDocument from '../../core/print/usePrintDocument';
 import PrintPreviewDialog from '../../core/print/PrintPreviewDialog';
 import { CompleteReferralDialog, ReferDialog } from './correspondenceReferDialogs';
+import LetterDetailsDialog from './correspondenceLetterDetails';
+import useLetterMutations from './useLetterMutations';
+
 
 export const LETTER_PAGE_PRESETS = {
   all: {
@@ -131,9 +133,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [comment, setComment] = useState('');
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
-  const [uploading, setUploading] = useState(false);
   const [previewState, setPreviewState] = useState(null);
-  const uploadRef = useRef(null);
 
   /* فیلترها، جست‌وجوی دی‌بانس‌شده، صفحه‌بندی و کوئری فهرست در یک هوک مستقل */
   const {
@@ -232,182 +232,25 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   });
   const activeLetter = drawerDetail || drawerLetter;
 
-  const refreshAll = () => {
-    refetch();
-    refetchStats();
-    refetchReferrals();
-  };
-
-  /* ---------- ویرایش درجا در جدول (الگوی گرید ورود اطلاعات) ---------- */
-  const [editRowId, setEditRowId] = useState(null);
-  const [drafts, setDrafts] = useState({});
-  const [savingIds, setSavingIds] = useState([]);
-  const [bulkSaving, setBulkSaving] = useState(false);
-
-  const EDITABLE_FIELDS = [
-    'number', 'company_reg_no', 'company_reg_date', 'unit_reg_no', 'unit_reg_date', 'unit_name',
-    'subject', 'category', 'delivery_type', 'entry_method', 'entry_time',
-    'delivered_by', 'delivered_by_name',
-    'sender_employee', 'sender_name', 'sender_party',
-    'party_account', 'party_name', 'receiver_employee', 'receiver_name', 'contract',
-    'letter_date', 'sent_date', 'due_date', 'priority', 'status',
-  ];
-  const NULLABLE_FIELD_LIST = NULLABLE_FIELDS;
-
-  const seedDraft = (letter) => ({
-    number: letter.number || '',
-    company_reg_no: letter.company_reg_no || '',
-    company_reg_date: safeDate(letter.company_reg_date),
-    unit_reg_no: letter.unit_reg_no || '',
-    unit_reg_date: safeDate(letter.unit_reg_date),
-    unit_name: letter.unit_name || '',
-    subject: letter.subject || '',
-    category: letter.category || '',
-    delivery_type: letter.delivery_type || 'in_person',
-    entry_method: letter.entry_method || 'manual',
-    entry_time: letter.entry_time ? String(letter.entry_time).slice(0, 5) : '',
-    delivered_by: letter.delivered_by || '',
-    delivered_by_name: letter.delivered_by_name || '',
-    sender_employee: letter.sender_employee || '',
-    sender_name: letter.sender_name || '',
-    sender_party: letter.sender_party || '',
-    party_account: letter.party_account || '',
-    party_name: letter.party_name || '',
-    receiver_employee: letter.receiver_employee || '',
-    receiver_name: letter.receiver_name || '',
-    contract: letter.contract || '',
-    letter_date: safeDate(letter.letter_date),
-    sent_date: safeDate(letter.sent_date),
-    due_date: safeDate(letter.due_date),
-    priority: letter.priority || 'normal',
-    status: letter.status || 'registered',
+  /* ---------- نوشتن: ویرایش درجای ردیف‌ها، ثبت/ارجاع/حذف/آپلود (هوک مستقل) ---------- */
+  const {
+    bulkSaving, deleteAttachment, deleteLetter, discardAll, discardRow, dirtyCount, draft,
+    editRowId, letterAction, patchDraft, referralComplete, refreshAll, rowDirty, rowEditing,
+    saveAllEdits, saveRowEdit, savingIds, startRowEdit, uploadAttachment, uploadRef, uploading,
+  } = useLetterMutations({
+    activeLetterId: activeLetter?.id,
+    canEditOf,
+    letters,
+    qc,
+    refreshList: refetch,
+    refreshReferrals: refetchReferrals,
+    refreshStats: refetchStats,
+    setComment,
+    setCompleteReferral,
+    setDrawerLetter,
+    setError,
+    setToast,
   });
-
-  /** فقط تفاوت‌های ردیف با مقادیر اصلی به سرور فرستاده می‌شود (PATCH سبک). */
-  const buildPatch = (letter, draftValues) => {
-    const original = seedDraft(letter);
-    const payload = {};
-    EDITABLE_FIELDS.forEach((key) => {
-      const next = draftValues[key] ?? '';
-      const before = original[key] ?? '';
-      if (String(next) === String(before)) return;
-      if (next === '') {
-        if (EMPTY_ALLOWED_FIELDS.includes(key)) {
-          payload[key] = '';
-          return;
-        }
-        if (!NULLABLE_FIELDS.includes(key)) return;
-        payload[key] = null;
-        return;
-      }
-      payload[key] = next;
-    });
-    return payload;
-  };
-
-  const letterById = (id) => letters.find((row) => row.letter.id === id)?.letter || null;
-
-  const startRowEdit = (letter) => {
-    if (!canEditOf(letter)) {
-      setError('برای ویرایش این نامه مجوز «ویرایش مکاتبات» لازم است.');
-      return;
-    }
-    setDrafts((previous) => (previous[letter.id] ? previous : {
-      ...previous,
-      [letter.id]: seedDraft(letter),
-    }));
-    setEditRowId(letter.id);
-  };
-
-  const patchDraft = (key) => (value) => setDrafts((previous) => {
-    if (!editRowId) return previous;
-    const current = previous[editRowId] || seedDraft(letterById(editRowId) || {});
-    return { ...previous, [editRowId]: { ...current, [key]: value } };
-  });
-
-  const discardRow = (id) => {
-    setDrafts((previous) => {
-      const next = { ...previous };
-      delete next[id];
-      return next;
-    });
-    setEditRowId((previous) => (previous === id ? null : previous));
-  };
-
-  const discardAll = () => {
-    setDrafts({});
-    setEditRowId(null);
-  };
-
-  const applyPatch = async (id) => {
-    const letter = letterById(id);
-    const draftValues = drafts[id];
-    if (!letter || !draftValues) return { id, ok: false, empty: true };
-    const payload = buildPatch(letter, draftValues);
-    if (!Object.keys(payload).length) {
-      discardRow(id);
-      return { id, ok: true, empty: true };
-    }
-    setSavingIds((previous) => (previous.includes(id) ? previous : [...previous, id]));
-    try {
-      await axiosInstance.patch(`/letters/${id}/`, payload);
-      setDrafts((previous) => {
-        const next = { ...previous };
-        delete next[id];
-        return next;
-      });
-      return { id, ok: true, empty: false };
-    } catch (requestError) {
-      const details = requestError?.response?.data;
-      const firstError = details && typeof details === 'object'
-        ? Object.entries(details)
-          .map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(' ') : value}`)[0]
-        : '';
-      setError(firstError || details?.detail || 'ذخیرهٔ تغییرات ردیف ممکن نشد.');
-      return { id, ok: false, empty: false };
-    } finally {
-      setSavingIds((previous) => previous.filter((item) => item !== id));
-    }
-  };
-
-  const afterSave = (saved, failed) => {
-    if (!saved && !failed) return;
-    qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-    refreshAll();
-    if (!saved) return;
-    setToast(failed
-      ? `${toPersianDigits(saved)} ردیف ذخیره شد و ${toPersianDigits(failed)} ردیف خطا داشت.`
-      : `${toPersianDigits(saved)} ردیف ذخیره شد.`);
-  };
-
-  const saveRowEdit = async (id) => {
-    if (!id) return;
-    const result = await applyPatch(id);
-    if (result.ok) setEditRowId((previous) => (previous === id ? null : previous));
-    afterSave(result.ok && !result.empty ? 1 : 0, result.ok ? 0 : 1);
-  };
-
-  const saveAllEdits = async () => {
-    const ids = Object.keys(drafts).map(Number);
-    if (!ids.length) return;
-    setBulkSaving(true);
-    let saved = 0;
-    let failed = 0;
-    for (const id of ids) {
-      // eslint-disable-next-line no-await-in-loop
-      const result = await applyPatch(id);
-      if (result.ok && !result.empty) saved += 1;
-      if (!result.ok) failed += 1;
-    }
-    setBulkSaving(false);
-    setEditRowId(null);
-    afterSave(saved, failed);
-  };
-
-  const rowEditing = (letter) => editRowId === letter.id;
-  const rowDirty = (letter) => Boolean(drafts[letter.id]);
-  const dirtyCount = Object.keys(drafts).length;
-  const draft = (editRowId && drafts[editRowId]) || {};
 
   /** کلیک تکی = پروندهٔ نامه، دوبار کلیک = ویرایش درجا (بدون باز شدن هم‌زمان پرونده). */
   const rowClickTimer = useRef(0);
@@ -424,70 +267,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     startRowEdit(row.letter);
   };
 
-  const letterAction = useMutation({
-    mutationFn: ({ id, action, payload }) => axiosInstance
-      .post(`/letters/${id}/${action}/`, payload || {})
-      .then((response) => response.data),
-    onSuccess: (data, variables) => {
-      refreshAll();
-      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-      const updated = variables.action === 'refer' ? data.letter : data;
-      if (updated?.id) {
-        setDrawerLetter((previous) => (previous && previous.id === updated.id
-          ? { ...previous, ...updated } : previous));
-      }
-      const messages = {
-        register: 'شماره نامه ثبت شد.',
-        refer: 'ارجاع نامه ثبت شد.',
-        archive: 'نامه بایگانی شد.',
-        close: 'پروندهٔ نامه بسته شد.',
-        comment: 'یادداشت ثبت شد.',
-      };
-      setToast(messages[variables.action] || 'عملیات انجام شد.');
-      setError('');
-      if (variables.action === 'comment') setComment('');
-    },
-    onError: (err) => setError(err?.response?.data?.detail || 'انجام عملیات ممکن نشد.'),
-  });
-
-  const referralComplete = useMutation({
-    mutationFn: ({ id, payload }) => axiosInstance
-      .post(`/letter-referrals/${id}/complete/`, payload)
-      .then((response) => response.data),
-    onSuccess: () => {
-      refreshAll();
-      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-      setToast('پاسخ و نتیجهٔ ارجاع ثبت شد.');
-      setCompleteReferral(null);
-    },
-    onError: (err) => setError(err?.response?.data?.detail || 'ثبت پاسخ ارجاع انجام نشد.'),
-  });
-
-  /** حذف نامه (فقط با مجوز حذف مکاتبات) */
-  const deleteLetter = useMutation({
-    mutationFn: (id) => axiosInstance.delete(`/letters/${id}/`),
-    onSuccess: () => {
-      refreshAll();
-      setDrawerLetter(null);
-      setToast('نامه حذف شد.');
-      setError('');
-    },
-    onError: (err) => setError(
-      err?.response?.data?.detail || 'حذف نامه ممکن نشد (مجوز یا وابستگی).',
-    ),
-  });
-
-  /** حذف پیوست (فقط با مجوز حذف مکاتبات) */
-  const deleteAttachment = useMutation({
-    mutationFn: (attachmentId) => axiosInstance.delete(`/letter-attachments/${attachmentId}/`),
-    onSuccess: () => {
-      refreshAll();
-      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-      setToast('پیوست حذف شد.');
-      setError('');
-    },
-    onError: (err) => setError(err?.response?.data?.detail || 'حذف پیوست ممکن نشد.'),
-  });
 
   const rows = useMemo(() => letters.map((letter) => {
     const days = daysBetween(letter.due_date);
@@ -557,29 +336,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       setToast('این نامه فایل قابل‌نمایش ندارد.');
     } catch (err) {
       setError('دریافت پیوست‌های نامه ممکن نشد.');
-    }
-  };
-
-  const uploadAttachment = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !activeLetter?.id) return;
-    setUploading(true);
-    try {
-      const body = new FormData();
-      body.append('file', file);
-      body.append('title', file.name);
-      body.append('kind', 'attachment');
-      await axiosInstance.post(`/letters/${activeLetter.id}/attachments/`, body, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      await qc.invalidateQueries({ queryKey: ['correspondence-letter', activeLetter.id] });
-      refreshAll();
-      setToast('پیوست بارگذاری شد.');
-    } catch (err) {
-      setError('بارگذاری پیوست انجام نشد.');
-    } finally {
-      setUploading(false);
-      if (uploadRef.current) uploadRef.current.value = '';
     }
   };
 
@@ -1346,384 +1102,35 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         ) : null}
       </Menu>
 
-      <Dialog
+      <LetterDetailsDialog
         open={Boolean(drawerLetter)}
+        letter={activeLetter}
+        tab={drawerTab}
+        onTabChange={setDrawerTab}
         onClose={() => setDrawerLetter(null)}
-        maxWidth="lg"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: '18px', height: { xs: '96%', md: '90%' } } }}
-      >
-        {activeLetter ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
-            <Box sx={{ p: 1.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Stack direction="row" alignItems="flex-start" spacing={1} sx={{ minWidth: 0 }}>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography noWrap title={activeLetter.subject} sx={{ fontSize: 15, fontWeight: 900 }}>
-                    {activeLetter.subject || 'بدون موضوع'}
-                  </Typography>
-                  <Typography noWrap sx={{ fontSize: 12.5, color: MUTED, fontWeight: 600 }}>
-                    {activeLetter.number || activeLetter.archive_ref
-                      ? `شماره: ${toPersianDigits(activeLetter.number || activeLetter.archive_ref)}`
-                      : 'بدون شماره'}
-                    {activeLetter.contract_title ? ` · قرارداد: ${activeLetter.contract_title}` : ''}
-                    {activeLetter.entry_method_display ? ` · ورود: ${activeLetter.entry_method_display}` : ''}
-                  </Typography>
-                </Box>
-                <IconButton size="small" onClick={() => setDrawerLetter(null)} aria-label="بستن">
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-              <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                <MetaChip meta={DIRECTION_META[activeLetter.direction]} />
-                <MetaChip meta={STATUS_META[activeLetter.status]} />
-                <MetaChip meta={PRIORITY_META[activeLetter.priority]} />
-                {activeLetter.confidentiality !== 'normal' ? (
-                  <MetaChip meta={CONFIDENTIALITY_META[activeLetter.confidentiality]} />
-                ) : null}
-                <Chip size="small" label={`پیوست: ${toPersianDigits(activeLetter.attachment_count || 0)}`}
-                  sx={chipSx(INTERNAL)} />
-                <Chip size="small" label={`ارجاع: ${toPersianDigits(activeLetter.referral_count || 0)}`}
-                  sx={chipSx(WARN)} />
-              </Stack>
-              <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
-                {!activeLetter.number && canEditOf(activeLetter) ? (
-                  <Button size="small" variant="outlined" startIcon={<TaskAltIcon />}
-                    onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'register' })}>
-                    ثبت شماره
-                  </Button>
-                ) : null}
-                {!['archived', 'closed', 'canceled'].includes(activeLetter.status) ? (
-                  <>
-                    {canEditOf(activeLetter) ? (
-                      <Button size="small" variant="outlined" startIcon={<ForwardToInboxIcon />}
-                        onClick={() => setReferLetter(activeLetter)}>
-                        ارجاع
-                      </Button>
-                    ) : null}
-                    {canCreateOf(activeLetter) ? (
-                      <Button size="small" variant="outlined" startIcon={<ReplyIcon />}
-                        onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'reply', payload: {} })}>
-                        پاسخ
-                      </Button>
-                    ) : null}
-                    {canEditOf(activeLetter) ? (
-                      <Button size="small" variant="outlined" startIcon={<TaskAltIcon />}
-                        onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'close' })}>
-                        بستن پرونده
-                      </Button>
-                    ) : null}
-                  </>
-                ) : null}
-                {activeLetter.status !== 'archived' && canEditOf(activeLetter) ? (
-                  <Button size="small" variant="outlined" startIcon={<ArchiveIcon />}
-                    onClick={() => letterAction.mutate({ id: activeLetter.id, action: 'archive' })}>
-                    بایگانی
-                  </Button>
-                ) : null}
-                {canEditOf(activeLetter) ? (
-                  <Button size="small" variant="outlined" startIcon={<EditNoteIcon />}
-                    onClick={() => { setFormLetter(activeLetter); setFormOpen(true); }}>
-                    ویرایش
-                  </Button>
-                ) : null}
-                <Button size="small" variant="outlined" startIcon={<PrintOutlinedIcon />}
-                  onClick={() => print.openDocument({ document: 'letter', payload: { id: activeLetter.id } })}>
-                  چاپ
-                </Button>
-              </Stack>
-            </Box>
-
-            <Tabs value={drawerTab} onChange={(_event, value) => setDrawerTab(value)}
-              sx={{
-                minHeight: 38, px: 1.5,
-                borderBottom: '1px solid', borderColor: 'divider',
-                '& .MuiTab-root': { minHeight: 38, py: 0.4, fontSize: 12.5, fontWeight: 800 },
-                '& .MuiTabs-indicator': { bgcolor: ACCENT, height: 2.5, borderRadius: 2 },
-              }}>
-              <Tab value="info" label="مشخصات" />
-              <Tab value="referrals" label={`ارجاعات (${toPersianDigits(activeLetter.referral_count || 0)})`} />
-              <Tab value="attachments" label={`پیوست‌ها (${toPersianDigits(activeLetter.attachment_count || 0)})`} />
-              <Tab value="history" label="تاریخچه" />
-            </Tabs>
-
-            <Box sx={{ p: 1.75, overflowY: 'auto', flex: 1, minWidth: 0 }}>
-              {drawerTab === 'info' ? (
-                <Box sx={{ minWidth: 0 }}>
-                  <InfoGroup
-                    icon={activeLetter.direction === 'outgoing' ? SendIcon : InboxIcon}
-                    title={activeLetter.direction === 'outgoing' ? 'ثبت و ارسال' : 'ثبت و ورود'}
-                    color={activeLetter.direction === 'outgoing' ? OUTGOING : WARN}>
-                    <InfoTable rows={[
-                      [activeLetter.direction === 'outgoing' ? 'نحوهٔ ثبت / ارسال' : 'نحوهٔ ورود',
-                        activeLetter.entry_method_display],
-                      [activeLetter.direction === 'outgoing' ? 'ساعت ارسال' : 'ساعت ورود',
-                        activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''],
-                      [activeLetter.direction === 'outgoing' ? 'نوع ارسال' : 'نوع تحویل',
-                        activeLetter.delivery_type_display],
-                      [activeLetter.direction === 'outgoing'
-                        ? 'تحویل‌دهنده / پیک' : 'تحویل‌دهنده / ثبت‌کنندهٔ ورود',
-                      activeLetter.delivered_by_label
-                        || activeLetter.delivered_by_name
-                        || activeLetter.entered_by_label],
-                      ['تاریخ ارسال', activeLetter.direction === 'outgoing'
-                        ? dateLabel(activeLetter.sent_date) : ''],
-                      ['تاریخ ورود', activeLetter.direction === 'outgoing'
-                        ? '' : dateLabel(activeLetter.received_date)],
-                      ['واحد ثبت‌کننده', activeLetter.unit_name],
-                      ['تاریخ نامه', dateLabel(activeLetter.letter_date)],
-                    ]} />
-                  </InfoGroup>
-
-                  <InfoGroup icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
-                    <InfoTable rows={[
-                      ['شماره نامه', activeLetter.number ? toPersianDigits(activeLetter.number) : ''],
-                      ['شماره اندیکاتور', activeLetter.indicator_no
-                        ? toPersianDigits(activeLetter.indicator_no) : ''],
-                      ['شماره ترنسمیتال', activeLetter.transmittal_no
-                        ? toPersianDigits(activeLetter.transmittal_no) : ''],
-                      ['شماره نامهٔ طرف مقابل', activeLetter.external_number
-                        ? toPersianDigits(activeLetter.external_number) : ''],
-                      ['شماره بایگانی / ارسالی', activeLetter.archive_ref
-                        ? toPersianDigits(activeLetter.archive_ref) : ''],
-                      ['شماره ثبت ورود به شرکت',
-                        activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''],
-                      ['تاریخ ثبت ورود به شرکت', dateLabel(activeLetter.company_reg_date)],
-                      ['شماره ثبت ورود به واحد',
-                        activeLetter.unit_reg_no ? toPersianDigits(activeLetter.unit_reg_no) : ''],
-                      ['تاریخ ثبت ورود به واحد', dateLabel(activeLetter.unit_reg_date)],
-                      ['پاسخ به نامه', activeLetter.reply_number],
-                    ]} />
-                  </InfoGroup>
-
-                  <InfoGroup icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
-                    <InfoTable rows={[
-                      ['فرستنده', activeLetter.sender_label
-                        || activeLetter.sender_name
-                        || activeLetter.sender_party_name
-                        || activeLetter.sender_organization_name],
-                      ['گیرنده', activeLetter.receiver_employee_label || activeLetter.receiver_name],
-                      ['مخاطب', activeLetter.correspondent_name],
-                      ['طرف حساب', activeLetter.party_account_name
-                        || activeLetter.party_name
-                        || activeLetter.organization_name],
-                      ['قرارداد مرتبط', activeLetter.contract_title
-                        || (activeLetter.contract_number
-                          ? `شماره ${toPersianDigits(activeLetter.contract_number)}` : '')],
-                    ]} />
-                  </InfoGroup>
-
-                  <InfoGroup icon={MailOutlineIcon} title="مشخصات" color={INTERNAL}>
-                    <InfoTable rows={[
-                      ['نوع مکاتبه', activeLetter.category_title],
-                      ['اولویت', activeLetter.priority_display],
-                      ['محرمانگی', activeLetter.confidentiality_display],
-                      ['مهلت پاسخ', activeLetter.due_date
-                        ? `${dateLabel(activeLetter.due_date)} (${daysLabel(daysBetween(activeLetter.due_date))})`
-                        : ''],
-                      ['ثبت‌کننده در سامانه', activeLetter.created_by_name],
-                      ['مبلغ', activeLetter.amount
-                        ? `${money(activeLetter.amount)} ${activeLetter.currency || 'ریال'}` : ''],
-                    ]} />
-                  </InfoGroup>
-
-                  <InfoGroup icon={EditNoteIcon} title="موضوع و متن" color={SLATE}>
-                    <InfoTable columns={1} rows={[
-                      ['موضوع', activeLetter.subject],
-                      ['خلاصه', activeLetter.summary],
-                      ['متن نامه', activeLetter.body],
-                    ]} />
-                  </InfoGroup>
-                </Box>
-              ) : null}
-
-              {drawerTab === 'referrals' ? (
-                <Stack spacing={1}>
-                  {(activeLetter.referrals || []).length ? (activeLetter.referrals || []).map((referral) => {
-                    const meta = REFERRAL_STATUS_META[referral.status] || REFERRAL_STATUS_META.pending;
-                    const referralDays = daysBetween(referral.due_date);
-                    return (
-                      <Box key={referral.id} sx={{
-                        p: 1.1, borderRadius: '12px', border: '1px solid',
-                        borderColor: alpha(meta.color, 0.25), minWidth: 0,
-                        bgcolor: alpha(meta.color, 0.03),
-                      }}>
-                        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
-                          <Chip size="small" label={`سطح ${toPersianDigits(referral.seq)}`} sx={chipSx(SLATE)} />
-                          <MetaChip meta={meta} />
-                          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
-                            {referral.from_user_name ? `از ${referral.from_user_name}` : ''}
-                            {(referral.from_user_name && (referral.to_user_name || referral.to_name)) ? ' → ' : ''}
-                            {referral.to_user_name || referral.to_name || ''}
-                          </Typography>
-                          <Box sx={{ flex: 1 }} />
-                          <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                            {dateLabel(referral.referred_on)}
-                          </Typography>
-                        </Stack>
-
-                        {referral.instruction ? (
-                          <Box sx={{ mt: 0.75 }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>دستور / اقدام درخواستی</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.note ? (
-                          <Box sx={{ mt: 0.5 }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>توضیح</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.note}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.due_date ? (
-                          <Typography sx={{ fontSize: 11.5, mt: 0.4, color: daysColor(referralDays) }}>
-                            مهلت اقدام: {dateLabel(referral.due_date)} ({daysLabel(referralDays)})
-                          </Typography>
-                        ) : null}
-
-                        {referral.response ? (
-                          <Box sx={{ mt: 0.75, p: 0.75, borderRadius: '8px', bgcolor: alpha(OK, 0.05) }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: OK }}>پاسخ / جوابیه</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.response}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.result ? (
-                          <Box sx={{ mt: 0.5, p: 0.75, borderRadius: '8px', bgcolor: alpha(INCOMING, 0.05) }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: INCOMING }}>نتیجه</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.result}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.result_note && !referral.result ? (
-                          <Typography sx={{ fontSize: 11.5, color: OK, mt: 0.3 }}>
-                            یادداشت نتیجه: {referral.result_note}
-                          </Typography>
-                        ) : null}
-
-                        <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
-                          sx={{ mt: 0.6 }}>
-                          {referral.answered_on ? (
-                            <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                              پاسخ در {dateLabel(referral.answered_on)}
-                              {referral.answered_by_name ? ` توسط ${referral.answered_by_name}` : ''}
-                            </Typography>
-                          ) : null}
-                          {!['done', 'canceled'].includes(referral.status) ? (
-                            <Button size="small" variant="contained" startIcon={<TaskAltIcon />}
-                              onClick={() => setCompleteReferral(referral)}
-                              sx={{ fontSize: 11.5, py: 0.2, bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>
-                              ثبت پاسخ و نتیجه
-                            </Button>
-                          ) : null}
-                        </Stack>
-                      </Box>
-                    );
-                  }) : (
-                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>
-                      هنوز ارجاعی برای این نامه ثبت نشده است.
-                    </Typography>
-                  )}
-                </Stack>
-              ) : null}
-
-              {drawerTab === 'attachments' ? (
-                <Stack spacing={1}>
-                  <Button size="small" variant="outlined" startIcon={<AttachFileIcon />}
-                    disabled={uploading || !canEditOf(activeLetter)}
-                    onClick={() => uploadRef.current?.click()}>
-                    {uploading ? 'در حال بارگذاری…' : 'افزودن پیوست'}
-                  </Button>
-                  <input ref={uploadRef} type="file" hidden onChange={uploadAttachment} />
-                  {(activeLetter.attachments || []).length ? (activeLetter.attachments || []).map((file, fileIndex) => (
-                    <Stack key={file.id} direction="row" alignItems="center" spacing={0.75}
-                      sx={{ p: 0.75, borderRadius: '10px', border: '1px solid', borderColor: 'divider', minWidth: 0 }}>
-                      <AttachFileIcon sx={{ fontSize: 16, color: INTERNAL }} />
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography noWrap title={file.title} sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                          {file.title || 'پیوست'}
-                        </Typography>
-                        <Typography noWrap sx={{ fontSize: 11.5, color: MUTED }}>
-                          {file.kind_display} · {toPersianDigits(Math.max(1, Math.round((file.size || 0) / 1024)))} کیلوبایت
-                        </Typography>
-                      </Box>
-                      <Tooltip title="مشاهدهٔ پیوست">
-                        <IconButton size="small" aria-label="مشاهدهٔ پیوست"
-                          onClick={() => openPreview(activeLetter.attachments, fileIndex, activeLetter.subject)}>
-                          <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="دانلود">
-                        <IconButton size="small" aria-label="دانلود پیوست"
-                          component="a" href={file.download_url || file.file_url}
-                          target="_blank" rel="noreferrer">
-                          <DownloadIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                      </Tooltip>
-                      {canDeleteOf(activeLetter) ? (
-                        <Tooltip title="حذف پیوست">
-                          <span>
-                            <IconButton size="small" color="error" aria-label="حذف پیوست"
-                              disabled={deleteAttachment.isPending}
-                              onClick={() => {
-                                if (window.confirm(`پیوست «${file.title || 'بدون عنوان'}» حذف شود؟`)) {
-                                  deleteAttachment.mutate(file.id);
-                                }
-                              }}>
-                              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      ) : null}
-                    </Stack>
-                  )) : (
-                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>پیوستی ثبت نشده است.</Typography>
-                  )}
-                </Stack>
-              ) : null}
-
-              {drawerTab === 'history' ? (
-                <Stack spacing={1}>
-                  <Stack direction="row" spacing={0.75} alignItems="flex-start">
-                    <TextField size="small" fullWidth multiline minRows={2} label="یادداشت جدید"
-                      value={comment} onChange={(event) => setComment(event.target.value)}
-                      disabled={!canEditOf(activeLetter)} />
-                    <Button size="small" variant="contained"
-                      disabled={!comment.trim() || letterAction.isPending || !canEditOf(activeLetter)}
-                      onClick={() => letterAction.mutate({
-                        id: activeLetter.id, action: 'comment', payload: { note: comment },
-                      })}
-                      sx={{ bgcolor: ACCENT, minWidth: 80, height: 40 }}>
-                      ثبت
-                    </Button>
-                  </Stack>
-                  {(activeLetter.events || []).length ? (activeLetter.events || []).map((event) => (
-                    <Stack key={event.id} direction="row" spacing={0.75}
-                      sx={{
-                        p: 0.75, border: '1px solid', borderColor: 'divider',
-                        borderRadius: '10px', minWidth: 0,
-                      }}>
-                      <Box sx={{
-                        width: 8, height: 8, borderRadius: '50%', mt: 0.7, flex: '0 0 auto',
-                        bgcolor: EVENT_META[event.action]?.color || SLATE,
-                      }} />
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                          {EVENT_META[event.action]?.label || event.action}
-                        </Typography>
-                        {event.note ? (
-                          <Typography sx={{ fontSize: 11.5, whiteSpace: 'pre-wrap' }}>{event.note}</Typography>
-                        ) : null}
-                        <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                          {event.actor_name || '—'} · {dateTimeLabel(event.created_at)}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  )) : (
-                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>رویدادی ثبت نشده است.</Typography>
-                  )}
-                </Stack>
-              ) : null}
-            </Box>
-          </Box>
-        ) : null}
-      </Dialog>
+        comment={comment}
+        onCommentChange={setComment}
+        onCommentSubmit={() => letterAction.mutate({
+          id: activeLetter.id, action: 'comment', payload: { note: comment },
+        })}
+        commentPending={letterAction.isPending}
+        canEditOf={canEditOf}
+        canCreateOf={canCreateOf}
+        canDeleteOf={canDeleteOf}
+        onAction={(action, payload) => letterAction.mutate({ id: activeLetter.id, action, payload })}
+        onEdit={() => { setFormLetter(activeLetter); setFormOpen(true); }}
+        onPrint={() => print.openDocument({
+          document: 'letter', payload: { id: activeLetter.id },
+        })}
+        onRefer={() => setReferLetter(activeLetter)}
+        onCompleteReferral={setCompleteReferral}
+        onPreview={openPreview}
+        onUpload={uploadAttachment}
+        uploadRef={uploadRef}
+        uploading={uploading}
+        onDeleteAttachment={(file) => deleteAttachment.mutate(file.id)}
+        deleteAttachmentPending={deleteAttachment.isPending}
+      />
 
       <AttachmentPreviewDialog
         open={Boolean(previewState)}
