@@ -40,6 +40,7 @@ import { statementDisplayTitle } from './contracts/statementKinds';
 import { toGregorian, toJalali, getJalaliParts } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { printElement } from '../core/print/printEngine';
 
 
 const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
@@ -948,7 +949,7 @@ const ContractCalendarPage = () => {
             </Tooltip>
             <Button variant="outlined" startIcon={<CalendarTodayIcon />} onClick={goToday}>امروز</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
-            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'تقویم قراردادها' })}>چاپ</Button>
           </>
         )}
       />

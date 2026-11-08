@@ -59,6 +59,7 @@ import {
   SectionTitle, SubjectPill, dateLabel, dayDiff, deltaTone, effectDelta,
   groupTone, money, signedMoney, toNumber, useAddendumStyle,
 } from './contracts/AddendumWorkspaceUI';
+import { printElement } from '../core/print/printEngine';
 
 const EMPTY = {
   id: null,
@@ -732,7 +733,7 @@ const ContractAddendumsPage = () => {
                 پرونده
               </Button>
             ) : null}
-            {contractId ? <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button> : null}
+            {contractId ? <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'الحاقیه‌های قرارداد' })}>چاپ</Button> : null}
             {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => downloadCsv(filtered)}>خروجی</Button> : null}
             {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>الحاقیه جدید</Button> : null}
             {contractId ? (

@@ -30,6 +30,7 @@ import {
   ModulePager, ModuleTable, ModuleToolbar,
   useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
+import { printElement } from '../core/print/printEngine';
 
 const ACCENT = '#f59e0b';
 const OK = '#0f766e';
@@ -435,7 +436,7 @@ const ContractGuaranteesMonitorPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => printElement('main', { title: 'پایش ضمانت‌نامه‌ها' })}>چاپ</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="contained" startIcon={<LockOpenIcon />} onClick={() => navigate('/contracts-guarantees')}
               sx={{ bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>

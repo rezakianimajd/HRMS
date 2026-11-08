@@ -21,6 +21,7 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useEmployees, useContractTypes } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 import { buildContractPrintHtml } from '../core/utils/contractPrintHtml';
+import { printHtml } from '../core/print/printEngine';
 import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 
@@ -178,8 +179,6 @@ const ContractsPage = () => {
   };
 
   const handlePrint = () => {
-    const w = window.open('', '_blank', 'width=800,height=900');
-    if (!w) return;
     const html = buildContractPrintHtml({
       textValue,
       logoUrl: companyLogo,
@@ -188,10 +187,7 @@ const ContractsPage = () => {
       signatureImageUrl: textTarget?.signature_image_url,
       reportTitle: 'قرارداد کار',
     });
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 400);
+    printHtml(html, { title: 'قرارداد کار' });
   };
 
   const moneyField = (key, label) => (

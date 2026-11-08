@@ -38,6 +38,7 @@ import {
   buildInitialValues, parseNumericInput, recalculateStatements,
 } from './financialStatementsTemplate';
 import { applyNoteOverrides, buildNotePages, NOTE_AMOUNT_COLUMNS } from './financialNotes';
+import { printElement } from '../../../core/print/printEngine';
 
 const ICONS = {
   book: MenuBookIcon,
@@ -1304,7 +1305,7 @@ const FinancialStatementsPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'صورت‌های مالی', orientation: 'landscape' })}>
               چاپ
             </Button>
           </>

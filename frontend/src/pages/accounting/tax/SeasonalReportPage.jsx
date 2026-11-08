@@ -31,6 +31,7 @@ import {
 import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
 import SeasonalFilterBuilder from './SeasonalFilterBuilder';
 import { rowsToTsv } from './seasonalGridEntry';
+import { printHtml } from '../../../core/print/printEngine';
 import {
   StudioPanelSkeleton, StudioStatusBar, useStudio,
 } from './seasonalStudioUi';
@@ -1763,10 +1764,8 @@ const SeasonalReportPage = () => {
       });
   };
 
-  /* چاپ / PDF مرورگر */
+  /* چاپ / PDF مرورگر (از موتور چاپ یکپارچه، بدون پنجرهٔ پاپ‌آپ) */
   const printReport = () => {
-    const printable = typeof window.open === 'function' ? window.open('', '_blank') : null;
-    if (!printable) { setToast('امکان باز کردن پنجرهٔ چاپ نیست.'); return; }
     const rowsHtml = filledRows.map((row, index) => `
       <tr>
         <td>${toPersianDigits(index + 1)}</td>
@@ -1784,20 +1783,18 @@ const SeasonalReportPage = () => {
     const rulesetNote = rulesetStatus === 'verified'
       ? 'تأییدشده'
       : `تأییدنشده (نسخهٔ ${reference?.ruleset_version || 'نامشخص'})`;
-    printable.document.write(`<html dir="rtl" lang="fa"><head><meta charset="utf-8" />
+    printHtml(`<html dir="rtl" lang="fa"><head><meta charset="utf-8" />
       <title>صورت معاملات فصلی خرید</title>
-      <style>body{font-family:Tahoma;padding:16px}table{width:100%;border-collapse:collapse}
-      th,td{border:1px solid #888;padding:4px;font-size:11px;text-align:center}
+      <style>@page{size:A4 landscape;margin:10mm}body{font-family:Tahoma;padding:8px;direction:rtl}table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #888;padding:4px;font-size:10px;text-align:center}
+      thead{display:table-header-group}tr{page-break-inside:avoid}
       h3{margin:0 0 4px}.note{font-size:10px;color:#92400e;margin:0 0 8px}</style></head><body>
       <h3>صورت معاملات فصلی خرید — ${yearLabel} — ${quarterLabel}</h3>
       <p class="note">وضعیت قواعد/قالب TTMS: ${rulesetNote}</p>
       <table><thead><tr><th>ردیف</th><th>نوع</th><th>نام شرکت / عنوان</th><th>نام</th>
       <th>نام خانوادگی</th><th>شناسه/کد ملی</th><th>مبلغ</th><th>مالیات</th>
       <th>جمع کل</th><th>تاریخ</th><th>شماره فاکتور</th>
-      </tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
-    printable.document.close();
-    printable.focus();
-    printable.print();
+      </tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`, { title: 'صورت معاملات فصلی خرید' });
   };
 
 

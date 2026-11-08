@@ -31,6 +31,7 @@ import {
   DisputeContractsCard, DisputeDetailDrawer, DisputeEditorDialog, DisputeSeverityCard,
   DisputeStatusCard, DisputeTable, disputeStatusMeta, severityMeta,
 } from './contracts/DisputeWorkspaceUI';
+import { printElement } from '../core/print/printEngine';
 
 const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 const n = (value) => Number(value) || 0;
@@ -241,7 +242,7 @@ const ContractDisputesPage = () => {
         actions={(
           <>
             <Tooltip title="به‌روزرسانی"><span><Button variant="outlined" disabled={isFetching} onClick={() => refetch()} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span></Tooltip>
-            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => printElement('main', { title: 'اختلافات قرارداد' })}>چاپ</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>اختلاف جدید</Button>
           </>

@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../../core/api/axiosConfig';
+import { printElement } from '../../../core/print/printEngine';
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
@@ -65,6 +66,7 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
   const rows = data?.rows || [];
   const acc = data?.account || {};
   const range = `${dateFrom ? toJalali(dateFrom) : 'ابتدا'} — ${dateTo ? toJalali(dateTo) : 'تا امروز'}`;
+  const contentRef = useRef(null);
 
   return (
     <Dialog open={Boolean(node)} onClose={onClose} fullWidth maxWidth="md"
@@ -86,7 +88,7 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 2 }}>
+      <DialogContent sx={{ p: 2 }} ref={contentRef}>
         {node ? (
           <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
             <Chip size="small" label={`مانده ابتدای دوره: ${fmtMoney(node.opening_balance_debit)} بدهکار / ${fmtMoney(node.opening_balance_credit)} بستانکار`}
@@ -160,7 +162,8 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
       </DialogContent>
 
       <DialogActions sx={{ px: 2, py: 1.5, borderTop: '1px solid rgba(148,163,184,0.22)' }}>
-        <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}
+        <Button size="small" variant="outlined" startIcon={<PrintIcon />}
+          onClick={() => printElement(contentRef.current, { title: 'دفتر تفصیلی حساب', orientation: 'landscape' })}
           sx={{ borderRadius: '12px', fontFamily: FONT }}>چاپ</Button>
         <Box sx={{ flex: 1 }} />
         <Button size="small" variant="contained" onClick={onClose}

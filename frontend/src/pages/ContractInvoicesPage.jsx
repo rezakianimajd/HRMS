@@ -37,6 +37,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { printElement } from '../core/print/printEngine';
 
 const GREEN = '#0f766e';
 const AMBER = '#b45309';
@@ -362,7 +363,7 @@ const ContractInvoicesPage = () => {
                 پرونده قرارداد
               </Button>
             ) : null}
-            {scoped ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
+            {scoped ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => printElement('main', { title: 'صورت‌حساب‌های قرارداد', orientation: 'landscape' })}>چاپ</Button> : null}
             {scoped ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>فاکتور جدید</Button>
             {scoped ? (

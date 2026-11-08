@@ -15,6 +15,7 @@ import { BLUE, COLOR_DARK, CYAN, GREEN, EmptyState, Loading, ReportHeader, glass
 import JalaliDatePicker from '../../../core/components/ui/JalaliDatePicker';
 import LedgerDrillDialog from './LedgerDrillDialog';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
+import { printElement } from '../../../core/print/printEngine';
 
 /*
  * گزارش ماتریس تراز حساب‌ها — کارت‌های «سطح تراز»، «زیر سطح» (ریزِ سطوح پایین‌تر) و
@@ -339,7 +340,7 @@ const MatrixReportPage = () => {
           <>
             <Button size="small" variant="outlined" startIcon={<RestartAltIcon />} onClick={resetAll}
               sx={{ borderRadius: '12px', fontFamily: FONT }}>بازنشانی</Button>
-            <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}
+            <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'گزارش ماتریسی', orientation: 'landscape' })}
               sx={{ borderRadius: '12px', fontFamily: FONT, background: `linear-gradient(135deg,${CYAN},#0891b2)`,
                 boxShadow: `0 8px 18px ${CYAN}44` }}>چاپ</Button>
           </>

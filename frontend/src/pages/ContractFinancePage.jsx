@@ -54,6 +54,7 @@ import { statementDisplayTitle, statementKindOf } from './contracts/statementKin
 import {
   paidByBucket, paidTotalsByKind, paymentAllocationRows, unlinkedPayments,
 } from './contracts/contractPaymentLinks';
+import { printElement } from '../core/print/printEngine';
 
 /* ---------- پالت معنایی تحلیل مالی ---------- */
 const CLR = {
@@ -1325,7 +1326,7 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
               </Button>
             ) : null}
             {scoped ? (
-              <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'مالی قراردادها', orientation: 'landscape' })}>چاپ</Button>
             ) : null}
             {scoped ? (
               <Button variant="outlined" startIcon={<BusinessIcon />}

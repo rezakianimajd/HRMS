@@ -7,6 +7,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined';
 import axiosInstance from '../../core/api/axiosConfig';
+import { printElement, printHtml } from '../../core/print/printEngine';
 import { chipSx, moneyLabel } from './treasuryMasterUi';
 
 const PRINT_CSS = `
@@ -122,21 +123,21 @@ const TreasuryVoucherDialog = ({ open, endpoint, onClose }) => {
   });
   const data = voucherQuery.data;
   const frameRef = React.useRef(null);
+  const contentRef = React.useRef(null);
 
+  /* چاپ از موتور چاپ یکپارچه: HTML سرور (قالب) یا ناحیهٔ دیدهٔ سند */
   const printFrame = () => {
-    const frame = frameRef.current;
-    if (frame && frame.contentWindow) {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
+    if (data?.html) {
+      printHtml(data.html, { title: 'سند خزانه‌داری' });
       return;
     }
-    window.print();
+    printElement(contentRef.current, { title: 'سند خزانه‌داری' });
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <style>{PRINT_CSS}</style>
-      <DialogContent dividers>
+      <DialogContent dividers ref={contentRef}>
         {voucherQuery.isLoading || !data ? (
           <Box sx={{ py: 6, textAlign: 'center' }}>
             <CircularProgress size={22} />

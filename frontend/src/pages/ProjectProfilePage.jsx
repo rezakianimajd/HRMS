@@ -31,6 +31,7 @@ import { toJalali } from '../core/utils/dateUtils';
 import { GUARANTEE_TYPE_LABELS } from '../core/constants/guaranteeTypes';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { glassPaper, STATUS_LABELS, STATUS_COLORS, SimpleEntityList } from './projects/ProjectsShared';
+import { printElement } from '../core/print/printEngine';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const CHART_COLORS = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#ec4899', '#14b8a6'];
@@ -334,7 +335,7 @@ const ProjectProfilePage = () => {
                 sx={{ borderRadius: '12px', fontFamily: FONT }}>ویرایش</Button>
             </Tooltip>
             <Tooltip title="چاپ پرونده">
-              <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}
+              <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'پروفایل پروژه' })}
                 sx={{ borderRadius: '12px', fontFamily: FONT, background: 'linear-gradient(135deg,#8b5cf6,#0ea5e9)' }}>چاپ</Button>
             </Tooltip>
             <Tooltip title="بازگشت به فهرست پروژه‌ها">

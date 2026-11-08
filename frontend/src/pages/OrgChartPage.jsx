@@ -17,6 +17,7 @@ import DoneIcon from '@mui/icons-material/Done';
 import PrintIcon from '@mui/icons-material/Print';
 import { keyframes } from '@mui/system';
 import PageHeader from '../core/components/ui/PageHeader';
+import { printElement } from '../core/print/printEngine';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
 const depthColors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
@@ -251,7 +252,7 @@ const OrgChartPage = () => {
       const scale = Math.min(1, (pageWidth - 40) / contentWidth);
       area.style.zoom = scale;
     }
-    setTimeout(() => window.print(), 100);
+    setTimeout(() => printElement('main', { title: 'چارت سازمانی', orientation: 'landscape' }), 100);
   };
 
   const OrgNode = ({ node, depth }) => {

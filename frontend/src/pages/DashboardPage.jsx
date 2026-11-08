@@ -44,6 +44,7 @@ import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accoun
 import { BarChart, ColumnChart, DonutChart, MultiLineChart } from '../core/components/charts/Charts';
 import { formatPersianNumber, formatPersianPercent, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import { printElement } from '../core/print/printEngine';
 
 const BLUE = '#6366f1';
 const TEAL = '#0f766e';
@@ -919,7 +920,7 @@ const DashboardPage = () => {
               </span>
             </Tooltip>
             <Button variant="outlined" startIcon={<DownloadOutlinedIcon />} onClick={exportSummary}>خروجی</Button>
-            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => printElement('main', { title: 'داشبورد' })}>چاپ</Button>
           </>
         )}
       />

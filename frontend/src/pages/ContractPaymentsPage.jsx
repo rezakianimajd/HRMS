@@ -41,6 +41,7 @@ import {
   useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import { printElement } from '../core/print/printEngine';
 
 const TEAL = '#0f766e';
 const BLUE = '#2563eb';
@@ -710,7 +711,7 @@ const ContractPaymentsPage = () => {
               {paymentsQuery.isFetching ? <CircularProgress size={16} /> : <RefreshOutlinedIcon fontSize="small" />}
             </Button>
             <Button variant="outlined" startIcon={<DescriptionOutlinedIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده</Button>
-            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => printElement('main', { title: 'پرداخت‌های قرارداد', orientation: 'landscape' })}>چاپ</Button>
             <Button variant="outlined" startIcon={<DownloadOutlinedIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={openNew}
               sx={{ bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>پرداخت جدید</Button>

@@ -36,6 +36,7 @@ import PageHeader from '../../../core/components/ui/PageHeader';
 import { ProgressBar, SurfaceCard } from '../AccountingDashboardUI';
 import { useModulePalette } from '../../../core/context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../../../core/theme/appearanceDefaults';
+import { printElement } from '../../../core/print/printEngine';
 
 const TONE = {
   asset: '#2563eb',
@@ -742,7 +743,7 @@ const BalanceSheetPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'ترازنامه', orientation: 'landscape' })}>
               چاپ
             </Button>
             <Button variant="contained" startIcon={<VerifiedIcon />} onClick={openAuditDialog}>

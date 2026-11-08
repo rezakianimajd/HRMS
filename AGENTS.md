@@ -347,6 +347,20 @@ const print = usePrintDocument();
 ```
 مهاجرت چاپ‌های قدیمی: `window.print()` → `PrintButton`/`printElement` (فوری) و در گام بعد سند به `registry` بک‌اند منتقل شود.
 
+**وضعیت مهاجرت (۲۰۲۶-۱۱-۰۸):** هیچ `window.print()` در فرانت باقی نمانده است. `printElement` هم سلکتور
+(`'main'`)، هم ref و هم عنصر را می‌پذیرد و در چاپ، ابزارهای رابط (دکمه/تب/فیلتر/صفحه‌بندی) را حذف می‌کند:
+
+| محل | روش چاپ |
+|---|---|
+| نامهٔ مکاتبات (کشوی جزئیات) | سند سروری `document:'letter'` + `PrintPreviewDialog` |
+| ۱۸ صفحهٔ گزارش/داشبورد (حسابداری، قراردادها، تقویم، چارت سازمانی، پروژه، بیمه، داشبورد) | `printElement('main', {title, orientation})` — جدول‌های عریض `landscape` |
+| `SalaryPayslip` | `printElement(payslipRef, {paper:'A5'})` |
+| `LedgerDrillDialog` | `printElement(contentRef, {orientation:'landscape'})` |
+| `TreasuryVoucherDialog` | `printHtml(data.html)` (قالب سرور) با fallback به محتوای دیالوگ |
+| `StatementEditorPage` | رستر `html2canvas` + `printHtml` (یک صفحهٔ A4، پیکسل‌به‌پیکسل مثل پیش‌نمایش) |
+
+قاعدهٔ جدید: هر دکمهٔ چاپ یا `PrintButton` است یا `printElement`/`printHtml`؛ افزودن `window.print()` ممنوع.
+
 ## 8) Performance playbook — کارایی
 
 **قواعد سخت‌گیرانه:**
@@ -498,15 +512,13 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.2213ac05.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
-- **موتور چاپ یکپارچه (۲۰۲۶-۱۱-۰۸):** `core/print_engine/` (components/layout/registry/views) +
+- **Live:** frontend `main.efa50edd.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ)، gunicorn/celery/nginx active.
+- **موتور چاپ یکپارچه (۲۰۲۶-۱۱-۰۸، مهاجرت کامل):** `core/print_engine/` (components/layout/registry/views) +
   `POST /api/print/preview/`، `GET /api/print/options/` و کلاینت `core/print/`
-  (`printEngine.js`، `PrintPreviewDialog`، `PrintButton`، `usePrintDocument`).
-  اول از همه، چاپ نامهٔ مکاتبات (کشوی جزئیات) از `window.print()` به سند سروری منتقل شد؛
-  گزارش‌های کلاینتی هنوز `window.print()` دارند و باید تدریجاً به `PrintButton`/`printElement` مهاجرت کنند
-  (فهرست فعلی: ~۲۳ فایل، از جمله `pages/accounting/reports/*`، `Contract*Page`، `DashboardPage`،
-  `SalaryPayslip`، `StatementEditorPage`). تست‌ها: `core/tests_print_engine.py` (۲۶) و
-  `__tests__/printEngineSmoke.test.js` (۵).
+  (`printEngine.js`، `PrintPreviewDialog`، `PrintButton`، `usePrintDocument`). **همهٔ ۲۴ فایل `window.print()`**
+  (۱۸ صفحهٔ گزارش + فیش حقوقی + دفتر تفصیلی + سند خزانه + صورت‌وضعیت) به `printElement`/`printHtml` منتقل شدند؛
+  در چاپ، دکمه/تب/فیلتر/صفحه‌بندی حذف می‌شوند و جدول‌های عریض افقی چاپ می‌شوند. تست‌ها:
+  `core/tests_print_engine.py` (۲۶) و `__tests__/printEngineSmoke.test.js` (۵) — فرانت ۳۱ تست در ۵ سوئیت سبز.
 - **فاز ۴ نگهداشت‌پذیری فرانت (ادامه):** وضعیت فهرست نامه‌ها به هوک `useLetterListState.js` منتقل شد
   (فیلترها، جست‌وجوی ۳۵۰ms، صفحه‌بندی، مرتب‌سازی، پارامترهای سرور، `?q`/`?has_attachments`/`?new=1`) و
   `CorrespondenceLettersPage.jsx` فقط UI ماند. باقی‌ماندهٔ این فاز: استخراج کشوی جزئیات

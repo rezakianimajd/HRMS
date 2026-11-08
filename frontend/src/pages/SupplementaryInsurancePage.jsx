@@ -36,6 +36,7 @@ import {
 import DependentRows from './supplementaryInsurance/DependentList';
 import DependentDialog from './supplementaryInsurance/DependentDialog';
 import InsuranceEditorDialog from './supplementaryInsurance/InsuranceEditorDialog';
+import { printElement } from '../core/print/printEngine';
 
 const ACCENT = '#7c3aed';
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -558,7 +559,7 @@ const SupplementaryInsurancePage = () => {
               </span>
             </Tooltip>
             <Tooltip title="چاپ">
-              <Button variant="outlined" onClick={() => window.print()} sx={{ minWidth: 40, px: 1 }}>
+              <Button variant="outlined" onClick={() => printElement('main', { title: 'بیمهٔ تکمیلی' })} sx={{ minWidth: 40, px: 1 }}>
                 <PrintIcon fontSize="small" />
               </Button>
             </Tooltip>

@@ -32,6 +32,18 @@ th { background: #f1f5f9; font-weight: 800; }
 @media print { .pe-no-print { display: none !important; } }
 `;
 
+/** CSS اضافی برای چاپِ «ناحیه‌ای»: حذف ابزارهای رابط (دکمه/تب/فیلتر/صفحه‌بندی). */
+const CHROME_HIDE_CSS = `
+@media print {
+  button, .MuiButtonBase-root, .MuiIconButton-root, .MuiTabs-root, .MuiTablePagination-root,
+  .MuiTextField-root, .MuiSelect-root, .MuiAutocomplete-root, .MuiToggleButton-root,
+  .MuiChip-clickable, .MuiTooltip-popper, [role="toolbar"], .pe-no-print {
+    display: none !important;
+  }
+  a[href]::after { content: ''; }
+}
+`;
+
 const getFrame = () => {
   let frame = document.getElementById(PRINT_FRAME_ID);
   if (!frame) {
@@ -78,15 +90,29 @@ export const buildElementDocument = (element, {
       + (subtitle ? `<div class="pe-print-sub">${subtitle}</div>` : '')
     : '';
   return `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8">`
-    + `<title>${title || 'چاپ'}</title><style>${css}</style></head>`
+    + `<title>${title || 'چاپ'}</title><style>${css}${CHROME_HIDE_CSS}</style></head>`
     + `<body><div class="pe-print-frame">${header}${element.outerHTML}</div></body></html>`;
 };
 
-/** چاپ یک ناحیه از صفحه (ref یا عنصر DOM). */
-export const printElement = (target, options = {}) => {
-  const element = target?.current ?? target;
+/** تبدیل ورودی‌های مختلف (سلکتور/ref/عنصر) به عنصر DOM. */
+const resolveElement = (target) => {
+  if (!target) return null;
+  if (typeof target === 'string') return document.querySelector(target);
+  return target.current ?? target;
+};
+
+/**
+ * چاپ یک ناحیه از صفحه.
+ *
+ * ``target`` می‌تواند سلکتور CSS (پیش‌فرض ``main``)، ref یا عنصر DOM باشد.
+ * اگر ``title`` داده نشود، سرصفحهٔ اضافه‌ای چاپ نمی‌شود (عنوان صفحه معمولاً
+ * داخل همان ناحیه هست).
+ */
+export const printElement = (target = 'main', options = {}) => {
+  const element = resolveElement(target);
   if (!element) return;
-  printHtml(buildElementDocument(element, options), options);
+  const resolved = { ...options, title: options.title || '' };
+  printHtml(buildElementDocument(element, resolved), { title: resolved.title || document.title });
 };
 
 export default { buildElementDocument, printElement, printHtml };

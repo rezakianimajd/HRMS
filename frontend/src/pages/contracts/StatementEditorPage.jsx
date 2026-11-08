@@ -28,6 +28,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import html2canvas from 'html2canvas';
+import { printElement, printHtml } from '../../core/print/printEngine';
 import {
   formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel,
   normalizeStatementNumber, toEnglishDigits, toPersianDigits,
@@ -76,104 +77,69 @@ const KIND_OPTIONS = [
 
 const num = (v) => Math.max(0, Number(v) || 0);
 
-/* Reliable print: rasterize the live preview with html2canvas (so the output is
-   pixel-identical to what the user sees) and print the resulting image on A4.
-   No dependency on the app's CSS @media print rules, so nothing gets hidden. */
+/* چاپ صورت‌وضعیت: پیش‌نمایش زنده رستر می‌شود (html2canvas) و از موتور چاپ
+   یکپارچه چاپ می‌شود؛ نتیجه پیکسل‌به‌پیکسل مثل پیش‌نمایش و همیشه یک صفحهٔ A4 است. */
 const printStatement = async () => {
   const node = document.getElementById('statement-print-area');
-  if (!node) { window.print(); return; }
-
-  let frame = document.getElementById('statement-print-frame');
-  if (!frame) {
-    frame = document.createElement('iframe');
-    frame.id = 'statement-print-frame';
-    frame.title = 'print';
-    frame.style.position = 'fixed';
-    frame.style.left = '0';
-    frame.style.top = '0';
-    frame.style.width = '794px';
-    frame.style.height = '1123px';
-    frame.style.border = '0';
-    frame.style.visibility = 'hidden';
-    frame.style.zIndex = '-1';
-    document.body.appendChild(frame);
+  if (!node) {
+    printElement('main', { title: 'صورت‌وضعیت' });
+    return;
   }
 
+  const prev = {
+    boxShadow: node.style.boxShadow,
+    border: node.style.border,
+    borderRadius: node.style.borderRadius,
+  };
+  node.style.boxShadow = 'none';
+  node.style.border = 'none';
+  node.style.borderRadius = '0';
+
   try {
-    // Temporarily strip shadow/border so the printout is clean & professional.
-    const prev = {
-      boxShadow: node.style.boxShadow,
-      border: node.style.border,
-      borderRadius: node.style.borderRadius,
-    };
-    node.style.boxShadow = 'none';
-    node.style.border = 'none';
-    node.style.borderRadius = '0';
+    const canvas = await html2canvas(node, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
 
-    try {
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff',
-        logging: false,
-      });
+    // چیدمان روی یک صفحهٔ A4 ثابت: وسط‌چین افقی و بالا‌چین (حاشیهٔ سفید بقیه را پر می‌کند)
+    const A4_W = 794;   // 210mm @ 96dpi
+    const A4_H = 1123;  // 297mm @ 96dpi
+    const RATIO = 2;
+    const a4 = document.createElement('canvas');
+    a4.width = A4_W * RATIO;
+    a4.height = A4_H * RATIO;
+    const ctx = a4.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, a4.width, a4.height);
 
-      // Compose onto a fixed A4 canvas so the result is ALWAYS a single page,
-      // centered horizontally and top-aligned (white padding fills the rest).
-      const A4_W = 794;   // 210mm @ 96dpi
-      const A4_H = 1123;  // 297mm @ 96dpi
-      const RATIO = 2;
-      const a4 = document.createElement('canvas');
-      a4.width = A4_W * RATIO;
-      a4.height = A4_H * RATIO;
-      const ctx = a4.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, a4.width, a4.height);
+    const PAD_X = 40;    // حاشیهٔ افقی (~5mm)
+    const PAD_TOP = 24;  // حاشیهٔ بالا (~3mm)
+    const availW = a4.width - PAD_X * 2;
+    const availH = a4.height - PAD_TOP;
+    const fit = Math.min(availW / canvas.width, availH / canvas.height);
+    const w = canvas.width * fit;
+    const h = canvas.height * fit;
+    ctx.drawImage(canvas, (a4.width - w) / 2, PAD_TOP, w, h);
 
-      // Safe margins so nothing is clipped at the paper edge (printers can't
-      // print to the very edge), while keeping the content centered horizontally.
-      const PAD_X = 40;    // horizontal margin (20px @1x ≈ 5mm)
-      const PAD_TOP = 24;  // top margin (12px @1x ≈ 3mm)
-      const availW = a4.width - PAD_X * 2;
-      const availH = a4.height - PAD_TOP;
-      const fit = Math.min(availW / canvas.width, availH / canvas.height);
-      const w = canvas.width * fit;
-      const h = canvas.height * fit;
-      const x = (a4.width - w) / 2;
-      const y = PAD_TOP;
-      ctx.drawImage(canvas, x, y, w, h);
-
-      const imgData = a4.toDataURL('image/png');
-
-      const doc = frame.contentWindow.document;
-      doc.open();
-      doc.write(
-        '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>صورت‌وضعیت</title>' +
-        '<style>' +
-        '@page{size:A4;margin:0}' +
-        'html,body{margin:0;padding:0;width:210mm;height:297mm;overflow:hidden;background:#fff}' +
-        'img{position:fixed;top:0;left:0;width:210mm;height:297mm;display:block}' +
-        '</style></head><body>' +
-        '<img src="' + imgData + '" />' +
-        '</body></html>'
-      );
-      doc.close();
-
-      const img = frame.contentWindow.document.querySelector('img');
-      const doPrint = () => {
-        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-        catch (e) { window.print(); }
-      };
-      if (img && !img.complete) img.onload = doPrint;
-      else setTimeout(doPrint, 150);
-    } finally {
-      node.style.boxShadow = prev.boxShadow;
-      node.style.border = prev.border;
-      node.style.borderRadius = prev.borderRadius;
-    }
-  } catch (e) {
-    window.print();
+    const imgData = a4.toDataURL('image/png');
+    printHtml(
+      '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8">'
+      + '<title>صورت‌وضعیت</title><style>'
+      + '@page{size:A4;margin:0}'
+      + 'html,body{margin:0;padding:0;width:210mm;height:297mm;overflow:hidden;background:#fff}'
+      + 'img{position:fixed;top:0;left:0;width:210mm;height:297mm;display:block}'
+      + `</style></head><body><img src="${imgData}" /></body></html>`,
+      { title: 'صورت‌وضعیت' },
+    );
+  } catch (error) {
+    printElement('main', { title: 'صورت‌وضعیت' });
+  } finally {
+    node.style.boxShadow = prev.boxShadow;
+    node.style.border = prev.border;
+    node.style.borderRadius = prev.borderRadius;
   }
 };
 
@@ -1925,7 +1891,7 @@ const StatementEditorPage = () => {
               </Tooltip>
             ) : null}
             {contractId ? <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده</Button> : null}
-            {contractId ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
+            {contractId ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={printStatement}>چاپ</Button> : null}
             {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
             {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>صورت‌وضعیت جدید</Button> : null}
             {scopedMode ? (

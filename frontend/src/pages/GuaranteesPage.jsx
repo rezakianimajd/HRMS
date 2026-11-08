@@ -58,6 +58,7 @@ import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 import { CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
+import { printElement } from '../core/print/printEngine';
 
 const EMPTY = {
   id: null, contract: '', contract_guarantee_index: null,
@@ -1636,7 +1637,7 @@ const GuaranteesPage = () => {
                 onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده قرارداد</Button>
             ) : null}
             {contractId ? (
-              <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'ضمانت‌نامه‌ها' })}>چاپ</Button>
             ) : null}
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>تضمین جدید</Button>

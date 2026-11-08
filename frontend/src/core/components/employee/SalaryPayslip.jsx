@@ -10,6 +10,7 @@ import BusinessIcon from '@mui/icons-material/Business';
 import axiosInstance from '../../api/axiosConfig';
 import { formatPersianNumber, toPersianDigits } from '../../utils/numberUtils';
 import { useQuery } from '@tanstack/react-query';
+import { printElement } from '../../print/printEngine';
 
 const MONTH_NAMES = {
   '1': 'فروردین', '2': 'اردیبهشت', '3': 'خرداد', '4': 'تیر',
@@ -57,9 +58,10 @@ const SalaryPayslip = ({ record, onClose }) => {
 
   const companyName = profile?.legal_name || profile?.company_name || 'شرکت';
   const r = record || {};
+  const payslipRef = React.useRef(null);
 
   const handlePrint = () => {
-    window.print();
+    printElement(payslipRef.current, { title: 'فیش حقوقی', paper: 'A5' });
   };
 
   return (
@@ -74,7 +76,7 @@ const SalaryPayslip = ({ record, onClose }) => {
 
       <DialogContent sx={{ '@media print': { p: 0 } }}>
         {/* Payslip container */}
-        <Box className="payslip-root" sx={{ mx: 'auto', maxWidth: 820 }}>
+        <Box className="payslip-root" ref={payslipRef} sx={{ mx: 'auto', maxWidth: 820 }}>
           {/* Header */}
           <Box sx={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',

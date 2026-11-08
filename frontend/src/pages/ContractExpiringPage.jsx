@@ -23,6 +23,7 @@ import {
   ModulePager, ModuleTable, ModuleToolbar,
   useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
+import { printElement } from '../core/print/printEngine';
 
 const dateLabel = (value) => (value ? toJalali(value) : '—');
 
@@ -162,7 +163,7 @@ const ContractExpiringPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => printElement('main', { title: 'قراردادهای رو به انقضا' })}>چاپ</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
           </>
         )}

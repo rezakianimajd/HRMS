@@ -28,6 +28,7 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { getJalaliParts, toGregorian } from '../core/utils/dateUtils';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { printElement } from '../core/print/printEngine';
 
 const ACCENT = '#ec4899';
 const BLUE = '#2563eb';
@@ -562,7 +563,7 @@ const CalendarPage = () => {
             </Tooltip>
             <Button variant="outlined" startIcon={<CalendarTodayIcon />} onClick={goToday}>امروز</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
-            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => printElement('main', { title: 'تقویم' })}>چاپ</Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => openCreate()}>رویداد جدید</Button>
           </>
         )}
