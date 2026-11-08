@@ -558,8 +558,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `332852d97 refactor(correspondence): extract letter details dialog and write path hook`
-- **Live:** frontend `main.afd1e33d.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004`)، gunicorn/celery/nginx active.
+- **Last commit:** `14b0b1431 feat(procurement): dashboard rebuilt on the shared contracts dashboard kit`
+- **Live:** frontend `main.e68f467a.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + اندپوینت `GET /api/procurement/dashboard/`)، gunicorn/celery/nginx active.
 - **آیکن تب مرورگر از لوگوی شرکت (۲۰۲۶-۱۱-۰۸):** اندپوینت عمومی `GET /api/company/branding/`
   (`core/views.py::company_branding_view` + تابع خالص `company_branding_payload`/`load_company_branding`)
   نام حقوقی و لوگوی tenant جاری را می‌دهد: `logo_url` و `favicon_url` با `?v=<updated_at>` برای شکستن کش.
