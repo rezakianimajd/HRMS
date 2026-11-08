@@ -16,6 +16,7 @@ import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
+import ContactsOutlinedIcon from '@mui/icons-material/ContactsOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
@@ -90,6 +91,7 @@ const RESULT_ICONS = {
   mail: MailOutlineIcon,
   announcement: MailOutlineIcon,
   building: BusinessOutlinedIcon,
+  contacts: ContactsOutlinedIcon,
   sync: SyncAltIcon,
   leave: EventBusyOutlinedIcon,
 };

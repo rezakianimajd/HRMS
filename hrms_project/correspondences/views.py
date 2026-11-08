@@ -1,5 +1,7 @@
 """Views for the Correspondences module."""
 from rest_framework import viewsets, filters, parsers, serializers
+
+from correspondences.permissions import DefinitionPermissionMixin
 from correspondences.models import IncomingLetter, OutgoingLetter, Announcement, Form, Organization, OrganizationalLetter
 from correspondences.serializers import (
     IncomingLetterSerializer, OutgoingLetterSerializer,
@@ -12,75 +14,27 @@ def _get_company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
-class BaseCorrespondenceViewSet(viewsets.ModelViewSet):
-    """Base ViewSet with multi-tenant filtering."""
+def _company_scoped(queryset, request):
+    """محدودکردن کوئری به شرکت جاری (چند‌مستاجری)."""
+    company = _get_company(request)
+    return queryset.filter(company=company) if company else queryset
+
+
+class BaseCorrespondenceViewSet(viewsets.ReadOnlyModelViewSet):
+    """ویوست **فقط-خواندنی** مدل‌های قدیمی مکاتبات.
+
+    ثبت/ویرایش این مدل‌ها بازنشسته شده است (دفتر نامه‌ها = ``LetterViewSet``)؛
+    فقط فهرست/جزئیات برای تاریخچه و سازگاری باقی می‌ماند تا هم مسیر تکثیر
+    ``OrganizationDocument`` بسته شود و هم داده‌های قدیمی از دست نرود.
+    """
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-date']
     search_fields = ['number', 'subject', 'sender']
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        company = _get_company(self.request)
-        if company:
-            qs = qs.filter(company=company)
-        return qs
+        return _company_scoped(super().get_queryset(), self.request)
 
-    def _set_employees_and_archive(self, instance, data):
-        """
-        Save related persons (M2M) AND mirror letters into the company
-        archive (OrganizationDocument) so the letter appears both on each
-        employee's profile and in "بایگانی اسناد سازمان".
-        """
-        from employees.models import Employee
-        from documents.models import OrganizationDocument
-
-        company = instance.company
-        ids = []
-        raw = data.get('employees') if isinstance(data, dict) else None
-        if raw is None:
-            raw = data.get('employees')
-        if raw:
-            if isinstance(raw, str):
-                raw = [x.strip() for x in raw.split(',') if x.strip()]
-            ids = [int(x) for x in raw if str(x).isdigit()]
-
-        employees = list(Employee.objects.filter(company=company, id__in=ids))
-        instance.employees.set(ids)
-
-        subject = getattr(instance, 'subject', None) or getattr(instance, 'title', None) or ''
-        number = getattr(instance, 'number', '')
-        letter_date = getattr(instance, 'date', None)
-        description = getattr(instance, 'description', '') or ''
-
-        for emp in employees:
-            OrganizationDocument.objects.create(
-                company=company,
-                employee=emp,
-                title=f"نامه: {subject} ({number})",
-                category=OrganizationDocument.ArchiveCategory.HR_DOC,
-                reference_number=number,
-                issue_date=letter_date,
-                file=instance.file if getattr(instance, 'file', None) else None,
-                description=description,
-                tags='مکاتبات',
-            )
-
-    def perform_create(self, serializer):
-        company = _get_company(self.request)
-        data = self.request.data
-        instance = serializer.save(company=company)
-        # For incoming/outgoing letters -> mirror into archive + employee profile
-        if hasattr(instance, 'employees'):
-            self._set_employees_and_archive(instance, data)
-        return instance
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        data = self.request.data
-        if 'employees' in data and hasattr(instance, 'employees'):
-            self._set_employees_and_archive(instance, data)
-        return instance
 
 class IncomingLetterViewSet(BaseCorrespondenceViewSet):
     serializer_class = IncomingLetterSerializer
@@ -107,11 +61,19 @@ class FormViewSet(BaseCorrespondenceViewSet):
     ordering = ['name']
 
 
-class OrganizationViewSet(BaseCorrespondenceViewSet):
+class OrganizationViewSet(DefinitionPermissionMixin, viewsets.ModelViewSet):
+    """سازمان‌های طرف مکاتبه — تنها مدل قدیمی که هنوز نوشتن دارد (تب مخاطبین)."""
+
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    permission_label = 'تعاریف مکاتبات'
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
     search_fields = ['name', 'code', 'type']
     ordering = ['name']
+
+    def get_queryset(self):
+        return _company_scoped(super().get_queryset(), self.request)
 
 
 class OrganizationalLetterViewSet(BaseCorrespondenceViewSet):

@@ -32,7 +32,6 @@ import DocumentManagementActivityPage from './pages/contracts/DocumentManagement
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
 import DataEntryPage from './pages/DataEntryPage';
-import CorrespondencesPage from './pages/CorrespondencesPage';
 import CorrespondenceDashboardPage from './pages/correspondence/CorrespondenceDashboardPage';
 import CorrespondenceLettersPage from './pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceSettingsPage from './pages/correspondence/CorrespondenceSettingsPage';
@@ -239,7 +238,7 @@ const AppRoutes = () => {
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
       <Route path="/company-profile" element={<ProtectedLayout><CompanyProfilePage /></ProtectedLayout>} />
       <Route path="/data-entry" element={<Navigate to="/payslips" replace />} />
-      <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
+      <Route path="/correspondences" element={<Navigate to="/correspondence" replace />} />
       <Route path="/correspondence" element={<ProtectedLayout><CorrespondenceDashboardPage /></ProtectedLayout>} />
       <Route path="/correspondence/letters" element={<ProtectedLayout><CorrespondenceLettersPage mode="all" /></ProtectedLayout>} />
       <Route path="/my-workdesk" element={<ProtectedLayout><CorrespondenceWorkdeskPage /></ProtectedLayout>} />

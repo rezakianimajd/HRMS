@@ -659,25 +659,13 @@ class LetterSerializer(serializers.ModelSerializer):
         return _employee_label(obj.receiver_employee)
 
     def get_sender_label(self, obj):
-        return (
-            (obj.sender_party.name if obj.sender_party_id else '')
-            or (obj.sender_organization.name if obj.sender_organization_id else '')
-            or self.get_sender_employee_label(obj)
-            or obj.sender_name
-            or ''
-        )
+        return obj.sender_display()
 
     def get_party_label(self, obj):
-        return (
-            (obj.party_account.name if obj.party_account_id else '')
-            or obj.party_name
-            or (obj.organization.name if obj.organization_id else '')
-            or (obj.correspondent.name if obj.correspondent_id else '')
-            or ''
-        )
+        return obj.party_display
 
     def get_receiver_label(self, obj):
-        return self.get_receiver_employee_label(obj) or obj.receiver_name or ''
+        return obj.receiver_display()
 
     def get_attachment_count(self, obj):
         cached = getattr(obj, '_prefetched_objects_cache', {}).get('attachments')
@@ -734,15 +722,15 @@ class LetterListSerializer(LetterSerializer):
     class Meta(LetterSerializer.Meta):
         fields = [
             'id', 'direction', 'direction_display', 'number', 'external_number',
-            'indicator_no', 'transmittal_no', 'series', 'series_title', 'category',
-            'category_title', 'category_color', 'subject', 'summary',
+            'indicator_no', 'transmittal_no', 'series', 'category',
+            'category_title', 'subject', 'summary',
             'letter_date', 'received_date', 'sent_date', 'due_date',
-            'entry_method', 'entry_method_display', 'entry_time', 'entered_by',
+            'entry_method', 'entry_method_display', 'entry_time',
             'entered_by_label', 'entered_by_name', 'company_reg_no', 'company_reg_date',
             'unit_reg_no', 'unit_reg_date', 'unit_name',
             'organization', 'organization_name', 'correspondent', 'correspondent_name',
             'sender_organization', 'sender_organization_name', 'sender_title',
-            'sender_name', 'receiver_name', 'source_ref', 'contract_number',
+            'sender_name', 'receiver_name', 'contract_number',
             'sender_party', 'party_account', 'party_account_name', 'sender_party_name',
             'party_name', 'sender_kind',
             'delivery_type', 'delivery_type_display', 'delivered_by_name',
@@ -757,15 +745,10 @@ class LetterListSerializer(LetterSerializer):
 
     def get_sender_label(self, obj):
         """نسخهٔ سبک: بدون خواندن FK پرسنل."""
-        return (
-            (obj.sender_party.name if obj.sender_party_id else '')
-            or (obj.sender_organization.name if obj.sender_organization_id else '')
-            or obj.sender_name
-            or ''
-        )
+        return obj.sender_display(include_employee=False)
 
     def get_receiver_label(self, obj):
-        return obj.receiver_name or ''
+        return obj.receiver_display(include_employee=False)
 
     def get_last_referral(self, obj):
         cached = getattr(obj, '_prefetched_objects_cache', {}).get('referrals')

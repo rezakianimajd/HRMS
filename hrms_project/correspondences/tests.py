@@ -165,17 +165,29 @@ class LettersMetaTests(SimpleTestCase):
 
     def test_party_label_falls_back_to_free_text_name(self):
         """برچسب «طرف حساب» وقتی FK خالی است از نام آزاد پر می‌شود."""
-        from types import SimpleNamespace
-
+        from correspondences.models import Letter
         from correspondences.serializers import LetterListSerializer
 
-        row = SimpleNamespace(
-            party_account_id=None, party_name='شرکت تازه‌تأسیس نمونه',
-            organization_id=None, correspondent_id=None,
-        )
+        row = Letter(party_name='شرکت تازه‌تأسیس نمونه')
         self.assertEqual(
             LetterListSerializer().get_party_label(row), 'شرکت تازه‌تأسیس نمونه',
         )
+
+    def test_model_label_helpers_are_the_single_source(self):
+        """برچسب‌های طرف/فرستنده/گیرنده در مدل متمرکز شده‌اند (بدون تکرار در ویوها)."""
+        import inspect
+
+        from correspondences import serializers
+        from correspondences.models import Letter
+
+        self.assertTrue(hasattr(Letter, 'party_display'))
+        self.assertTrue(hasattr(Letter, 'sender_display'))
+        self.assertTrue(hasattr(Letter, 'receiver_display'))
+        full_source = inspect.getsource(serializers.LetterSerializer)
+        self.assertIn('obj.party_display', full_source)
+        self.assertIn('obj.sender_display()', full_source)
+        list_source = inspect.getsource(serializers.LetterListSerializer)
+        self.assertIn('sender_display(include_employee=False)', list_source)
 
 
 class NameMappingWorkspaceTests(SimpleTestCase):

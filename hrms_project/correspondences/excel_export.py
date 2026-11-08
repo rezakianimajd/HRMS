@@ -111,8 +111,7 @@ def build_letters_workbook(queryset):
             _jalali(letter.letter_date),
             _jalali(letter.received_date),
             _jalali(letter.sent_date),
-            (letter.organization.name if letter.organization else '')
-            or (letter.correspondent.name if letter.correspondent else ''),
+            letter.party_display,
             letter.sender_name or '',
             letter.receiver_name or '',
             letter.subject or '',

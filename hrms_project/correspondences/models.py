@@ -703,6 +703,38 @@ class Letter(BaseModel):
             return None
         return (self.due_date - _date.today()).days
 
+    # ------------------------------------------------------------------
+    # برچسب‌های یکتا (منبع واحد برای API، اکسل و جست‌وجو)
+    # ------------------------------------------------------------------
+    @property
+    def party_display(self):
+        """«طرف مکاتبه»: طرف حساب قراردادها → نام آزاد → سازمان → مخاطب."""
+        if self.party_account_id:
+            return self.party_account.name
+        if self.party_name:
+            return self.party_name
+        if self.organization_id:
+            return self.organization.name
+        if self.correspondent_id:
+            return self.correspondent.name
+        return ''
+
+    def sender_display(self, include_employee=True):
+        """برچسب فرستنده (پرسنل فقط در حالت سنگین خوانده می‌شود)."""
+        if self.sender_party_id:
+            return self.sender_party.name
+        if self.sender_organization_id:
+            return self.sender_organization.name
+        if include_employee and self.sender_employee_id:
+            return getattr(self.sender_employee, 'full_name', '') or ''
+        return self.sender_name or ''
+
+    def receiver_display(self, include_employee=True):
+        """برچسب گیرنده (پرسنل فقط در حالت سنگین خوانده می‌شود)."""
+        if include_employee and self.receiver_employee_id:
+            return getattr(self.receiver_employee, 'full_name', '') or ''
+        return self.receiver_name or ''
+
 
 
 class LetterAttachment(BaseModel):

@@ -147,7 +147,7 @@ const menuConfig = [
     title: 'مدارک و مکاتبات',
     color: '#06b6d4',
     items: [
-      { id: 'correspondences', title: 'مکاتبات اداری', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
+      { id: 'correspondences', title: 'مکاتبات اداری', icon: <MailOutlineIcon />, path: '/correspondence', color: '#06b6d4', primary: false, ready: true },
       { id: 'bale-messaging', title: 'اطلاع‌رسانی و پیام بله', icon: <ChatBubbleOutlineIcon />, path: '/bale-messaging', color: '#10b981', primary: false, ready: true },
     ],
   },
@@ -758,7 +758,7 @@ const contractsMenu = [
     title: 'ارتباطات و اسناد',
     color: '#06b6d4',
     items: [
-      { id: 'correspondences-c', title: 'مکاتبات', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
+      { id: 'correspondences-c', title: 'مکاتبات', icon: <MailOutlineIcon />, path: '/correspondence', color: '#06b6d4', primary: false, ready: true },
       { id: 'contracts-docs', title: 'بایگانی اسناد قرارداد', icon: <FolderSharedIcon />, path: '/contracts-documents', color: '#f97316', primary: false, ready: true },
     ],
   },

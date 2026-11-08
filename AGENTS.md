@@ -469,7 +469,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `1aa3d093b docs(agents): document the white-screen cause (build without PUBLIC_URL=/assets)`
-- **Live:** frontend `main.5f618951.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.c4c59b58.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (مایگریشن `correspondences.0020`)، gunicorn/celery/nginx active.
 - **Data (tenant `kpsmi`):** ۶٬۲۴۶ نامه · ۳٬۸۸۶ نامه با پیوست (۵٬۸۸۴ فایل، ~۸.۵GB در `media/archive/company_1/correspondences`) · ۴٬۰۹۶ ارجاع · DMS: ۵٬۸۸۴ سند ایندکس‌شده و ~۹.۶GB.
 - ماژول مکاتبات کامل است: دفتر وارده/صادره/داخلی، ارجاع چندسطحی + کارتابل، پیوست با پیش‌نمایش، **صفحهٔ مستقل نگاشت نام‌ها**، تب مکاتبات پروندهٔ قرارداد، داشبورد استودیویی، جست‌وجوی جامع، بایگانی ماژول در تنظیمات و مدیریت اسناد.
   - **دیالوگ درج نامهٔ وارده (۲۰۲۶-۱۱-۰۷):** فیلدهای «ثبت‌کنندهٔ ورود / نام ثبت‌کننده، سری شماره‌گذاری، ترنسمیتال،
@@ -504,6 +504,29 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `--fallback-dir` برای مسیرهای شکستهٔ `Z:\Group\Accounting\نامه ها و اسکن ها` و `اداری\بانک` استفاده شد.
     نتیجه: **outgoing ۴ فایل/۴ نامه، bank ۲۰/۲۰، university ۸۰۸/۸۰۲** (۲٫۱ گیگابایت؛ ۱ فایل گم‌شده)؛
     `relocate_letter_attachments --sync-dms` هم ۸۶۱ سند تازه را در DMS ایندکس کرد (کل پیوست‌ها: ۶٬۷۲۵).
+- **بازنشستگی استک قدیمی مکاتبات (۲۰۲۶-۱۱-۰۸):**
+  - سمت کاربر: مسیر `/correspondences` حالا به `/correspondence` **ریدایرکت** می‌شود و دو منوی
+    «مکاتبات اداری» (ماژول مدارک) و «مکاتبات» (ارتباطات و اسناد) به `/correspondence` اشاره می‌کنند.
+    `pages/CorrespondencesPage.jsx` و کل `modules/correspondences/` (۵ صفحه + `shared.jsx`) حذف شدند.
+  - سمت سرور: پنج ویوست قدیمی (`incoming-letters`، `outgoing-letters`، `announcements`، `forms`،
+    `organizational-letters`) به **`ReadOnlyModelViewSet`** تبدیل شدند (نوشتن = ۴۰۵) تا مسیر تکثیر
+    `OrganizationDocument` و داده‌های موازی بسته شود؛ داده‌ها برای تاریخچه خواندنی می‌مانند.
+    `organizations` تنها مدل قدیمی است که نوشتن دارد (تب مخاطبین) و با `DefinitionPermissionMixin` گیت شده.
+    متد `_set_employees_and_archive` (که با هر ویرایش یک سند بایگانی تکراری می‌ساخت) حذف شد.
+  - `module_search`: providerهای نامهٔ قدیمی (Incoming/Outgoing/Announcement) حذف شدند؛
+    `Organization` و `Correspondent` حالا به `/correspondence/settings?tab=contacts&q=…` می‌روند
+    (آیکون `contacts` در `CommandPalette.RESULT_ICONS` اضافه شد).
+  - یکدست‌سازی برچسب‌ها: `Letter.party_display` / `sender_display()` / `receiver_display()` در **مدل**
+    (منبع واحد) و serializer/اکسل از همان استفاده می‌کنند؛ `sender_display(include_employee=False)`
+    برای فهرست سبک تا FK پرسنل خوانده نشود.
+  - فهرست سبک: چهار فیلد مرده (`series_title`، `category_color`، `entered_by`، `source_ref`) از
+    `LetterListSerializer` حذف شد (اسکن خودکار: تنها فیلدهای بی‌مصرف فرانت بودند).
+  - **یکتایی شمارهٔ نامه ممکن نشد:** در دادهٔ واقعی ۱۳۵ گروه `(direction, number)` تکراری وجود دارد
+    (مثلاً «140405/457» سه بار) و ۱٬۴۹۸ نامه بدون شماره است؛ افزودن `UniqueConstraint` بدون پاک‌سازی
+    داده باعث خطای مایگریشن می‌شود. تصمیم: بدون constraint، و مصرف‌کننده‌ها به `series`/`source_ref`
+    تکیه کنند. (در بک‌لاگ با همین توضیح ثبت شد.)
+  - تست‌ها: ۱۹۶ تست بک‌اند (شامل «برچسب‌های مدل منبع واحدند») + ۲۱ تست فرانت؛ تأیید زنده:
+    نوشتن روی مسیرهای قدیمی `405`، فهرست/جزئیات `200`، جست‌وجوی ماژول `200` با مسیرهای جدید.
 - **کارایی مکاتبات — نگاشت گروهی، کش آمار و حذف N+1 (۲۰۲۶-۱۱-۰۸):**
   - موتور اعمال نگاشت بازنویسی شد (`mapping.py`): کشِ «مقادیر خام متمایز» (`_raw_values`/`_values_matching`)
     به‌جای خواندن کل جدول در حافظه، و `queryset.update(...)` به‌جای `bulk_update` روی نمونه‌ها.
@@ -643,6 +666,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 4. تست‌های DB-based برای querysetهای پیچیده.
 5. گزارش‌های مکاتبات (میانگین زمان پاسخ، بار کاری واحدها).
 6. ایندکس تکمیلی `(company, direction, due_date)` در صورت رشد داده.
+7. **یکتایی شمارهٔ نامه:** فعلاً ممکن نیست — ۱۳۵ گروه `(direction, number)` تکراری و ۱٬۴۹۸ نامهٔ
+   بدون شماره در دادهٔ `kpsmi` وجود دارد؛ پیش از افزودن `UniqueConstraint` باید داده پاک‌سازی شود
+   (`series` فعلی منبع قابل‌اتکاتر است).
+8. تکمیل سخت‌سازی رسانه: `internal` کردن `/media/` در nginx + `X-Accel-Redirect` تا حتی لینک مستقیم
+   فایل هم بدون احراز هویت کار نکند (اکنون XSS بسته شده اما دسترسی مستقیم به فایل‌های غیرمحرمانه باز است).
 
 ---
 
