@@ -559,7 +559,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.ecb8b127.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.6cee42da.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **«ظاهر و پوسته» تب‌بندی شد و تنظیم ورود منتقل شد (۲۰۲۶-۱۱-۰۸):** `pages/AppearancePage.jsx` حالا پنج تب دارد
+  (`APPEARANCE_TABS`، کلید تب در آدرس `?tab=…` ذخیره می‌شود و `data-testid="appearance-tabs"` دارد):
+  **پوسته‌ها** (کارت‌های تم + رنگ نئون در F-مود) · **پالت‌های رنگی** (پالت هر ماژول) · **استودیو تم**
+  (`ThemeStudioCard`) · **ورود** · **فونت و اندازه‌ها** (`TypographyCard`).
+  کل بخش «ظاهر صفحهٔ ورود» از `pages/CompanyProfilePage.jsx` (که از ۶۰۰+ خط به ۲۱۰ خط رسید) به
+  `pages/appearance/LoginBrandingPanel.jsx` منتقل شد — همان امکانات (تصویر/گرادیانت، رنگ پوشش، بلور،
+  اندازه و رنگ پنل لوگو، رنگ متن‌ها، پیش‌نمایش زنده) با `PanelSection` محلی. تست:
+  `__tests__/appearanceTabsSmoke.test.js` (۳ تست: پنج تب، محتوای تب ورود، و payload ذخیره).
 - **رنگین‌کمان خطی + فاصلهٔ آیکن/عنوان ماژول (۲۰۲۶-۱۱-۰۸):** پریست `rainbow` جای `conic-rainbow` را گرفت و
   به‌جای `conic-gradient` (که همهٔ رنگ‌ها را در مرکز جمع می‌کرد) با `linear-gradient(<angle>deg, ۷ رنگ)` یعنی
   **نوارهای مورب روی کل صفحه** رندر می‌شود؛ شناسهٔ قدیمی با `PRESET_ALIASES` (`colorUtils`) و

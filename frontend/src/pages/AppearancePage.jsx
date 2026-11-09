@@ -7,9 +7,12 @@ import { alpha } from '@mui/material/styles';
 import PaletteIcon from '@mui/icons-material/Palette';
 import ColorLensOutlinedIcon from '@mui/icons-material/ColorLensOutlined';
 import FontDownloadOutlinedIcon from '@mui/icons-material/FontDownloadOutlined';
+import TuneIcon from '@mui/icons-material/Tune';
+import LoginIcon from '@mui/icons-material/Login';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CloseIcon from '@mui/icons-material/Close';
+import { useSearchParams } from 'react-router-dom';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../core/context/ThemeContext';
 import { useApplication } from '../core/context/ApplicationContext';
 import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../core/context/ModulePaletteContext';
@@ -21,6 +24,16 @@ import InfoCard from '../core/components/ui/InfoCard';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { resolveTableTheme } from '../core/theme/tableStyles';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
+import LoginBrandingPanel from './appearance/LoginBrandingPanel';
+
+/* تب‌های صفحهٔ «ظاهر و پوسته» — کلید هر تب در آدرس (?tab=…) ذخیره می‌شود. */
+const APPEARANCE_TABS = [
+  { key: 'themes', label: 'پوسته‌ها', icon: <PaletteIcon fontSize="small" /> },
+  { key: 'palettes', label: 'پالت‌های رنگی', icon: <ColorLensOutlinedIcon fontSize="small" /> },
+  { key: 'studio', label: 'استودیو تم', icon: <TuneIcon fontSize="small" /> },
+  { key: 'login', label: 'ورود', icon: <LoginIcon fontSize="small" /> },
+  { key: 'typography', label: 'فونت و اندازه‌ها', icon: <FontDownloadOutlinedIcon fontSize="small" /> },
+];
 
 /* =========================================================================
  * ظاهر و پوسته (2026)
@@ -1474,6 +1487,16 @@ const AppearancePage = () => {
     saving, savedTick, error,
   } = useModulePalette();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const tabKey = APPEARANCE_TABS.some((tab) => tab.key === requestedTab) ? requestedTab : 'themes';
+  const selectTab = (next) => {
+    const params = new URLSearchParams(searchParams);
+    if (!next || next === 'themes') params.delete('tab');
+    else params.set('tab', next);
+    setSearchParams(params, { replace: true });
+  };
+
   useEffect(() => {
     if (!applications.length) loadApplications();
   }, []);
@@ -1504,8 +1527,33 @@ const AppearancePage = () => {
         </Alert>
       )}
 
+      <Paper data-testid="appearance-tabs" sx={{ ...SURFACE, mb: 1.75, px: 1, py: 0.5, overflow: 'hidden' }}>
+        <Tabs
+          value={tabKey}
+          onChange={(_event, value) => selectTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            minHeight: 46,
+            '& .MuiTab-root': { minHeight: 46, fontSize: 12.5, fontWeight: 800, gap: 0.75 },
+          }}
+        >
+          {APPEARANCE_TABS.map((tab) => (
+            <Tab
+              key={tab.key}
+              value={tab.key}
+              label={tab.label}
+              icon={tab.icon}
+              iconPosition="start"
+            />
+          ))}
+        </Tabs>
+      </Paper>
+
       {/* پوسته‌ها در یک کارت */}
-      <Paper sx={{ ...SURFACE, overflow: 'hidden' }}>
+      {tabKey === 'themes' && (
+        <Paper sx={{ ...SURFACE, overflow: 'hidden' }}>
         <Box sx={{
           display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
           px: 1.75, py: 1.25,
@@ -1570,8 +1618,11 @@ const AppearancePage = () => {
         </Box>
       </Paper>
 
+      )}
+
       {/* پالت‌های رنگی هر ماژول */}
-      <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
+      {tabKey === 'palettes' && (
+        <Paper sx={{ ...SURFACE, overflow: 'hidden' }}>
         <Box sx={{
           display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
           px: 1.75, py: 1.25,
@@ -1644,26 +1695,34 @@ const AppearancePage = () => {
         </Box>
       </Paper>
 
-      <TypographyCard
-        canEdit={canEdit}
-        type={{ ...DEFAULT_TYPOGRAPHY, ...(typography || {}) }}
-        onChange={setTypography}
-        onReset={resetTypography}
-        saving={saving}
-        savedTick={savedTick}
-      />
+      )}
 
-      <ThemeStudioCard
-        canEdit={canEdit}
-        design={designTokens}
-        onChange={setDesignTokens}
-        onReset={resetDesign}
-        saving={saving}
-        savedTick={savedTick}
-      />
+      {tabKey === 'studio' && (
+        <ThemeStudioCard
+          canEdit={canEdit}
+          design={designTokens}
+          onChange={setDesignTokens}
+          onReset={resetDesign}
+          saving={saving}
+          savedTick={savedTick}
+        />
+      )}
+
+      {tabKey === 'login' && <LoginBrandingPanel />}
+
+      {tabKey === 'typography' && (
+        <TypographyCard
+          canEdit={canEdit}
+          type={{ ...DEFAULT_TYPOGRAPHY, ...(typography || {}) }}
+          onChange={setTypography}
+          onReset={resetTypography}
+          saving={saving}
+          savedTick={savedTick}
+        />
+      )}
 
       {/* رنگ نئون — فقط برای F مود تاریک، داخل کارت */}
-      {mode === 'fmode' && (
+      {tabKey === 'themes' && mode === 'fmode' && (
         <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
           <Box sx={{
             display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
