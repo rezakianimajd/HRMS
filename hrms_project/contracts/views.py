@@ -2,7 +2,7 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Q, Sum, Value, DecimalField, Prefetch
+from django.db.models import Q, Sum, Value, DecimalField, Prefetch, Count
 from django.db.models.functions import Coalesce
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
@@ -163,9 +163,14 @@ class ContractViewSet(BaseContractViewSet):
                 )),
                 Prefetch('guarantees', queryset=Guarantee.objects.only(
                     'id', 'contract_id', 'number', 'guarantee_type', 'amount', 'is_released',
+                    'issue_date', 'expiry_date', 'guarantee_expiry_date', 'check_due_date',
+                    'promissory_due_date',
+                )),
+                Prefetch('disputes', queryset=ContractDispute.objects.only(
+                    'id', 'contract_id', 'title', 'opened_date', 'claim_amount', 'status',
                 )),
             ),
-        )
+        ).annotate(documents_count=Count('documents', distinct=True))
 
     def get_queryset(self):
         if self.action == 'retrieve':
