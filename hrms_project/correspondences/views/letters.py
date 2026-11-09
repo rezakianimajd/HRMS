@@ -105,6 +105,8 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         'priority', 'status', 'number',
         # «شماره ثبت ورود به واحد» — با ترتیب عددی (reg_no) یا متنی (unit_reg_no)
         'reg_no', 'unit_reg_no', 'unit_reg_date', 'company_reg_no',
+        # شمارهٔ صادره: مرتب‌سازی بر اساس سال دو رقمی و سپس شمارهٔ سری
+        'out_no', 'number_year',
     ]
     ordering = ['-effective_date', '-id']
 

@@ -638,6 +638,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             { value: 'reg_no', label: 'شماره ثبت (آخرین اول)' },
             { value: 'reg_no_asc', label: 'شماره ثبت (اولین اول)' },
           ] : []),
+          ...(preset.direction === 'outgoing' ? [
+            { value: 'out_no', label: 'شماره نامه (آخرین سری اول)' },
+            { value: 'out_no_asc', label: 'شماره نامه (اولین سری اول)' },
+          ] : []),
           { value: 'newest', label: preset.direction === 'outgoing'
             ? 'جدیدترین تاریخ نامه/ارسال' : 'جدیدترین تاریخ ورود' },
           { value: 'oldest', label: preset.direction === 'outgoing'

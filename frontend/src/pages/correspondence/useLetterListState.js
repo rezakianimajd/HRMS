@@ -14,14 +14,21 @@ export const SORT_ORDERS = {
   /* «شماره ثبت» دفتر وارده — عددی مرتب می‌شود و آخرین شماره اول می‌آید */
   reg_no: '-reg_no',
   reg_no_asc: 'reg_no',
+  /* «شماره نامه» دفتر صادره — اول سال، بعد شمارهٔ سری (آخرین سری اول) */
+  out_no: '-out_no',
+  out_no_asc: 'out_no',
   newest: '-effective_date',
   oldest: 'effective_date',
   due: 'due_date',
   number: 'number',
 };
 
-/** ترتیب پیش‌فرض هر دفتر: وارده بر اساس «شماره ثبت» (آخرین اول) */
-export const defaultSortFor = (direction) => (direction === 'incoming' ? 'reg_no' : 'newest');
+/** ترتیب پیش‌فرض هر دفتر */
+export const defaultSortFor = (direction) => {
+  if (direction === 'incoming') return 'reg_no';
+  if (direction === 'outgoing') return 'out_no';
+  return 'newest';
+};
 
 export const useLetterListState = ({ preset, pageSize, onNewRequested }) => {
   const [searchParams] = useSearchParams();

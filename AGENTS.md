@@ -558,12 +558,32 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `feat(correspondence): normalize outgoing numbers and reconcile the five indicator sheets`
-- **Live:** frontend `main.1d2ee363.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص) و `correspondences.0021` (گروه‌های شماره‌گذاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
-- **اصلاح نهایی نامه‌های صادره طبق تصمیم کاربر (۲۰۲۶-۱۱-۰۹):** برای هر ۵ شیت، شماره‌ها به قالب
-  استاندارد **`YY/PREFIX/SEQ`** یکسان شدند (``correspondences/letter_numbers.py``:
-  `parse_letter_number`/`normalize_letter_number`/`university_number`) — حتی وقتی سال و شمارهٔ سری
-  در اکسل جابه‌جا ثبت شده بود (``5802/ص م/05`` → ``05/ص م/5802``)؛ ۱۸۰۷ نامه یکسان و ۵ نامهٔ دستی هم اصلاح شد.
+- **Last commit:** `feat(correspondence): reverse letter-number order and add latest-first outgoing ordering`
+- **Live:** frontend `main.3595a2af.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص)، `correspondences.0021` (گروه‌های شماره‌گذاری) و `correspondences.0022` (تاریخ نامهٔ اختیاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **قالب شمارهٔ صادره و مرتب‌سازی «آخرین سری اول» (۲۰۲۶-۱۱-۰۹):** قالب استاندارد به
+  **`{seq}/{prefix}/{yy}`** برگشت (مثل ``5802/ص م/05``) چون متن فارسی/RTL است و سال در سمت چپ
+  نمایش داده می‌شود؛ ``letter_numbers.normalize_letter_number`` همهٔ ۸۲۸ شمارهٔ فعال را برگرداند و
+  گروه «مؤسسه» هم به `{seq}/{prefix}/{yy}` با ۴ رقم و «دانشگاه» به `{seq}` با ۳ رقم تنظیم شد.
+  - **مرتب‌سازی:** کلید `?ordering=-out_no` در `LetterOrderingFilter` با دو حاشیه‌نویسی
+    `_out_no_year` (دو رقم آخر بعد از «/») و `_out_no_seq` (عدد ابتدای شماره) → **اول سال نزولی،
+    بعد شمارهٔ سری نزولی** (نامبرهای ساده/بدون اسلش مثل سری دانشگاه با `nulls_last` ته فهرست).
+    فرانت `SORT_ORDERS.out_no`/`out_no_asc` + `defaultSortFor('outgoing') = 'out_no'` و گزینه‌های
+    «شماره نامه (آخرین سری اول)» در نوار ابزار؛ لیست ۶ ردیفی ۱۶۳ms/۸ کوئری.
+- **بازرسی هایپرلینک‌های اندیکاتور (پیوست‌ها، ۲۰۲۶-۱۱-۰۹):** ۱٬۲۵۰ لینک در ۵ شیت استخراج و با
+  پیوست‌های برنامه مقایسه شد:
+  | شیت | ردیف با لینک | پیوست کامل | بدون پیوست |
+  |---|---|---|---|
+  | نام های صادره | ۴ | ۴ | ۰ |
+  | نامه صادره مالی | ۰ | — | — |
+  | **قرارداد** | ۴۱۴ (۴۰۵ نامه در سیستم) | ۰ | **۴۱۴** |
+  | ارسالی به دانشگاه | ۸۰۳ | ۸۰۲ | ۱ |
+  | امور بانکداری پاسارگاد | ۲۰ | ۲۰ | ۰ |
+  - همهٔ **۶٬۷۷۹** فایل پیوست فعال روی دیسک موجودند (۰ فایل گم‌شده) و لینک دانلود/پیش‌نمایش ۲۰۰ است؛
+    تنها شکاف واقعی: **پیوست‌های شیت «قرارداد» وارد نشده‌اند** (و یک نامهٔ دانشگاه).
+- **اصلاح نهایی نامه‌های صادره طبق تصمیم کاربر (۲۰۲۶-۱۱-۰۹):** شماره‌ها با
+  ``correspondences/letter_numbers.py`` (`parse_letter_number`/`normalize_letter_number`/`university_number`)
+  یکسان شدند (قالب نهایی ``{seq}/{prefix}/{yy}`` — بخش «قالب شمارهٔ صادره» بالا)؛ ۱۸۰۷ نامهٔ شیت‌ها
+  و ۵ نامهٔ دستی اصلاح شد.
   - **تاریخ صادره:** ستون «تاریخ وارده» در این شیت‌ها در واقع **تاریخ صدور** است → در `sent_date`
     نوشته شد (۱۱۲۰ نامه) و اگر `letter_date` خالی بود همان مقدار گرفت.
   - **قرارداد:** ۴۲۰ نامهٔ شیت «قرارداد» از «داخلی» به **صادره** منتقل شد (دفتر داخلی خالی شد).
@@ -571,12 +591,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     طرف و پیوست) بایگانی شدند (`is_active=False`) تا در دفتر دیده نشوند؛ معیار اعتبار: «موضوع یا تاریخ».
   - **موضوع‌های جانشین** («نامه صادره شماره …») خالی شدند تا «—» نمایش داده شود و نامه‌های بدون شماره
     در صادره بمانند (۴۲۹ مورد، بیشترشان قرارداد).
-  - **گروه‌های شماره‌گذاری** با همین قالب هم‌سو شدند: «مؤسسه» = `{yy}/{prefix}/{seq}` با ۴ رقم و
+  - **گروه‌های شماره‌گذاری** با همین قالب هم‌سو شدند: «مؤسسه» = `{seq}/{prefix}/{yy}` با ۴ رقم و
     «دانشگاه» = `{seq}` با ۳ رقم.
   - وضعیت زندهٔ `kpsmi`: صادرهٔ فعال **۲۰۶۲** (بانک ۲۰، قرارداد ۴۲۰، دانشگاه ۸۰۵)، بایگانی ۱۸۹،
     بدون شماره ۴۲۹، دارای `sent_date` ۱۸۱۳؛ ۹ گروه شمارهٔ تکراری در خود اکسل باقی است (مثل
     ``05/ص م/5497`` سه‌بار) و دست‌نخورده مانده.
-  - تست: `correspondences/tests_letter_numbers.py` (۱۱ تست DB-free) + کل `correspondences` (**۲۲۸ تست**).
+  - تست: `correspondences/tests_letter_numbers.py` (۱۱ تست DB-free) + کل `correspondences` (**۲۳۰ تست**).
 - **تطبیق نامه‌های صادره با فایل اندیکاتور (۲۰۲۶-۱۱-۰۹):** شیت‌های «نام های صادره »، «نامه صادره مالی»،
   «قرارداد»، «ارسالی ها به دانشگاه» و «امور بانکداری پاسارگاد» با نامه‌های صادره مقایسه شدند.
   - **نقشهٔ ستون‌ها (تأیید‌شده):** در دو شیت اول ۰=شماره وارده، ۱=ترنسمیتال، ۲=تاریخ وارده،

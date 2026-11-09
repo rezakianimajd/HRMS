@@ -9,24 +9,24 @@ from correspondences.letter_numbers import (
 class ParseLetterNumberTests(SimpleTestCase):
 
     def test_canonical_number_is_unchanged(self):
-        self.assertEqual(normalize_letter_number('05/ص م /5792'), '05/ص م/5792')
+        self.assertEqual(normalize_letter_number('05/ص م /5792'), '5792/ص م/05')
 
     def test_swapped_year_and_sequence(self):
-        self.assertEqual(normalize_letter_number('5802/ص م/05'), '05/ص م/5802')
-        self.assertEqual(normalize_letter_number('7596/ص م/05'), '05/ص م/7596')
-        self.assertEqual(normalize_letter_number('5793/ص/05'), '05/ص/5793')
+        self.assertEqual(normalize_letter_number('05/ص م/5802'), '5802/ص م/05')
+        self.assertEqual(normalize_letter_number('05/ص م/7596'), '7596/ص م/05')
+        self.assertEqual(normalize_letter_number('05/ص/5793'), '5793/ص/05')
 
     def test_year_1405_is_shortened(self):
-        self.assertEqual(normalize_letter_number('1405/950/ص م'), '05/ص م/950')
+        self.assertEqual(normalize_letter_number('ص م/1405/950'), '950/ص م/05')
 
     def test_persian_digits_are_supported(self):
-        self.assertEqual(normalize_letter_number('۰۵/ص م/۰۰۰۷'), '05/ص م/0007')
+        self.assertEqual(normalize_letter_number('۰۰۰۷/ص م/۰۵'), '0007/ص م/05')
 
     def test_prefix_keeps_both_letters(self):
-        self.assertEqual(normalize_letter_number('04/ص م  /5002'), '04/ص م/5002')
+        self.assertEqual(normalize_letter_number('04/ص م  /5002'), '5002/ص م/04')
 
     def test_bank_style_number_picks_largest_serial(self):
-        self.assertEqual(normalize_letter_number('ص/05/110/100087'), '05/ص/100087')
+        self.assertEqual(normalize_letter_number('ص/05/110/100087'), '100087/ص/05')
 
     def test_number_without_year_is_not_normalized(self):
         self.assertIsNone(normalize_letter_number('42/23184'))

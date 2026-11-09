@@ -124,6 +124,25 @@ class LetterOrderingTests(SimpleTestCase):
         self.assertEqual(normalize([first]), ['-received_date'])
         self.assertTrue(first.nulls_last)
 
+    def test_out_no_ordering_uses_year_then_sequence(self):
+        """«آخرین سری اول»: اول سال نزولی، بعد شمارهٔ سری نزولی."""
+        view = make_view(['out_no', 'number'], ['-effective_date', '-id'])
+        filtered = LetterOrderingFilter().filter_queryset(
+            make_request('-out_no'), self.queryset, view,
+        )
+        self.assertEqual(
+            normalize(filtered.query.order_by[:2]), ['-_out_no_year', '-_out_no_seq'],
+        )
+        self.assertIn('_out_no_year', filtered.query.annotations)
+        self.assertIn('_out_no_seq', filtered.query.annotations)
+
+    def test_out_no_ascending(self):
+        view = make_view(['out_no'], ['-effective_date'])
+        filtered = LetterOrderingFilter().filter_queryset(
+            make_request('out_no'), self.queryset, view,
+        )
+        self.assertEqual(normalize(filtered.query.order_by[:2]), ['_out_no_year', '_out_no_seq'])
+
 
 class OrderingFieldsDeclarationTests(SimpleTestCase):
 

@@ -4,13 +4,34 @@
 «آخرین شماره اول» بیاید، رقم‌ها استخراج و به عدد تبدیل می‌شوند. مقدار خالی یا
 بدون رقم به NULL تبدیل می‌شود تا همیشه ته فهرست بیفتد (``nulls_last``).
 """
-from django.db.models import BigIntegerField, CharField, F, Func, Value
+from django.db.models import BigIntegerField, CharField, F, Func, IntegerField, Value
 from django.db.models.functions import Cast, NullIf
 
 from correspondences.views.base import filters
 
 REG_NO_ORDERING_FIELDS = ('reg_no', 'unit_reg_no')
 REG_NO_SORT_ANNOTATION = '_unit_reg_no_sort'
+
+# مرتب‌سازی «شمارهٔ صادره»: سال دو رقمی و شمارهٔ سری از انتهای/ابتدا استخراج می‌شوند
+OUT_NO_ORDERING_FIELDS = ('out_no', 'number_year')
+OUT_NO_SEQ_ANNOTATION = '_out_no_seq'
+OUT_NO_YEAR_ANNOTATION = '_out_no_year'
+
+
+def _out_no_annotations():
+    """حاشیه‌نویسی سال و شمارهٔ سری برای مرتب‌سازی «آخرین سری اول».
+
+    فقط شماره‌های قالب‌دار (``SEQ/PREFIX/YY``) مقدار می‌گیرند؛ شماره‌های ساده
+    (مثل شمارهٔ سری دانشگاه) ``NULL`` می‌شوند تا ته فهرست بیایند.
+    """
+    year_text = Func(F('number'), Value(r'/(\d{2})$'), function='substring',
+                     output_field=CharField())
+    seq_text = Func(F('number'), Value(r'^(\d+)/'), function='substring',
+                    output_field=CharField())
+    return {
+        OUT_NO_YEAR_ANNOTATION: Cast(year_text, output_field=IntegerField()),
+        OUT_NO_SEQ_ANNOTATION: Cast(seq_text, output_field=BigIntegerField()),
+    }
 
 # فیلدهای تاریخ: در حالت مرتب‌سازی، ردیف‌های بدون تاریخ همیشه ته فهرست می‌آیند
 DATE_ORDER_FIELDS = (
@@ -52,6 +73,21 @@ class LetterOrderingFilter(filters.OrderingFilter):
 
     def filter_queryset(self, request, queryset, view):
         ordering = self.get_ordering(request, queryset, view) or []
+
+        out_terms = [term for term in ordering if str(term).lstrip('-') in OUT_NO_ORDERING_FIELDS]
+        if out_terms:
+            others = [term for term in ordering if term not in out_terms]
+            descending = str(out_terms[0]).startswith('-')
+            annotated = queryset.annotate(**_out_no_annotations())
+            year_key = F(OUT_NO_YEAR_ANNOTATION)
+            seq_key = F(OUT_NO_SEQ_ANNOTATION)
+            if descending:
+                primary = (year_key.desc(nulls_last=True), seq_key.desc(nulls_last=True))
+            else:
+                primary = (year_key.asc(nulls_last=True), seq_key.asc(nulls_last=True))
+            tail = [_ordering_expression(term) for term in others] if others else ['-id']
+            return annotated.order_by(*primary, *tail)
+
         reg_terms = [term for term in ordering if str(term).lstrip('-') in REG_NO_ORDERING_FIELDS]
         if not reg_terms:
             return queryset.order_by(*[_ordering_expression(term) for term in ordering]) \
