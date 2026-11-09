@@ -558,7 +558,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `feat(correspondence): unit registration number column and numeric ordering for incoming letters`
+- **Last commit:** `feat(correspondence): numbering groups with auto-suggested letter numbers`
 - **Live:** frontend `main.6ab901a8.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص) و `correspondences.0021` (گروه‌های شماره‌گذاری) + مرتب‌سازی عددی «شماره ثبت» نامه‌ها + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
 - **شماره‌گذاری خودکار و گروهی مکاتبات صادره (۲۰۲۶-۱۱-۰۹):** در «تنظیمات و تعاریف» گروه منوی
   **«مکاتبات اداری»** (`settings-correspondence`) اضافه شد با صفحهٔ
