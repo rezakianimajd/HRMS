@@ -194,6 +194,17 @@ const settingsMenu = [
     ],
   },
   {
+    id: 'settings-correspondence',
+    title: 'مکاتبات اداری',
+    color: '#0ea5e9',
+    items: [
+      { id: 'settings-correspondence-numbering', title: 'تعاریف اولیه و شماره‌گذاری', icon: <NumbersIcon />, path: '/settings/correspondence-numbering', color: '#0ea5e9', primary: true, ready: true },
+      { id: 'settings-correspondence-types', title: 'انواع مکاتبه', icon: <CategoryIcon />, path: '/correspondence/settings?tab=categories', color: '#6366f1', primary: false, ready: true },
+      { id: 'settings-correspondence-contacts', title: 'مخاطبین و سازمان‌ها', icon: <ContactsIcon />, path: '/correspondence/settings?tab=contacts', color: '#0f766e', primary: false, ready: true },
+      { id: 'settings-correspondence-mapping', title: 'نگاشت نام‌ها', icon: <AltRouteIcon />, path: '/correspondence/name-mapping', color: '#8b5cf6', primary: false, ready: true },
+    ],
+  },
+  {
     id: 'settings-projects',
     title: 'مدیریت پروژه',
     color: '#8b5cf6',

@@ -21,8 +21,8 @@ class ViewsPackageTests(SimpleTestCase):
 
     def test_package_files_exist(self):
         package = APP_DIR / 'views'
-        for name in ('base.py', 'legacy.py', 'letters.py', 'referrals.py',
-                     'attachments.py', 'aliases.py', 'requests.py'):
+        for name in ('base.py', 'legacy.py', 'letters.py', 'series.py', 'ordering.py',
+                     'referrals.py', 'attachments.py', 'aliases.py', 'requests.py'):
             self.assertTrue((package / name).exists(), name)
 
     def test_every_viewset_is_importable_from_the_package(self):

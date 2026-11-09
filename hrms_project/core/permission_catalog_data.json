@@ -244,6 +244,31 @@
     ]
    },
    {
+    "title": "مکاتبات اداری",
+    "items": [
+     {
+      "id": "settings-correspondence-numbering",
+      "title": "تعاریف اولیه و شماره‌گذاری",
+      "path": "/settings/correspondence-numbering"
+     },
+     {
+      "id": "settings-correspondence-types",
+      "title": "انواع مکاتبه",
+      "path": "/correspondence/settings?tab=categories"
+     },
+     {
+      "id": "settings-correspondence-contacts",
+      "title": "مخاطبین و سازمان‌ها",
+      "path": "/correspondence/settings?tab=contacts"
+     },
+     {
+      "id": "settings-correspondence-mapping",
+      "title": "نگاشت نام‌ها",
+      "path": "/correspondence/name-mapping"
+     }
+    ]
+   },
+   {
     "title": "مدیریت پروژه",
     "items": [
      {

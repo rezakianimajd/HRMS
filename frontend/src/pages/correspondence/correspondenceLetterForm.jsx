@@ -35,6 +35,7 @@ const EMPTY_LETTER = {
   direction: 'incoming',
   category: '',
   number: '',
+  series: '',
   letter_date: new Date().toISOString().slice(0, 10),
   received_date: '',
   sent_date: '',
@@ -186,6 +187,8 @@ const LetterFormDialog = ({
   const [existingAttachments, setExistingAttachments] = useState([]);
   const [error, setError] = useState('');
   const fileRef = useRef(null);
+  /* آخرین شمارهٔ پیشنهادی گروه (برای تشخیص ویرایش دستی شماره توسط کاربر) */
+  const suggestionRef = useRef('');
 
   const deleteExistingAttachment = useMutation({
     mutationFn: (attachmentId) => axiosInstance.delete(`/letter-attachments/${attachmentId}/`),
@@ -224,8 +227,15 @@ const LetterFormDialog = ({
       }
       next.register = false;
       setForm(next);
+      suggestionRef.current = '';
     } else {
-      setForm({ ...EMPTY_LETTER, direction: presetDirection || 'incoming' });
+      const direction = presetDirection || 'incoming';
+      setForm({
+        ...EMPTY_LETTER,
+        direction,
+        series: meta?.defaults?.[direction]?.series || '',
+      });
+      suggestionRef.current = '';
     }
   }, [open, initial, presetDirection]);
 
@@ -283,6 +293,31 @@ const LetterFormDialog = ({
   const categories = (meta?.categories || []).filter(
     (row) => !row.direction || row.direction === 'both' || row.direction === form.direction,
   );
+
+  /* گروه‌های شماره‌گذاری همان جهت (برای پیشنهاد خودکار شماره) */
+  const seriesOptions = (meta?.series || []).filter(
+    (row) => row.direction === form.direction && row.is_active !== false,
+  );
+  const seriesPreview = useQuery({
+    queryKey: ['letter-series-preview', form.series, form.letter_date],
+    queryFn: () => axiosInstance.get(`/letter-series/${form.series}/preview/`, {
+      params: form.letter_date ? { letter_date: form.letter_date } : {},
+    }).then((response) => response.data),
+    enabled: open && Boolean(form.series),
+    staleTime: 10_000,
+  });
+  const suggestion = seriesPreview.data || null;
+
+  /* شمارهٔ پیشنهادی گروه؛ تا وقتی کاربر شماره را دستی عوض نکرده، جایگزین می‌شود */
+  useEffect(() => {
+    const suggested = suggestion?.number || '';
+    if (!suggested) return;
+    setForm((prev) => {
+      if (prev.number && prev.number !== suggestionRef.current) return prev;
+      return prev.number === suggested ? prev : { ...prev, number: suggested };
+    });
+    suggestionRef.current = suggested;
+  }, [suggestion?.number]);
 
   /* قرارداد مرتبط از «مدیریت قراردادها» */
   const contractsQuery = useQuery({
@@ -384,7 +419,17 @@ const LetterFormDialog = ({
             : form.direction === 'internal' ? 'ثبت مکاتبهٔ داخلی' : 'ثبت و ورود'}
           color={form.direction === 'outgoing' ? OUTGOING : WARN}>
           <FormTable>
-            <TextField select size="small" label="جهت نامه" value={form.direction} onChange={set('direction')}>
+            <TextField select size="small" label="جهت نامه" value={form.direction}
+              onChange={(event) => {
+                const direction = event.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  direction,
+                  series: meta?.defaults?.[direction]?.series || '',
+                  number: '',
+                }));
+                suggestionRef.current = '';
+              }}>
               {Object.entries(DIRECTION_META).map(([value, item]) => (
                 <MenuItem key={value} value={value}>{item.label}</MenuItem>
               ))}
@@ -445,7 +490,32 @@ const LetterFormDialog = ({
           title={form.direction === 'outgoing' ? 'شماره‌ها و تاریخ ارسال' : 'شماره‌ها و تاریخ ثبت'}
           color={form.direction === 'outgoing' ? OUTGOING : INCOMING}>
           <FormTable>
-            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')} />
+            {form.direction === 'outgoing' ? (
+              <TextField select size="small" label="گروه شماره‌گذاری"
+                value={form.series}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, series: event.target.value, number: '' }));
+                  suggestionRef.current = '';
+                }}
+                helperText={suggestion?.number
+                  ? `پیشنهاد خودکار: ${suggestion.number}`
+                  : (seriesOptions.length
+                    ? 'گروه را انتخاب کنید تا شمارهٔ بعدی پیشنهاد شود'
+                    : 'در تنظیمات → مکاتبات اداری گروه بسازید')}
+                FormHelperTextProps={{ sx: { fontSize: 10, mx: 0.25 } }}>
+                <MenuItem value="">بدون گروه (شمارهٔ دستی)</MenuItem>
+                {seriesOptions.map((item) => (
+                  <MenuItem key={item.id} value={item.id}>
+                    {item.title}{item.is_default ? ' — پیش‌فرض' : ''}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
+            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')}
+              helperText={suggestion?.number && form.number !== suggestion.number
+                ? `شمارهٔ پیشنهادی گروه: ${suggestion.number}`
+                : ''}
+              FormHelperTextProps={{ sx: { fontSize: 10, mx: 0.25 } }} />
             <JalaliMaskedDateInput variant="outlined" label="تاریخ نامه" value={form.letter_date}
               onChange={(value) => setForm((prev) => ({ ...prev, letter_date: value }))} />
             {form.direction === 'outgoing' ? (

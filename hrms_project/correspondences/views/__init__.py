@@ -4,7 +4,9 @@
 
 - ``base``        واردات/ثابت‌های مشترک، helperهای ارجاع و ``BaseLetterViewSet``
 - ``legacy``      مدل‌های قدیمی (فقط-خواندنی)
-- ``letters``     انواع/سری/مخاطبین + ویوست اصلی نامه‌ها
+- ``letters``     انواع/مخاطبین + ویوست اصلی نامه‌ها
+- ``series``      گروه‌های شماره‌گذاری (تعاریف و پیشنهاد شماره)
+- ``ordering``    مرتب‌سازی عددی «شماره ثبت ورود به واحد»
 - ``referrals``   ارجاعات و کارتابل
 - ``attachments`` پیوست‌ها و دانلود امن
 - ``aliases``     نگاشت نام‌ها
@@ -44,8 +46,12 @@ from correspondences.views.legacy import (  # noqa: F401
 from correspondences.views.letters import (  # noqa: F401
     CorrespondentViewSet,
     LetterCategoryViewSet,
-    LetterSeriesViewSet,
     LetterViewSet,
+)
+from correspondences.views.series import LetterSeriesViewSet  # noqa: F401
+from correspondences.views.ordering import (  # noqa: F401
+    LetterOrderingFilter,
+    reg_no_sort_expression,
 )
 from correspondences.views.referrals import LetterReferralViewSet  # noqa: F401
 from correspondences.views.attachments import LetterAttachmentViewSet  # noqa: F401
@@ -70,6 +76,7 @@ __all__ = [
     'LetterRequestViewSet',
     'LetterSeriesViewSet',
     'LetterViewSet',
+    'LetterOrderingFilter',
     'OrganizationViewSet',
     'OrganizationalLetterViewSet',
     'OutgoingLetterViewSet',

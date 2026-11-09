@@ -160,6 +160,11 @@ class LetterCategorySerializer(serializers.ModelSerializer):
 class LetterSeriesSerializer(serializers.ModelSerializer):
     direction_display = serializers.CharField(source='get_direction_display', read_only=True)
     preview = serializers.SerializerMethodField()
+    letter_count = serializers.SerializerMethodField()
+    last_number = serializers.IntegerField(
+        write_only=True, required=False, min_value=1,
+        help_text='آخرین شمارهٔ مصرف‌شده؛ شمارنده از شمارهٔ بعدی ادامه می‌دهد',
+    )
 
     class Meta:
         from correspondences.models import LetterSeries
@@ -167,15 +172,48 @@ class LetterSeriesSerializer(serializers.ModelSerializer):
         model = LetterSeries
         fields = [
             'id', 'title', 'direction', 'direction_display', 'prefix', 'template',
-            'next_number', 'padding', 'reset_yearly', 'last_year', 'is_default',
-            'preview', 'is_active', 'created_at', 'updated_at',
+            'start_number', 'next_number', 'end_number', 'padding', 'reset_yearly',
+            'last_year', 'is_default', 'description', 'preview', 'last_number',
+            'letter_count', 'is_active', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'last_year', 'preview', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'last_year', 'preview', 'letter_count', 'created_at', 'updated_at',
+        ]
 
     def get_preview(self, obj):
         from correspondences.numbering import preview_number
 
         return preview_number(obj)
+
+    def get_letter_count(self, obj):
+        count = getattr(obj, 'letter_count', None)
+        return count if count is not None else obj.letters.count()
+
+    def validate_template(self, value):
+        from correspondences.numbering import NumberingError, validate_template
+
+        try:
+            return validate_template(value)
+        except NumberingError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
+
+    def validate(self, attrs):
+        instance = self.instance
+        start = attrs.get('start_number', getattr(instance, 'start_number', 1) or 1)
+        end = attrs.get('end_number', getattr(instance, 'end_number', None))
+
+        if attrs.get('last_number') is not None:
+            attrs['next_number'] = int(attrs['last_number']) + 1
+        elif 'start_number' in attrs:
+            current_next = attrs.get('next_number', getattr(instance, 'next_number', start) or start)
+            if current_next < start:
+                attrs['next_number'] = start
+
+        if end is not None and start and int(end) < int(start):
+            raise serializers.ValidationError(
+                {'end_number': 'شمارهٔ پایان نمی‌تواند کوچک‌تر از شمارهٔ شروع باشد.'},
+            )
+        return attrs
 
 
 class CorrespondentSerializer(serializers.ModelSerializer):

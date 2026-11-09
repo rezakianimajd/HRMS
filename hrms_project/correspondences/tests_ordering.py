@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 from django.test import SimpleTestCase
 
-from correspondences.views.letters import (
+from correspondences.views.ordering import (
     REG_NO_ORDERING_FIELDS, REG_NO_SORT_ANNOTATION, LetterOrderingFilter,
     reg_no_sort_expression,
 )

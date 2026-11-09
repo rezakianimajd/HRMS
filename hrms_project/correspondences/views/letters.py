@@ -1,7 +1,4 @@
 """دفتر نامه‌ها: انواع، سری‌ها، مخاطبین و ویوست اصلی نامه‌ها."""
-from django.db.models import BigIntegerField, CharField, F, Func, Value
-from django.db.models.functions import Cast, NullIf
-
 from correspondences.views.base import (  # noqa: F401 — واردات مشترک
 
     AllowAny, Count, FileResponse, Http404, JWTAuthentication, PermissionDenied, Q, Response,
@@ -11,6 +8,7 @@ from correspondences.views.base import (  # noqa: F401 — واردات مشتر
     LetterEvent, LetterReferral, LetterRequest, LetterRequestEvent, LetterRequestType,
     LetterSeries,
     allocate_number, preview_number, request_number,
+    sync_series_counter,
     issue_token, read_token,
     REQUESTS_MENUS, CorrespondencePermissionMixin, DefinitionPermissionMixin,
     can_download_attachment, can_read_confidential, confidential_letter_filter,
@@ -27,6 +25,7 @@ from correspondences.views.base import (  # noqa: F401 — واردات مشتر
     _log_event, _my_name_variants, _my_referral_filter, _raw_referral_names_for, _truthy,
     _user_employee, _user_name, _user_of_employee,
 )
+from correspondences.views.ordering import LetterOrderingFilter  # noqa: F401
 
 
 class LetterCategoryViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
@@ -41,68 +40,6 @@ class LetterCategoryViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
         if direction:
             qs = qs.filter(Q(direction=direction) | Q(direction='both'))
         return qs
-
-# ---------------------------------------------------------------------------
-# مرتب‌سازی «شماره ثبت ورود به واحد» (ستون شمارهٔ ثبت دفتر وارده)
-# ---------------------------------------------------------------------------
-# مقادیر این فیلد متنی‌اند و ممکن است به شکل «1404/457» ثبت شوند؛ برای اینکه
-# «آخرین شماره اول» بیاید، رقم‌ها استخراج و به عدد تبدیل می‌شوند. مقدار خالی
-# یا بدون رقم به NULL تبدیل می‌شود تا همیشه ته فهرست بیفتد (nulls_last).
-REG_NO_ORDERING_FIELDS = ('reg_no', 'unit_reg_no')
-REG_NO_SORT_ANNOTATION = '_unit_reg_no_sort'
-
-
-def reg_no_sort_expression():
-    """عبارت عددی «شمارهٔ ثبت» برای مرتب‌سازی (PostgreSQL)."""
-    digits = Func(
-        F('unit_reg_no'),
-        Value('[^0-9]'),
-        Value(''),
-        Value('g'),
-        function='regexp_replace',
-        output_field=CharField(),
-    )
-    return Cast(NullIf(digits, Value('')), output_field=BigIntegerField())
-
-
-class LetterOrderingFilter(filters.OrderingFilter):
-    """``OrderingFilter`` با پشتیبانی از مرتب‌سازی عددی «شمارهٔ ثبت».
-
-    ``?ordering=-reg_no`` آخرین شمارهٔ ثبت را اول می‌آورد و نامه‌های بدون
-    شماره را ته فهرست می‌گذارد؛ بقیهٔ فیلدها مثل قبل متنی مرتب می‌شوند.
-    """
-
-    def filter_queryset(self, request, queryset, view):
-        ordering = self.get_ordering(request, queryset, view) or []
-        reg_terms = [term for term in ordering if str(term).lstrip('-') in REG_NO_ORDERING_FIELDS]
-        if not reg_terms:
-            return queryset.order_by(*ordering) if ordering else queryset
-
-        others = [term for term in ordering if term not in reg_terms]
-        descending = str(reg_terms[0]).startswith('-')
-        annotated = queryset.annotate(**{REG_NO_SORT_ANNOTATION: reg_no_sort_expression()})
-        key = F(REG_NO_SORT_ANNOTATION)
-        primary = key.desc(nulls_last=True) if descending else key.asc(nulls_last=True)
-        return annotated.order_by(primary, *(others or ['-id']))
-
-
-class LetterSeriesViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
-    serializer_class = LetterSeriesSerializer
-    queryset = LetterSeries.objects.all()
-    search_fields = ['title', 'prefix']
-    ordering = ['-is_default', 'title']
-
-    @action(detail=True, methods=['get'], url_path='preview')
-    def preview(self, request, pk=None):
-        series = self.get_object()
-        letter_date = request.query_params.get('letter_date')
-        parsed = None
-        if letter_date:
-            try:
-                parsed = date_cls.fromisoformat(letter_date[:10])
-            except ValueError:
-                parsed = None
-        return Response({'number': preview_number(series, parsed)})
 
 
 class CorrespondentViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
@@ -405,20 +342,29 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             drafter=serializer.validated_data.get('drafter')
             or (user if getattr(user, 'is_authenticated', False) else None),
         )
-        if self._payload_register_flag() or (self.request.data.get('number') and not letter.number):
+        # شماره‌گذاری خودکار: ثبت صریح، یا انتخاب گروه شماره‌گذاری بدون شماره (به‌جز پیش‌نویس)
+        auto_from_series = bool(
+            self.request.data.get('series') and not letter.number and letter.status != 'draft'
+        )
+        if self._payload_register_flag() or auto_from_series or (
+            self.request.data.get('number') and not letter.number
+        ):
             self._assign_number(letter, user)
         _log_event(letter, 'created', user, note=f'ثبت نامه: {letter.subject}')
         if letter.number:
             _log_event(letter, 'registered', user, note=f'شماره نامه: {letter.number}')
 
     def _assign_number(self, letter, user=None, series_id=None):
-        """تخصیص شماره از سری (در صورت خالی بودن شماره)."""
+        """تخصیص شماره از گروه شماره‌گذاری (اگر شماره خالی باشد) و هم‌گام‌سازی شمارنده."""
         company = letter.company
         series = self._resolve_series(letter.direction, company, series_id or letter.series_id)
         if series:
             letter.series = series
             if not letter.number:
                 letter.number = allocate_number(series, letter.letter_date)
+            else:
+                # شمارهٔ دستی جلوتر از شمارنده بود؟ شمارنده را هم‌گام کن
+                sync_series_counter(series, letter.number, letter.letter_date)
         if letter.status == 'draft':
             letter.status = 'registered'
         if letter.direction == 'incoming' and not letter.received_date:

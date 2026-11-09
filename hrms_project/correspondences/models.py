@@ -244,7 +244,13 @@ class LetterCategory(BaseModel):
 
 
 class LetterSeries(BaseModel):
-    """سری شماره‌گذاری نامه (شمارهٔ اندیکاتور/صادره/وارده)."""
+    """گروه شماره‌گذاری نامه (شمارهٔ اندیکاتور/صادره/وارده).
+
+    هر شرکت می‌تواند چند «گروه شماره‌گذاری» بسازد (مثلاً مکاتبات مؤسسه و مکاتبات
+    دانشگاه) و در دیالوگ ورود نامه گروه را انتخاب کند. الگوی شماره از بخش‌ها
+    ساخته می‌شود (حروف فارسی، سال/ماه شمسی، جداکننده و شمارهٔ سری) و می‌تواند
+    تک‌قسمتی (``{seq}``) یا چندقسمتی (``{prefix}/{year}/{seq}``) باشد.
+    """
 
     DIRECTIONS = [
         ('incoming', _('وارده')),
@@ -252,24 +258,32 @@ class LetterSeries(BaseModel):
         ('internal', _('داخلی')),
     ]
 
-    title = models.CharField(max_length=150, verbose_name=_('عنوان سری'))
+    title = models.CharField(max_length=150, verbose_name=_('عنوان گروه شماره‌گذاری'))
     direction = models.CharField(max_length=20, choices=DIRECTIONS, verbose_name=_('جهت مکاتبه'))
-    prefix = models.CharField(max_length=40, blank=True, verbose_name=_('پیشوند'),
-                              help_text=_('مثال: ص م — در شماره درج می‌شود'))
+    prefix = models.CharField(max_length=40, blank=True, verbose_name=_('پیشوند'),)
     template = models.CharField(
         max_length=80, default='{prefix}/{year}/{seq}', verbose_name=_('قالب شماره'),
-        help_text=_('توکن‌های مجاز: {prefix} {year} {seq}'),
+        help_text=_('توکن‌ها: {prefix} {seq} {year} {yy} {month} {day}'),
+    )
+    start_number = models.PositiveIntegerField(
+        default=1, verbose_name=_('شماره شروع'),
+        help_text=_('شمارش (و شمارش سالانه) از این شماره آغاز می‌شود'),
     )
     next_number = models.PositiveIntegerField(default=1, verbose_name=_('شمارهٔ بعدی'))
+    end_number = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name=_('تا شماره'),
+        help_text=_('سقف اختیاری؛ گذشتن از آن فقط هشدار می‌دهد'),
+    )
     padding = models.PositiveSmallIntegerField(default=3, verbose_name=_('تعداد رقم'),
                                                help_text=_('مثال: ۳ → 007'))
-    reset_yearly = models.BooleanField(default=True, verbose_name=_('شمارش سالانه از یک شروع شود'))
+    reset_yearly = models.BooleanField(default=True, verbose_name=_('شمارش سالانه از نو شروع شود'))
     last_year = models.PositiveIntegerField(null=True, blank=True, verbose_name=_('آخرین سال شمسی'))
-    is_default = models.BooleanField(default=False, verbose_name=_('سری پیش‌فرض این جهت'))
+    is_default = models.BooleanField(default=False, verbose_name=_('گروه پیش‌فرض این جهت'))
+    description = models.CharField(max_length=255, blank=True, verbose_name=_('توضیح / کاربرد'))
 
     class Meta:
-        verbose_name = _('سری شماره‌گذاری')
-        verbose_name_plural = _('سری‌های شماره‌گذاری')
+        verbose_name = _('گروه شماره‌گذاری')
+        verbose_name_plural = _('گروه‌های شماره‌گذاری')
         ordering = ['-is_default', 'title']
 
     def __str__(self):

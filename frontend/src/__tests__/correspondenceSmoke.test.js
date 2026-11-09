@@ -166,6 +166,9 @@ beforeEach(() => {
     }
     if (url === '/letters/stats/') return Promise.resolve({ data: stats });
     if (url === '/letters/meta/') return Promise.resolve({ data: meta });
+    if (url === '/letter-series/1/preview/') {
+      return Promise.resolve({ data: { number: 'ص/1404/008', seq: 8, start_number: 1, next_number: 8 } });
+    }
     if (url === '/letter-referrals/') return Promise.resolve({ data: { results: [] } });
     if (url === '/organizations/') return Promise.resolve({ data: { results: [{ id: 1, name: 'شرکت ساز و کار' }] } });
     if (url === '/users/') return Promise.resolve({ data: [{ id: 1, username: 'admin', first_name: 'مدیر', last_name: 'سیستم' }] });
@@ -511,6 +514,12 @@ test('outgoing page shows its own date column and send-oriented labels', async (
   expect(dialog.textContent).toContain('شماره نامهٔ طرف مقابل');
   expect(dialog.textContent).toContain('نوع ارسال');
   expect(dialog.textContent).not.toContain('شماره ثبت ورود به شرکت');
+  // گروه شماره‌گذاری + پیشنهاد خودکار شمارهٔ بعدی
+  expect(dialog.textContent).toContain('گروه شماره‌گذاری');
+  expect(dialog.textContent).toContain('صادره اصلی');
+  expect(axiosInstance.get).toHaveBeenCalledWith('/letter-series/1/preview/', expect.anything());
+  expect(dialog.textContent).toContain('پیشنهاد خودکار');
+  expect(dialog.textContent).toContain('ص/1404/008');
 
   root.unmount();
   container.remove();

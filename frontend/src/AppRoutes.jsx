@@ -137,6 +137,7 @@ import AccountingDocumentSearchPage from './pages/AccountingDocumentSearchPage';
 import AccountingFinalizePage from './pages/AccountingFinalizePage';
 import AccountingControlPage from './pages/AccountingControlPage';
 import AccountingCodingsPage from './pages/AccountingCodingsPage';
+import CorrespondenceNumberingPage from './pages/correspondence/CorrespondenceNumberingPage';
 import OrgPartiesPage from './pages/accounting/OrgPartiesPage';
 import AccountingAccountTreePage from './pages/AccountingAccountTreePage';
 import AccountGroupsPage from './pages/AccountGroupsPage';
@@ -261,6 +262,7 @@ const AppRoutes = () => {
       <Route path="/correspondence/archive" element={<ProtectedLayout><CorrespondenceLettersPage mode="archive" /></ProtectedLayout>} />
       <Route path="/correspondence/settings" element={<ProtectedLayout><CorrespondenceSettingsPage /></ProtectedLayout>} />
       <Route path="/correspondence/name-mapping" element={<ProtectedLayout><CorrespondenceNameMappingPage /></ProtectedLayout>} />
+      <Route path="/settings/correspondence-numbering" element={<ProtectedLayout><CorrespondenceNumberingPage /></ProtectedLayout>} />
       <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
       <Route path="/scoring" element={<ProtectedLayout><ScoringPage /></ProtectedLayout>} />
       <Route path="/employees" element={<ProtectedLayout><EmployeeListPage /></ProtectedLayout>} />

@@ -559,7 +559,34 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(correspondence): unit registration number column and numeric ordering for incoming letters`
-- **Live:** frontend `main.8c17e850.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن `accounting.0033` (سازمان‌ها و اشخاص) + مرتب‌سازی عددی «شماره ثبت» نامه‌ها + کاتالوگ مجوز ۲۶۶ منو/۱۱۰۱ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.6ab901a8.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص) و `correspondences.0021` (گروه‌های شماره‌گذاری) + مرتب‌سازی عددی «شماره ثبت» نامه‌ها + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **شماره‌گذاری خودکار و گروهی مکاتبات صادره (۲۰۲۶-۱۱-۰۹):** در «تنظیمات و تعاریف» گروه منوی
+  **«مکاتبات اداری»** (`settings-correspondence`) اضافه شد با صفحهٔ
+  **`/settings/correspondence-numbering`** («تعاریف اولیه و شماره‌گذاری») و میان‌برهای انواع مکاتبه،
+  مخاطبین و نگاشت نام‌ها.
+  - **مدل/مایگریشن:** `LetterSeries` به **گروه شماره‌گذاری** ارتقا یافت: `start_number` (شماره شروع)،
+    `end_number` (سقف اختیاری — فقط هشدار) و `description` (`correspondences.0021_letter_series_numbering_range`).
+  - **موتور** `correspondences/numbering.py`: توکن‌های `{prefix} {seq} {year} {yy} {month} {day}`،
+    `validate_template`، `sequence_start`، `current_sequence`، `preview_payload` (شماره + seq + هشدار سقف)،
+    `extract_sequence`/`sync_series_counter` (شمارهٔ دستیِ جلوتر، شمارنده را هم‌گام می‌کند) و
+    `allocate_number` با `select_for_update`. شمارش سالانه به «شماره شروع» برمی‌گردد (نه لزوماً ۱).
+  - **API:** `GET/POST /api/letter-series/` + `preview/?letter_date=`، `set-default/`، `reset-counter/`،
+    فیلتر `?direction=`، جست‌وجو در عنوان/پیشوند/قالب، `letter_count` (annotate) و `last_number`
+    (write-only: آخرین شمارهٔ زده‌شده ⇒ `next_number = last + 1`). `perform_create` نامه: اگر گروه
+    انتخاب‌شده و شماره خالی باشد (و نامه پیش‌نویس نباشد) شماره خودکار تخصیص می‌یابد.
+  - **فرانت:** `pages/correspondence/CorrespondenceNumberingPage.jsx` (کاشی‌های شاخص، چیپ‌های جهت،
+    جدول گروه‌ها، فرم «سازندهٔ الگو» با چیپ توکن‌ها + نمونه‌های آماده + پیش‌نمایش زنده، شماره شروع/آخرین
+    شماره/سقف، تعیین پیش‌فرض و بازنشانی شمارنده) و ابزار مشترک `correspondenceNumbering.js` (آینهٔ بک‌اند).
+    در دیالوگ نامهٔ صادره فیلد **«گروه شماره‌گذاری»** اضافه شد و شمارهٔ بعدی از `preview` همان گروه
+    پیشنهاد و خودکار درج می‌شود تا وقتی کاربر شماره را دستی تغییر دهد.
+  - کاتالوگ مجوز: **۲۷۰ منو / ۱۱۲۱ کد / ۶۸ گروه** (`settings.correspondence-numbering.*` و …).
+  - تست: `correspondences/tests_numbering.py` (۲۷ تست DB-free)، `__tests__/correspondenceNumbering.test.js`
+    (۹) و `__tests__/correspondenceNumberingPage.test.js` (۳)؛ `correspondenceSmoke` (۱۷) هم گروه و
+    پیشنهاد شماره را بررسی می‌کند. برای ماندن زیر سقف ۱۰۰۰ خط، `views/letters.py` به دو ماژول
+    `views/series.py` (ویوست گروه‌ها) و `views/ordering.py` (مرتب‌سازی «شماره ثبت») شکسته شد.
+  - دادهٔ زندهٔ `kpsmi`: سه گروه پیش‌فرض (وارده/صادره/داخلی) موجود؛ گروه آزمایشی با `start_number=500`
+    پیشنهاد `م/1405/0500` داد و پس از تخصیص شمارنده به ۵۰۱ رسید (سپس پاک شد).
+
 - **ستون «شماره ثبت» در دفتر وارده + مرتب‌سازی «آخرین اول» (۲۰۲۶-۱۱-۰۹):** جدول نامه‌های وارده
   (`/correspondence/incoming`) ستون اول **«شماره ثبت»** (فیلد `unit_reg_no` = «شماره ثبت ورود به واحد»)
   را پیش از «تاریخ ورود» دارد؛ در ویرایش درجا تغییرپذیر است و tooltip آن تاریخ ثبت ورود به واحد، شمارهٔ ثبت
