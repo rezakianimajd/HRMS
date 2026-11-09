@@ -1770,37 +1770,58 @@ class ContractPaymentBriefSerializer(serializers.ModelSerializer):
 
 
 class ContractGuaranteeBriefSerializer(serializers.ModelSerializer):
+    guarantee_type_display = serializers.CharField(source='get_guarantee_type_display', read_only=True)
+
     class Meta:
         model = Guarantee
-        fields = ['id', 'number', 'guarantee_type', 'amount', 'is_released']
+        fields = [
+            'id', 'guarantee_type', 'guarantee_type_display', 'number', 'amount',
+            'issue_date', 'expiry_date', 'guarantee_expiry_date', 'check_due_date',
+            'promissory_due_date', 'is_released',
+        ]
+
+
+class ContractAddendumBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Addendum
+        fields = ['id', 'number', 'date', 'new_end_date', 'subject']
+
+
+class ContractDisputeBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractDispute
+        fields = ['id', 'title', 'opened_date', 'claim_amount', 'status']
 
 
 CONTRACT_LIST_EXCLUDED_FIELDS = (
-    'documents', 'addendums', 'disputes', 'audit_logs',
+    'documents', 'audit_logs',
     'description', 'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
-    'project_location', 'tender_number', 'advance_payments',
-    'signing_date', 'signatory_name',
+    'project_location', 'tender_number', 'advance_payments', 'signatory_name',
 )
 
 
 class ContractListSerializer(ContractSerializer):
     """نسخهٔ سبک فهرست قراردادها.
 
-    فهرست‌ها (داشبورد، فهرست قراردادها، انتخابگرها و صفحات مالی) به اسناد کامل،
-    لاگ‌های حسابرسی، اختلاف‌ها و متن‌های بلند قرارداد نیازی ندارند؛ حذف آن‌ها
-    حجم پاسخ را چند برابر کم می‌کند و N+1 مربوط به سریالایزرهای تودرتو را می‌بندد.
+    فهرست‌ها (داشبورد، تقویم، فهرست قراردادها، انتخابگرها و صفحات مالی) به اسناد کامل
+    (فایل‌ها)، لاگ‌های حسابرسی و متن‌های بلند قرارداد نیازی ندارند؛ به‌جای آن‌ها
+    آرایه‌های فشردهٔ فاکتور/صورت‌وضعیت/پرداخت/تضمین/الحاقیه/اختلاف و «تعداد مدارک»
+    برگردانده می‌شود. این کار هم حجم پاسخ و هم تعداد کوئری‌ها را چند برابر کم می‌کند.
     """
 
     invoices = ContractInvoiceBriefSerializer(many=True, read_only=True)
     statements = ContractStatementBriefSerializer(many=True, read_only=True)
     payments = ContractPaymentBriefSerializer(many=True, read_only=True)
     guarantees = ContractGuaranteeBriefSerializer(many=True, read_only=True)
+    addendums = ContractAddendumBriefSerializer(many=True, read_only=True)
+    disputes = ContractDisputeBriefSerializer(many=True, read_only=True)
+    documents_count = serializers.IntegerField(read_only=True)
 
     class Meta(ContractSerializer.Meta):
         fields = [
             field for field in ContractSerializer.Meta.fields
             if field not in CONTRACT_LIST_EXCLUDED_FIELDS
-        ]
+        ] + ['documents_count']
 
 
 class ContractTemplateSerializer(serializers.ModelSerializer):

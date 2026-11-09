@@ -366,7 +366,9 @@ const ContractsDashboardPage = () => {
         portfolioRial: rialGroup.amount + foreignGroup.rialAmount,
         rialEquivalent: foreignGroup.rialAmount,
         addendums: items.reduce((sum, contract) => sum + asArray(contract.addendums).length, 0),
-        documents: items.reduce((sum, contract) => sum + asArray(contract.documents).length, 0),
+        documents: items.reduce(
+          (sum, contract) => sum + (contract.documents_count ?? asArray(contract.documents).length), 0,
+        ),
       },
     };
   }, [items, stats]);
