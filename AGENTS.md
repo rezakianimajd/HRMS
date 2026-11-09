@@ -559,7 +559,24 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(accounting): add organizations and persons registry page`
-- **Live:** frontend `main.a841c3a7.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن `accounting.0033` (سازمان‌ها و اشخاص) + کاتالوگ مجوز ۲۶۶ منو/۱۱۰۱ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.8c17e850.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن `accounting.0033` (سازمان‌ها و اشخاص) + مرتب‌سازی عددی «شماره ثبت» نامه‌ها + کاتالوگ مجوز ۲۶۶ منو/۱۱۰۱ کد)، gunicorn/celery/nginx active.
+- **ستون «شماره ثبت» در دفتر وارده + مرتب‌سازی «آخرین اول» (۲۰۲۶-۱۱-۰۹):** جدول نامه‌های وارده
+  (`/correspondence/incoming`) ستون اول **«شماره ثبت»** (فیلد `unit_reg_no` = «شماره ثبت ورود به واحد»)
+  را پیش از «تاریخ ورود» دارد؛ در ویرایش درجا تغییرپذیر است و tooltip آن تاریخ ثبت ورود به واحد، شمارهٔ ثبت
+  ورود به شرکت و واحد را نشان می‌دهد.
+  - **مرتب‌سازی عددی سمت سرور:** `correspondences/views/letters.py::LetterOrderingFilter` +
+    `reg_no_sort_expression()` — `?ordering=-reg_no` رقم‌های `unit_reg_no` را با `regexp_replace`
+    استخراج و به `bigint` تبدیل می‌کند و با `nulls_last` (نامه‌های بدون شماره ته فهرست) و سپس `-id`
+    مرتب می‌کند. `reg_no`/`unit_reg_no`/`unit_reg_date`/`company_reg_no` به `ordering_fields` اضافه شدند؛
+    بقیهٔ ترتیب‌ها مثل قبل متنی‌اند.
+  - **فرانت:** `useLetterListState.SORT_ORDERS` گزینه‌های `reg_no`/`reg_no_asc` و
+    `defaultSortFor(direction)` دارد → دفتر وارده پیش‌فرض `-reg_no` (آخرین شماره اول) و بقیه «جدیدترین»؛
+    گزینه‌های ترتیب نوار ابزار: «شماره ثبت (آخرین اول)» و «شماره ثبت (اولین اول)».
+  - دادهٔ زندهٔ `kpsmi`: ۴۶ از ۴٬۰۷۵ نامهٔ وارده شمارهٔ ثبت دارند؛ خروجی سرور: 3882 → 3881 → 3880 …
+    (لیست ۸ ردیفی ۱۷۸ms / ۸ کوئری، بدون کوئری تکراری).
+  - تست: `correspondences/tests_ordering.py` (۱۲ تست DB-free) و `__tests__/correspondenceSmoke.test.js`
+    (۱۷ تست، شامل وجود ستون جدید و `ordering=-reg_no`).
+
 - **«سازمان‌ها و اشخاص» در تعاریف حسابداری (۲۰۲۶-۱۱-۰۹):** صفحهٔ جدید `/accounting/org-parties`
   (گروه «تعاریف حسابداری»، منو `acc-org-parties`) برای ثبت نهاد/شخص به‌عنوان مرجع واحد مالی:
   **۹ دسته** — سازمان و نهاد عمومی، مرجع قانونی و نظارتی (تأمین اجتماعی/امور مالیاتی/…)، کارفرما،

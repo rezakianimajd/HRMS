@@ -55,7 +55,7 @@ import {
   asList,
 } from './correspondenceLetterForm';
 import { CONTACTS_KEY, META_KEY, REFERRALS_KEY, STATS_KEY } from './correspondenceQueryKeys';
-import useLetterListState from './useLetterListState';
+import useLetterListState, { defaultSortFor } from './useLetterListState';
 import usePrintDocument from '../../core/print/usePrintDocument';
 import PrintPreviewDialog from '../../core/print/PrintPreviewDialog';
 import { CompleteReferralDialog, ReferDialog } from './correspondenceReferDialogs';
@@ -168,7 +168,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     setPriorityFilter('all');
     setEntryMethodFilter('all');
     setSearch('');
-    setSortBy('newest');
+    setSortBy(defaultSortFor(next.direction));
     setFiltersOpen(false);
     // eslint-disable-next-line
   }, [mode]);
@@ -634,6 +634,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           : `جستجو در ${preset.title} (موضوع، شماره، طرف حساب، ارجاع‌شده)…`}
         sort={sortBy}
         sortOptions={[
+          ...(preset.direction === 'incoming' ? [
+            { value: 'reg_no', label: 'شماره ثبت (آخرین اول)' },
+            { value: 'reg_no_asc', label: 'شماره ثبت (اولین اول)' },
+          ] : []),
           { value: 'newest', label: preset.direction === 'outgoing'
             ? 'جدیدترین تاریخ نامه/ارسال' : 'جدیدترین تاریخ ورود' },
           { value: 'oldest', label: preset.direction === 'outgoing'
@@ -688,9 +692,37 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
           })}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
-          minWidth={mode === 'incoming' ? 1120 : (mode === 'outgoing' ? 1130 : 1040)}
+          minWidth={mode === 'incoming' ? 1180 : (mode === 'outgoing' ? 1130 : 1040)}
           tableLayout="fixed"
           columns={[
+            /* ── شمارهٔ ثبت ورود به واحد (ستون اول دفتر وارده) ── */
+            ...(mode === 'incoming' ? [
+              {
+                key: 'unit_reg_no', label: 'شماره ثبت', width: '9%', align: 'center',
+                render: (row) => {
+                  const { letter } = row;
+                  if (rowEditing(letter)) {
+                    return (
+                      <InlineText value={draft.unit_reg_no} onChange={patchDraft('unit_reg_no')}
+                        placeholder="شماره ثبت" align="center" />
+                    );
+                  }
+                  const value = letter.unit_reg_no ? toPersianDigits(letter.unit_reg_no) : '—';
+                  const meta = joinParts(
+                    letter.unit_reg_date ? `تاریخ ثبت ورود به واحد: ${dateLabel(letter.unit_reg_date)}` : '',
+                    letter.company_reg_no
+                      ? `شماره ثبت ورود به شرکت: ${toPersianDigits(letter.company_reg_no)}` : '',
+                    letter.unit_name ? `واحد: ${letter.unit_name}` : '',
+                  );
+                  return (
+                    <CellText mono weight={800} title={meta || undefined}
+                      color={letter.unit_reg_no ? undefined : MUTED}>
+                      {value}
+                    </CellText>
+                  );
+                },
+              },
+            ] : []),
             /* ── تاریخ ارسال (فقط دفتر صادره) ── */
             ...(mode === 'outgoing' ? [
               {
@@ -743,7 +775,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             ] : []),
             /* ── شمارهٔ نامه ── */
             {
-              key: 'number', label: 'شماره نامه', width: '14%', align: 'center',
+              key: 'number', label: 'شماره نامه',
+              width: mode === 'incoming' ? '12%' : '14%', align: 'center',
               render: (row) => {
                 const { letter } = row;
                 if (rowEditing(letter)) {
@@ -770,7 +803,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             /* ── طرف حساب / طرف مکاتبه ── */
             {
-              key: 'party', label: mode === 'incoming' ? 'طرف حساب' : 'طرف مکاتبه', width: '20%',
+              key: 'party', label: mode === 'incoming' ? 'طرف حساب' : 'طرف مکاتبه',
+              width: mode === 'incoming' ? '18%' : '20%',
               render: (row) => {
                 const { letter } = row;
                 if (rowEditing(letter)) {
@@ -809,7 +843,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             /* ── موضوع نامه ── */
             {
-              key: 'subject', label: 'موضوع نامه', width: '24%',
+              key: 'subject', label: 'موضوع نامه',
+              width: mode === 'incoming' ? '20%' : '24%',
               render: (row) => {
                 const { letter } = row;
                 if (rowEditing(letter)) {
@@ -847,7 +882,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             /* ── ارجاع (آخرین ارجاع) — وارده ── */
             ...(mode === 'incoming' ? [
               {
-                key: 'referral', label: 'ارجاع', width: '12%',
+                key: 'referral', label: 'ارجاع', width: '11%',
                 render: (row) => {
                   const last = row.letter.last_referral;
                   if (!last) return <CellText color={MUTED}>بدون ارجاع</CellText>;

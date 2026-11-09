@@ -392,8 +392,25 @@ test('letters table shows the standard incoming column set', async () => {
 
   const headers = [...container.querySelectorAll('thead th')].map((cell) => cell.textContent.trim());
   expect(headers).toEqual([
-    'تاریخ ورود', 'شماره نامه', 'طرف حساب', 'موضوع نامه', 'تاریخ نامه', 'ارجاع', 'عملیات',
+    'شماره ثبت', 'تاریخ ورود', 'شماره نامه', 'طرف حساب', 'موضوع نامه', 'تاریخ نامه', 'ارجاع', 'عملیات',
   ]);
+
+  // ستون «شماره ثبت» مقدار unit_reg_no همان ردیف را (با ارقام فارسی) نشان می‌دهد
+  const firstRow = container.querySelector('tbody tr');
+  expect(firstRow.textContent).toContain('د-۸۸');
+
+  root.unmount();
+  container.remove();
+});
+
+test('incoming list is ordered by the unit registration number (last first)', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  const listCalls = axiosInstance.get.mock.calls.filter(([url]) => url === '/letters/');
+  expect(listCalls.length).toBeGreaterThan(0);
+  const params = listCalls[listCalls.length - 1][1].params;
+  expect(params.direction).toBe('incoming');
+  expect(params.ordering).toBe('-reg_no');
 
   root.unmount();
   container.remove();

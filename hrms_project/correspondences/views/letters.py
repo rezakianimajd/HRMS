@@ -1,4 +1,7 @@
 """دفتر نامه‌ها: انواع، سری‌ها، مخاطبین و ویوست اصلی نامه‌ها."""
+from django.db.models import BigIntegerField, CharField, F, Func, Value
+from django.db.models.functions import Cast, NullIf
+
 from correspondences.views.base import (  # noqa: F401 — واردات مشترک
 
     AllowAny, Count, FileResponse, Http404, JWTAuthentication, PermissionDenied, Q, Response,
@@ -38,6 +41,49 @@ class LetterCategoryViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
         if direction:
             qs = qs.filter(Q(direction=direction) | Q(direction='both'))
         return qs
+
+# ---------------------------------------------------------------------------
+# مرتب‌سازی «شماره ثبت ورود به واحد» (ستون شمارهٔ ثبت دفتر وارده)
+# ---------------------------------------------------------------------------
+# مقادیر این فیلد متنی‌اند و ممکن است به شکل «1404/457» ثبت شوند؛ برای اینکه
+# «آخرین شماره اول» بیاید، رقم‌ها استخراج و به عدد تبدیل می‌شوند. مقدار خالی
+# یا بدون رقم به NULL تبدیل می‌شود تا همیشه ته فهرست بیفتد (nulls_last).
+REG_NO_ORDERING_FIELDS = ('reg_no', 'unit_reg_no')
+REG_NO_SORT_ANNOTATION = '_unit_reg_no_sort'
+
+
+def reg_no_sort_expression():
+    """عبارت عددی «شمارهٔ ثبت» برای مرتب‌سازی (PostgreSQL)."""
+    digits = Func(
+        F('unit_reg_no'),
+        Value('[^0-9]'),
+        Value(''),
+        Value('g'),
+        function='regexp_replace',
+        output_field=CharField(),
+    )
+    return Cast(NullIf(digits, Value('')), output_field=BigIntegerField())
+
+
+class LetterOrderingFilter(filters.OrderingFilter):
+    """``OrderingFilter`` با پشتیبانی از مرتب‌سازی عددی «شمارهٔ ثبت».
+
+    ``?ordering=-reg_no`` آخرین شمارهٔ ثبت را اول می‌آورد و نامه‌های بدون
+    شماره را ته فهرست می‌گذارد؛ بقیهٔ فیلدها مثل قبل متنی مرتب می‌شوند.
+    """
+
+    def filter_queryset(self, request, queryset, view):
+        ordering = self.get_ordering(request, queryset, view) or []
+        reg_terms = [term for term in ordering if str(term).lstrip('-') in REG_NO_ORDERING_FIELDS]
+        if not reg_terms:
+            return queryset.order_by(*ordering) if ordering else queryset
+
+        others = [term for term in ordering if term not in reg_terms]
+        descending = str(reg_terms[0]).startswith('-')
+        annotated = queryset.annotate(**{REG_NO_SORT_ANNOTATION: reg_no_sort_expression()})
+        key = F(REG_NO_SORT_ANNOTATION)
+        primary = key.desc(nulls_last=True) if descending else key.asc(nulls_last=True)
+        return annotated.order_by(primary, *(others or ['-id']))
 
 
 class LetterSeriesViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
@@ -116,10 +162,12 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
     # جست‌وجوی جامع دستی انجام می‌شود تا نام ارجاع‌شدگان، طرف حساب، پیوست‌ها و
     # متن نامه هم پوشش داده شوند.
-    filter_backends = [filters.OrderingFilter]
+    filter_backends = [LetterOrderingFilter]
     ordering_fields = [
         'letter_date', 'received_date', 'effective_date', 'created_at', 'due_date',
         'priority', 'status', 'number',
+        # «شماره ثبت ورود به واحد» — با ترتیب عددی (reg_no) یا متنی (unit_reg_no)
+        'reg_no', 'unit_reg_no', 'unit_reg_date', 'company_reg_no',
     ]
     ordering = ['-effective_date', '-id']
 

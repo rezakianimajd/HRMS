@@ -11,11 +11,17 @@ import { LETTERS_KEY } from './correspondenceQueryKeys';
 import { asList } from './correspondenceLetterForm';
 
 export const SORT_ORDERS = {
+  /* «شماره ثبت» دفتر وارده — عددی مرتب می‌شود و آخرین شماره اول می‌آید */
+  reg_no: '-reg_no',
+  reg_no_asc: 'reg_no',
   newest: '-effective_date',
   oldest: 'effective_date',
   due: 'due_date',
   number: 'number',
 };
+
+/** ترتیب پیش‌فرض هر دفتر: وارده بر اساس «شماره ثبت» (آخرین اول) */
+export const defaultSortFor = (direction) => (direction === 'incoming' ? 'reg_no' : 'newest');
 
 export const useLetterListState = ({ preset, pageSize, onNewRequested }) => {
   const [searchParams] = useSearchParams();
@@ -34,7 +40,7 @@ export const useLetterListState = ({ preset, pageSize, onNewRequested }) => {
     if (value === '1') return 'with';
     return 'all';
   });
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState(() => defaultSortFor(preset.direction));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [debouncedSearch, setDebouncedSearch] = useState('');
