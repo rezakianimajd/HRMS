@@ -2,7 +2,7 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Q, Sum, Value, DecimalField
+from django.db.models import Q, Sum, Value, DecimalField, Prefetch
 from django.db.models.functions import Coalesce
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
@@ -16,7 +16,8 @@ from contracts.models import (
     ContractAuditLog, ContractAccountMapping,
 )
 from contracts.serializers import (
-    ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
+    ContractPartySerializer, ContractSerializer, ContractListSerializer,
+    ContractDocumentSerializer,
     InvoiceSerializer, StatementSerializer, AddendumSerializer,
     GuaranteeSerializer, PaymentSerializer, PaymentAttachmentSerializer, ContractDisputeSerializer,
     ContractTypeMasterSerializer, SupplierEvaluationSerializer,
@@ -112,16 +113,13 @@ class ContractViewSet(BaseContractViewSet):
     search_fields = ['number', 'subject', 'party__name']
     ordering = ['-created_at']
 
-    def get_queryset(self):
-        qs = super().get_queryset().select_related(
-            'party', 'signatory', 'project', 'currency', 'contract_type_master',
-        ).prefetch_related(
-            'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
-            'guarantees', 'guarantees__documents', 'guarantees__actions', 'payments', 'disputes', 'audit_logs',
-            'statements__payment_allocations', 'statements__payment_allocations__payment',
-            'invoices__payment_allocations', 'invoices__payment_allocations__payment',
-            'payments__allocations',
-        )
+    def get_serializer_class(self):
+        # فهرست/انتخابگرها نسخهٔ سبک می‌گیرند؛ پروندهٔ قرارداد (retrieve) کامل است.
+        if self.action in ('list', 'options'):
+            return ContractListSerializer
+        return ContractSerializer
+
+    def _apply_filters(self, qs):
         party_id = self.request.query_params.get('party')
         if party_id:
             qs = qs.filter(party_id=party_id)
@@ -135,6 +133,56 @@ class ContractViewSet(BaseContractViewSet):
         if status:
             qs = qs.filter(status=status)
         return qs
+
+    def _lean_queryset(self):
+        """کوئری فهرست: فقط FKهای لازم + آرایه‌های فشردهٔ اسناد (بدون N+1)."""
+        allocations = PaymentAllocation.objects.only(
+            'id', 'amount', 'kind', 'payment_id', 'invoice_id', 'statement_id',
+        )
+        return self._apply_filters(
+            super().get_queryset().select_related(
+                'party', 'project', 'currency', 'contract_type_master',
+            ).prefetch_related(
+                Prefetch('addendums', queryset=Addendum.objects.only(
+                    'id', 'contract_id', 'number', 'subject', 'date', 'subjects', 'subject_type',
+                    'amount_change', 'new_amount', 'percent_change', 'advance_change',
+                    'new_advance_payment', 'new_retention_percent', 'new_guarantee_amount',
+                    'new_exchange_rate', 'new_end_date',
+                )),
+                Prefetch('invoices', queryset=Invoice.objects.only(
+                    'id', 'contract_id', 'number', 'date', 'due_date', 'amount', 'total', 'is_paid',
+                ).prefetch_related(Prefetch('payment_allocations', queryset=allocations))),
+                Prefetch('statements', queryset=Statement.objects.only(
+                    'id', 'contract_id', 'number', 'date', 'kind', 'amount', 'net_amount',
+                    'is_approved', 'work_done', 'cumulative_previous_amount', 'deductions_total',
+                    'additions_total', 'adjustment_amount', 'adjustment_work_done',
+                    'deductions', 'additions', 'levels',
+                ).prefetch_related(Prefetch('payment_allocations', queryset=allocations))),
+                Prefetch('payments', queryset=Payment.objects.only(
+                    'id', 'contract_id', 'reference', 'date', 'amount',
+                )),
+                Prefetch('guarantees', queryset=Guarantee.objects.only(
+                    'id', 'contract_id', 'number', 'guarantee_type', 'amount', 'is_released',
+                )),
+            ),
+        )
+
+    def get_queryset(self):
+        if self.action == 'retrieve':
+            # پروندهٔ قرارداد: همهٔ تب‌ها با یک درخواست سرو می‌شوند.
+            return self._apply_filters(
+                super().get_queryset().select_related(
+                    'party', 'signatory', 'project', 'currency', 'contract_type_master',
+                ).prefetch_related(
+                    'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
+                    'guarantees', 'guarantees__documents', 'guarantees__actions',
+                    'payments', 'disputes', 'audit_logs',
+                    'statements__payment_allocations', 'statements__payment_allocations__payment',
+                    'invoices__payment_allocations', 'invoices__payment_allocations__payment',
+                    'payments__allocations',
+                ),
+            )
+        return self._lean_queryset()
 
     def _audit(self, contract, action, field='', old='', new=''):
         user = self.request.user.username if getattr(self.request, 'user', None) and getattr(self.request.user, 'is_authenticated', False) else ''
@@ -238,11 +286,48 @@ class ContractViewSet(BaseContractViewSet):
         return response
 
     @action(detail=False, methods=['get'])
+    def options(self, request):
+        """فهرست سبک قراردادها برای انتخابگرها (یک کوئری، بدون آرایه‌های تودرتو)."""
+        qs = self.filter_queryset(
+            self._apply_filters(
+                super().get_queryset().select_related('party', 'project', 'currency'),
+            )
+        ).values(
+            'id', 'number', 'subject', 'amount', 'status',
+            'start_date', 'end_date',
+            'currency_id', 'currency__code', 'currency__name', 'currency__symbol',
+            'currency__exchange_rate',
+            'party_id', 'party__name', 'project_id', 'project__name',
+        )[:1000]
+        return Response([
+            {
+                'id': row['id'],
+                'number': row['number'],
+                'subject': row['subject'],
+                'amount': row['amount'],
+                'status': row['status'],
+                'start_date': row['start_date'],
+                'end_date': row['end_date'],
+                'currency': row['currency_id'],
+                'currency_code': row['currency__code'],
+                'currency_name': row['currency__name'],
+                'currency_symbol': row['currency__symbol'],
+                'exchange_rate': row['currency__exchange_rate'],
+                'party': row['party_id'],
+                'party_name': row['party__name'],
+                'project': row['project_id'],
+                'project_name': row['project__name'],
+            }
+            for row in qs
+        ])
+
+    @action(detail=False, methods=['get'])
     def stats(self, request):
         """Aggregated dashboard statistics for contracts (server-side)."""
         from datetime import date, timedelta
         from django.db.models import Count, Sum
-        qs = self.get_queryset()
+        # این اکشن فقط شمارش/جمع می‌خواهد؛ prefetch سنگین فهرست را برنمی‌داریم.
+        qs = self._apply_filters(super().get_queryset())
         status_counts = dict(
             qs.values_list('status').annotate(c=Count('id')).values_list('status', 'c')
         )
@@ -506,7 +591,14 @@ class StatementViewSet(BaseContractViewSet):
 
 class AddendumViewSet(BaseContractViewSet):
     serializer_class = AddendumSerializer
-    queryset = Addendum.objects.select_related('contract', 'currency').prefetch_related('documents')
+    queryset = Addendum.objects.select_related(
+        'contract', 'contract__party', 'contract__currency', 'currency',
+    ).prefetch_related(
+        Prefetch('documents', queryset=ContractDocument.objects.select_related(
+            'contract', 'contract__party', 'addendum', 'guarantee', 'statement',
+        )),
+        'contract__addendums',
+    )
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'subject', 'change_description', 'contract__subject']
     ordering = ['-date']

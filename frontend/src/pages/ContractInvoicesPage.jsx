@@ -69,7 +69,7 @@ const ContractInvoicesPage = () => {
 
   const { data: contracts, isLoading: contractsLoading } = useQuery({
     queryKey: ['ext-contracts-inv'],
-    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((response) => response.data),
+    queryFn: () => axiosInstance.get('/external-contracts/options/').then((response) => response.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 

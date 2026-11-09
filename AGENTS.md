@@ -559,7 +559,28 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.6cee42da.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.29011d93.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **کارایی ماژول قراردادها (۲۰۲۶-۱۱-۰۸):** داشبورد/فاکتورها/صورت‌وضعیت‌ها/پرداخت‌ها/الحاقیه‌ها/تضامین و تحلیل مالی
+  کند بودند (اندازه‌گیری با `dev_query_profile` روی `kpsmi`):
+  | اندپوینت | قبل | بعد |
+  |---|---|---|
+  | `/external-contracts/?page_size=500` | 2702ms / 4236q / 1944KB | **302ms / 60q / 363KB** |
+  | `/external-contracts/?page_size=20` | 169ms / 130q | **76ms / 30q** |
+  | `/external-contracts/stats/` | 252ms / 46q | **18ms / 14q** |
+  | `/contract-addendums/?page_size=500` | 430ms / 468q | **102ms / 8q** |
+  - `ContractListSerializer` (سبک) برای `action in ('list','options')`: بدون اسناد/لاگ/اختلاف/متن‌های بلند و با
+    آرایه‌های فشرده (`ContractInvoiceBriefSerializer`/`StatementBrief`/`PaymentBrief`/`GuaranteeBrief`).
+  - `ContractViewSet._lean_queryset()`: `select_related` چهار FK لازم + `Prefetch` با `.only()` برای
+    invoices/statements/payments/guarantees/addendums (+`payment_allocations` فقط `amount/kind`).
+    prefetch سنگین قبلی (۱۴ رابطه + `addendums__documents`/`guarantees__actions`/`audit_logs`) فقط برای
+    `action='retrieve'` (پروندهٔ قرارداد) می‌ماند.
+  - `GET /api/external-contracts/options/` (جدید): فهرست سبک با `values()` برای انتخابگرها — صفحات فاکتورها،
+    پرداخت‌ها، الحاقیه‌ها و `GuaranteesPage` از آن استفاده می‌کنند (به‌جای `?page_size=500`).
+  - `stats` دیگر prefetch فهرست را برنمی‌دارد و `get_project_allocations_display` نام پروژه‌ها را در سطح
+    سریالایزر کش می‌کند (قبلاً هر قرارداد یک کوئری `projects_project`).
+  - `AddendumViewSet`: `select_related('contract__party','contract__currency','currency')` + prefetch
+    `documents` با `select_related('contract__party', …)` و `contract__addendums` (N+1 تضمین/طرف/الحاقیه بسته شد).
+
 - **«ظاهر و پوسته» تب‌بندی شد و تنظیم ورود منتقل شد (۲۰۲۶-۱۱-۰۸):** `pages/AppearancePage.jsx` حالا پنج تب دارد
   (`APPEARANCE_TABS`، کلید تب در آدرس `?tab=…` ذخیره می‌شود و `data-testid="appearance-tabs"` دارد):
   **پوسته‌ها** (کارت‌های تم + رنگ نئون در F-مود) · **پالت‌های رنگی** (پالت هر ماژول) · **استودیو تم**

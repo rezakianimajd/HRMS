@@ -1025,7 +1025,7 @@ const GuaranteesPage = () => {
 
   const { data: contracts } = useQuery({
     queryKey: ['external-contracts-all'],
-    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((r) => r.data),
+    queryFn: () => axiosInstance.get('/external-contracts/options/').then((r) => r.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
   const selectedContract = contractList.find((c) => String(c.id) === String(contractId)) || null;

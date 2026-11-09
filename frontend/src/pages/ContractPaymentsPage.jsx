@@ -341,7 +341,7 @@ const ContractPaymentsPage = () => {
 
   const contractsQuery = useQuery({
     queryKey: ['ext-contracts-pay'],
-    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((response) => response.data),
+    queryFn: () => axiosInstance.get('/external-contracts/options/').then((response) => response.data),
   });
   const contractList = Array.isArray(contractsQuery.data) ? contractsQuery.data : contractsQuery.data?.results || [];
 

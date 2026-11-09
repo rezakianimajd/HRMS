@@ -1721,13 +1721,24 @@ class ContractSerializer(serializers.ModelSerializer):
         allocs = obj.project_allocations or []
         if not allocs:
             return []
-        from projects.models import Project
         ids = [a.get('project') for a in allocs if isinstance(a, dict) and a.get('project')]
-        names = dict(Project.objects.filter(id__in=ids).values_list('id', 'name'))
+        names = self._project_names(ids)
         return [
             {**a, 'project_name': names.get(a.get('project'), f"پروژه #{a.get('project')}")}
             for a in allocs if isinstance(a, dict)
         ]
+
+    def _project_names(self, ids):
+        """کش نام پروژه‌ها در سطح همین سریالایزر (کل فهرست → یک کوئری)."""
+        cache = getattr(self, '_project_name_cache', None)
+        if cache is None:
+            cache = {}
+            self._project_name_cache = cache
+        missing = [value for value in ids if value not in cache]
+        if missing:
+            from projects.models import Project
+            cache.update(dict(Project.objects.filter(id__in=missing).values_list('id', 'name')))
+        return cache
 
     def get_guarantee_items_display(self, obj):
         kind_labels = dict(Contract.GuaranteeKind.choices)
@@ -1735,6 +1746,60 @@ class ContractSerializer(serializers.ModelSerializer):
         return [
             {**g, 'type_label': kind_labels.get(g.get('type'), g.get('type', '—'))}
             for g in items if isinstance(g, dict)
+        ]
+
+
+class ContractInvoiceBriefSerializer(serializers.ModelSerializer):
+    """فاکتور فشرده برای فهرست قراردادها (داشبورد فقط تاریخ/مبلغ/وضعیت را می‌خواهد)."""
+
+    class Meta:
+        model = Invoice
+        fields = ['id', 'number', 'date', 'due_date', 'amount', 'total', 'is_paid']
+
+
+class ContractStatementBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Statement
+        fields = ['id', 'number', 'date', 'kind', 'amount', 'net_amount', 'is_approved']
+
+
+class ContractPaymentBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'reference', 'date', 'amount']
+
+
+class ContractGuaranteeBriefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Guarantee
+        fields = ['id', 'number', 'guarantee_type', 'amount', 'is_released']
+
+
+CONTRACT_LIST_EXCLUDED_FIELDS = (
+    'documents', 'addendums', 'disputes', 'audit_logs',
+    'description', 'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
+    'project_location', 'tender_number', 'advance_payments',
+    'signing_date', 'signatory_name',
+)
+
+
+class ContractListSerializer(ContractSerializer):
+    """نسخهٔ سبک فهرست قراردادها.
+
+    فهرست‌ها (داشبورد، فهرست قراردادها، انتخابگرها و صفحات مالی) به اسناد کامل،
+    لاگ‌های حسابرسی، اختلاف‌ها و متن‌های بلند قرارداد نیازی ندارند؛ حذف آن‌ها
+    حجم پاسخ را چند برابر کم می‌کند و N+1 مربوط به سریالایزرهای تودرتو را می‌بندد.
+    """
+
+    invoices = ContractInvoiceBriefSerializer(many=True, read_only=True)
+    statements = ContractStatementBriefSerializer(many=True, read_only=True)
+    payments = ContractPaymentBriefSerializer(many=True, read_only=True)
+    guarantees = ContractGuaranteeBriefSerializer(many=True, read_only=True)
+
+    class Meta(ContractSerializer.Meta):
+        fields = [
+            field for field in ContractSerializer.Meta.fields
+            if field not in CONTRACT_LIST_EXCLUDED_FIELDS
         ]
 
 
