@@ -32,8 +32,10 @@ MAX_OVERLAY_OPACITY = 95
 MAX_OVERLAY_BLUR = 24
 BACKGROUND_KINDS = ('image', 'gradient')
 GRADIENT_PRESETS = (
-    'linear-two', 'linear-three', 'linear-four', 'radial', 'conic-rainbow', 'mesh',
+    'linear-two', 'linear-three', 'linear-four', 'radial', 'rainbow', 'mesh',
 )
+# شناسه‌های قدیمی (مهاجرت): رنگین‌کمان قبلاً conic بود و الان خطی است.
+GRADIENT_PRESET_ALIASES = {'conic-rainbow': 'rainbow'}
 MAX_GRADIENT_COLORS = 4
 MIN_LOGO_SIZE = 80
 MAX_LOGO_SIZE = 320
@@ -107,7 +109,8 @@ def _gradient(raw, fallback=None):
     """ورودی خام گرادیانت → {preset, angle, colors[]} معتبر (۲ تا ۴ رنگ)."""
     base = fallback if isinstance(fallback, dict) else DEFAULT_LOGIN_GRADIENT
     source = raw if isinstance(raw, dict) else {}
-    preset = source.get('preset') if source.get('preset') in GRADIENT_PRESETS else base.get('preset')
+    requested = GRADIENT_PRESET_ALIASES.get(source.get('preset'), source.get('preset'))
+    preset = requested if requested in GRADIENT_PRESETS else base.get('preset')
     colors = source.get('colors')
     if not isinstance(colors, (list, tuple)):
         colors = base.get('colors')

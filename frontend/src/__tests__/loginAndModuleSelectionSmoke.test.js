@@ -154,7 +154,12 @@ test('login background can be a color gradient instead of an image', () => {
 
   // پریست‌های ویژه
   expect(loginGradientCss({ preset: 'radial' })).toContain('radial-gradient(');
-  expect(loginGradientCss({ preset: 'conic-rainbow', angle: 30 })).toContain('conic-gradient(from 30deg');
+  const rainbow = loginGradientCss({ preset: 'rainbow', angle: 30 });
+  expect(rainbow).toContain('linear-gradient(30deg');
+  expect(rainbow).not.toContain('conic-gradient');
+  expect((rainbow.match(/#[0-9a-f]{6}/g) || []).length).toBeGreaterThan(5);
+  // شناسهٔ قدیمی conic-rainbow به رنگین‌کمان خطی مهاجرت می‌کند
+  expect(normalizeLoginGradient({ preset: 'conic-rainbow' }).preset).toBe('rainbow');
   expect(loginGradientCss({ preset: 'mesh' })).toContain('radial-gradient(');
 
   // مقدار نامعتبر → پیش‌فرض امن

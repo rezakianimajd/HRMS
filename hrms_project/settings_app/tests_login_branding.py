@@ -132,6 +132,13 @@ class LoginGradientTests(SimpleTestCase):
         result = sanitize_login_branding({'gradient': {'colors': colors}})
         self.assertEqual(result['gradient']['colors'], colors[:4])
 
+    def test_rainbow_preset_moved_to_linear(self):
+        """رنگین‌کمان حالا خطی است؛ شناسهٔ قدیمی conic-rainbow هم پذیرفته می‌شود."""
+        result = sanitize_login_branding({'gradient': {'preset': 'rainbow'}})
+        self.assertEqual(result['gradient']['preset'], 'rainbow')
+        legacy = sanitize_login_branding({'gradient': {'preset': 'conic-rainbow'}})
+        self.assertEqual(legacy['gradient']['preset'], 'rainbow')
+
     def test_save_merges_partial_gradient(self):
         from settings_app import login_branding as module
 

@@ -284,7 +284,7 @@ const CompanyProfilePage = () => {
 
   const chooseGradientPreset = (preset) => {
     if (!preset) return;
-    const needed = gradientColorCount(preset);
+    const needed = Math.max(2, gradientColorCount(preset));
     const colors = [...loginGradient.colors];
     while (colors.length < needed) {
       colors.push(DEFAULT_LOGIN_GRADIENT.colors[colors.length % DEFAULT_LOGIN_GRADIENT.colors.length]);
@@ -445,16 +445,23 @@ const CompanyProfilePage = () => {
                   ))}
                 </Stack>
 
-                <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                  {loginGradient.colors.map((color, index) => (
-                    <ColorField
-                      key={`gradient-color-${index}`}
-                      label={`رنگ ${index + 1}`}
-                      value={color}
-                      onChange={(value) => setGradientColor(index, value)}
-                    />
-                  ))}
-                </Stack>
+                {gradientColorCount(loginGradient.preset) === 0 ? (
+                  <Typography sx={{ mt: 1, fontSize: 11.5, color: 'text.secondary' }}>
+                    رنگین‌کمان با رنگ‌های ثابت و به‌صورت نوارهای خطی روی کل صفحه اعمال می‌شود؛
+                    برای رنگ دلخواه یکی از گزینه‌های دو/سه/چهار رنگ یا مش را انتخاب کنید.
+                  </Typography>
+                ) : (
+                  <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                    {loginGradient.colors.map((color, index) => (
+                      <ColorField
+                        key={`gradient-color-${index}`}
+                        label={`رنگ ${index + 1}`}
+                        value={color}
+                        onChange={(value) => setGradientColor(index, value)}
+                      />
+                    ))}
+                  </Stack>
+                )}
 
                 <Typography sx={{ mt: 1, mb: 0.2, fontSize: 12, color: 'text.secondary' }}>
                   زاویهٔ گرادیانت

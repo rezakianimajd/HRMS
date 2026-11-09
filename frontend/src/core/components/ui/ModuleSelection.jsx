@@ -41,7 +41,7 @@ const initialsOf = (user) => (
 const CompanyIdentity = ({ company }) => {
   const label = companyLabel(company) || 'شرکت شما';
   return (
-    <Stack direction="row" alignItems="center" spacing={0.9} sx={{ minWidth: 0 }}>
+    <Stack direction="row" alignItems="center" sx={{ minWidth: 0, gap: '10px' }}>
       <CompanyLogo company={company} size={34} radius="10px" sx={{ bgcolor: '#f8fafc' }} />
       <Box sx={{ minWidth: 0 }}>
         <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>
@@ -79,20 +79,20 @@ const ModuleCard = ({ app, accent, busy, disabled, active, onPick }) => {
         '&.Mui-disabled': { opacity: 0.55 },
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%', minWidth: 0 }}>
+      <Stack direction="row" alignItems="center" sx={{ width: '100%', minWidth: 0, gap: '20px' }}>
         <Box sx={{
-          width: 40, height: 40, borderRadius: '12px', flexShrink: 0,
+          width: 42, height: 42, borderRadius: '12px', flexShrink: 0,
           display: 'grid', placeItems: 'center',
           bgcolor: alpha(accent, 0.1), color: accent,
         }}>
-          {busy ? <CircularProgress size={17} sx={{ color: accent }} /> : <Icon sx={{ fontSize: 20 }} />}
+          {busy ? <CircularProgress size={17} sx={{ color: accent }} /> : <Icon sx={{ fontSize: 21 }} />}
         </Box>
         <Typography noWrap sx={{
-          flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 900, color: INK, px: 0.25,
+          flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 900, color: INK, lineHeight: 1.7,
         }}>
           {app.title}
         </Typography>
-        <ChevronLeftIcon sx={{ fontSize: 17, color: alpha(accent, 0.75), flexShrink: 0, mr: 0.25 }} />
+        <ChevronLeftIcon sx={{ fontSize: 17, color: alpha(accent, 0.75), flexShrink: 0 }} />
       </Stack>
     </ButtonBase>
   );

@@ -559,7 +559,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.d6bd72f8.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.ecb8b127.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **رنگین‌کمان خطی + فاصلهٔ آیکن/عنوان ماژول (۲۰۲۶-۱۱-۰۸):** پریست `rainbow` جای `conic-rainbow` را گرفت و
+  به‌جای `conic-gradient` (که همهٔ رنگ‌ها را در مرکز جمع می‌کرد) با `linear-gradient(<angle>deg, ۷ رنگ)` یعنی
+  **نوارهای مورب روی کل صفحه** رندر می‌شود؛ شناسهٔ قدیمی با `PRESET_ALIASES` (`colorUtils`) و
+  `GRADIENT_PRESET_ALIASES` (بک‌اند) به `rainbow` مهاجرت می‌شود، پس دادهٔ ذخیره‌شدهٔ قبلی هم درست نمایش داده
+  می‌شود. برای این پریست انتخابگر رنگ در UI پنهان است (رنگ‌ها ثابت) و `gradientColorCount('rainbow') === 0`.
+  در کارت‌های ماژول، فاصلهٔ آیکن↔عنوان با **`gap: 20px`** (به‌جای `spacing` که در RTL قابل اتکا نبود) و
+  آیکن ۴۲px تنظیم شد؛ `CompanyIdentity` هم `gap: 10px` گرفت. تست: `settings_app/tests_login_branding.py` (۳۵)
+  و `__tests__/loginAndModuleSelectionSmoke.test.js` (۸).
 - **لوگوی پنل ورود: اندازه و رنگ قابل تنظیم (۲۰۲۶-۱۱-۰۸):** کلیدهای جدید `logo_size` (۸۰–۳۲۰px،
   پیش‌فرض ۱۷۶، `MIN/MAX_LOGO_SIZE` + `_logo_size()` در `settings_app/login_branding.py`) و
   `logo_panel_color` (هگز، پیش‌فرض `#ffffff`). فرانت: `LOGIN_LOGO_SIZE` و `clampLogoSize` در

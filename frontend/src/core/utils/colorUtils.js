@@ -28,17 +28,21 @@ export const LOGIN_GRADIENT_PRESETS = [
   { id: 'linear-three', label: 'سه رنگ', stops: 3 },
   { id: 'linear-four', label: 'چهار رنگ', stops: 4 },
   { id: 'radial', label: 'شعاعی', stops: 3 },
-  { id: 'conic-rainbow', label: 'رنگین‌کمان', stops: 3 },
+  { id: 'rainbow', label: 'رنگین‌کمان', stops: 0 },
   { id: 'mesh', label: 'مش رنگی', stops: 3 },
 ];
+
+/** شناسه‌های قدیمی (مهاجرت) → شناسهٔ فعلی. */
+const PRESET_ALIASES = { 'conic-rainbow': 'rainbow' };
 
 export const DEFAULT_LOGIN_GRADIENT = DEFAULT_LOGIN_BRANDING.gradient;
 
 const RAINBOW_STOPS = ['#f43f5e', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e'];
 
-export const gradientColorCount = (preset) => (
-  LOGIN_GRADIENT_PRESETS.find((item) => item.id === preset)?.stops || 3
-);
+export const gradientColorCount = (preset) => {
+  const found = LOGIN_GRADIENT_PRESETS.find((item) => item.id === preset);
+  return found ? found.stops : 3;
+};
 
 /** محدودهٔ مجاز اندازهٔ لوگوی پنل ورود (px). */
 export const LOGIN_LOGO_SIZE = { min: 80, max: 320, default: DEFAULT_LOGIN_BRANDING.logo_size };
@@ -87,8 +91,9 @@ export const darkenHex = (value, ratio = 0.25) => {
 /** مقدار خام گرادیانت → { preset, angle, colors[2..4] } معتبر. */
 export const normalizeLoginGradient = (gradient) => {
   const source = gradient && typeof gradient === 'object' ? gradient : {};
-  const preset = LOGIN_GRADIENT_PRESETS.some((item) => item.id === source.preset)
-    ? source.preset
+  const requested = PRESET_ALIASES[source.preset] || source.preset;
+  const preset = LOGIN_GRADIENT_PRESETS.some((item) => item.id === requested)
+    ? requested
     : DEFAULT_LOGIN_GRADIENT.preset;
   const rawColors = Array.isArray(source.colors) ? source.colors : [];
   const colors = rawColors
@@ -116,8 +121,9 @@ export const loginGradientCss = (gradient) => {
   if (preset === 'radial') {
     return `radial-gradient(1200px 820px at 30% 20%, ${stops.join(', ')})`;
   }
-  if (preset === 'conic-rainbow') {
-    return `conic-gradient(from ${angle}deg at 50% 50%, ${RAINBOW_STOPS.join(', ')})`;
+  if (preset === 'rainbow') {
+    // رنگین‌کمان خطی (نوارهای مورب روی کل صفحه، نه جمع‌شده در مرکز)
+    return `linear-gradient(${angle}deg, ${RAINBOW_STOPS.join(', ')})`;
   }
   if (preset === 'mesh') {
     return [
