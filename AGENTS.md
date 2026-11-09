@@ -558,7 +558,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `feat(correspondence): numbering groups with auto-suggested letter numbers`
+- **Last commit:** `feat(correspondence): sync incoming unit/company registration numbers from the indicator sheet`
 - **Live:** frontend `main.1d2ee363.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص) و `correspondences.0021` (گروه‌های شماره‌گذاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
 - **«شماره ثبت» وارده از فایل اندیکاتور (۲۰۲۶-۱۱-۰۹):** در شیت «نام های وارده» فایل
   `اندیکاتور مالی.xlsx` ستون **«ردیف»** = شماره ثبت ورود به شرکت (``company_reg_no``) و ستون
