@@ -568,6 +568,10 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   | `/external-contracts/?page_size=20` | 169ms / 130q | **76ms / 30q** |
   | `/external-contracts/stats/` | 252ms / 46q | **18ms / 14q** |
   | `/contract-addendums/?page_size=500` | 430ms / 468q | **102ms / 8q** |
+  | `/external-contracts/guarantees-overview/` | 818ms / 1669q | **78ms / 6q** |
+  - `guarantees_overview` دیگر `.iterator()` ندارد (iterator پیش‌بارگذاری را نادیده می‌گرفت و برای هر
+    قرارداد تضامین/الحاقیه‌ها/طرف را جدا می‌خواند) و با `prefetch_related('guarantees','addendums')`
+    اجرا می‌شود.
   - `ContractListSerializer` (سبک) برای `action in ('list','options')`: بدون اسناد/لاگ/اختلاف/متن‌های بلند و با
     آرایه‌های فشرده (`ContractInvoiceBriefSerializer`/`StatementBrief`/`PaymentBrief`/`GuaranteeBrief`).
   - `ContractViewSet._lean_queryset()`: `select_related` چهار FK لازم + `Prefetch` با `.only()` برای

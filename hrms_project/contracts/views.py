@@ -241,10 +241,17 @@ class ContractViewSet(BaseContractViewSet):
         from contracts.guarantee_overview import contract_overview_row, summarize
         from contracts.guarantee_status import guarantee_compliance
 
-        queryset = self.get_queryset().filter(is_active=True).prefetch_related('guarantees')
+        # نکتهٔ کارایی: iterator() پیش‌بارگذاری‌ها را نادیده می‌گیرد و برای هر قرارداد
+        # چند کوئری (تضامین/الحاقیه‌ها/طرف) می‌زد؛ نسخهٔ زیر با prefetch و بدون iterator
+        # کل صفحه را با چند کوئری می‌سازد.
+        queryset = self._apply_filters(
+            super().get_queryset().select_related('party', 'currency').prefetch_related(
+                'guarantees', 'addendums',
+            ),
+        ).filter(is_active=True)
         only_with_guarantee = request.query_params.get('only_registered') in ('1', 'true', 'yes')
         rows = []
-        for contract in queryset.iterator(chunk_size=200):
+        for contract in queryset:
             guarantees = list(contract.guarantees.all())
             items = getattr(contract, 'guarantee_items', None) or []
             if not guarantees and not items and not getattr(contract, 'guarantee_amount', 0):
