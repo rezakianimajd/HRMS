@@ -559,7 +559,26 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(correspondence): numbering groups with auto-suggested letter numbers`
-- **Live:** frontend `main.6ab901a8.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص) و `correspondences.0021` (گروه‌های شماره‌گذاری) + مرتب‌سازی عددی «شماره ثبت» نامه‌ها + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.1d2ee363.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص) و `correspondences.0021` (گروه‌های شماره‌گذاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **«شماره ثبت» وارده از فایل اندیکاتور (۲۰۲۶-۱۱-۰۹):** در شیت «نام های وارده» فایل
+  `اندیکاتور مالی.xlsx` ستون **«ردیف»** = شماره ثبت ورود به شرکت (``company_reg_no``) و ستون
+  **«ردیف۲»** = شماره ثبت ورود به واحد (``unit_reg_no``) است؛ ستون اول جدول وارده («شماره ثبت»)
+  همان **ردیف۲** را نشان می‌دهد و شمارهٔ مؤسسه (ردیف) در خط دوم همان سلول («مؤسسه: …») و در tooltip
+  می‌آید. هر دو ممکن است در منبع خالی باشند.
+  - **منطق خالص** `correspondences/reg_numbers.py`: نرمال‌سازی ارقام/شماره/موضوع، `number_signature`
+    (مستقل از ترتیب بخش‌های شماره)، `build_indexes`/`match_letter` با اولویت
+    ``source_ref`` → شماره+تاریخ → شمارهٔ یکتا → **بخش‌های جابه‌جا** → تاریخ+موضوع →
+    **پیشوند موضوع در همان تاریخ** → موضوع یکتا، و `build_updates` (فقط پرکردن خالی‌ها؛ با
+    `overwrite=True` اصلاح مقادیر متفاوت).
+  - **دستور** `manage.py import_incoming_reg_numbers --schema kpsmi [--path …] [--sheet …] [--dry-run] [--overwrite]`
+    (روی سرور فایل اکسل را با `scp` در `/var/tmp` بگذارید؛ مسیر پیش‌فرض درایو ویندوز است).
+  - **نتیجهٔ اجرا روی `kpsmi`:** از ۴٬۰۸۰ نامهٔ وارده، **۳٬۸۴۱** شمارهٔ واحد و **۲٬۵۷۴** شمارهٔ مؤسسه
+    پر شد (۶۸ نامه بدون هیچ شماره: نامه‌های شیت بانک/دانشگاه و نامه‌های تازه‌ای که در اکسل نیستند)؛
+    ۵ مورد جابه‌جایی (ردیف/ردیف۲) اصلاح شد و یک نامهٔ دستی با مقادیر جابه‌جا تصحیح گردید.
+    چند شمارهٔ تکراری در خود اکسل وجود دارد (مثل 2088، 1214) و دست‌نخورده مانده.
+  - تست: `correspondences/tests_reg_numbers.py` (۲۱ تست DB-free) + `correspondenceSmoke` (۱۷).
+    اجرای دوبارهٔ دستور idempotent است (updates=0).
+
 - **شماره‌گذاری خودکار و گروهی مکاتبات صادره (۲۰۲۶-۱۱-۰۹):** در «تنظیمات و تعاریف» گروه منوی
   **«مکاتبات اداری»** (`settings-correspondence`) اضافه شد با صفحهٔ
   **`/settings/correspondence-numbering`** («تعاریف اولیه و شماره‌گذاری») و میان‌برهای انواع مکاتبه،

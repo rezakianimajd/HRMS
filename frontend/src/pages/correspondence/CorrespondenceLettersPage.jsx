@@ -698,7 +698,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             /* ── شمارهٔ ثبت ورود به واحد (ستون اول دفتر وارده) ── */
             ...(mode === 'incoming' ? [
               {
-                key: 'unit_reg_no', label: 'شماره ثبت', width: '9%', align: 'center',
+                key: 'unit_reg_no', label: 'شماره ثبت', width: '10%', align: 'center',
                 render: (row) => {
                   const { letter } = row;
                   if (rowEditing(letter)) {
@@ -708,17 +708,28 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     );
                   }
                   const value = letter.unit_reg_no ? toPersianDigits(letter.unit_reg_no) : '—';
+                  const companyReg = letter.company_reg_no
+                    ? toPersianDigits(letter.company_reg_no) : '';
                   const meta = joinParts(
                     letter.unit_reg_date ? `تاریخ ثبت ورود به واحد: ${dateLabel(letter.unit_reg_date)}` : '',
-                    letter.company_reg_no
-                      ? `شماره ثبت ورود به شرکت: ${toPersianDigits(letter.company_reg_no)}` : '',
+                    companyReg ? `شماره ثبت ورود به شرکت (ردیف اکسل): ${companyReg}` : '',
+                    letter.unit_reg_date || letter.unit_name ? '' : 'ستون ردیف۲ اندیکاتور',
                     letter.unit_name ? `واحد: ${letter.unit_name}` : '',
                   );
                   return (
-                    <CellText mono weight={800} title={meta || undefined}
-                      color={letter.unit_reg_no ? undefined : MUTED}>
-                      {value}
-                    </CellText>
+                    <Box sx={{ minWidth: 0 }} title={meta || undefined}>
+                      <Typography sx={{
+                        fontSize: 11.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums',
+                        color: letter.unit_reg_no ? undefined : MUTED,
+                      }}>
+                        {value}
+                      </Typography>
+                      {companyReg ? (
+                        <Typography noWrap sx={{ fontSize: 9.5, color: MUTED }}>
+                          مؤسسه: {companyReg}
+                        </Typography>
+                      ) : null}
+                    </Box>
                   );
                 },
               },
@@ -882,7 +893,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             /* ── ارجاع (آخرین ارجاع) — وارده ── */
             ...(mode === 'incoming' ? [
               {
-                key: 'referral', label: 'ارجاع', width: '11%',
+                key: 'referral', label: 'ارجاع', width: '10%',
                 render: (row) => {
                   const last = row.letter.last_referral;
                   if (!last) return <CellText color={MUTED}>بدون ارجاع</CellText>;
