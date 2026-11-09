@@ -558,7 +558,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `feat(accounting): add organizations and persons registry page`
+- **Last commit:** `feat(correspondence): unit registration number column and numeric ordering for incoming letters`
 - **Live:** frontend `main.8c17e850.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن `accounting.0033` (سازمان‌ها و اشخاص) + مرتب‌سازی عددی «شماره ثبت» نامه‌ها + کاتالوگ مجوز ۲۶۶ منو/۱۱۰۱ کد)، gunicorn/celery/nginx active.
 - **ستون «شماره ثبت» در دفتر وارده + مرتب‌سازی «آخرین اول» (۲۰۲۶-۱۱-۰۹):** جدول نامه‌های وارده
   (`/correspondence/incoming`) ستون اول **«شماره ثبت»** (فیلد `unit_reg_no` = «شماره ثبت ورود به واحد»)
