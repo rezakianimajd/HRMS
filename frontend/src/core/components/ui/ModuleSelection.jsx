@@ -198,13 +198,20 @@ const ModuleSelectionCard = ({
  */
 const ModuleSelection = (props) => {
   const theme = resolveLoginBranding(props.company?.login_branding);
-  const hasImage = Boolean(theme.backgroundUrl);
+  const hasImage = theme.backgroundKind === 'image' && Boolean(theme.backgroundUrl);
+  const hasGradient = theme.useGradient;
   return (
     <Box data-testid="module-selection" sx={{
       position: 'relative', minHeight: '100vh', display: 'grid', placeItems: 'center',
       px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 5 }, overflow: 'hidden',
-      background: hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND,
+      background: hasGradient ? theme.gradientCss
+        : (hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND),
     }}>
+      {hasGradient ? (
+        <Box aria-hidden data-testid="module-branding-gradient"
+          data-gradient-preset={theme.gradient.preset}
+          sx={{ position: 'absolute', inset: 0, background: theme.gradientCss }} />
+      ) : null}
       {hasImage ? (
         <>
           <Box aria-hidden data-testid="module-branding-image" data-background-url={theme.backgroundUrl}

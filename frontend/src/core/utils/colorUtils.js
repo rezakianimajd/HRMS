@@ -7,13 +7,36 @@
 const HEX_PATTERN = /^#?([0-9a-fA-F]{6})$/;
 
 export const DEFAULT_LOGIN_BRANDING = {
+  background_kind: 'image',
   background_url: '',
+  gradient: { preset: 'linear-three', angle: 135, colors: ['#4f46e5', '#0ea5e9', '#0f766e'] },
   overlay_color: '#07101f',
   overlay_opacity: 72,
   overlay_blur: 8,
   text_color: '#ffffff',
   accent_color: '#a5b4fc',
 };
+
+/**
+ * گرادیانت‌های آماده برای پس‌زمینهٔ صفحهٔ ورود (به‌جای تصویر).
+ * `stops` = تعداد رنگ‌هایی که کاربر انتخاب می‌کند؛ شناسه‌ها با بک‌اند یکسان‌اند.
+ */
+export const LOGIN_GRADIENT_PRESETS = [
+  { id: 'linear-two', label: 'دو رنگ', stops: 2 },
+  { id: 'linear-three', label: 'سه رنگ', stops: 3 },
+  { id: 'linear-four', label: 'چهار رنگ', stops: 4 },
+  { id: 'radial', label: 'شعاعی', stops: 3 },
+  { id: 'conic-rainbow', label: 'رنگین‌کمان', stops: 3 },
+  { id: 'mesh', label: 'مش رنگی', stops: 3 },
+];
+
+export const DEFAULT_LOGIN_GRADIENT = DEFAULT_LOGIN_BRANDING.gradient;
+
+const RAINBOW_STOPS = ['#f43f5e', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#a855f7', '#f43f5e'];
+
+export const gradientColorCount = (preset) => (
+  LOGIN_GRADIENT_PRESETS.find((item) => item.id === preset)?.stops || 3
+);
 
 export const isHexColor = (value) => HEX_PATTERN.test(String(value || '').trim());
 
@@ -49,6 +72,52 @@ export const darkenHex = (value, ratio = 0.25) => {
   return `#${[mix(rgb.r), mix(rgb.g), mix(rgb.b)].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 };
 
+/** مقدار خام گرادیانت → { preset, angle, colors[2..4] } معتبر. */
+export const normalizeLoginGradient = (gradient) => {
+  const source = gradient && typeof gradient === 'object' ? gradient : {};
+  const preset = LOGIN_GRADIENT_PRESETS.some((item) => item.id === source.preset)
+    ? source.preset
+    : DEFAULT_LOGIN_GRADIENT.preset;
+  const rawColors = Array.isArray(source.colors) ? source.colors : [];
+  const colors = rawColors
+    .map((value) => normalizeHexColor(value, ''))
+    .filter(Boolean)
+    .slice(0, 4);
+  const rawAngle = Number(source.angle);
+  const angle = Number.isFinite(rawAngle)
+    ? ((Math.round(rawAngle) % 360) + 360) % 360
+    : DEFAULT_LOGIN_GRADIENT.angle;
+  return {
+    preset,
+    angle,
+    colors: colors.length >= 2 ? colors : [...DEFAULT_LOGIN_GRADIENT.colors],
+  };
+};
+
+/** CSS پس‌زمینهٔ گرادیانت بر اساس پریست/زاویه/رنگ‌ها. */
+export const loginGradientCss = (gradient) => {
+  const { preset, angle, colors } = normalizeLoginGradient(gradient);
+  const stops = colors.map((color, index) => (
+    `${color} ${Math.round((index / Math.max(1, colors.length - 1)) * 100)}%`
+  ));
+
+  if (preset === 'radial') {
+    return `radial-gradient(1200px 820px at 30% 20%, ${stops.join(', ')})`;
+  }
+  if (preset === 'conic-rainbow') {
+    return `conic-gradient(from ${angle}deg at 50% 50%, ${RAINBOW_STOPS.join(', ')})`;
+  }
+  if (preset === 'mesh') {
+    return [
+      `radial-gradient(760px 620px at 12% 10%, ${withAlpha(colors[0], 0.95)}, transparent 62%)`,
+      `radial-gradient(720px 640px at 88% 18%, ${withAlpha(colors[1] || colors[0], 0.85)}, transparent 60%)`,
+      `radial-gradient(900px 720px at 50% 100%, ${withAlpha(colors[2] || colors[0], 0.8)}, transparent 64%)`,
+      `linear-gradient(${angle}deg, ${colors[0]} 0%, ${colors[colors.length - 1]} 100%)`,
+    ].join(', ');
+  }
+  return `linear-gradient(${angle}deg, ${stops.join(', ')})`;
+};
+
 /** مقدار خام تنظیمات → تم آمادهٔ استفاده در استایل (با پیش‌فرض‌های امن). */
 export const resolveLoginBranding = (branding) => {
   const source = branding && typeof branding === 'object' ? branding : {};
@@ -64,8 +133,14 @@ export const resolveLoginBranding = (branding) => {
     ? Math.min(24, Math.max(0, Math.round(rawBlur)))
     : DEFAULT_LOGIN_BRANDING.overlay_blur;
   const backgroundUrl = typeof source.background_url === 'string' ? source.background_url.trim() : '';
+  const backgroundKind = source.background_kind === 'gradient' ? 'gradient' : 'image';
+  const gradient = normalizeLoginGradient(source.gradient);
   return {
+    backgroundKind,
     backgroundUrl,
+    gradient,
+    gradientCss: loginGradientCss(gradient),
+    useGradient: backgroundKind === 'gradient',
     overlay,
     opacity,
     blur,

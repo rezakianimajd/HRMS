@@ -8,6 +8,7 @@ from django.test import SimpleTestCase
 
 from settings_app.login_branding import (
     DEFAULT_LOGIN_BRANDING,
+    DEFAULT_LOGIN_GRADIENT,
     BackgroundUploadError,
     _validate_upload,
     sanitize_login_branding,
@@ -97,6 +98,69 @@ class LoginBrandingSanitizeTests(SimpleTestCase):
     def test_unknown_keys_are_dropped(self):
         result = sanitize_login_branding({'overlay_color': '#000000', 'hack': '<script>'})
         self.assertEqual(set(result.keys()), set(DEFAULT_LOGIN_BRANDING.keys()))
+
+
+class LoginGradientTests(SimpleTestCase):
+    """گرادیانت رنگی به‌جای تصویر پس‌زمینهٔ صفحهٔ ورود."""
+
+    def test_defaults_use_image_kind_and_default_gradient(self):
+        result = sanitize_login_branding({})
+        self.assertEqual(result['background_kind'], 'image')
+        self.assertEqual(result['gradient'], DEFAULT_LOGIN_GRADIENT)
+
+    def test_valid_gradient_is_normalized(self):
+        result = sanitize_login_branding({
+            'background_kind': 'gradient',
+            'gradient': {'preset': 'mesh', 'angle': -30, 'colors': ['#ABCDEF', '#123456']},
+        })
+        self.assertEqual(result['background_kind'], 'gradient')
+        self.assertEqual(result['gradient']['preset'], 'mesh')
+        self.assertEqual(result['gradient']['angle'], 330)
+        self.assertEqual(result['gradient']['colors'], ['#abcdef', '#123456'])
+
+    def test_invalid_gradient_falls_back(self):
+        result = sanitize_login_branding({
+            'background_kind': 'video',
+            'gradient': {'preset': 'not-a-preset', 'colors': ['#zzzzzz', 'red']},
+        })
+        self.assertEqual(result['background_kind'], 'image')
+        self.assertEqual(result['gradient']['preset'], DEFAULT_LOGIN_GRADIENT['preset'])
+        self.assertEqual(result['gradient']['colors'], DEFAULT_LOGIN_GRADIENT['colors'])
+
+    def test_gradient_colors_are_capped_at_four(self):
+        colors = ['#111111', '#222222', '#333333', '#444444', '#555555']
+        result = sanitize_login_branding({'gradient': {'colors': colors}})
+        self.assertEqual(result['gradient']['colors'], colors[:4])
+
+    def test_save_merges_partial_gradient(self):
+        from settings_app import login_branding as module
+
+        saved = {}
+
+        class _Engine:
+            @staticmethod
+            def get_setting(key, company, default=None):  # noqa: ARG004
+                return saved or default
+
+            @staticmethod
+            def set_setting(key, value, company, **kwargs):  # noqa: ARG004
+                saved.update(value)
+
+        original = module.SettingsEngine
+        module.SettingsEngine = _Engine
+        try:
+            result = module.save_login_branding(
+                SimpleNamespace(pk=1),
+                {'background_kind': 'gradient', 'gradient': {'preset': 'radial'}},
+            )
+        finally:
+            module.SettingsEngine = original
+
+        self.assertEqual(result['background_kind'], 'gradient')
+        self.assertEqual(result['gradient']['preset'], 'radial')
+        # زاویه و رنگ‌ها از تنظیمات قبلی حفظ می‌شوند
+        self.assertEqual(result['gradient']['angle'], DEFAULT_LOGIN_GRADIENT['angle'])
+        self.assertEqual(result['gradient']['colors'], DEFAULT_LOGIN_GRADIENT['colors'])
 
 
 class LoginBackgroundUploadValidationTests(SimpleTestCase):

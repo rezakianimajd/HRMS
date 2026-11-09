@@ -7,7 +7,9 @@ import axiosInstance from '../core/api/axiosConfig';
 import ModuleSelection, { ModuleSelectionCard, greetingForHour } from '../core/components/ui/ModuleSelection';
 import Login from '../pages/Login';
 import { getModuleLandingPath } from '../core/constants/moduleIcons';
-import { loginOverlayGradient, resolveLoginBranding } from '../core/utils/colorUtils';
+import {
+  loginGradientCss, loginOverlayGradient, normalizeLoginGradient, resolveLoginBranding,
+} from '../core/utils/colorUtils';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -136,6 +138,47 @@ test('login branding colors are sanitized and turned into a fade gradient', () =
   expect(loginOverlayGradient(defaults)).toContain('rgba(7,16,31');
 });
 
+test('login background can be a color gradient instead of an image', () => {
+  // دو رنگ خطی با زاویهٔ دلخواه
+  const two = loginGradientCss({ preset: 'linear-two', angle: 90, colors: ['#111111', '#222222'] });
+  expect(two).toContain('linear-gradient(90deg');
+  expect(two).toContain('#111111 0%');
+  expect(two).toContain('#222222 100%');
+
+  // سه/چهار رنگ
+  const four = loginGradientCss({
+    preset: 'linear-four', angle: 45, colors: ['#111111', '#222222', '#333333', '#444444'],
+  });
+  expect(four).toContain('linear-gradient(45deg');
+  expect((four.match(/#[0-9a-f]{6}/g) || []).length).toBe(4);
+
+  // پریست‌های ویژه
+  expect(loginGradientCss({ preset: 'radial' })).toContain('radial-gradient(');
+  expect(loginGradientCss({ preset: 'conic-rainbow', angle: 30 })).toContain('conic-gradient(from 30deg');
+  expect(loginGradientCss({ preset: 'mesh' })).toContain('radial-gradient(');
+
+  // مقدار نامعتبر → پیش‌فرض امن
+  const safe = normalizeLoginGradient({ preset: 'nope', colors: ['bad', 'red'], angle: 'x' });
+  expect(safe.preset).toBe('linear-three');
+  expect(safe.colors.length).toBe(3);
+  expect(safe.angle).toBe(135);
+
+  // تم ورود: حالت گرادیانت + CSS آمادهٔ استفاده
+  const theme = resolveLoginBranding({
+    background_kind: 'gradient',
+    gradient: { preset: 'mesh', angle: 210, colors: ['#123456', '#abcdef'] },
+  });
+  expect(theme.backgroundKind).toBe('gradient');
+  expect(theme.useGradient).toBe(true);
+  expect(theme.gradientCss).toContain('#123456');
+  expect(theme.backgroundUrl).toBe('');
+
+  // حالت تصویر همچنان پیش‌فرض است
+  const imageTheme = resolveLoginBranding({ background_url: '/media/login_branding/a.jpg' });
+  expect(imageTheme.backgroundKind).toBe('image');
+  expect(imageTheme.useGradient).toBe(false);
+});
+
 test('each selected module resolves to its own landing dashboard', () => {
   expect(getModuleLandingPath('hrms')).toBe('/dashboard');
   expect(getModuleLandingPath('contracts')).toBe('/contracts-dashboard');
@@ -208,6 +251,56 @@ test('module selection card renders standalone inside the login flip stage', asy
     await wait(40);
   });
   expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ slug: 'hrms' }));
+
+  root.unmount();
+  container.remove();
+});
+
+test('login page paints the configured gradient background instead of an image', async () => {
+  axiosInstance.get.mockImplementation((url) => {
+    if (url === '/auth/login-users/') return Promise.resolve({ data: [] });
+    if (url === '/auth/login-companies/') {
+      return Promise.resolve({
+        data: [{
+          id: 1,
+          code: 'KIAN-1',
+          display_name: 'شرکت نمونه کیان',
+          legal_name: 'شرکت نمونه کیان',
+          logo_url: '/media/company-logos/kian.png',
+          login_branding: {
+            background_kind: 'gradient',
+            background_url: '',
+            gradient: { preset: 'linear-two', angle: 90, colors: ['#111111', '#222222'] },
+            overlay_opacity: 0,
+            overlay_blur: 0,
+          },
+        }],
+      });
+    }
+    return Promise.resolve({ data: null });
+  });
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { container, root } = await mount(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/login']}>
+        <Login />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
+  }
+
+  const gradient = container.querySelector('[data-testid="login-branding-gradient"]');
+  expect(gradient).toBeTruthy();
+  expect(gradient.getAttribute('data-gradient-preset')).toBe('linear-two');
+  expect(gradient.getAttribute('data-gradient-colors')).toBe('#111111,#222222');
+  expect(gradient.getAttribute('data-gradient-angle')).toBe('90');
+  expect(container.querySelector('[data-testid="login-branding-image"]')).toBeFalsy();
+  // شفافیت پوشش صفر ⇒ لایهٔ تیره روی گرادیانت اضافه نمی‌شود
+  expect(container.querySelector('[data-testid="login-gradient-overlay"]')).toBeFalsy();
 
   root.unmount();
   container.remove();

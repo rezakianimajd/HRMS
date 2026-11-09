@@ -30,9 +30,21 @@ ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_BYTES = 6 * 1024 * 1024
 MAX_OVERLAY_OPACITY = 95
 MAX_OVERLAY_BLUR = 24
+BACKGROUND_KINDS = ('image', 'gradient')
+GRADIENT_PRESETS = (
+    'linear-two', 'linear-three', 'linear-four', 'radial', 'conic-rainbow', 'mesh',
+)
+MAX_GRADIENT_COLORS = 4
+DEFAULT_LOGIN_GRADIENT = {
+    'preset': 'linear-three',
+    'angle': 135,
+    'colors': ['#4f46e5', '#0ea5e9', '#0f766e'],
+}
 
 DEFAULT_LOGIN_BRANDING = {
+    'background_kind': 'image',
     'background_url': '',
+    'gradient': DEFAULT_LOGIN_GRADIENT,
     'overlay_color': '#07101f',
     'overlay_opacity': 72,
     'overlay_blur': 8,
@@ -67,6 +79,39 @@ def _blur(value, fallback):
     return max(0, min(MAX_OVERLAY_BLUR, number))
 
 
+def _background_kind(value, fallback):
+    return value if value in BACKGROUND_KINDS else fallback
+
+
+def _angle(value, fallback):
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        return fallback
+    return number % 360
+
+
+def _gradient(raw, fallback=None):
+    """ورودی خام گرادیانت → {preset, angle, colors[]} معتبر (۲ تا ۴ رنگ)."""
+    base = fallback if isinstance(fallback, dict) else DEFAULT_LOGIN_GRADIENT
+    source = raw if isinstance(raw, dict) else {}
+    preset = source.get('preset') if source.get('preset') in GRADIENT_PRESETS else base.get('preset')
+    colors = source.get('colors')
+    if not isinstance(colors, (list, tuple)):
+        colors = base.get('colors')
+    cleaned = []
+    for value in list(colors or [])[:MAX_GRADIENT_COLORS]:
+        if isinstance(value, str) and HEX_COLOR.fullmatch(value.strip()):
+            cleaned.append(value.strip().lower())
+    if len(cleaned) < 2:
+        cleaned = list(base.get('colors') or DEFAULT_LOGIN_GRADIENT['colors'])
+    return {
+        'preset': preset,
+        'angle': _angle(source.get('angle'), base.get('angle', DEFAULT_LOGIN_GRADIENT['angle'])),
+        'colors': cleaned,
+    }
+
+
 def _url(value, fallback=''):
     if not isinstance(value, str):
         return fallback
@@ -78,7 +123,11 @@ def sanitize_login_branding(raw):
     """ورودی خام → تنظیمات معتبر (کلیدهای ناشناخته حذف می‌شوند)."""
     source = raw if isinstance(raw, dict) else {}
     return {
+        'background_kind': _background_kind(
+            source.get('background_kind'), DEFAULT_LOGIN_BRANDING['background_kind'],
+        ),
         'background_url': _url(source.get('background_url'), DEFAULT_LOGIN_BRANDING['background_url']),
+        'gradient': _gradient(source.get('gradient'), DEFAULT_LOGIN_BRANDING['gradient']),
         'overlay_color': _color(source.get('overlay_color'), DEFAULT_LOGIN_BRANDING['overlay_color']),
         'overlay_opacity': _opacity(source.get('overlay_opacity'), DEFAULT_LOGIN_BRANDING['overlay_opacity']),
         'overlay_blur': _blur(source.get('overlay_blur'), DEFAULT_LOGIN_BRANDING['overlay_blur']),
@@ -100,7 +149,7 @@ def _stored_dict(company):
 def read_login_branding(company):
     """تنظیمات ظاهر لاگین برای یک شرکت (با پیش‌فرض‌های امن)."""
     if not company:
-        return dict(DEFAULT_LOGIN_BRANDING)
+        return sanitize_login_branding(DEFAULT_LOGIN_BRANDING)
     return sanitize_login_branding(_stored_dict(company))
 
 
@@ -117,9 +166,13 @@ def save_login_branding(company, payload):
     current = read_login_branding(company)
     incoming = payload if isinstance(payload, dict) else {}
     merged = dict(current)
-    for key in ('overlay_color', 'overlay_opacity', 'overlay_blur', 'text_color', 'accent_color'):
+    for key in ('background_kind', 'overlay_color', 'overlay_opacity', 'overlay_blur',
+                'text_color', 'accent_color'):
         if key in incoming:
             merged[key] = incoming[key]
+    if isinstance(incoming.get('gradient'), dict):
+        current_gradient = merged.get('gradient') if isinstance(merged.get('gradient'), dict) else {}
+        merged['gradient'] = {**current_gradient, **incoming['gradient']}
     if 'background_url' in incoming and not incoming.get('background_url'):
         merged['background_url'] = ''
     return _persist(company, sanitize_login_branding(merged))
@@ -175,7 +228,7 @@ def store_login_background(company, upload):
     except Exception as exc:  # noqa: BLE001
         raise BackgroundUploadError('ذخیرهٔ تصویر انجام نشد.') from exc
 
-    return _persist(company, {**current, 'background_url': url})
+    return _persist(company, {**current, 'background_kind': 'image', 'background_url': url})
 
 
 def clear_login_background(company):

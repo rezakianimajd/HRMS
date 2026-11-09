@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Grid, TextField, Button, CircularProgress,
-  Alert, Stack, Tooltip, Chip, alpha, Slider,
+  Alert, Stack, Tooltip, Chip, alpha, Slider, Switch, FormControlLabel,
+  ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -19,8 +20,9 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import { toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import {
-  DEFAULT_LOGIN_BRANDING, LOGIN_PANEL_DEFAULT_BACKGROUND,
-  loginOverlayGradient, normalizeHexColor, resolveLoginBranding,
+  DEFAULT_LOGIN_BRANDING, DEFAULT_LOGIN_GRADIENT, LOGIN_GRADIENT_PRESETS,
+  LOGIN_PANEL_DEFAULT_BACKGROUND, gradientColorCount, loginOverlayGradient,
+  normalizeHexColor, normalizeLoginGradient, resolveLoginBranding,
 } from '../core/utils/colorUtils';
 
 const glassCard = { ...SURFACE };
@@ -78,16 +80,21 @@ const ColorField = ({ label, value, onChange }) => (
 /** پیش‌نمایش زندهٔ پنل سمت راست صفحهٔ ورود (همان لایه‌بندی تصویر + پوشش رنگی). */
 const LoginPanelPreview = ({ branding }) => {
   const theme = resolveLoginBranding(branding);
-  const hasImage = Boolean(theme.backgroundUrl);
+  const hasImage = theme.backgroundKind === 'image' && Boolean(theme.backgroundUrl);
+  const hasGradient = theme.useGradient;
   return (
     <Box sx={{
       position: 'relative', overflow: 'hidden', borderRadius: '14px', minHeight: 228, p: 1.7,
       color: theme.text, bgcolor: theme.overlay,
       border: '1px solid', borderColor: 'divider',
-      background: hasImage
-        ? `${loginOverlayGradient(theme)}, ${LOGIN_PANEL_DEFAULT_BACKGROUND}`
-        : LOGIN_PANEL_DEFAULT_BACKGROUND,
+      background: hasGradient
+        ? theme.gradientCss
+        : (hasImage ? `${loginOverlayGradient(theme)}, ${LOGIN_PANEL_DEFAULT_BACKGROUND}`
+          : LOGIN_PANEL_DEFAULT_BACKGROUND),
     }}>
+      {hasGradient && theme.opacity > 0 ? (
+        <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
+      ) : null}
       {hasImage ? (
         <>
           <Box aria-hidden sx={{
@@ -123,7 +130,7 @@ const LoginPanelPreview = ({ branding }) => {
             <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.9)' }} />
           </Box>
         </Box>
-        {hasImage ? null : (
+        {hasImage || hasGradient ? null : (
           <Typography sx={{ mt: 1, fontSize: 11.5, color: theme.faint }}>
             تصویری انتخاب نشده؛ پس‌زمینهٔ پیش‌فرض سامانه نمایش داده می‌شود.
           </Typography>
@@ -201,6 +208,8 @@ const CompanyProfilePage = () => {
   }, [brandingData]);
 
   const panelBranding = { ...DEFAULT_LOGIN_BRANDING, ...(branding || {}) };
+  const loginGradient = normalizeLoginGradient(panelBranding.gradient);
+  const isGradientBackground = panelBranding.background_kind === 'gradient';
   const canEditBranding = (branding?.can_edit ?? true) !== false;
 
   const flashBrandingSaved = () => {
@@ -252,6 +261,38 @@ const CompanyProfilePage = () => {
     setBranding((previous) => ({ ...DEFAULT_LOGIN_BRANDING, ...(previous || {}), [key]: value }));
   };
 
+  /** ویرایش فیلدهای گرادیانت (preset / angle / colors) روی همان تنظیمات. */
+  const setGradientField = (key, value) => {
+    setBrandingError('');
+    setBranding((previous) => {
+      const base = { ...DEFAULT_LOGIN_BRANDING, ...(previous || {}) };
+      const gradient = normalizeLoginGradient(base.gradient);
+      return { ...base, gradient: { ...gradient, [key]: value } };
+    });
+  };
+
+  const setGradientColor = (index, value) => {
+    const colors = [...loginGradient.colors];
+    colors[index] = normalizeHexColor(value, colors[index]);
+    setGradientField('colors', colors);
+  };
+
+  const chooseGradientPreset = (preset) => {
+    if (!preset) return;
+    const needed = gradientColorCount(preset);
+    const colors = [...loginGradient.colors];
+    while (colors.length < needed) {
+      colors.push(DEFAULT_LOGIN_GRADIENT.colors[colors.length % DEFAULT_LOGIN_GRADIENT.colors.length]);
+    }
+    setBrandingError('');
+    setBranding((previous) => {
+      const base = { ...DEFAULT_LOGIN_BRANDING, ...(previous || {}) };
+      return { ...base, gradient: { ...loginGradient, preset, colors: colors.slice(0, needed) } };
+    });
+  };
+
+  const toggleBlur = (enabled) => setBrandingField('overlay_blur', enabled ? 8 : 0);
+
   const handleBackgroundFile = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -274,8 +315,11 @@ const CompanyProfilePage = () => {
   };
 
   const submitBranding = () => saveBrandingMutation.mutate({
+    background_kind: panelBranding.background_kind,
+    gradient: loginGradient,
     overlay_color: panelBranding.overlay_color,
     overlay_opacity: panelBranding.overlay_opacity,
+    overlay_blur: panelBranding.overlay_blur,
     text_color: panelBranding.text_color,
     accent_color: panelBranding.accent_color,
   });
@@ -350,36 +394,100 @@ const CompanyProfilePage = () => {
       <Section
         icon={<WallpaperIcon sx={{ color: '#fff', fontSize: 22 }} />}
         title="ظاهر صفحهٔ ورود"
-        subtitle="تصویر پس‌زمینهٔ پنل ورود، رنگ پوشش فید روی آن و رنگ نوشته‌ها — برای همهٔ کاربران اعمال می‌شود"
+        subtitle="پس‌زمینهٔ پنل ورود (تصویر یا گرادیانت رنگی)، رنگ پوشش/فید روی آن، بلور و رنگ نوشته‌ها — برای همهٔ کاربران اعمال می‌شود"
         color={SOFT.blue}
       >
         <Grid container spacing={2}>
           <Grid item xs={12} md={5}>
             <LoginPanelPreview branding={panelBranding} />
-            <Stack direction="row" spacing={1} sx={{ mt: 1.2 }} flexWrap="wrap" useFlexGap alignItems="center">
-              <Button
-                variant="outlined" size="small" component="label" startIcon={<PhotoCameraIcon />}
-                disabled={backgroundUploading || !canEditBranding}
-                sx={{ fontSize: 12, borderRadius: '9px' }}
-              >
-                {panelBranding.background_url ? 'تغییر تصویر' : 'انتخاب تصویر'}
-                <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleBackgroundFile} />
-              </Button>
-              {panelBranding.background_url ? (
-                <Button
-                  variant="text" size="small" color="error" startIcon={<DeleteOutlineIcon />}
-                  onClick={() => removeBackgroundMutation.mutate()}
-                  disabled={removeBackgroundMutation.isLoading || !canEditBranding}
-                  sx={{ fontSize: 12 }}
-                >
-                  حذف تصویر
-                </Button>
-              ) : null}
-              {backgroundUploading ? <CircularProgress size={18} /> : null}
-            </Stack>
-            <Typography sx={{ mt: 0.8, fontSize: 12, color: 'text.secondary' }}>
-              JPG، PNG یا WEBP تا ۶ مگابایت. تصویر تمام‌پهنا (Cover) و زیر رنگ پوشش نمایش داده می‌شود.
-            </Typography>
+
+            {/* انتخاب نوع پس‌زمینه: تصویر یا گرادیانت */}
+            <ToggleButtonGroup
+              exclusive
+              fullWidth
+              size="small"
+              value={isGradientBackground ? 'gradient' : 'image'}
+              onChange={(_event, value) => {
+                if (value) setBrandingField('background_kind', value);
+              }}
+              sx={{ mt: 1.2, '& .MuiToggleButton-root': { fontSize: 12, fontWeight: 800, py: 0.5 } }}
+            >
+              <ToggleButton value="image">تصویر پس‌زمینه</ToggleButton>
+              <ToggleButton value="gradient">گرادیانت رنگی</ToggleButton>
+            </ToggleButtonGroup>
+
+            {isGradientBackground ? (
+              <Box sx={{ mt: 1.2 }}>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 0.6 }}>
+                  نوع گرادیانت
+                </Typography>
+                <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
+                  {LOGIN_GRADIENT_PRESETS.map((preset) => (
+                    <Chip
+                      key={preset.id}
+                      label={preset.label}
+                      size="small"
+                      clickable
+                      color={loginGradient.preset === preset.id ? 'primary' : 'default'}
+                      variant={loginGradient.preset === preset.id ? 'filled' : 'outlined'}
+                      onClick={() => chooseGradientPreset(preset.id)}
+                      sx={{ fontSize: 11.5, fontWeight: 800 }}
+                    />
+                  ))}
+                </Stack>
+
+                <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                  {loginGradient.colors.map((color, index) => (
+                    <ColorField
+                      key={`gradient-color-${index}`}
+                      label={`رنگ ${index + 1}`}
+                      value={color}
+                      onChange={(value) => setGradientColor(index, value)}
+                    />
+                  ))}
+                </Stack>
+
+                <Typography sx={{ mt: 1, mb: 0.2, fontSize: 12, color: 'text.secondary' }}>
+                  زاویهٔ گرادیانت
+                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Slider
+                    size="small" min={0} max={360} step={5}
+                    value={Number(loginGradient.angle || 0)}
+                    onChange={(_event, value) => setGradientField('angle', value)}
+                    sx={{ flex: 1 }}
+                  />
+                  <Chip size="small" label={`${toPersianDigits(Number(loginGradient.angle || 0))}°`} />
+                </Stack>
+              </Box>
+            ) : (
+              <>
+                <Stack direction="row" spacing={1} sx={{ mt: 1.2 }} flexWrap="wrap" useFlexGap alignItems="center">
+                  <Button
+                    variant="outlined" size="small" component="label" startIcon={<PhotoCameraIcon />}
+                    disabled={backgroundUploading || !canEditBranding}
+                    sx={{ fontSize: 12, borderRadius: '9px' }}
+                  >
+                    {panelBranding.background_url ? 'تغییر تصویر' : 'انتخاب تصویر'}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleBackgroundFile} />
+                  </Button>
+                  {panelBranding.background_url ? (
+                    <Button
+                      variant="text" size="small" color="error" startIcon={<DeleteOutlineIcon />}
+                      onClick={() => removeBackgroundMutation.mutate()}
+                      disabled={removeBackgroundMutation.isLoading || !canEditBranding}
+                      sx={{ fontSize: 12 }}
+                    >
+                      حذف تصویر
+                    </Button>
+                  ) : null}
+                  {backgroundUploading ? <CircularProgress size={18} /> : null}
+                </Stack>
+                <Typography sx={{ mt: 0.8, fontSize: 12, color: 'text.secondary' }}>
+                  JPG، PNG یا WEBP تا ۶ مگابایت. تصویر تمام‌پهنا (Cover) و زیر رنگ پوشش نمایش داده می‌شود.
+                </Typography>
+              </>
+            )}
           </Grid>
 
           <Grid item xs={12} md={7}>
@@ -417,18 +525,38 @@ const CompanyProfilePage = () => {
                 </Stack>
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 0.4 }}>
-                  میزان بلور تصویر پس‌زمینه
-                </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                    بلور پس‌زمینه
+                  </Typography>
+                  <FormControlLabel
+                    sx={{ m: 0 }}
+                    control={(
+                      <Switch
+                        size="small"
+                        checked={Number(panelBranding.overlay_blur ?? 0) > 0}
+                        onChange={(event) => toggleBlur(event.target.checked)}
+                      />
+                    )}
+                    label={<Typography sx={{ fontSize: 11.5 }}>فعال</Typography>}
+                  />
+                </Stack>
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Slider
                     size="small" min={0} max={24} step={1}
                     value={Number(panelBranding.overlay_blur ?? 0)}
-                    onChange={(_, value) => setBrandingField('overlay_blur', value)}
+                    onChange={(_event, value) => setBrandingField('overlay_blur', value)}
+                    disabled={Number(panelBranding.overlay_blur ?? 0) <= 0 || isGradientBackground}
                     sx={{ flex: 1 }}
                   />
-                  <Chip size="small" label={`${toPersianDigits(Number(panelBranding.overlay_blur ?? 0))}px`} />
+                  <Chip size="small"
+                    label={`${toPersianDigits(Number(panelBranding.overlay_blur ?? 0))}px`} />
                 </Stack>
+                <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                  {isGradientBackground
+                    ? 'بلور فقط روی تصویر اثر دارد؛ در حالت گرادیانت غیرفعال است.'
+                    : '۰ = بدون بلور (تصویر شارپ)، ۲۴ = حداکثر نرمی.'}
+                </Typography>
               </Grid>
             </Grid>
 

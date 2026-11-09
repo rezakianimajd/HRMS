@@ -252,14 +252,16 @@ const Login = () => {
   };
 
   const theme = resolveLoginBranding(selectedCompany?.login_branding);
-  const hasImage = Boolean(theme.backgroundUrl);
+  const hasImage = theme.backgroundKind === 'image' && Boolean(theme.backgroundUrl);
+  const hasGradient = theme.useGradient;
 
   return (
     <Box data-testid="login-page" data-branding-text-color={theme.text}
       data-branding-accent-color={theme.accent} sx={{
       position: 'relative', minHeight: '100vh', display: 'grid', placeItems: 'center',
       px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 5 }, overflow: 'hidden',
-      background: hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND,
+      background: hasGradient ? theme.gradientCss
+        : (hasImage ? theme.overlay : LOGIN_PANEL_DEFAULT_BACKGROUND),
     }}>
       {/* ---- تصویر پس‌زمینه + پوشش/بلور از تنظیمات ---- */}
       {hasImage ? (
@@ -277,6 +279,21 @@ const Login = () => {
             data-overlay-opacity={theme.opacity}
             data-overlay-blur={theme.blur}
             sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
+        </>
+      ) : null}
+
+      {/* ---- گرادیانت انتخابی (به‌جای تصویر) + پوشش رنگی روی آن ---- */}
+      {hasGradient ? (
+        <>
+          <Box aria-hidden data-testid="login-branding-gradient"
+            data-gradient-preset={theme.gradient.preset}
+            data-gradient-angle={theme.gradient.angle}
+            data-gradient-colors={theme.gradient.colors.join(',')}
+            sx={{ position: 'absolute', inset: 0, background: theme.gradientCss }} />
+          {theme.opacity > 0 ? (
+            <Box aria-hidden data-testid="login-gradient-overlay"
+              sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
+          ) : null}
         </>
       ) : null}
 

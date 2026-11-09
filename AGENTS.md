@@ -559,7 +559,23 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.b49f7895.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.a1069c0b.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **پس‌زمینهٔ گرادیانتی صفحهٔ ورود (۲۰۲۶-۱۱-۰۸):** به‌جای تصویر می‌توان **گرادیانت رنگی** انتخاب کرد.
+  - بک‌اند `settings_app/login_branding.py`: کلیدهای `background_kind` (`image|gradient`) و
+    `gradient: {preset, angle, colors[2..4]}` با پریست‌های `linear-two|linear-three|linear-four|radial|
+    conic-rainbow|mesh`؛ `_gradient()` رنگ‌ها را هگز/حداکثر ۴ رنگ اعتبارسنجی می‌کند و زاویه را `mod 360`
+    می‌برد؛ `save_login_branding` گرادیانت را **partial-merge** می‌کند و آپلود تصویر خودکار
+    `background_kind='image'` می‌گذارد.
+  - فرانت `core/utils/colorUtils.js`: `LOGIN_GRADIENT_PRESETS`، `normalizeLoginGradient`،
+    `loginGradientCss`، `gradientColorCount` و `resolveLoginBranding` → `backgroundKind` / `gradient` /
+    `gradientCss` / `useGradient`.
+  - UI: در «تنظیمات → مشخصات شرکت → ظاهر صفحهٔ ورود» یک `ToggleButtonGroup` **تصویر پس‌زمینه / گرادیانت رنگی**؛
+    در حالت گرادیانت: چیپ‌های پریست (۲/۳/۴ رنگ، شعاعی، رنگین‌کمان، مش)، انتخاب رنگ هر استاپ، اسلایدر زاویه
+    (۰–۳۶۰) و پیش‌نمایش زندهٔ کارت. **سوئیچ «بلور پس‌زمینه»** بلور را کامل خاموش/روشن می‌کند و در حالت گرادیانت
+    غیرفعال است؛ رنگ/شفافیت پوشش (`overlay_color`/`overlay_opacity`) روی گرادیانت هم اعمال می‌شود (۰ = گرادیانت خالص).
+  - صفحهٔ ورود لایهٔ `data-testid="login-branding-gradient"` (`data-gradient-preset/-angle/-colors`) را
+    رندر می‌کند؛ تست‌ها: `settings_app/tests_login_branding.py` (۳۲) و
+    `__tests__/loginAndModuleSelectionSmoke.test.js` (۷).
 - **جزئیات بصری کارت ورود (۲۰۲۶-۱۱-۰۸):** خط جداکنندهٔ خاکستری جلوی سربرگ‌های «ورود اطلاعات»/«انتخاب ماژول»
   حذف شد (فقط `Typography` با `mb`)؛ لوگوی پنل سمت چپ از ۱۷۶ به **۲۴۰px** (موبایل ۷۸px) رسید؛ و در فیلد
   «شرکت» به‌جای آیکن عمومی، **لوگوی همان شرکت** (`CompanyLogo` سایز ۲۴) با `startAdornment` نمایش داده می‌شود
