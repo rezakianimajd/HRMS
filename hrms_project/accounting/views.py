@@ -6,6 +6,7 @@ expose the lifecycle actions (submit/approve/post/lock/reverse) via @action.
 import uuid
 
 from django.utils import timezone
+from django.db.models import Count, Q
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,19 +14,21 @@ from rest_framework.response import Response
 from accounting.models import (
     Branch, FiscalYear, FiscalPeriod, AccountingBook,
     AccountType, AccountGroup, Account, AuxiliaryAccount, AuxiliaryCategory,
-    AccountingDimension, DimensionValue, CostCenter,
+    AccountingDimension, DimensionValue, CostCenter, OrgParty,
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
     ApprovalPolicy, ApprovalStep, FinancialStatementApproval,
 )
+from accounting.org_parties import build_stats, display_name
+from accounting.permissions import OrgPartyPermissionMixin
 from accounting.serializers import (
     BranchSerializer, FiscalYearSerializer, FiscalPeriodSerializer,
     AccountingBookSerializer, AccountTypeSerializer, AccountGroupSerializer,
     AccountSerializer, AuxiliaryAccountSerializer, AuxiliaryCategorySerializer,
     AccountingDimensionSerializer,
-    DimensionValueSerializer, CostCenterSerializer, JournalSerializer,
+    DimensionValueSerializer, CostCenterSerializer, OrgPartySerializer, JournalSerializer,
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
     CodingConfigSerializer, BankStatementSerializer, BankStatementLineSerializer, BankReconciliationSerializer,
@@ -548,6 +551,106 @@ class CostCenterViewSet(CompanyScopedViewSet):
             return Response({'error': 'این مرکز هزینه در سند استفاده شده و قابل حذف نیست.'}, status=400)
         if obj.children.exists():
             return Response({'error': 'این مرکز هزینه، زیرمجموعه دارد و قابل حذف نیست.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
+
+
+class OrgPartyViewSet(OrgPartyPermissionMixin, CompanyScopedViewSet):
+    """سازمان‌ها و اشخاص (تعاریف حسابداری).
+
+    فهرست با فیلتر نوع/وضعیت/ارتباط، `stats` برای کاشی‌های شاخص و `options`
+    برای انتخابگرها. همهٔ رابطه‌ها با `select_related` خوانده می‌شوند تا
+    فهرست بدون N+1 بماند.
+    """
+    serializer_class = OrgPartySerializer
+    queryset = OrgParty.objects.select_related(
+        'parent', 'account', 'contract_party', 'organization', 'correspondent',
+    )
+    search_fields = [
+        'code', 'name', 'unit_name', 'national_id', 'economic_code',
+        'registration_number', 'phone', 'mobile', 'email', 'contact_person',
+        'address', 'parent__name',
+    ]
+    ordering_fields = ['name', 'code', 'kind', 'created_at', 'updated_at']
+    ordering = ['name']
+
+    def get_queryset(self):
+        qs = super().get_queryset().annotate(children_count=Count('children', distinct=True))
+        params = self.request.query_params
+
+        kinds = [item for item in (params.get('kind') or '').split(',') if item.strip()]
+        if kinds:
+            qs = qs.filter(kind__in=kinds)
+
+        status = params.get('is_active')
+        if status in ('true', 'True', '1'):
+            qs = qs.filter(is_active=True)
+        elif status in ('false', 'False', '0'):
+            qs = qs.filter(is_active=False)
+
+        parent = params.get('parent')
+        if parent == 'root':
+            qs = qs.filter(parent__isnull=True)
+        elif parent:
+            qs = qs.filter(parent_id=parent)
+
+        if params.get('linked') in ('1', 'true', 'True'):
+            qs = qs.filter(
+                Q(account__isnull=False) | Q(contract_party__isnull=False)
+                | Q(organization__isnull=False) | Q(correspondent__isnull=False),
+            )
+        if params.get('unlinked') in ('1', 'true', 'True'):
+            qs = qs.filter(
+                account__isnull=True, contract_party__isnull=True,
+                organization__isnull=True, correspondent__isnull=True,
+            )
+        return qs
+
+    def _base_queryset(self):
+        """همهٔ رکوردهای شرکت (بدون فیلترهای فهرست) برای آمار کاشی‌ها."""
+        return OrgParty.objects.filter(company_id=_company(self.request).pk) \
+            if _company(self.request) else OrgParty.objects.none()
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """آمار هر نوع + شمارش فعال/غیرفعال/دارای ارتباط (چند کوئری ثابت)."""
+        base = self._base_queryset()
+        counts = dict(base.values_list('kind').annotate(total=Count('id')))
+        total = base.count()
+        active = base.filter(is_active=True).count()
+        linked = base.filter(
+            Q(account__isnull=False) | Q(contract_party__isnull=False)
+            | Q(organization__isnull=False) | Q(correspondent__isnull=False),
+        ).count()
+        return Response(build_stats(counts, total, active, linked))
+
+    @action(detail=False, methods=['get'])
+    def options(self, request):
+        """فهرست سبک برای انتخابگرها (بدون payload سنگین فهرست)."""
+        rows = (
+            self._base_queryset().filter(is_active=True)
+            .values('id', 'code', 'name', 'unit_name', 'kind')
+            .order_by('name')[:500]
+        )
+        data = [
+            {**row, 'label': display_name(row['name'], row['unit_name'])}
+            for row in rows
+        ]
+        return Response(data)
+
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        obj = self.get_object()
+        obj.is_active = not obj.is_active
+        obj.save(update_fields=['is_active', 'updated_at'])
+        return Response(OrgPartySerializer(obj).data)
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.children.exists():
+            return Response(
+                {'error': 'این سازمان، زیرمجموعه دارد؛ ابتدا زیرمجموعه‌ها را جابه‌جا یا حذف کنید.'},
+                status=400,
+            )
         return super().destroy(request, *args, **kwargs)
 
 

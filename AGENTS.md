@@ -559,7 +559,29 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.d5b27b13.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.a841c3a7.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن `accounting.0033` (سازمان‌ها و اشخاص) + کاتالوگ مجوز ۲۶۶ منو/۱۱۰۱ کد)، gunicorn/celery/nginx active.
+- **«سازمان‌ها و اشخاص» در تعاریف حسابداری (۲۰۲۶-۱۱-۰۹):** صفحهٔ جدید `/accounting/org-parties`
+  (گروه «تعاریف حسابداری»، منو `acc-org-parties`) برای ثبت نهاد/شخص به‌عنوان مرجع واحد مالی:
+  **۹ دسته** — سازمان و نهاد عمومی، مرجع قانونی و نظارتی (تأمین اجتماعی/امور مالیاتی/…)، کارفرما،
+  سهامدار (با درصد سهام)، شرکت بیمه، حسابرس/بازرس قانونی، سایر اشخاص حقوقی، سایر اشخاص حقیقی، سایر.
+  - **مدل** `accounting.OrgParty` (مایگریشن `0033_org_party_registry`): کد خودکار با پیشوند نوع
+    (`ORG-0001`، `REG-0001`…)، `unit_name` برای شعبه‌ها، `parent` خودارجاع (سازمان ← شعبه)، هویت حقوقی
+    (شناسه ملی/کد اقتصادی/شماره ثبت/درصد سهام)، تماس و شخص رابط، بانکی (حساب/شبا) و **چهار اتصال اختیاری**:
+    `account` (حساب تفصیلی)، `contract_party`، `organization` و `correspondent` (مکاتبات). شخصیت
+    حقوقی/حقیقی از نوع مشتق می‌شود (`person_type`) و فیلد تکراری نگه نمی‌داریم.
+  - **API** `/api/accounting/org-parties/` (+`stats/`، `options/`، `{id}/toggle_status/`) با جست‌وجو در
+    ۱۲ فیلد، فیلتر `?kind=a,b&is_active=&parent=root|id&linked=1`، `annotate(children_count)` و
+    `select_related` پنج FK. حذف رکورد دارای زیرمجموعه ۴۰۰ می‌دهد. منطق خالص در
+    `accounting/org_parties.py` (کد، برچسب، آمار) و گیت مجوز در `accounting/permissions.py`
+    (`accounting.acc-org-parties.*` با fallback ماژول‌محور). provider جست‌وجوی سراسری در
+    `core/module_search.py`.
+  - **فرانت** `pages/accounting/OrgPartiesPage.jsx`: سرصفحهٔ توکن‌محور + ۴ کاشی شاخص + چیپ‌های نوع
+    (با شمارش و فیلتر سروری) + جست‌وجوی debounce + `ModuleTable`/`ModulePager` + پروندهٔ رکورد
+    (شش کارت اطلاعاتی) + فرم بخش‌بندی‌شده (نوع/هویت/تماس/بانکی/ارتباط ماژول‌ها) + حذف با تأیید +
+    چاپ با `PrintButton`. دکمه‌ها با `core/utils/accountingPermissions.js` (آینهٔ بک‌اند) گیت می‌شوند.
+  - تست: `accounting/tests_org_parties.py` (۳۴ تست DB-free) و `__tests__/orgPartiesSmoke.test.js` (۵ تست).
+    دادهٔ زندهٔ `kpsmi` هنگام استقرار: ۰ رکورد (صفحه آمادهٔ ثبت)؛ list ۵ms/۲query و `stats` ۲ms/۰query.
+
 - **کارایی ماژول قراردادها (۲۰۲۶-۱۱-۰۸):** داشبورد/فاکتورها/صورت‌وضعیت‌ها/پرداخت‌ها/الحاقیه‌ها/تضامین و تحلیل مالی
   کند بودند (اندازه‌گیری با `dev_query_profile` روی `kpsmi`):
   | اندپوینت | قبل | بعد |
@@ -704,7 +726,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     لینک «باز کردن پروندهٔ قرارداد») و چاپ با موتور چاپ (`printElement`).
     تست: `__tests__/contractsCompletenessSmoke.test.js`.
   - **کاتالوگ مجوزها بازتولید شد:** `python scripts/build_permission_catalog.py` → کپی روی
-    `core/permission_catalog_data.json` (اکنون **۲۶۵ منو / ۱۰۹۷ کد**). این کار پنج آیتم قدیمی خرید را هم
+    `core/permission_catalog_data.json` (اکنون **۲۶۶ منو / ۱۱۰۱ کد**). این کار پنج آیتم قدیمی خرید را هم
     که در `menuConfig.js` بودند ولی در کاتالوگ نبودند اضافه کرد (`procurement-inquiries/profiles/proforma/
     guarantees/allocations`) — بدون آن‌ها منو برای کاربران با مجوز ریز پنهان می‌ماند.
   - دادهٔ زندهٔ `kpsmi` هنگام استقرار: ۱۷۱ قرارداد، ۲۱۱۵ نقص، میانگین امتیاز ۴۲٫۱ (بیشترین قواعد:

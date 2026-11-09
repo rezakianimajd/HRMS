@@ -10,6 +10,7 @@ from accounting.views import (
     AuxiliaryAccountViewSet, AuxiliaryCategoryViewSet,
     AccountingDimensionViewSet, DimensionValueViewSet,
     CostCenterViewSet, JournalViewSet, AccountingDocumentViewSet,
+    OrgPartyViewSet,
     BankStatementViewSet, BankStatementLineViewSet, BankReconciliationViewSet,
     ApprovalPolicyViewSet, ApprovalStepViewSet,
     AccountingSequenceViewSet, SourceTransactionViewSet,
@@ -30,6 +31,7 @@ router.register(r'auxiliary-categories', AuxiliaryCategoryViewSet, basename='aux
 router.register(r'dimensions', AccountingDimensionViewSet, basename='accounting-dimension')
 router.register(r'dimension-values', DimensionValueViewSet, basename='dimension-value')
 router.register(r'cost-centers', CostCenterViewSet, basename='cost-center')
+router.register(r'org-parties', OrgPartyViewSet, basename='org-party')
 router.register(r'journals', JournalViewSet, basename='journal')
 router.register(r'documents', AccountingDocumentViewSet, basename='accounting-document')
 router.register(r'bank-statements', BankStatementViewSet, basename='bank-statement')

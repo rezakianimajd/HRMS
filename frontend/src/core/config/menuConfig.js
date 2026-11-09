@@ -73,6 +73,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import GroupsIcon from '@mui/icons-material/Groups';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import { DOCUMENT_LIBRARY_MODULES, moduleRootFolders } from './documentLibraryModules';
 
@@ -330,6 +331,7 @@ const accountingMenu = [
       { id: 'acc-subsidiary', title: 'حساب‌های معین', icon: <ReceiptLongIcon />, path: '/accounting/accounts/subsidiary', color: '#0ea5e9', primary: false, ready: true },
       { id: 'acc-auxiliary', title: 'حساب‌های تفصیلی', icon: <CategoryIcon />, path: '/accounting/auxiliary', color: '#f59e0b', primary: false, ready: true },
       { id: 'acc-cost-centers', title: 'مراکز هزینه', icon: <CalculateIcon />, path: '/accounting/codings/costcenters', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'acc-org-parties', title: 'سازمان‌ها و اشخاص', icon: <GroupsIcon />, path: '/accounting/org-parties', color: '#0ea5e9', primary: false, ready: true },
     ],
   },
   {

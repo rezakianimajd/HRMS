@@ -367,6 +367,14 @@ PROVIDERS['accounting'] = [
         title_fields=('code', 'name'), subtitle_fields=('description',),
         icon='cost', color='#8b5cf6',
     ),
+    SearchProvider(
+        'accounting.OrgParty',
+        ('code', 'name', 'unit_name', 'national_id', 'economic_code', 'mobile', 'phone', 'contact_person'),
+        path=lambda obj: f'/accounting/org-parties?q={_q(obj.name or obj.code)}',
+        title_fields=('code', 'name'), subtitle_fields=('unit_name', 'national_id'),
+        subtitle_display='kind', icon='building', color='#0ea5e9',
+        select_related=('parent',),
+    ),
 ]
 
 PROVIDERS['payroll'] = [

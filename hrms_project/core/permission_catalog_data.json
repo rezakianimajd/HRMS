@@ -487,6 +487,11 @@
       "id": "acc-cost-centers",
       "title": "مراکز هزینه",
       "path": "/accounting/codings/costcenters"
+     },
+     {
+      "id": "acc-org-parties",
+      "title": "سازمان‌ها و اشخاص",
+      "path": "/accounting/org-parties"
      }
     ]
    },

@@ -12,6 +12,10 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
+from accounting.org_parties import (
+    KINDS, MAX_CODE_ATTEMPTS, code_number, code_prefix, display_name,
+    format_code, next_code, normalize_code, person_type_of,
+)
 from accounting.text_normalization import PersianNormalizedMixin
 
 
@@ -386,6 +390,113 @@ class CostCenter(AccountingBaseModel):
 
     def __str__(self):
         return f'{self.code} - {self.name}'
+
+
+# =============================================================================
+# سازمان‌ها و اشخاص (تعاریف حسابداری) — مرجع یکتای نهاد/شخص
+# =============================================================================
+class OrgParty(AccountingBaseModel):
+    """سازمان‌ها و اشخاص: نهاد عمومی، مرجع قانونی/نظارتی، کارفرما، سهامدار، بیمه‌گر،
+    حسابرس و سایر اشخاص حقوقی/حقیقی.
+
+    این مدل «تعریف» است (نه طرف قرارداد و نه پرسنل) و همان جایی است که
+    «سازمان تأمین اجتماعی (شعبه …)» ثبت می‌شود تا بعداً به اسناد حسابداری،
+    مکاتبات یا قراردادها وصل شود.
+    """
+    code = models.CharField(max_length=30, blank=True, verbose_name=_('کد'))
+    name = models.CharField(max_length=250, verbose_name=_('نام / عنوان'))
+    kind = models.CharField(max_length=20, choices=KINDS, default='organization', verbose_name=_('نوع سازمان / شخص'))
+    unit_name = models.CharField(max_length=150, blank=True, verbose_name=_('شعبه / واحد'))
+    parent = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='children', verbose_name=_('نهاد بالادستی'),
+    )
+
+    # هویت حقوقی
+    national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ملی'))
+    economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('کد اقتصادی'))
+    registration_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره ثبت'))
+    share_percent = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True, verbose_name=_('درصد سهام'),
+    )
+
+    # اطلاعات تماس
+    phone = models.CharField(max_length=30, blank=True, verbose_name=_('تلفن'))
+    mobile = models.CharField(max_length=30, blank=True, verbose_name=_('همراه'))
+    fax = models.CharField(max_length=30, blank=True, verbose_name=_('دورنگار'))
+    email = models.EmailField(blank=True, verbose_name=_('ایمیل'))
+    website = models.CharField(max_length=200, blank=True, verbose_name=_('وب‌سایت'))
+    postal_code = models.CharField(max_length=20, blank=True, verbose_name=_('کد پستی'))
+    address = models.TextField(blank=True, verbose_name=_('آدرس'))
+    contact_person = models.CharField(max_length=150, blank=True, verbose_name=_('شخص رابط'))
+    contact_title = models.CharField(max_length=150, blank=True, verbose_name=_('سمت شخص رابط'))
+    contact_phone = models.CharField(max_length=30, blank=True, verbose_name=_('تلفن شخص رابط'))
+
+    # اطلاعات بانکی
+    bank_name = models.CharField(max_length=100, blank=True, verbose_name=_('بانک'))
+    account_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره حساب'))
+    iban = models.CharField(max_length=34, blank=True, verbose_name=_('شماره شبا'))
+
+    # ارتباط با سایر ماژول‌ها (همه اختیاری — مدل‌های ماژول‌ها تکرار نمی‌شوند)
+    account = models.ForeignKey(
+        'AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='org_parties', verbose_name=_('حساب تفصیلی مرتبط'),
+    )
+    contract_party = models.ForeignKey(
+        'contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='org_parties', verbose_name=_('طرف قرارداد مرتبط'),
+    )
+    organization = models.ForeignKey(
+        'correspondences.Organization', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='org_parties', verbose_name=_('سازمان در مکاتبات'),
+    )
+    correspondent = models.ForeignKey(
+        'correspondences.Correspondent', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='org_parties', verbose_name=_('مخاطب در مکاتبات'),
+    )
+
+    notes = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('سازمان / شخص')
+        verbose_name_plural = _('سازمان‌ها و اشخاص')
+        unique_together = [('company', 'code')]
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['company', 'kind'], name='acc_orgparty_company_kind'),
+            models.Index(fields=['company', 'is_active'], name='acc_orgparty_company_active'),
+        ]
+
+    def __str__(self):
+        return display_name(self.name, self.unit_name)
+
+    @property
+    def person_type(self):
+        """شخصیت حقوقی/حقیقی از نوع مشتق می‌شود (فیلد تکراری نگه نمی‌داریم)."""
+        return person_type_of(self.kind)
+
+    def save(self, *args, **kwargs):
+        self.code = normalize_code(self.code)
+        if not self.code:
+            self.code = self._generate_code()
+        super().save(*args, **kwargs)
+
+    def _generate_code(self):
+        """کد بعدی بر اساس پیشوند نوع و کدهای موجود همان شرکت."""
+        prefix = code_prefix(self.kind)
+        existing = (
+            OrgParty.objects
+            .filter(company_id=self.company_id, code__startswith=f'{prefix}-')
+            .values_list('code', flat=True)
+        )
+        code = next_code(self.kind, existing)
+        attempts = 0
+        while attempts < MAX_CODE_ATTEMPTS and OrgParty.objects.filter(
+            company_id=self.company_id, code=code,
+        ).exists():
+            attempts += 1
+            code = format_code(prefix, code_number(code) + 1)
+        return code
 
 
 # =============================================================================

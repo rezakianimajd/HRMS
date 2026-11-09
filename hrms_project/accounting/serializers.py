@@ -1,10 +1,13 @@
 """Serializers for the Accounting module."""
 from rest_framework import serializers
 from accounting.maintenance import infer_category_from_name
+from accounting.org_parties import (
+    KIND_VALUES, display_name, person_type_label,
+)
 from accounting.models import (
     Branch, FiscalYear, FiscalPeriod, AccountingBook,
     AccountType, AccountGroup, Account, AuxiliaryAccount, AuxiliaryCategory,
-    AccountingDimension, DimensionValue, CostCenter,
+    AccountingDimension, DimensionValue, CostCenter, OrgParty,
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
@@ -186,6 +189,75 @@ class DimensionValueSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = DimensionValue
         fields = '__all__'
+
+
+class OrgPartySerializer(BaseModelSerializer):
+    """سازمان‌ها و اشخاص — همراه برچسب‌های فارسی نوع/شخصیت و نام‌های ارتباطی."""
+
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    person_type = serializers.CharField(read_only=True)
+    person_type_display = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
+    parent_name = serializers.SerializerMethodField()
+    account_display = serializers.SerializerMethodField()
+    contract_party_name = serializers.SerializerMethodField()
+    organization_name = serializers.SerializerMethodField()
+    correspondent_name = serializers.SerializerMethodField()
+    children_count = serializers.IntegerField(read_only=True, required=False, default=0)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = OrgParty
+        fields = '__all__'
+
+    # --- فیلدهای محاسبه‌شده (بدون پرس‌وجوی اضافه: همه FKها select_related شده‌اند) ---
+    def get_person_type_display(self, obj):
+        return person_type_label(obj.kind)
+
+    def get_full_name(self, obj):
+        return display_name(obj.name, obj.unit_name)
+
+    def get_parent_name(self, obj):
+        return getattr(obj.parent, 'name', '') or ''
+
+    def get_account_display(self, obj):
+        account = obj.account
+        if not account:
+            return ''
+        return f'{account.code} - {account.name}'
+
+    def get_contract_party_name(self, obj):
+        return getattr(obj.contract_party, 'name', '') or ''
+
+    def get_organization_name(self, obj):
+        return getattr(obj.organization, 'name', '') or ''
+
+    def get_correspondent_name(self, obj):
+        return getattr(obj.correspondent, 'name', '') or ''
+
+    # --- اعتبارسنجی ---
+    def validate_name(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('نام/عنوان الزامی است.')
+        return value
+
+    def validate_kind(self, value):
+        if value not in KIND_VALUES:
+            raise serializers.ValidationError('نوع سازمان/شخص نامعتبر است.')
+        return value
+
+    def validate_share_percent(self, value):
+        if value is None:
+            return value
+        if value < 0 or value > 100:
+            raise serializers.ValidationError('درصد سهام باید بین ۰ و ۱۰۰ باشد.')
+        return value
+
+    def validate(self, attrs):
+        parent = attrs.get('parent')
+        if parent is not None and self.instance is not None and parent.pk == self.instance.pk:
+            raise serializers.ValidationError({'parent': 'نهاد بالادستی نمی‌تواند خودِ همین رکورد باشد.'})
+        return attrs
 
 
 class CostCenterSerializer(BaseModelSerializer):
