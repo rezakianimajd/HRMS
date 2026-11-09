@@ -10,6 +10,8 @@ export const DEFAULT_LOGIN_BRANDING = {
   background_kind: 'image',
   background_url: '',
   gradient: { preset: 'linear-three', angle: 135, colors: ['#4f46e5', '#0ea5e9', '#0f766e'] },
+  logo_size: 176,
+  logo_panel_color: '#ffffff',
   overlay_color: '#07101f',
   overlay_opacity: 72,
   overlay_blur: 8,
@@ -37,6 +39,16 @@ const RAINBOW_STOPS = ['#f43f5e', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#
 export const gradientColorCount = (preset) => (
   LOGIN_GRADIENT_PRESETS.find((item) => item.id === preset)?.stops || 3
 );
+
+/** محدودهٔ مجاز اندازهٔ لوگوی پنل ورود (px). */
+export const LOGIN_LOGO_SIZE = { min: 80, max: 320, default: DEFAULT_LOGIN_BRANDING.logo_size };
+
+/** اندازهٔ لوگو → عدد معتبر داخل محدوده. */
+export const clampLogoSize = (value, fallback = LOGIN_LOGO_SIZE.default) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(LOGIN_LOGO_SIZE.max, Math.max(LOGIN_LOGO_SIZE.min, Math.round(number)));
+};
 
 export const isHexColor = (value) => HEX_PATTERN.test(String(value || '').trim());
 
@@ -135,12 +147,18 @@ export const resolveLoginBranding = (branding) => {
   const backgroundUrl = typeof source.background_url === 'string' ? source.background_url.trim() : '';
   const backgroundKind = source.background_kind === 'gradient' ? 'gradient' : 'image';
   const gradient = normalizeLoginGradient(source.gradient);
+  const logoSize = clampLogoSize(source.logo_size, DEFAULT_LOGIN_BRANDING.logo_size);
+  const logoPanelColor = normalizeHexColor(
+    source.logo_panel_color, DEFAULT_LOGIN_BRANDING.logo_panel_color,
+  );
   return {
     backgroundKind,
     backgroundUrl,
     gradient,
     gradientCss: loginGradientCss(gradient),
     useGradient: backgroundKind === 'gradient',
+    logoSize,
+    logoPanelColor,
     overlay,
     opacity,
     blur,

@@ -20,8 +20,8 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import { toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import {
-  DEFAULT_LOGIN_BRANDING, DEFAULT_LOGIN_GRADIENT, LOGIN_GRADIENT_PRESETS,
-  LOGIN_PANEL_DEFAULT_BACKGROUND, gradientColorCount, loginOverlayGradient,
+  DEFAULT_LOGIN_BRANDING, DEFAULT_LOGIN_GRADIENT, LOGIN_GRADIENT_PRESETS, LOGIN_LOGO_SIZE,
+  LOGIN_PANEL_DEFAULT_BACKGROUND, clampLogoSize, gradientColorCount, loginOverlayGradient,
   normalizeHexColor, normalizeLoginGradient, resolveLoginBranding,
 } from '../core/utils/colorUtils';
 
@@ -125,9 +125,14 @@ const LoginPanelPreview = ({ branding }) => {
           </Box>
           <Box sx={{
             display: 'grid', placeItems: 'center',
-            background: `linear-gradient(158deg, ${theme.overlay}, ${theme.accent})`,
+            bgcolor: theme.logoPanelColor,
           }}>
-            <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.9)' }} />
+            <Box sx={{
+              width: Math.min(56, Math.round(theme.logoSize / 5.5)),
+              height: Math.min(56, Math.round(theme.logoSize / 5.5)),
+              borderRadius: '6px', border: '1px solid rgba(15,23,42,0.14)',
+              bgcolor: 'rgba(255,255,255,0.65)',
+            }} />
           </Box>
         </Box>
         {hasImage || hasGradient ? null : (
@@ -317,6 +322,10 @@ const CompanyProfilePage = () => {
   const submitBranding = () => saveBrandingMutation.mutate({
     background_kind: panelBranding.background_kind,
     gradient: loginGradient,
+    logo_size: clampLogoSize(panelBranding.logo_size),
+    logo_panel_color: normalizeHexColor(
+      panelBranding.logo_panel_color, DEFAULT_LOGIN_BRANDING.logo_panel_color,
+    ),
     overlay_color: panelBranding.overlay_color,
     overlay_opacity: panelBranding.overlay_opacity,
     overlay_blur: panelBranding.overlay_blur,
@@ -492,6 +501,26 @@ const CompanyProfilePage = () => {
 
           <Grid item xs={12} md={7}>
             <Grid container spacing={1.6}>
+              <Grid item xs={12} sm={6}>
+                <ColorField
+                  label="رنگ پس‌زمینهٔ پنل لوگو" value={panelBranding.logo_panel_color}
+                  onChange={(value) => setBrandingField('logo_panel_color', value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                    اندازهٔ لوگوی پنل ورود
+                  </Typography>
+                  <Chip size="small" label={`${toPersianDigits(Number(panelBranding.logo_size ?? 0))}px`} />
+                </Stack>
+                <Slider
+                  size="small" min={LOGIN_LOGO_SIZE.min} max={LOGIN_LOGO_SIZE.max} step={4}
+                  value={clampLogoSize(panelBranding.logo_size)}
+                  onChange={(_event, value) => setBrandingField('logo_size', value)}
+                  aria-label="اندازهٔ لوگوی پنل ورود"
+                />
+              </Grid>
               <Grid item xs={12} sm={6}>
                 <ColorField
                   label="رنگ پوشش (فید)" value={panelBranding.overlay_color}

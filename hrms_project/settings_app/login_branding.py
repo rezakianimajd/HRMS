@@ -35,6 +35,8 @@ GRADIENT_PRESETS = (
     'linear-two', 'linear-three', 'linear-four', 'radial', 'conic-rainbow', 'mesh',
 )
 MAX_GRADIENT_COLORS = 4
+MIN_LOGO_SIZE = 80
+MAX_LOGO_SIZE = 320
 DEFAULT_LOGIN_GRADIENT = {
     'preset': 'linear-three',
     'angle': 135,
@@ -45,6 +47,8 @@ DEFAULT_LOGIN_BRANDING = {
     'background_kind': 'image',
     'background_url': '',
     'gradient': DEFAULT_LOGIN_GRADIENT,
+    'logo_size': 176,
+    'logo_panel_color': '#ffffff',
     'overlay_color': '#07101f',
     'overlay_opacity': 72,
     'overlay_blur': 8,
@@ -77,6 +81,14 @@ def _blur(value, fallback):
     except (TypeError, ValueError):
         return fallback
     return max(0, min(MAX_OVERLAY_BLUR, number))
+
+
+def _logo_size(value, fallback):
+    try:
+        number = int(round(float(value)))
+    except (TypeError, ValueError):
+        return fallback
+    return max(MIN_LOGO_SIZE, min(MAX_LOGO_SIZE, number))
 
 
 def _background_kind(value, fallback):
@@ -128,6 +140,10 @@ def sanitize_login_branding(raw):
         ),
         'background_url': _url(source.get('background_url'), DEFAULT_LOGIN_BRANDING['background_url']),
         'gradient': _gradient(source.get('gradient'), DEFAULT_LOGIN_BRANDING['gradient']),
+        'logo_size': _logo_size(source.get('logo_size'), DEFAULT_LOGIN_BRANDING['logo_size']),
+        'logo_panel_color': _color(
+            source.get('logo_panel_color'), DEFAULT_LOGIN_BRANDING['logo_panel_color'],
+        ),
         'overlay_color': _color(source.get('overlay_color'), DEFAULT_LOGIN_BRANDING['overlay_color']),
         'overlay_opacity': _opacity(source.get('overlay_opacity'), DEFAULT_LOGIN_BRANDING['overlay_opacity']),
         'overlay_blur': _blur(source.get('overlay_blur'), DEFAULT_LOGIN_BRANDING['overlay_blur']),
@@ -166,8 +182,8 @@ def save_login_branding(company, payload):
     current = read_login_branding(company)
     incoming = payload if isinstance(payload, dict) else {}
     merged = dict(current)
-    for key in ('background_kind', 'overlay_color', 'overlay_opacity', 'overlay_blur',
-                'text_color', 'accent_color'):
+    for key in ('background_kind', 'logo_size', 'logo_panel_color', 'overlay_color',
+                'overlay_opacity', 'overlay_blur', 'text_color', 'accent_color'):
         if key in incoming:
             merged[key] = incoming[key]
     if isinstance(incoming.get('gradient'), dict):

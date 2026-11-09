@@ -559,7 +559,16 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(auth): redesign login page with branding background and centered card`
-- **Live:** frontend `main.a1069c0b.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.d6bd72f8.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` و `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + کاتالوگ مجوز ۲۶۵ منو/۱۰۹۷ کد)، gunicorn/celery/nginx active.
+- **لوگوی پنل ورود: اندازه و رنگ قابل تنظیم (۲۰۲۶-۱۱-۰۸):** کلیدهای جدید `logo_size` (۸۰–۳۲۰px،
+  پیش‌فرض ۱۷۶، `MIN/MAX_LOGO_SIZE` + `_logo_size()` در `settings_app/login_branding.py`) و
+  `logo_panel_color` (هگز، پیش‌فرض `#ffffff`). فرانت: `LOGIN_LOGO_SIZE` و `clampLogoSize` در
+  `colorUtils.js`؛ `resolveLoginBranding` حالا `logoSize`/`logoPanelColor` می‌دهد. در تنظیمات شرکت:
+  اسلایدر «اندازهٔ لوگوی پنل ورود» (گام ۴px) + فیلد رنگ «رنگ پس‌زمینهٔ پنل لوگو» و این دو در
+  `submitBranding` ارسال می‌شوند؛ پیش‌نمایش کارت هم همان رنگ/نسبت اندازه را نشان می‌دهد. لوگوی موبایل
+  ۰٫۴۲× اندازهٔ انتخابی (بین ۵۶ و ۱۱۰px) است. فاصلهٔ آیکن/عنوان کارت‌های ماژول از `1.1` به `2`
+  (≈۱۶px) و آیکن ۴۰px شد (RTL). تست‌ها: `settings_app/tests_login_branding.py` (۳۴) و
+  `__tests__/loginAndModuleSelectionSmoke.test.js` (۸).
 - **پس‌زمینهٔ گرادیانتی صفحهٔ ورود (۲۰۲۶-۱۱-۰۸):** به‌جای تصویر می‌توان **گرادیانت رنگی** انتخاب کرد.
   - بک‌اند `settings_app/login_branding.py`: کلیدهای `background_kind` (`image|gradient`) و
     `gradient: {preset, angle, colors[2..4]}` با پریست‌های `linear-two|linear-three|linear-four|radial|

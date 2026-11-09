@@ -163,6 +163,29 @@ class LoginGradientTests(SimpleTestCase):
         self.assertEqual(result['gradient']['colors'], DEFAULT_LOGIN_GRADIENT['colors'])
 
 
+class LoginLogoPanelTests(SimpleTestCase):
+    """اندازهٔ لوگو و رنگ پنل لوگو در صفحهٔ ورود قابل تنظیم است."""
+
+    def test_logo_size_is_clamped(self):
+        self.assertEqual(sanitize_login_branding({'logo_size': 10})['logo_size'], 80)
+        self.assertEqual(sanitize_login_branding({'logo_size': 999})['logo_size'], 320)
+        self.assertEqual(sanitize_login_branding({'logo_size': '240'})['logo_size'], 240)
+        self.assertEqual(
+            sanitize_login_branding({'logo_size': 'x'})['logo_size'],
+            DEFAULT_LOGIN_BRANDING['logo_size'],
+        )
+
+    def test_logo_panel_color_is_validated(self):
+        self.assertEqual(
+            sanitize_login_branding({'logo_panel_color': '#ABCDEF'})['logo_panel_color'],
+            '#abcdef',
+        )
+        self.assertEqual(
+            sanitize_login_branding({'logo_panel_color': 'red'})['logo_panel_color'],
+            DEFAULT_LOGIN_BRANDING['logo_panel_color'],
+        )
+
+
 class LoginBackgroundUploadValidationTests(SimpleTestCase):
     def _upload(self, name='login.jpg', content_type='image/jpeg', size=1024):
         return SimpleNamespace(name=name, content_type=content_type, size=size)

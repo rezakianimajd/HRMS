@@ -79,18 +79,20 @@ const ModuleCard = ({ app, accent, busy, disabled, active, onPick }) => {
         '&.Mui-disabled': { opacity: 0.55 },
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={1.1} sx={{ width: '100%', minWidth: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%', minWidth: 0 }}>
         <Box sx={{
-          width: 38, height: 38, borderRadius: '12px', flexShrink: 0,
+          width: 40, height: 40, borderRadius: '12px', flexShrink: 0,
           display: 'grid', placeItems: 'center',
           bgcolor: alpha(accent, 0.1), color: accent,
         }}>
-          {busy ? <CircularProgress size={17} sx={{ color: accent }} /> : <Icon sx={{ fontSize: 19 }} />}
+          {busy ? <CircularProgress size={17} sx={{ color: accent }} /> : <Icon sx={{ fontSize: 20 }} />}
         </Box>
-        <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 900, color: INK }}>
+        <Typography noWrap sx={{
+          flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 900, color: INK, px: 0.25,
+        }}>
           {app.title}
         </Typography>
-        <ChevronLeftIcon sx={{ fontSize: 17, color: alpha(accent, 0.75), flexShrink: 0 }} />
+        <ChevronLeftIcon sx={{ fontSize: 17, color: alpha(accent, 0.75), flexShrink: 0, mr: 0.25 }} />
       </Stack>
     </ButtonBase>
   );

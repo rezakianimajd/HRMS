@@ -342,8 +342,8 @@ const Login = () => {
           display: 'flex', flexDirection: 'column', justifyContent: 'center',
         }}>
           <Box sx={{ display: { xs: 'grid', md: 'none' }, placeItems: 'center', mb: 2 }}>
-            <CompanyLogo company={selectedCompany} size={78} radius="0px"
-              sx={{ border: 'none', bgcolor: 'transparent' }} />
+            <CompanyLogo company={selectedCompany} size={Math.min(110, Math.max(56, Math.round(theme.logoSize * 0.42)))}
+              radius="0px" sx={{ border: 'none', bgcolor: 'transparent' }} />
           </Box>
 
           <Typography sx={{ fontSize: 21, fontWeight: 900, color: INK, lineHeight: 1.3 }}>
@@ -541,13 +541,13 @@ const Login = () => {
           </Box>
         </Box>
 
-        {/* لوگوی شرکت (سمت چپ) — پنل کاملاً سفید */}
+        {/* لوگوی شرکت (سمت چپ) — پنل با رنگ و اندازهٔ قابل تنظیم */}
         <Box data-testid="login-logo-panel" sx={{
           display: { xs: 'none', md: 'grid' }, placeItems: 'center', position: 'relative',
-          bgcolor: '#fff', borderInlineStart: `1px solid ${BORDER}`,
-          p: { md: 3 },
+          bgcolor: theme.logoPanelColor, borderInlineStart: `1px solid ${BORDER}`,
+          p: { md: 3 }, overflow: 'hidden',
         }}>
-          <CompanyLogo company={selectedCompany} size={240} radius="0px"
+          <CompanyLogo company={selectedCompany} size={theme.logoSize} radius="0px"
             sx={{ border: 'none', bgcolor: 'transparent' }} />
         </Box>
       </Paper>

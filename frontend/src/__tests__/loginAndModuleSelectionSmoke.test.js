@@ -179,6 +179,21 @@ test('login background can be a color gradient instead of an image', () => {
   expect(imageTheme.useGradient).toBe(false);
 });
 
+test('login logo panel size and background color are configurable', () => {
+  const theme = resolveLoginBranding({ logo_size: 260, logo_panel_color: '#123456' });
+  expect(theme.logoSize).toBe(260);
+  expect(theme.logoPanelColor).toBe('#123456');
+
+  // محدودهٔ مجاز ۸۰..۳۲۰
+  expect(resolveLoginBranding({ logo_size: 5000 }).logoSize).toBe(320);
+  expect(resolveLoginBranding({ logo_size: 5 }).logoSize).toBe(80);
+  expect(resolveLoginBranding({}).logoSize).toBe(176);
+  expect(resolveLoginBranding({}).logoPanelColor).toBe('#ffffff');
+
+  // رنگ نامعتبر → پیش‌فرض سفید
+  expect(resolveLoginBranding({ logo_panel_color: 'nope' }).logoPanelColor).toBe('#ffffff');
+});
+
 test('each selected module resolves to its own landing dashboard', () => {
   expect(getModuleLandingPath('hrms')).toBe('/dashboard');
   expect(getModuleLandingPath('contracts')).toBe('/contracts-dashboard');
