@@ -12,6 +12,23 @@ from correspondences.views.base import filters
 REG_NO_ORDERING_FIELDS = ('reg_no', 'unit_reg_no')
 REG_NO_SORT_ANNOTATION = '_unit_reg_no_sort'
 
+# فیلدهای تاریخ: در حالت مرتب‌سازی، ردیف‌های بدون تاریخ همیشه ته فهرست می‌آیند
+DATE_ORDER_FIELDS = (
+    'letter_date', 'received_date', 'sent_date', 'due_date', 'effective_date',
+    'created_at', 'updated_at',
+)
+
+
+def _ordering_expression(term):
+    """ترتیب فیلدهای تاریخ را با ``nulls_last`` می‌سازد (نامهٔ بدون تاریخ ته فهرست)."""
+    text = str(term)
+    descending = text.startswith('-')
+    name = text.lstrip('-')
+    if name not in DATE_ORDER_FIELDS:
+        return term
+    key = F(name)
+    return key.desc(nulls_last=True) if descending else key.asc(nulls_last=True)
+
 
 def reg_no_sort_expression():
     """عبارت عددی «شمارهٔ ثبت» برای مرتب‌سازی (PostgreSQL)."""
@@ -37,11 +54,13 @@ class LetterOrderingFilter(filters.OrderingFilter):
         ordering = self.get_ordering(request, queryset, view) or []
         reg_terms = [term for term in ordering if str(term).lstrip('-') in REG_NO_ORDERING_FIELDS]
         if not reg_terms:
-            return queryset.order_by(*ordering) if ordering else queryset
+            return queryset.order_by(*[_ordering_expression(term) for term in ordering]) \
+                if ordering else queryset
 
         others = [term for term in ordering if term not in reg_terms]
         descending = str(reg_terms[0]).startswith('-')
         annotated = queryset.annotate(**{REG_NO_SORT_ANNOTATION: reg_no_sort_expression()})
         key = F(REG_NO_SORT_ANNOTATION)
         primary = key.desc(nulls_last=True) if descending else key.asc(nulls_last=True)
-        return annotated.order_by(primary, *(others or ['-id']))
+        tail = [_ordering_expression(term) for term in others] if others else ['-id']
+        return annotated.order_by(primary, *tail)

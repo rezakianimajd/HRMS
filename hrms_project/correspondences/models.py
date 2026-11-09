@@ -545,7 +545,7 @@ class Letter(BaseModel):
     summary = models.TextField(blank=True, verbose_name=_('خلاصه / چکیده'))
     body = models.TextField(blank=True, verbose_name=_('متن نامه'))
 
-    letter_date = models.DateField(verbose_name=_('تاریخ نامه'))
+    letter_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ نامه'))
     received_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ ورود'))
     sent_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ ارسال'))
     due_date = models.DateField(null=True, blank=True, verbose_name=_('مهلت پاسخ'),

@@ -115,6 +115,15 @@ class LetterOrderingTests(SimpleTestCase):
         filtered = LetterOrderingFilter().filter_queryset(make_request(), self.queryset, self.view)
         self.assertEqual(normalize(filtered.query.order_by), ['-effective_date', '-id'])
 
+    def test_date_ordering_keeps_null_dates_last(self):
+        """نامه‌های بدون تاریخ (تاریخ نامه خالی) نباید بالای فهرست بیایند."""
+        filtered = LetterOrderingFilter().filter_queryset(
+            make_request('-received_date'), self.queryset, self.view,
+        )
+        first = filtered.query.order_by[0]
+        self.assertEqual(normalize([first]), ['-received_date'])
+        self.assertTrue(first.nulls_last)
+
 
 class OrderingFieldsDeclarationTests(SimpleTestCase):
 
