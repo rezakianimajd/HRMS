@@ -558,7 +558,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `feat(auth): redesign login page with branding background and centered card`
+- **Last commit:** `feat(accounting): add organizations and persons registry page`
 - **Live:** frontend `main.a841c3a7.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن `accounting.0033` (سازمان‌ها و اشخاص) + کاتالوگ مجوز ۲۶۶ منو/۱۱۰۱ کد)، gunicorn/celery/nginx active.
 - **«سازمان‌ها و اشخاص» در تعاریف حسابداری (۲۰۲۶-۱۱-۰۹):** صفحهٔ جدید `/accounting/org-parties`
   (گروه «تعاریف حسابداری»، منو `acc-org-parties`) برای ثبت نهاد/شخص به‌عنوان مرجع واحد مالی:
