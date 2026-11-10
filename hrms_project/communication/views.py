@@ -482,6 +482,25 @@ class DirectoryAPIView(ChatUtilityAPIView):
         return Response(rows)
 
 
+class EntitySearchAPIView(ChatUtilityAPIView):
+    """جست‌وجوی رکوردهای ماژول‌ها برای الصاق به پیام (قرارداد، پروژه، سند، نامه…)."""
+
+    def get(self, request):
+        from communication.entity_search import ENTITY_MODULES, search_entities
+
+        query = (request.query_params.get('q') or '').strip()
+        modules = [
+            part for part in (request.query_params.get('module') or '').split(',')
+            if part.strip()
+        ]
+        rows = search_entities(request.user, query, modules=modules)
+        return Response({
+            'query': query,
+            'modules': list(ENTITY_MODULES),
+            'results': rows,
+        })
+
+
 class SearchAPIView(ChatUtilityAPIView):
     """جست‌وجوی پیام‌ها در گفتگوهای مجاز کاربر."""
 

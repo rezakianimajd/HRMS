@@ -30,6 +30,7 @@ import { useModulePalette } from '../../core/context/ModulePaletteContext';
 import useAuth from '../../core/hooks/useAuth';
 import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
+import EntityPickerDialog, { ENTITY_MODULE_META } from './EntityPickerDialog';
 
 const ACCENT_FALLBACK = '#0ea5e9';
 const INK = '#0f172a';
@@ -197,19 +198,35 @@ const ConversationRow = ({ row, active, accent, onSelect }) => {
 
 
 
-const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete }) => {
+const DateSeparator = ({ value }) => {
+  const today = new Date();
+  const iso = String(value || '').slice(0, 10);
+  const todayIso = today.toISOString().slice(0, 10);
+  const yesterday = new Date(today.getTime() - 86400000).toISOString().slice(0, 10);
+  const label = iso === todayIso ? 'امروز' : (iso === yesterday ? 'دیروز' : dateLabel(value));
+  return (
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ my: 0.4 }}>
+      <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+      <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: MUTED }}>{label}</Typography>
+      <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
+    </Stack>
+  );
+};
+
+const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete, compact = false }) => {
   const mine = Boolean(message.is_mine);
   return (
-    <Box sx={{ display: 'flex', justifyContent: mine ? 'flex-start' : 'flex-end' }}>
+    <Box sx={{ display: 'flex', justifyContent: mine ? 'flex-start' : 'flex-end', mt: compact ? -0.5 : 0 }}>
       <Box sx={{
-        maxWidth: '78%', px: 1.4, py: 1, borderRadius: '14px',
+        maxWidth: '78%', px: 1.4, py: compact ? 0.7 : 1, borderRadius: '14px',
         borderTopLeftRadius: mine ? 4 : 14, borderTopRightRadius: mine ? 14 : 4,
         bgcolor: mine ? accent : 'background.paper',
         color: mine ? '#ffffff' : (tokens?.colors?.textPrimary || INK),
         border: '1px solid', borderColor: mine ? alpha(accent, 0.7) : 'divider',
         boxShadow: tokens?.shadows?.soft || '0 1px 2px rgba(15,23,42,0.06)',
+        '&:hover .chat-msg-actions': { opacity: 1 },
       }}>
-        {!mine ? (
+        {!mine && !compact ? (
           <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: accent, mb: 0.25 }}>
             {message.sender_name || 'کاربر'}
           </Typography>
@@ -237,23 +254,47 @@ const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete }) =
             {message.body}
           </Typography>
         )}
-        {(message.entity_refs || []).map((ref) => (
-          <Chip
-            key={ref.id}
-            size="small"
-            icon={<TagIcon sx={{ fontSize: 12 }} />}
-            label={ref.is_accessible ? (ref.label || `${ref.module} #${ref.object_id}`) : 'دسترسی ندارد'}
-            component={ref.is_accessible && ref.url ? 'a' : 'div'}
-            href={ref.is_accessible && ref.url ? ref.url : undefined}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{
-              mt: 0.5, mr: 0.4, height: 20, fontSize: 9.5, fontWeight: 800,
-              bgcolor: mine ? 'rgba(255,255,255,0.18)' : alpha(accent, 0.1),
-              color: mine ? '#fff' : accent,
-            }}
-          />
-        ))}
+        {(message.entity_refs || []).map((ref) => {
+          const meta = ENTITY_MODULE_META[ref.module] || {};
+          const Icon = meta.icon || TagIcon;
+          return (
+            <Box
+              key={ref.id}
+              component={ref.is_accessible && ref.url ? 'a' : 'div'}
+              href={ref.is_accessible && ref.url ? ref.url : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{
+                mt: 0.6, display: 'flex', alignItems: 'center', gap: 0.6,
+                px: 0.8, py: 0.5, borderRadius: '10px', textDecoration: 'none',
+                border: '1px solid',
+                borderColor: mine ? 'rgba(255,255,255,0.35)' : alpha(meta.color || accent, 0.3),
+                bgcolor: mine ? 'rgba(255,255,255,0.14)' : alpha(meta.color || accent, 0.07),
+                cursor: ref.is_accessible && ref.url ? 'pointer' : 'default',
+                opacity: ref.is_accessible ? 1 : 0.65,
+              }}
+            >
+              <Box sx={{
+                width: 22, height: 22, borderRadius: '6px', display: 'grid',
+                placeItems: 'center', flexShrink: 0,
+                bgcolor: mine ? 'rgba(255,255,255,0.2)' : alpha(meta.color || accent, 0.15),
+                color: mine ? '#fff' : (meta.color || accent),
+              }}>
+                <Icon sx={{ fontSize: 13 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 900 }}>
+                  {ref.is_accessible
+                    ? (ref.label || `${meta.label || ref.module} #${ref.object_id}`)
+                    : 'دسترسی به این رکورد ندارید'}
+                </Typography>
+                <Typography noWrap sx={{ fontSize: 9, opacity: 0.8 }}>
+                  {ref.is_accessible ? (meta.label || ref.module) : 'بدون مجوز مشاهده'}
+                </Typography>
+              </Box>
+            </Box>
+          );
+        })}
         {(message.attachments || []).map((file) => (
           <Chip
             key={file.id}
@@ -327,7 +368,8 @@ const ChatPanel = ({
   const [replyTo, setReplyTo] = useState(null);
   const [editing, setEditing] = useState(null);
   const [pickedFiles, setPickedFiles] = useState([]);
-  const [entityRef, setEntityRef] = useState({ module: '', label: '', url: '', object_id: '' });
+  const [entityRefs, setEntityRefs] = useState([]);
+  const [entityPickerOpen, setEntityPickerOpen] = useState(false);
   const [mentionIds, setMentionIds] = useState([]);
   const [toast, setToast] = useState('');
   const [newDialog, setNewDialog] = useState(false);
@@ -401,8 +443,8 @@ const ChatPanel = ({
       form.append('body', draft);
       if (replyTo?.id) form.append('reply_to', replyTo.id);
       if (mentionIds.length) form.append('mentions', JSON.stringify(mentionIds));
-      if (entityRef.module && (entityRef.label || entityRef.object_id)) {
-        form.append('entity_refs', JSON.stringify([entityRef]));
+      if (entityRefs.length) {
+        form.append('entity_refs', JSON.stringify(entityRefs));
       }
       pickedFiles.forEach((file) => form.append('files', file));
       return axiosInstance.post(`/chat/conversations/${activeId}/messages/`, form);
@@ -412,7 +454,7 @@ const ChatPanel = ({
       setReplyTo(null);
       setPickedFiles([]);
       setMentionIds([]);
-      setEntityRef({ module: '', label: '', url: '', object_id: '' });
+      setEntityRefs([]);
       invalidateThread();
     },
     onError: () => setToast('ارسال پیام انجام نشد'),
@@ -656,14 +698,29 @@ const ChatPanel = ({
                 {messagesQuery.isLoading ? (
                   <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={20} /></Box>
                 ) : messages.length ? (
-                  messages.map((message) => (
-                    <MessageBubble
-                      key={message.id} message={message} accent={accent} tokens={tokens}
-                      onReply={setReplyTo}
-                      onEdit={(row) => { setEditMessage(row); setEditValue(row.body || ''); }}
-                      onDelete={(row) => removeMessage.mutate(row)}
-                    />
-                  ))
+                  messages.map((message, index) => {
+                    const previous = index > 0 ? messages[index - 1] : null;
+                    const day = String(message.created_at || '').slice(0, 10);
+                    const prevDay = previous ? String(previous.created_at || '').slice(0, 10) : '';
+                    const showDate = Boolean(day) && day !== prevDay;
+                    const compact = Boolean(
+                      previous && !showDate && previous.sender === message.sender
+                      && previous.sender
+                      && (new Date(message.created_at).getTime()
+                        - new Date(previous.created_at).getTime()) < 5 * 60000,
+                    );
+                    return (
+                      <React.Fragment key={message.id}>
+                        {showDate ? <DateSeparator value={message.created_at} /> : null}
+                        <MessageBubble
+                          message={message} accent={accent} tokens={tokens} compact={compact}
+                          onReply={setReplyTo}
+                          onEdit={(row) => { setEditMessage(row); setEditValue(row.body || ''); }}
+                          onDelete={(row) => removeMessage.mutate(row)}
+                        />
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
                   <Box sx={{ py: 5, textAlign: 'center' }}>
                     <ChatBubbleOutlineIcon sx={{ fontSize: 34, color: alpha(accent, 0.5), mb: 0.5 }} />
@@ -701,12 +758,27 @@ const ChatPanel = ({
                     ))}
                   </Stack>
                 ) : null}
-                {entityRef.label ? (
-                  <Chip
-                    size="small" icon={<TagIcon sx={{ fontSize: 12 }} />}
-                    label={`ارجاع: ${entityRef.label}`} sx={{ ...chipTone, mb: 0.6 }}
-                    onDelete={() => setEntityRef({ module: '', label: '', url: '', object_id: '' })}
-                  />
+                {entityRefs.length ? (
+                  <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.6 }}>
+                    {entityRefs.map((entity, index) => {
+                      const meta = ENTITY_MODULE_META[entity.module] || {};
+                      const Icon = meta.icon || TagIcon;
+                      return (
+                        <Chip
+                          key={`${entity.module}-${entity.object_id}-${index}`}
+                          size="small"
+                          icon={<Icon sx={{ fontSize: 12 }} />}
+                          label={entity.label || `${meta.label || entity.module} #${entity.object_id}`}
+                          onDelete={() => setEntityRefs((rows) => rows.filter((_, i) => i !== index))}
+                          sx={{
+                            height: 22, fontSize: 10, fontWeight: 800,
+                            bgcolor: alpha(meta.color || accent, 0.12),
+                            color: meta.color || accent,
+                          }}
+                        />
+                      );
+                    })}
+                  </Stack>
                 ) : null}
                 <Stack direction="row" spacing={0.6} alignItems="flex-end">
                   <TextField
@@ -748,40 +820,18 @@ const ChatPanel = ({
                 </Stack>
 
                 <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.6 }}>
-                  <Select
-                    size="small" displayEmpty value={entityRef.module}
-                    onChange={(event) => setEntityRef((previous) => ({
-                      ...previous, module: event.target.value,
-                    }))}
-                    sx={{ fontSize: 10.5, height: 26, minWidth: 110 }}
-                  >
-                    <MenuItem value="">ارجاع به…</MenuItem>
-                    <MenuItem value="contracts">قرارداد</MenuItem>
-                    <MenuItem value="projects">پروژه</MenuItem>
-                    <MenuItem value="procurement">خرید</MenuItem>
-                    <MenuItem value="accounting">سند حسابداری</MenuItem>
-                    <MenuItem value="correspondence">مکاتبه</MenuItem>
-                    <MenuItem value="documents">سند DMS</MenuItem>
-                  </Select>
-                  {entityRef.module ? (
-                    <>
-                      <TextField size="small" placeholder="شناسه" value={entityRef.object_id}
-                        onChange={(event) => setEntityRef((previous) => ({
-                          ...previous, object_id: event.target.value,
-                        }))}
-                        sx={{ width: 90, '& .MuiInputBase-input': { fontSize: 10.5, py: 0.5 } }} />
-                      <TextField size="small" placeholder="عنوان" value={entityRef.label}
-                        onChange={(event) => setEntityRef((previous) => ({
-                          ...previous, label: event.target.value,
-                        }))}
-                        sx={{ width: 150, '& .MuiInputBase-input': { fontSize: 10.5, py: 0.5 } }} />
-                      <TextField size="small" placeholder="لینک" value={entityRef.url}
-                        onChange={(event) => setEntityRef((previous) => ({
-                          ...previous, url: event.target.value,
-                        }))}
-                        sx={{ flex: 1, '& .MuiInputBase-input': { fontSize: 10.5, py: 0.5 } }} />
-                    </>
-                  ) : null}
+                  <Tooltip title="الصاق رکورد از ماژول‌ها (قرارداد، پروژه، سند، نامه…)">
+                    <Button
+                      size="small" variant="outlined" startIcon={<TagIcon sx={{ fontSize: 15 }} />}
+                      onClick={() => setEntityPickerOpen(true)}
+                      sx={{ fontSize: 10.5, height: 26, borderColor: alpha(accent, 0.35), color: accent }}
+                    >
+                      الصاق رکورد
+                    </Button>
+                  </Tooltip>
+                  <Typography sx={{ fontSize: 9.5, color: MUTED }}>
+                    داده کپی نمی‌شود؛ فقط ارجاع به رکورد اصلی الصاق می‌شود.
+                  </Typography>
                 </Stack>
               </Box>
             </>
@@ -805,6 +855,26 @@ const ChatPanel = ({
       {toast ? (
         <Alert severity="info" onClose={() => setToast('')} sx={{ mt: 1 }}>{toast}</Alert>
       ) : null}
+
+      {/* ---------------- دیالوگ الصاق رکورد (جست‌وجو در ماژول‌ها) ---------------- */}
+      <EntityPickerDialog
+        open={entityPickerOpen}
+        accent={accent}
+        existing={entityRefs}
+        onClose={() => setEntityPickerOpen(false)}
+        onPick={(picked) => setEntityRefs((rows) => {
+          const keys = new Set(rows.map((row) => `${row.module}:${row.object_type}:${row.object_id}`));
+          const merged = [...rows];
+          picked.forEach((entity) => {
+            const key = `${entity.module}:${entity.object_type}:${entity.object_id}`;
+            if (!keys.has(key)) {
+              keys.add(key);
+              merged.push(entity);
+            }
+          });
+          return merged;
+        })}
+      />
 
       {/* ---------------- دیالوگ ساخت گفتگو/کانال ---------------- */}
       <Dialog open={newDialog} onClose={() => setNewDialog(false)} maxWidth="sm" fullWidth>

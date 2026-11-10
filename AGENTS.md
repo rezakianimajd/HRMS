@@ -577,7 +577,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
-- **Live:** frontend `main.cc79d2e5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.561b1217.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
 - **اعلان‌ها و حریم خصوصی برنامه‌ریزی (۲۰۲۶-۱۱-۱۰):** دو اصلاح مهم:
   - **اعلان‌های چت/برنامه‌ریزی همیشه شخصی‌اند:** `notifications/views.py::apply_notification_visibility`
     دسته‌های `chat_message|chat_mention|chat_member_added|planning_share|planning_due` را **حتی برای
@@ -648,6 +648,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     نمایش فهرست: چیپ گروه + آواتار مسئولان + چیپ «فقط من» برای وظیفهٔ خصوصی.
     تأیید زنده: گروه ۲ نفره → تسک محول‌شده به گروه، هر دو نفر در `scope=mine` دیدند و اعلان گرفتند؛
     وظیفهٔ بدون مسئول برای دیگری دیده نشد.
+  - **الصاق رکورد از ماژول‌ها + بهبود طراحی چت (۲۰۲۶-۱۱-۱۰):** در نوار نوشتن، دکمهٔ «الصاق رکورد» یک
+    دیالوگ جست‌وجو باز می‌کند که **در خودِ ماژول مقصد** جست‌وجو می‌کند (نه در چت):
+    `GET /api/chat/entity-search/?q=&module=` → `communication/entity_search.py` با استفاده از موتور
+    جست‌وجوی ماژول‌ها (`core.module_search.module_search`) و فقط ماژول‌هایی که کاربر مجوز خواندن دارد
+    (`can_read_module`). خروجی برای هر رکورد: `module, module_label, object_type, object_id, label,
+    subtitle, url` و در پیام به‌صورت `MessageEntityRef` (بدون کپی داده) ذخیره می‌شود؛ کارت ارجاع داخل حباب
+    با آیکن ماژول و «باز کردن» نمایش داده می‌شود یا اگر کاربر مجوز نداشته باشد «دسترسی ندارد».
+    ماژول‌های پشتیبانی‌شده: قراردادها، پروژه‌ها، خرید، حسابداری، خزانه‌داری، کتابخانهٔ اسناد، مکاتبات، منابع انسانی.
+    فرانت: `pages/chat/EntityPickerDialog.jsx` (جست‌وجوی ۳۵۰ms debounce + چیپ فیلتر ماژول + انتخاب چندگانه)
+    و ارجاع‌های چندگانه در نوار نوشتن. بهبود ظاهر: جداکنندهٔ تاریخ (امروز/دیروز/شمسی)، گروه‌بندی پیام‌های
+    پشت‌سرهم یک فرستنده، حباب‌های بازطراحی‌شده و کارت‌های ارجاع.
+    تأیید زنده (superuser، `kpsmi`): `q=قرارداد` → ۲۲ نتیجه از contracts/accounting/correspondence/documents؛
+    `module=contracts` فقط قراردادها؛ عبارت یک‌حرفی → ۰.
   - **تست:** `communication/tests.py` (۱۴) + `planning/tests.py` (۷) DB-free؛ فرانت `chatSmoke` (۲) و
     `planningSmoke` (۲). **تأیید زندهٔ `kpsmi`:** جدول‌ها ساخته شد؛ بدنهٔ پیام در DB `gAAAAA…` (رمز)،
     `search_tokens` تولید شد، جست‌وجوی کور نتیجه داد، اعلان برای عضو ساخته شد، ویرایش در `ChatAuditLog`

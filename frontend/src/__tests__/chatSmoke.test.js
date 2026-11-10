@@ -58,6 +58,13 @@ beforeEach(() => {
     if (url === '/chat/directory/') {
       return Promise.resolve({ data: [{ id: 2, name: 'مدیر مالی', username: 'finance' }] });
     }
+    if (url === '/chat/entity-search/') {
+      return Promise.resolve({ data: { results: [
+        { module: 'contracts', module_label: 'قراردادها', object_type: 'contract',
+          object_id: '125', label: 'قرارداد 1405/125', subtitle: 'شرکت الف',
+          url: '/external-contracts/125' },
+      ] } });
+    }
     return Promise.resolve({ data: [] });
   });
   axiosInstance.post.mockResolvedValue({ data: {} });
@@ -97,6 +104,18 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   await act(async () => { directButton.click(); await wait(200); });
   expect(document.body.textContent).toContain('گفتگوی خصوصی جدید');
   expect(document.body.textContent).toContain('یک همکار را انتخاب کنید');
+
+  const closeDialog = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'انصراف');
+  if (closeDialog) await act(async () => { closeDialog.click(); await wait(150); });
+
+  // «الصاق رکورد» جست‌وجوی داخل ماژول‌ها را باز می‌کند
+  const entityButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('الصاق رکورد'));
+  expect(entityButton).toBeTruthy();
+  await act(async () => { entityButton.click(); await wait(250); });
+  expect(document.body.textContent).toContain('الصاق رکورد از ماژول‌ها');
+  expect(document.body.textContent).toContain('در ماژول‌های مجاز جست‌وجو شود');
 
   await act(async () => { root.unmount(); });
   container.remove();

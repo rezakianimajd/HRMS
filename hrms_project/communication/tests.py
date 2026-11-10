@@ -108,3 +108,62 @@ class ChatPermissionTests(SimpleTestCase):
 
     def test_publisher_defaults_to_database_outbox(self):
         self.assertIsInstance(_publisher(), DatabaseEventPublisher)
+
+
+class EntitySearchTests(SimpleTestCase):
+    """جست‌وجوی رکوردهای ماژول‌ها برای الصاق در چت."""
+
+    def test_object_id_strips_type_prefix(self):
+        from communication.entity_search import _object_id
+
+        self.assertEqual(
+            _object_id({'id': 'document-1524', 'type': 'document'}), '1524',
+        )
+        self.assertEqual(
+            _object_id({'id': 'contract-77', 'type': 'contract'}), '77',
+        )
+
+    def test_entity_to_ref_keeps_only_safe_fields(self):
+        from communication.entity_search import entity_to_ref
+
+        ref = entity_to_ref({
+            'module': 'contracts', 'object_type': 'contract', 'object_id': '125',
+            'label': 'قرارداد 1405/125', 'url': '/external-contracts/125',
+            'icon': 'contract', 'color': '#f59e0b',
+        })
+        self.assertEqual(ref, {
+            'module': 'contracts', 'object_type': 'contract', 'object_id': '125',
+            'label': 'قرارداد 1405/125', 'url': '/external-contracts/125',
+        })
+
+    def test_entity_to_ref_requires_module(self):
+        from communication.entity_search import entity_to_ref
+
+        self.assertIsNone(entity_to_ref({'label': 'بدون ماژول'}))
+        self.assertIsNone(entity_to_ref(None))
+
+    def test_short_query_returns_nothing(self):
+        from communication.entity_search import search_entities
+
+        user = SimpleNamespace(pk=1, is_superuser=True, is_authenticated=True)
+        self.assertEqual(search_entities(user, 'ق'), [])
+
+    def test_search_only_uses_readable_modules(self):
+        from communication.entity_search import search_entities
+
+        user = SimpleNamespace(pk=2, is_superuser=False, is_authenticated=True)
+        payload = {
+            'module_label': 'قراردادها',
+            'results': [{
+                'id': 'contract-1', 'type': 'contract', 'title': 'قرارداد 125',
+                'subtitle': 'شرکت الف', 'path': '/external-contracts/1',
+            }],
+        }
+        with patch('communication.entity_search.can_read_module',
+                   side_effect=lambda _user, module: module == 'contracts'), \
+                patch('core.module_search.module_search', return_value=payload) as engine:
+            rows = search_entities(user, 'قرارداد')
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['module'], 'contracts')
+        self.assertEqual(rows[0]['object_id'], '1')
+        self.assertEqual(engine.call_count, 1)
