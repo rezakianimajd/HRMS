@@ -48,7 +48,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     filterset_class = EmployeeFilter
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
-    ordering_fields = ['first_name', 'last_name', 'employee_id', 'hire_date', 'created_at', 'status']
+    ordering_fields = [
+        'first_name', 'last_name', 'employee_id', 'hire_date', 'created_at', 'status',
+        'department__name', 'job_title__name', 'work_location__name', 'insurance_list__name',
+    ]
     ordering = ['-created_at']
 
     def get_serializer_class(self):

@@ -1,100 +1,184 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Typography, Button, TextField, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Paper, IconButton,
-  Tooltip, TablePagination, Collapse, Grid, FormControl, InputLabel,
-  Select, MenuItem, InputAdornment, CircularProgress, Avatar, Chip, Stack, Alert,
+  Alert, Box, Button, Chip, CircularProgress, IconButton, Paper, Tooltip, Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import PeopleIcon from '@mui/icons-material/People';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import { useEmployees, useDeleteEmployee, useDepartments, useJobTitles, useWorkLocations, useInsuranceLists } from '../core/hooks/useEmployees';
+import {
+  useEmployees, useDeleteEmployee, useDepartments, useJobTitles,
+  useWorkLocations, useInsuranceLists,
+} from '../core/hooks/useEmployees';
 import StatusBadge from '../core/components/ui/StatusBadge';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import PageHeader from '../core/components/ui/PageHeader';
 import downloadFile from '../core/utils/downloadUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
+import {
+  ModulePager, ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
+} from './contracts/contractModuleUi';
+
+/** ترتیب پیش‌فرض همان ترتیب فعلی API است (جدیدترین پرونده‌ها). */
+const DEFAULT_SORT = '-created_at';
+
+const SORT_OPTIONS = [
+  { value: DEFAULT_SORT, label: 'جدیدترین (پیش‌فرض)' },
+  { value: 'last_name,first_name', label: 'نام خانوادگی (الف تا ی)' },
+  { value: '-last_name,-first_name', label: 'نام خانوادگی (ی تا الف)' },
+  { value: 'first_name,last_name', label: 'نام (الف تا ی)' },
+  { value: 'employee_id', label: 'کد پرسنلی (صعودی)' },
+  { value: '-employee_id', label: 'کد پرسنلی (نزولی)' },
+  { value: 'department__name', label: 'دپارتمان' },
+  { value: 'job_title__name', label: 'عنوان شغلی' },
+  { value: 'work_location__name', label: 'محل استقرار' },
+  { value: '-hire_date', label: 'تاریخ استخدام (جدیدترین)' },
+  { value: 'hire_date', label: 'تاریخ استخدام (قدیمی‌ترین)' },
+  { value: 'status', label: 'وضعیت' },
+];
+
+const EMPTY_FILTERS = {
+  department: '', job_title: '', work_location: '', insurance_list: '', status: '', gender: '',
+};
+
+const asRows = (value) => (Array.isArray(value) ? value : value?.results || []);
+
+const toOptions = (rows) => asRows(rows).map((row) => ({ value: String(row.id), label: row.name }));
 
 const EmployeeListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const moduleTheme = useModuleTheme();
+  const accent = moduleTheme.theme?.palette?.primary?.main || '#6366f1';
 
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [search, setSearch] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    department: '', job_title: '', work_location: '', status: '', gender: '', insurance_list: '',
-  });
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sort, setSort] = useState(DEFAULT_SORT);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    const timer = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(timer);
   }, [search]);
 
+  // هر تغییر جست‌وجو/فیلتر/ترتیب، صفحه را به اول برمی‌گرداند.
+  React.useEffect(() => { setPage(0); }, [
+    debouncedSearch, sort,
+    filters.department, filters.job_title, filters.work_location,
+    filters.insurance_list, filters.status, filters.gender,
+  ]);
+
+  const pageSize = moduleTheme.tableTheme.rowsPerPage;
+
   const queryParams = {
     page: page + 1,
-    page_size: rowsPerPage,
-    ...(debouncedSearch && { search: debouncedSearch }),
-    ...(filters.department && { department: filters.department }),
-    ...(filters.job_title && { job_title: filters.job_title }),
-    ...(filters.work_location && { work_location: filters.work_location }),
-    ...(filters.status && { status: filters.status }),
-    ...(filters.gender && { gender: filters.gender }),
-    ...(filters.insurance_list && { insurance_list: filters.insurance_list }),
+    page_size: pageSize,
+    ordering: sort,
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    ...(filters.department ? { department: filters.department } : {}),
+    ...(filters.job_title ? { job_title: filters.job_title } : {}),
+    ...(filters.work_location ? { work_location: filters.work_location } : {}),
+    ...(filters.insurance_list ? { insurance_list: filters.insurance_list } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.gender ? { gender: filters.gender } : {}),
   };
 
-  const { data, isLoading } = useEmployees(queryParams);
+  const { data, isLoading, isFetching } = useEmployees(queryParams);
   const { data: departments } = useDepartments();
   const { data: jobTitles } = useJobTitles();
   const { data: workLocations } = useWorkLocations();
   const { data: insuranceLists } = useInsuranceLists();
   const deleteMutation = useDeleteEmployee();
 
-  const employees = data?.results || [];
+  const employees = asRows(data);
   const totalCount = data?.count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const pageNumbers = useMemo(() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    const end = Math.min(totalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
+  }, [page, totalPages]);
 
-  const handlePageChange = (event, newPage) => setPage(newPage);
-  const handleRowsPerPageChange = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+  React.useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
+    moduleTheme.tableTheme, employees.length,
+  );
+
+
+  const filterOptions = useMemo(() => ({
+    department: toOptions(departments),
+    job_title: toOptions(jobTitles),
+    work_location: toOptions(workLocations),
+    insurance_list: toOptions(insuranceLists),
+    status: [
+      { value: 'active', label: t('employees.active') },
+      { value: 'leave', label: t('employees.on_leave') },
+      { value: 'retired', label: t('employees.retired') },
+      { value: 'terminated', label: t('employees.terminated') },
+    ],
+    gender: [
+      { value: 'male', label: t('employees.male') },
+      { value: 'female', label: t('employees.female') },
+    ],
+  }), [departments, jobTitles, workLocations, insuranceLists, t]);
+
+  const filterLabels = {
+    department: t('employees.department'),
+    job_title: t('employees.job_title'),
+    work_location: t('employees.work_location'),
+    insurance_list: t('employees.insurance_list'),
+    status: t('employees.status'),
+    gender: t('employees.gender'),
   };
+
+  const handleFilterChange = (field, value) => {
+    setFilters((previous) => ({ ...previous, [field]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setSearch('');
+    setSort(DEFAULT_SORT);
+  };
+
+  const activeChips = Object.keys(EMPTY_FILTERS)
+    .filter((field) => filters[field])
+    .map((field) => {
+      const option = (filterOptions[field] || [])
+        .find((item) => String(item.value) === String(filters[field]));
+      return {
+        key: field,
+        label: `${filterLabels[field]}: ${option?.label ?? filters[field]}`,
+        clear: () => handleFilterChange(field, ''),
+      };
+    });
+  const activeFilterCount = activeChips.length;
+
   const handleDelete = (id) => {
     if (window.confirm(t('employees.delete_confirm'))) deleteMutation.mutate(id);
   };
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
-    setPage(0);
-  };
-  const resetFilters = () => {
-    setFilters({ department: '', job_title: '', work_location: '', status: '', gender: '', insurance_list: '' });
-    setSearch('');
-    setPage(0);
-  };
 
-  // خروجی اکسل با اعمال همان فیلترهای فعال صفحه (بدون صفحه‌بندی)
+  // خروجی اکسل با همان فیلترها/ترتیب فعال صفحه (بدون صفحه‌بندی)
   const exportExcel = async () => {
     if (exporting) return;
     setExporting(true);
     setExportError('');
     try {
-      const params = {};
+      const params = { ordering: sort };
       if (debouncedSearch) params.search = debouncedSearch;
-      if (filters.department) params.department = filters.department;
-      if (filters.job_title) params.job_title = filters.job_title;
-      if (filters.work_location) params.work_location = filters.work_location;
-      if (filters.status) params.status = filters.status;
-      if (filters.gender) params.gender = filters.gender;
-      if (filters.insurance_list) params.insurance_list = filters.insurance_list;
-
+      Object.keys(EMPTY_FILTERS).forEach((field) => {
+        if (filters[field]) params[field] = filters[field];
+      });
       await downloadFile('/employees/export-excel/', {
         params,
         fallbackName: 'employees.xlsx',
@@ -105,6 +189,127 @@ const EmployeeListPage = () => {
       setExporting(false);
     }
   };
+
+  const columns = [
+    {
+      key: 'row',
+      label: t('table.row'),
+      width: 56,
+      render: (row, index) => (
+        <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+          {toPersianDigits(page * pageSize + index + 1)}
+        </Typography>
+      ),
+    },
+    {
+      key: 'person',
+      label: t('employees.full_name'),
+      align: 'right',
+      render: (row) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
+          <EmployeeAvatar employee={row} size={32} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>
+              {row.full_name || '—'}
+            </Typography>
+            <Typography noWrap sx={{ fontSize: 10, color: 'text.secondary' }}>
+              {row.national_id ? `کد ملی ${toPersianDigits(row.national_id)}` : (row.mobile || '—')}
+            </Typography>
+          </Box>
+        </Box>
+      ),
+    },
+    {
+      key: 'record',
+      label: 'وضعیت پرونده',
+      align: 'center',
+      width: 150,
+      render: (row) => (row.is_record_complete ? (
+        <Chip size="small" label="پرونده کامل"
+          sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${accent}1c`, color: accent }} />
+      ) : (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+          <Box sx={{ flex: 1, minWidth: 50, height: 6, borderRadius: 10, bgcolor: `${accent}26` }}>
+            <Box sx={{
+              width: `${Math.min(100, Number(row.completeness_percent) || 0)}%`,
+              height: 6, borderRadius: 10, bgcolor: accent,
+            }} />
+          </Box>
+          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
+            {toPersianDigits(row.completeness_percent ?? 0)}٪
+          </Typography>
+        </Box>
+      )),
+    },
+    {
+      key: 'employee_id',
+      label: t('employees.employee_id'),
+      align: 'center',
+      width: 110,
+      render: (row) => (
+        <Typography sx={{ fontSize: 11.5 }}>{toPersianDigits(row.employee_id || '')}</Typography>
+      ),
+    },
+    {
+      key: 'department',
+      label: t('employees.department'),
+      align: 'right',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: 11.5 }}>{row.department_name || '—'}</Typography>
+      ),
+    },
+    {
+      key: 'job_title',
+      label: t('employees.job_title'),
+      align: 'right',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: 11.5 }}>{row.job_title_name || '—'}</Typography>
+      ),
+    },
+    {
+      key: 'work_location',
+      label: t('employees.work_location'),
+      align: 'right',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: 11.5 }}>{row.work_location_name || '—'}</Typography>
+      ),
+    },
+    {
+      key: 'insurance_list',
+      label: t('employees.insurance_list'),
+      align: 'right',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: 11.5 }}>{row.insurance_list_name || '—'}</Typography>
+      ),
+    },
+    {
+      key: 'status',
+      label: t('employees.status'),
+      align: 'center',
+      width: 110,
+      render: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      key: 'actions',
+      label: t('common.actions'),
+      align: 'center',
+      width: 96,
+      render: (row) => (
+        <Box onClick={(event) => event.stopPropagation()} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Tooltip title={t('common.edit')}>
+            <IconButton size="small" onClick={() => navigate(`/employees/${row.id}/edit`)}>
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={t('common.delete')}>
+            <IconButton size="small" onClick={() => handleDelete(row.id)}>
+              <DeleteIcon fontSize="small" color="error" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
 
   return (
     <Box>
@@ -124,167 +329,75 @@ const EmployeeListPage = () => {
         )}
       />
 
-      {exportError && (
+      {exportError ? (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>
           {exportError}
         </Alert>
-      )}
+      ) : null}
 
-      {/* Search & Filter Toolbar - glass */}
-      <Paper sx={{
-        p: 2, mb: 2,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.3))',
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.4)',
-        borderRadius: '10px',
-      }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-          <TextField
-            size="small"
-            placeholder={t('common.search')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-            sx={{ minWidth: 280, flex: 1 }}
-          />
-          <Button variant="outlined" onClick={() => setShowFilters(!showFilters)} color={showFilters ? 'primary' : 'inherit'}>
-            {t('common.filter')}
-          </Button>
-        </Box>
+      <ModuleToolbar
+        theme={moduleTheme}
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="جست‌وجو: نام، نام خانوادگی، کد ملی، کد پرسنلی، موبایل، ایمیل…"
+        sort={sort}
+        sortOptions={SORT_OPTIONS}
+        onSort={setSort}
+        filters={Object.keys(EMPTY_FILTERS).map((field) => ({
+          label: filterLabels[field],
+          value: filters[field],
+          options: filterOptions[field] || [],
+          onChange: (value) => handleFilterChange(field, value),
+        }))}
+        activeChips={activeChips}
+        activeFilterCount={activeFilterCount}
+        onReset={resetFilters}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
+      />
 
-        <Collapse in={showFilters}>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small"><InputLabel>{t('employees.department')}</InputLabel>
-                <Select value={filters.department} label={t('employees.department')} onChange={(e) => handleFilterChange('department', e.target.value)}>
-                  <MenuItem value="">{t('common.all')}</MenuItem>
-                  {Array.isArray(departments) && departments.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small"><InputLabel>{t('employees.job_title')}</InputLabel>
-                <Select value={filters.job_title} label={t('employees.job_title')} onChange={(e) => handleFilterChange('job_title', e.target.value)}>
-                  <MenuItem value="">{t('common.all')}</MenuItem>
-                  {Array.isArray(jobTitles) && jobTitles.map(j => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small"><InputLabel>{t('employees.work_location')}</InputLabel>
-                <Select value={filters.work_location} label={t('employees.work_location')} onChange={(e) => handleFilterChange('work_location', e.target.value)}>
-                  <MenuItem value="">{t('common.all')}</MenuItem>
-                  {Array.isArray(workLocations) && workLocations.map(w => <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small"><InputLabel>لیست بیمه</InputLabel>
-                <Select value={filters.insurance_list} label="لیست بیمه"
-                  onChange={(e) => handleFilterChange('insurance_list', e.target.value)}>
-                  <MenuItem value="">{t('common.all')}</MenuItem>
-                  {Array.isArray(insuranceLists) && insuranceLists.map(item => (
-                    <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth size="small"><InputLabel>{t('employees.status')}</InputLabel>
-                <Select value={filters.status} label={t('employees.status')} onChange={(e) => handleFilterChange('status', e.target.value)}>
-                  <MenuItem value="">{t('common.all')}</MenuItem>
-                  <MenuItem value="active">{t('employees.active')}</MenuItem>
-                  <MenuItem value="leave">{t('employees.on_leave')}</MenuItem>
-                  <MenuItem value="retired">{t('employees.retired')}</MenuItem>
-                  <MenuItem value="terminated">{t('employees.terminated')}</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2} sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button size="small" variant="outlined" onClick={resetFilters}>{t('filters.reset')}</Button>
-            </Grid>
-          </Grid>
-        </Collapse>
-      </Paper>
-
-      {/* Table - glass */}
-      <TableContainer component={Paper} sx={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.3))',
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.4)',
-        borderRadius: '10px',
+      <Paper elevation={0} sx={{
+        borderRadius: 'var(--hrms-table-radius, 16px)',
+        overflow: 'hidden',
+        px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+        border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+        bgcolor: 'background.paper', boxShadow: 'none',
       }}>
         {isLoading ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>
+          <Box sx={{ py: 4, textAlign: 'center' }}>
+            <CircularProgress size={24} />
+          </Box>
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('table.row')}</TableCell>
-                <TableCell>{t('employees.full_name')}</TableCell>
-                <TableCell>وضعیت پرونده</TableCell>
-                <TableCell>{t('employees.employee_id')}</TableCell>
-                <TableCell>{t('employees.department')}</TableCell>
-                <TableCell>{t('employees.job_title')}</TableCell>
-                <TableCell>{t('employees.work_location')}</TableCell>
-                <TableCell>لیست بیمه</TableCell>
-                <TableCell>{t('employees.status')}</TableCell>
-                <TableCell>{t('common.actions')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {employees.length === 0 ? (
-                <TableRow><TableCell colSpan={10} align="center">{t('table.no_results')}</TableCell></TableRow>
-              ) : (
-                employees.map((emp, index) => (
-                  <TableRow key={emp.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.id}`)}>
-                    <TableCell>{toPersianDigits(page * rowsPerPage + index + 1)}</TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <EmployeeAvatar employee={emp} size={34} />
-                        <Typography variant="body2" fontWeight={600}>{emp.full_name}</Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      {emp.is_record_complete ? (
-                        <Chip label="پرونده کامل" size="small" color="success" />
-                      ) : (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Box sx={{ flex: 1, minWidth: 60, height: 6, bgcolor: 'rgba(99,102,241,0.15)', borderRadius: '10px' }}>
-                            <Box sx={{ width: `${emp.completeness_percent || 0}%`, height: 6, bgcolor: '#6366f1', borderRadius: '10px' }} />
-                          </Box>
-                          <Typography variant="caption" color="textSecondary">{toPersianDigits(emp.completeness_percent ?? 0)}٪</Typography>
-                        </Box>
-                      )}
-                    </TableCell>
-                    <TableCell>{toPersianDigits(emp.employee_id)}</TableCell>
-                    <TableCell>{emp.department_name}</TableCell>
-                    <TableCell>{emp.job_title_name}</TableCell>
-                    <TableCell>{emp.work_location_name}</TableCell>
-                    <TableCell>{emp.insurance_list_name || '—'}</TableCell>
-                    <TableCell><StatusBadge status={emp.status} /></TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title={t('common.edit')}><IconButton size="small" onClick={() => navigate(`/employees/${emp.id}/edit`)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                      <Tooltip title={t('common.delete')}><IconButton size="small" onClick={() => handleDelete(emp.id)}><DeleteIcon fontSize="small" color="error" /></IconButton></Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <ModuleTable
+            tableTheme={moduleTheme.tableTheme}
+            ariaLabel="فهرست پرونده‌های پرسنل"
+            containerRef={tableRef}
+            tableHeight={tableHeight}
+            rowHeight={rowHeight}
+            dimmed={isFetching}
+            rows={employees}
+            rowKey={(row) => row.id}
+            onRowClick={(row) => navigate(`/employees/${row.id}`)}
+            emptyText="پرونده‌ای با این فیلترها پیدا نشد."
+            minWidth={1120}
+            tableLayout="auto"
+            columns={columns}
+          />
         )}
-        <TablePagination
-          component="div"
-          count={totalCount}
+        <ModulePager
+          tableTheme={moduleTheme.tableTheme}
           page={page}
-          onPageChange={handlePageChange}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleRowsPerPageChange}
-          labelRowsPerPage={t('common.rowsPerPage')}
+          onPage={setPage}
+          totalPages={totalPages}
+          pageNumbers={pageNumbers}
+          total={totalCount}
+          pageSize={pageSize}
+          unit="پرونده"
         />
-      </TableContainer>
+      </Paper>
     </Box>
   );
 };
 
 export default EmployeeListPage;
+
