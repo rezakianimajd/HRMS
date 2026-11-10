@@ -2,7 +2,7 @@
 from django.db.models import Count, OuterRef, Subquery
 from rest_framework import serializers
 
-from communication import crypto, permissions
+from communication import crypto, permissions, reactions
 from communication.models import (
     ChatAuditLog, Conversation, ConversationMember, Message, MessageAttachment,
     MessageEntityRef, MessageReceipt,
@@ -94,6 +94,7 @@ class MessageSerializer(serializers.ModelSerializer):
     delivered_count = serializers.SerializerMethodField()
     member_count = serializers.SerializerMethodField()
     read_by = serializers.SerializerMethodField()
+    reactions = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -102,7 +103,8 @@ class MessageSerializer(serializers.ModelSerializer):
             'body', 'reply_to', 'reply_to_preview', 'reply_to_sender', 'thread_root',
             'edited_at', 'deleted_at', 'is_pinned', 'metadata',
             'attachments', 'entity_refs', 'mentions', 'is_mine',
-            'read_count', 'delivered_count', 'member_count', 'read_by', 'created_at',
+            'read_count', 'delivered_count', 'member_count', 'read_by', 'reactions',
+            'created_at',
         ]
         read_only_fields = fields
 
@@ -154,6 +156,14 @@ class MessageSerializer(serializers.ModelSerializer):
             {'user': row['user'], 'at': row['read_at']}
             for row in self._receipt_rows(obj) if row['read_at']
         ]
+
+    def get_reactions(self, obj):
+        """خلاصهٔ واکنش‌ها با استفاده از prefetch در فهرست پیام‌ها (بدون N+1)."""
+        prefetched = getattr(obj, '_prefetched_objects_cache', {}).get('reactions')
+        rows = prefetched if prefetched is not None else list(obj.reactions.all())
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        return reactions.summarize_reactions(rows, user_id=getattr(user, 'pk', None))
 
 
 

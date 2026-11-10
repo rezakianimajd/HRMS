@@ -7,7 +7,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from communication import crypto
 from communication import permissions as chat_permissions
-from communication import services, uploads
+from communication import reactions, services, uploads
 from communication.models import Conversation, ConversationMember
 from communication.realtime import DatabaseEventPublisher, _publisher
 
@@ -200,6 +200,53 @@ class ChatPrivacyTests(SimpleTestCase):
         self.assertEqual(result, 'VISIBLE')
         filter_mock.assert_called_once()
         all_mock.assert_not_called()
+
+
+class ReactionRulesTests(SimpleTestCase):
+    """واکنش‌های ایموجی پیام: نرمال‌سازی و خلاصهٔ بدون N+1."""
+
+    def test_clean_emoji_trims_and_limits(self):
+        self.assertEqual(reactions.clean_emoji('  👍 '), '👍')
+        self.assertEqual(reactions.clean_emoji(''), '')
+        self.assertEqual(reactions.clean_emoji(None), '')
+        self.assertEqual(reactions.clean_emoji(' '), '')
+        self.assertEqual(len(reactions.clean_emoji('x' * 40)), reactions.MAX_EMOJI_LENGTH)
+
+    def test_quick_reactions_are_emoji_only(self):
+        self.assertTrue(reactions.QUICK_REACTIONS)
+        for emoji in reactions.QUICK_REACTIONS:
+            self.assertEqual(reactions.clean_emoji(emoji), emoji)
+
+    def test_summarize_groups_by_emoji_and_flags_mine(self):
+        rows = [
+            {'emoji': '👍', 'user_id': 1},
+            {'emoji': '👍', 'user_id': 2},
+            {'emoji': '❤️', 'user_id': 1},
+            {'emoji': '👍', 'user_id': 1},  # واکنش تکراری همین کاربر
+            {'emoji': '', 'user_id': 3},    # ردیف خالی نادیده گرفته می‌شود
+        ]
+        summary = reactions.summarize_reactions(rows, user_id=1)
+        self.assertEqual(summary[0]['emoji'], '👍')
+        self.assertEqual(summary[0]['count'], 2)
+        self.assertTrue(summary[0]['mine'])
+        self.assertEqual(summary[0]['user_ids'], [1, 2])
+        self.assertEqual(
+            summary[1], {'emoji': '❤️', 'count': 1, 'mine': True, 'user_ids': [1]},
+        )
+
+    def test_summarize_accepts_model_like_rows(self):
+        rows = [SimpleNamespace(emoji='✅', user_id=5)]
+        self.assertEqual(reactions.summarize_reactions(rows, user_id=5)[0]['count'], 1)
+        self.assertFalse(reactions.summarize_reactions(rows, user_id=6)[0]['mine'])
+
+    def test_summarize_is_sorted_by_count_then_emoji(self):
+        rows = [
+            {'emoji': '🔥', 'user_id': 1},
+            {'emoji': '✅', 'user_id': 1},
+            {'emoji': '✅', 'user_id': 2},
+        ]
+        summary = reactions.summarize_reactions(rows, user_id=1)
+        self.assertEqual([row['emoji'] for row in summary], ['✅', '🔥'])
 
 
 class EntitySearchTests(SimpleTestCase):

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 
 from django.db.models import Count, Q
 from django.http import FileResponse, Http404
@@ -15,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from communication import crypto, permissions as chat_permissions, services
+from communication import crypto, permissions as chat_permissions, reactions, realtime, services
 from communication.models import (
     ChatAuditLog, ChatEvent, Conversation, ConversationMember, Message,
     MessageAttachment,
@@ -158,7 +159,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
         qs = (
             Message.objects.filter(conversation=conversation)
             .select_related('sender', 'reply_to')
-            .prefetch_related('attachments__document', 'entity_refs', 'mentions__user')
+            .prefetch_related(
+                'attachments__document', 'entity_refs', 'mentions__user', 'reactions',
+            )
             .order_by('-id')
         )
         before = params.get('before')
@@ -304,10 +307,34 @@ class ConversationViewSet(viewsets.ModelViewSet):
         chat_permissions.ensure_view(request.user, conversation)
         rows = Message.objects.filter(
             conversation=conversation, is_pinned=True, deleted_at__isnull=True,
-        ).order_by('-id')[:50]
+        ).prefetch_related('reactions').order_by('-id')[:50]
         return Response(MessageSerializer(
             rows, many=True, context={**self.get_serializer_context(), 'request': request},
         ).data)
+
+    @action(detail=True, methods=['post'], url_path='typing')
+    def typing(self, request, pk=None):
+        """اعلام «در حال نوشتن» به اعضای دیگر همان گفتگو (رویداد سبک، بدون ذخیرهٔ پیام)."""
+        conversation = self.get_object()
+        chat_permissions.ensure_can_post(request.user, conversation)
+        member_ids = list(
+            conversation.members.exclude(user=request.user).values_list('user_id', flat=True)
+        )
+        # رویدادهای قدیمی «در حال نوشتن» نگه‌داری نمی‌شوند (جدول سبک می‌ماند).
+        ChatEvent.objects.filter(
+            event_type='typing', conversation=conversation,
+            created_at__lt=timezone.now() - timedelta(minutes=10),
+        ).delete()
+        realtime.publish(
+            _company(request), 'typing',
+            {
+                'user': request.user.pk,
+                'name': (request.user.get_full_name() or '').strip() or request.user.get_username(),
+            },
+            conversation=conversation,
+            audience=member_ids,
+        )
+        return Response({'ok': True, 'audience': len(member_ids)})
 
 
 def _deny(message):
@@ -359,6 +386,23 @@ class MessageViewSet(viewsets.GenericViewSet):
         message.is_pinned = not message.is_pinned
         message.save(update_fields=['is_pinned', 'updated_at'])
         return Response({'is_pinned': message.is_pinned})
+
+    @action(detail=True, methods=['post'], url_path='reactions')
+    def reactions(self, request, pk=None):
+        """ثبت/حذف واکنش ایموجی (toggle) و بازگرداندن خلاصهٔ تازهٔ واکنش‌ها."""
+        message = get_object_or_404(self.get_queryset(), pk=pk)
+        chat_permissions.ensure_view(request.user, message.conversation)
+        emoji = request.data.get('emoji')
+        if not emoji:
+            raise ValidationError({'emoji': 'ایموجی واکنش را انتخاب کنید.'})
+        try:
+            result = reactions.toggle_reaction(
+                conversation=message.conversation, message=message,
+                user=request.user, emoji=emoji,
+            )
+        except ValueError as error:
+            raise ValidationError({'emoji': str(error)}) from error
+        return Response(result)
 
 
 class AttachmentViewSet(viewsets.GenericViewSet):

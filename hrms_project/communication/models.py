@@ -298,6 +298,32 @@ class MessageReceipt(BaseModel):
         ]
 
 
+class MessageReaction(BaseModel):
+    """واکنش ایموجی کاربران به یک پیام (هر کاربر برای هر ایموجی یک‌بار)."""
+
+    message = models.ForeignKey(Message, on_delete=models.CASCADE,
+                                related_name='reactions', verbose_name=_('پیام'))
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='chat_reactions', db_constraint=False,
+                             verbose_name=_('کاربر'))
+    emoji = models.CharField(max_length=16, verbose_name=_('ایموجی'))
+
+    class Meta:
+        verbose_name = _('واکنش پیام')
+        verbose_name_plural = _('واکنش‌های پیام')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['message', 'user', 'emoji'], name='uniq_message_reaction',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['message', 'emoji'], name='chat_reaction_msg_emoji_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.emoji} → پیام #{self.message_id}'
+
+
 class ChatAuditLog(BaseModel):
     """تاریخچهٔ تغییرات پیام/گفتگو (ویرایش، حذف، عضویت) برای حسابرسی."""
 
