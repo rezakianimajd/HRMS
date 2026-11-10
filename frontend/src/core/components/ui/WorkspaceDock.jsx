@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Dialog, DialogContent, DialogTitle, IconButton, Stack, Tooltip, Typography,
+  Box, Dialog, DialogContent, DialogTitle, IconButton, Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
@@ -92,7 +92,8 @@ export const WorkspaceDockProvider = ({ children }) => {
         keepMounted={false}
         PaperProps={{
           sx: {
-            height: '90vh', maxHeight: '90vh', borderRadius: '18px', overflow: 'hidden',
+            height: '92vh', maxHeight: '92vh', width: 'calc(100vw - 40px)', maxWidth: '1700px',
+            m: 2, borderRadius: '18px', overflow: 'hidden',
             border: '1px solid', borderColor: 'divider',
             boxShadow: 'var(--hrms-shadow-dialog, 0 24px 60px rgba(15,23,42,0.25))',
           },
@@ -125,10 +126,13 @@ export const WorkspaceDockProvider = ({ children }) => {
             </IconButton>
           </Tooltip>
         </DialogTitle>
-        <DialogContent sx={{ p: 0, overflow: 'hidden', display: 'flex', minHeight: 0 }}>
-          <Stack sx={{ flex: 1, minHeight: 0, p: 1.25, overflowY: 'auto' }}>
+        <DialogContent sx={{ p: 0, overflow: 'hidden', display: 'flex', minHeight: 0, minWidth: 0 }}>
+          <Box sx={{
+            flex: 1, minHeight: 0, minWidth: 0, display: 'flex',
+            flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', p: 1.25,
+          }}>
             {children}
-          </Stack>
+          </Box>
         </DialogContent>
       </Dialog>
     );
@@ -138,14 +142,12 @@ export const WorkspaceDockProvider = ({ children }) => {
     <WorkspaceDockContext.Provider value={value}>
       {children}
       {renderShell('chat', chatState.open, closeChat, chatState.open ? (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex' }}>
-          <ChatPanel
-            embedded
-            syncUrl={false}
-            height="100%"
-            initialConversationId={chatState.conversation}
-          />
-        </Box>
+        <ChatPanel
+          embedded
+          syncUrl={false}
+          height="calc(92vh - 150px)"
+          initialConversationId={chatState.conversation}
+        />
       ) : null)}
       {renderShell('planning', planningState.open, closePlanning, planningState.open ? (
         <PlanningPanel embedded initialTab={planningState.tab} />

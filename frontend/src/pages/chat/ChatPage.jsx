@@ -501,12 +501,17 @@ const ChatPanel = ({
   };
 
   return (
-    <Box sx={{ pb: 1, height: embedded ? '100%' : undefined, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <Box sx={{
+      pb: embedded ? 0 : 1,
+      width: '100%', minWidth: 0,
+      display: 'flex', flexDirection: 'column',
+    }}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems="stretch"
-        sx={{ height, minHeight: 0, flex: 1 }}>
+        sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
         {/* ---------------- فهرست گفتگوها ---------------- */}
         <Box sx={{
-          width: { xs: '100%', md: 320 }, flexShrink: 0, display: 'flex', flexDirection: 'column',
+          width: { xs: '100%', sm: 300, md: 320, xl: 360 }, flexShrink: 0,
+          display: 'flex', flexDirection: 'column', minHeight: 0,
           border: '1px solid', borderColor: 'divider', borderRadius: 'var(--hrms-radius-large, 16px)',
           bgcolor: 'background.paper', overflow: 'hidden',
         }}>
@@ -548,7 +553,10 @@ const ChatPanel = ({
               sx={{ mt: 1, '& .MuiInputBase-input': { fontSize: 11.5 } }}
             />
           </Box>
-          <Box sx={{ flex: 1, overflowY: 'auto', p: 0.75, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Box sx={{
+            flex: 1, minHeight: 0, overflowY: 'auto', p: 0.75,
+            display: 'flex', flexDirection: 'column', gap: 0.5,
+          }}>
             {conversationsQuery.isLoading ? (
               <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={20} /></Box>
             ) : conversations.length ? (
@@ -592,7 +600,7 @@ const ChatPanel = ({
 
         {/* ---------------- رشتهٔ پیام‌ها ---------------- */}
         <Box sx={{
-          flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+          flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
           border: '1px solid', borderColor: 'divider',
           borderRadius: 'var(--hrms-radius-large, 16px)',
           bgcolor: theme.palette.mode === 'dark'
@@ -642,7 +650,7 @@ const ChatPanel = ({
               </Box>
 
               <Box sx={{
-                flex: 1, overflowY: 'auto', px: 1.5, py: 1.25,
+                flex: 1, minHeight: 0, overflowY: 'auto', px: 1.5, py: 1.25,
                 display: 'flex', flexDirection: 'column', gap: 0.9,
               }}>
                 {messagesQuery.isLoading ? (
