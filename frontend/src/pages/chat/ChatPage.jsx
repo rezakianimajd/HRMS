@@ -18,6 +18,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
@@ -326,7 +327,9 @@ const ChatPage = () => {
   const [mentionIds, setMentionIds] = useState([]);
   const [toast, setToast] = useState('');
   const [newDialog, setNewDialog] = useState(false);
-  const [newForm, setNewForm] = useState({ kind: 'group', title: '', description: '', members: [] });
+  const [newForm, setNewForm] = useState({
+    kind: 'direct', title: '', description: '', members: [], user: '',
+  });
   const [membersDialog, setMembersDialog] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [editMessage, setEditMessage] = useState(null);
@@ -426,22 +429,43 @@ const ChatPage = () => {
   });
 
   const createConversation = useMutation({
-    mutationFn: () => axiosInstance.post('/chat/conversations/', {
-      kind: newForm.kind,
-      title: newForm.title,
-      description: newForm.description,
-      members: newForm.members,
-      color: CHAT_KIND_META[newForm.kind]?.color || accent,
-      is_public: newForm.kind === 'channel',
-      post_policy: newForm.kind === 'channel' ? 'admins' : 'members',
-    }),
+    mutationFn: () => {
+      if (newForm.kind === 'direct') {
+        return axiosInstance.post('/chat/conversations/', {
+          kind: 'direct', user: newForm.user,
+        });
+      }
+      return axiosInstance.post('/chat/conversations/', {
+        kind: newForm.kind,
+        title: newForm.title,
+        description: newForm.description,
+        members: newForm.members,
+        color: CHAT_KIND_META[newForm.kind]?.color || accent,
+        is_public: newForm.kind === 'channel',
+        post_policy: newForm.kind === 'channel' ? 'admins' : 'members',
+      });
+    },
     onSuccess: (response) => {
       setNewDialog(false);
-      setNewForm({ kind: 'group', title: '', description: '', members: [] });
+      setNewForm({ kind: 'direct', title: '', description: '', members: [], user: '' });
       setActiveId(String(response.data.id));
       qc.invalidateQueries({ queryKey: ['chat-conversations'] });
     },
     onError: () => setToast('ساخت گفتگو انجام نشد'),
+  });
+
+  /** شروع/بازکردن گفتگوی خصوصی با یک کاربر (idempotent در بک‌اند). */
+  const startDirect = useMutation({
+    mutationFn: (peerId) => axiosInstance.post('/chat/conversations/', {
+      kind: 'direct', user: peerId,
+    }),
+    onSuccess: (response) => {
+      setMembersDialog(false);
+      setNewDialog(false);
+      setActiveId(String(response.data.id));
+      qc.invalidateQueries({ queryKey: ['chat-conversations'] });
+    },
+    onError: () => setToast('شروع گفتگوی خصوصی انجام نشد'),
   });
 
   const addMembers = useMutation({
@@ -486,6 +510,18 @@ const ChatPage = () => {
               <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK, flex: 1 }}>
                 گفتگوی سازمانی
               </Typography>
+              <Tooltip title="گفتگوی خصوصی با یک همکار">
+                <IconButton
+                  size="small" aria-label="گفتگوی خصوصی"
+                  onClick={() => {
+                    setNewForm({ kind: 'direct', title: '', description: '', members: [], user: '' });
+                    setNewDialog(true);
+                  }}
+                  sx={{ color: accent }}
+                >
+                  <PersonAddAltOutlinedIcon sx={{ fontSize: 18 }} />
+                </IconButton>
+              </Tooltip>
               <Tooltip title="گفتگو/کانال جدید">
                 <IconButton size="small" aria-label="گفتگوی جدید" onClick={() => setNewDialog(true)}
                   sx={{ color: accent, bgcolor: alpha(accent, 0.1) }}>
@@ -520,8 +556,18 @@ const ChatPage = () => {
             ) : (
               <Box sx={{ py: 4, textAlign: 'center' }}>
                 <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                  هنوز گفتگویی ندارید؛ یک گفتگو بسازید.
+                  هنوز گفتگویی ندارید؛ یک گفتگوی خصوصی با یک همکار شروع کنید.
                 </Typography>
+                <Button
+                  size="small" variant="outlined" sx={{ mt: 1, fontSize: 11 }}
+                  startIcon={<PersonAddAltOutlinedIcon sx={{ fontSize: 15 }} />}
+                  onClick={() => {
+                    setNewForm({ kind: 'direct', title: '', description: '', members: [], user: '' });
+                    setNewDialog(true);
+                  }}
+                >
+                  گفتگوی خصوصی
+                </Button>
               </Box>
             )}
           </Box>
@@ -749,7 +795,9 @@ const ChatPage = () => {
       {/* ---------------- دیالوگ ساخت گفتگو/کانال ---------------- */}
       <Dialog open={newDialog} onClose={() => setNewDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontSize: 13.5, fontWeight: 900, pb: 0.5 }}>
-          گفتگو یا کانال جدید
+          {newForm.kind === 'direct'
+            ? 'گفتگوی خصوصی جدید'
+            : (newForm.kind === 'channel' ? 'کانال جدید' : 'گروه کاری جدید')}
         </DialogTitle>
         <DialogContent dividers>
           <Stack spacing={1.25} sx={{ pt: 0.5 }}>
@@ -759,51 +807,83 @@ const ChatPage = () => {
                 ...previous, kind: event.target.value,
               }))}
             >
+              <MenuItem value="direct">گفتگوی خصوصی (دو نفره)</MenuItem>
               <MenuItem value="group">گروه کاری</MenuItem>
               <MenuItem value="channel">کانال اطلاع‌رسانی</MenuItem>
             </Select>
-            <TextField
-              size="small" label="عنوان" value={newForm.title}
-              onChange={(event) => setNewForm((previous) => ({
-                ...previous, title: event.target.value,
-              }))}
-            />
-            <TextField
-              size="small" label="توضیح (اختیاری)" multiline minRows={2}
-              value={newForm.description}
-              onChange={(event) => setNewForm((previous) => ({
-                ...previous, description: event.target.value,
-              }))}
-            />
-            <Select
-              size="small" multiple displayEmpty
-              value={newForm.members}
-              onChange={(event) => setNewForm((previous) => ({
-                ...previous, members: event.target.value,
-              }))}
-              renderValue={(selected) => (selected.length
-                ? `${toPersianDigits(selected.length)} عضو انتخاب شد`
-                : 'انتخاب اعضا')}
-            >
-              {directory.map((person) => (
-                <MenuItem key={person.id} value={person.id}>{person.name}</MenuItem>
-              ))}
-            </Select>
-            <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-              {newForm.kind === 'channel'
-                ? 'کانال برای اطلاع‌رسانی است؛ ارسال پیام فقط توسط مدیران کانال انجام می‌شود.'
-                : 'در گروه، همهٔ اعضا می‌توانند پیام بفرستند.'}
-            </Typography>
+            {newForm.kind === 'direct' ? (
+              <>
+                <Select
+                  size="small" displayEmpty value={newForm.user}
+                  onChange={(event) => setNewForm((previous) => ({
+                    ...previous, user: event.target.value,
+                  }))}
+                  renderValue={(selected) => {
+                    const person = directory.find((row) => row.id === selected);
+                    return person ? person.name : 'یک همکار را انتخاب کنید';
+                  }}
+                >
+                  {directory
+                    .filter((person) => String(person.id) !== String(user?.id))
+                    .map((person) => (
+                      <MenuItem key={person.id} value={person.id}>{person.name}</MenuItem>
+                    ))}
+                </Select>
+                <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                  گفتگوی خصوصی فقط بین شما دو نفر است؛ پیام‌ها رمزنگاری‌شده ذخیره می‌شوند.
+                </Typography>
+              </>
+            ) : (
+              <>
+                <TextField
+                  size="small" label="عنوان" value={newForm.title}
+                  onChange={(event) => setNewForm((previous) => ({
+                    ...previous, title: event.target.value,
+                  }))}
+                />
+                <TextField
+                  size="small" label="توضیح (اختیاری)" multiline minRows={2}
+                  value={newForm.description}
+                  onChange={(event) => setNewForm((previous) => ({
+                    ...previous, description: event.target.value,
+                  }))}
+                />
+                <Select
+                  size="small" multiple displayEmpty
+                  value={newForm.members}
+                  onChange={(event) => setNewForm((previous) => ({
+                    ...previous, members: event.target.value,
+                  }))}
+                  renderValue={(selected) => (selected.length
+                    ? `${toPersianDigits(selected.length)} عضو انتخاب شد`
+                    : 'انتخاب اعضا')}
+                >
+                  {directory.map((person) => (
+                    <MenuItem key={person.id} value={person.id}>{person.name}</MenuItem>
+                  ))}
+                </Select>
+                <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                  {newForm.kind === 'channel'
+                    ? 'کانال برای اطلاع‌رسانی است؛ ارسال پیام فقط توسط مدیران کانال انجام می‌شود.'
+                    : 'در گروه، همهٔ اعضا می‌توانند پیام بفرستند.'}
+                </Typography>
+              </>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setNewDialog(false)}>انصراف</Button>
           <Button
-            variant="contained" disabled={!newForm.title.trim() || createConversation.isPending}
+            variant="contained"
+            disabled={(
+              newForm.kind === 'direct'
+                ? !newForm.user
+                : !newForm.title.trim()
+            ) || createConversation.isPending}
             onClick={() => createConversation.mutate()}
             sx={{ bgcolor: accent, '&:hover': { bgcolor: accent } }}
           >
-            ساخت
+            شروع
           </Button>
         </DialogActions>
       </Dialog>
@@ -813,16 +893,38 @@ const ChatPage = () => {
         <DialogTitle sx={{ fontSize: 13, fontWeight: 900, pb: 0.5 }}>اعضای گفتگو</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={0.75} sx={{ mb: 1.5 }}>
-            {(activeConversation?.members || []).map((member) => (
-              <Stack key={member.id} direction="row" alignItems="center" spacing={0.75}>
-                <Avatar sx={{ width: 26, height: 26, fontSize: 11, bgcolor: alpha(accent, 0.14), color: accent }}>
-                  {String(member.user_name || 'ک').slice(0, 2)}
-                </Avatar>
-                <Typography sx={{ fontSize: 11.5, flex: 1 }}>{member.user_name || member.user}</Typography>
-                <Chip size="small" label={member.role_display}
-                  sx={{ height: 18, fontSize: 9.5, fontWeight: 800 }} />
-              </Stack>
-            ))}
+            {(activeConversation?.members || []).map((member) => {
+              const isMe = String(member.user) === String(user?.id);
+              return (
+                <Stack
+                  key={member.id} direction="row" alignItems="center" spacing={0.75}
+                  onClick={() => { if (!isMe) startDirect.mutate(member.user); }}
+                  sx={{
+                    p: 0.4, borderRadius: '8px',
+                    cursor: isMe ? 'default' : 'pointer',
+                    '&:hover': { bgcolor: isMe ? 'transparent' : 'action.hover' },
+                  }}
+                >
+                  <Avatar sx={{
+                    width: 26, height: 26, fontSize: 11,
+                    bgcolor: alpha(accent, 0.14), color: accent,
+                  }}>
+                    {String(member.user_name || 'ک').slice(0, 2)}
+                  </Avatar>
+                  <Typography sx={{ fontSize: 11.5, flex: 1 }}>
+                    {member.user_name || member.user}
+                    {isMe ? ' (شما)' : ''}
+                  </Typography>
+                  {!isMe ? (
+                    <Tooltip title="شروع گفتگوی خصوصی">
+                      <PersonAddAltOutlinedIcon sx={{ fontSize: 15, color: accent }} />
+                    </Tooltip>
+                  ) : null}
+                  <Chip size="small" label={member.role_display}
+                    sx={{ height: 18, fontSize: 9.5, fontWeight: 800 }} />
+                </Stack>
+              );
+            })}
           </Stack>
           <Divider sx={{ mb: 1 }} />
           <Typography sx={{ fontSize: 11, color: MUTED, mb: 0.5 }}>افزودن عضو جدید</Typography>

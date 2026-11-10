@@ -190,12 +190,35 @@ class ConversationSerializer(serializers.ModelSerializer):
         return int(getattr(obj, 'unread_count', 0) or 0)
 
     def get_member_count(self, obj):
-        return int(getattr(obj, 'member_count', 0) or 0)
+        annotated = getattr(obj, 'member_count', None)
+        if annotated is not None:
+            return int(annotated)
+        return obj.members.count()
 
     def get_can_post(self, obj):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         return permissions.can_post(user, obj) if user else False
+
+    def to_representation(self, instance):
+        """در گفتگوی خصوصی، عنوان = نام طرف مقابل (چون عنوان ذخیره نمی‌شود)."""
+        data = super().to_representation(instance)
+        data['is_direct'] = instance.kind == Conversation.Kind.DIRECT
+        if not data['is_direct']:
+            return data
+        request = self.context.get('request')
+        current_id = getattr(getattr(request, 'user', None), 'pk', None)
+        names = []
+        for member in data.get('members') or []:
+            if current_id and str(member.get('user')) == str(current_id):
+                continue
+            name = (member.get('user_name') or '').strip()
+            if name:
+                names.append(name)
+        if not (data.get('title') or '').strip():
+            data['title'] = '، '.join(names) or 'گفتگوی خصوصی'
+        data['peer_names'] = names
+        return data
 
 
 class ChatAuditLogSerializer(serializers.ModelSerializer):

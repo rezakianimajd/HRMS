@@ -57,7 +57,11 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = conversations_with_stats(user).select_related('created_by')
+        qs = (
+            conversations_with_stats(user)
+            .select_related('created_by')
+            .prefetch_related('members__user')
+        )
         params = self.request.query_params
         kind = params.get('kind')
         if kind:
@@ -93,22 +97,32 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 )
         return response
 
-    def perform_create(self, serializer):
-        company = _company(self.request)
-        data = self.request.data
+    def create(self, request, *args, **kwargs):
+        """ساخت گفتگو: خصوصی (با ``user``) یا گروه/کانال (با ``title`` و ``members``)."""
+        data = request.data
         kind = data.get('kind') or Conversation.Kind.GROUP
-        direct_user = data.get('user')
-        if kind == Conversation.Kind.DIRECT and direct_user:
+        if kind == Conversation.Kind.DIRECT:
             from django.contrib.auth import get_user_model
 
-            other = get_object_or_404(get_user_model(), pk=direct_user)
-            conversation, _created = services.get_or_create_direct(
-                company, self.request.user, other,
+            target_id = data.get('user') or data.get('user_id')
+            if not target_id or not str(target_id).isdigit():
+                raise ValidationError({'user': 'برای گفتگوی خصوصی یک کاربر را انتخاب کنید.'})
+            other = get_user_model().objects.filter(pk=int(target_id), is_active=True).first()
+            if not other:
+                raise ValidationError({'user': 'کاربر انتخاب‌شده یافت نشد.'})
+            if str(other.pk) == str(request.user.pk):
+                raise ValidationError({'user': 'گفتگوی خصوصی با خودتان ممکن نیست.'})
+            conversation, created = services.get_or_create_direct(
+                _company(request), request.user, other,
             )
-            serializer.instance = conversation
-            return
-        serializer.instance = services.create_conversation(
-            company, self.request.user, kind=kind, title=data.get('title', ''),
+            payload = self.get_serializer(conversation).data
+            return Response(
+                payload,
+                status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+            )
+
+        conversation = services.create_conversation(
+            _company(request), request.user, kind=kind, title=data.get('title', ''),
             member_ids=_json_list(data.get('members')),
             description=data.get('description', ''),
             related_module=data.get('related_module', ''),
@@ -119,13 +133,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
             is_public=str(data.get('is_public', '')).lower() in ('1', 'true', 'yes'),
             post_policy=data.get('post_policy') or Conversation.PostPolicy.MEMBERS,
         )
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=False)
-        self.perform_create(serializer)
         return Response(
-            self.get_serializer(serializer.instance).data,
+            self.get_serializer(conversation).data,
             status=status.HTTP_201_CREATED,
         )
 

@@ -609,6 +609,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     و وظایف (چک‌لیست، سررسید شمسی با `JalaliMaskedDateInput`، اولویت)، اشتراک‌گذاری با کاربران.
     ریل سایدبار: دو دکمهٔ همیشگی «گفتگوی سازمانی» و «برنامه‌ریزی شخصی» با نشان خوانده‌نشده/سررسید
     (`/api/chat/unread/` هر ۳۰ ثانیه).
+  - **گفتگوی خصوصی (اصلاح ۲۰۲۶-۱۱-۱۰):** `POST /api/chat/conversations/` با `{kind:'direct', user:<id>}`
+    گفتگوی دو نفره را **idempotent** می‌سازد/برمی‌گرداند (`direct_key`)، عنوان در پاسخ = نام طرف مقابل
+    (`ConversationSerializer.to_representation`) و `member_count` برای نمونهٔ تازه هم درست است.
+    در UI: دکمهٔ «گفتگوی خصوصی» در سربرگ فهرست، گزینهٔ «گفتگوی خصوصی (دو نفره)» در دیالوگ ساخت،
+    کلیک روی هر عضو در دیالوگ اعضا، و دکمهٔ میان‌بر در حالت خالی.
   - **تست:** `communication/tests.py` (۱۴) + `planning/tests.py` (۷) DB-free؛ فرانت `chatSmoke` (۲) و
     `planningSmoke` (۲). **تأیید زندهٔ `kpsmi`:** جدول‌ها ساخته شد؛ بدنهٔ پیام در DB `gAAAAA…` (رمز)،
     `search_tokens` تولید شد، جست‌وجوی کور نتیجه داد، اعلان برای عضو ساخته شد، ویرایش در `ChatAuditLog`

@@ -91,6 +91,13 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   expect(container.textContent).toContain('صورت‌وضعیت بررسی شد');
   expect(container.querySelector('input[type="file"]')).toBeTruthy();
 
+  // گفتگوی خصوصی از همان صفحه قابل شروع است (نه فقط گروه/کانال)
+  const directButton = container.querySelector('button[aria-label="گفتگوی خصوصی"]');
+  expect(directButton).toBeTruthy();
+  await act(async () => { directButton.click(); await wait(200); });
+  expect(document.body.textContent).toContain('گفتگوی خصوصی جدید');
+  expect(document.body.textContent).toContain('یک همکار را انتخاب کنید');
+
   await act(async () => { root.unmount(); });
   container.remove();
 });
