@@ -35,11 +35,13 @@ const messages = [
     id: 101, conversation: 7, sender: 2, sender_name: 'مدیر مالی', body: 'صورت‌وضعیت بررسی شد',
     kind: 'text', is_mine: false, read_count: 1, delivered_count: 1, member_count: 3,
     attachments: [], entity_refs: [], created_at: '2026-11-10T08:10:00Z',
+    reactions: [{ emoji: '👍', count: 2, mine: false, user_ids: [2, 3] }],
   },
   {
     id: 102, conversation: 7, sender: 1, sender_name: 'مدیر', body: '👍',
     kind: 'text', is_mine: true, read_count: 0, delivered_count: 1, member_count: 3,
     attachments: [], entity_refs: [], created_at: '2026-11-10T08:12:00Z',
+    reactions: [],
   },
 ];
 
@@ -70,9 +72,22 @@ beforeEach(() => {
           url: '/external-contracts/125' },
       ] } });
     }
+    if (url === '/chat/conversations/7/members/') {
+      return Promise.resolve({ data: [
+        { id: 1, user: 2, user_name: 'مدیر مالی', role: 'owner', role_display: 'مالک' },
+        { id: 2, user: 1, user_name: 'مدیر', role: 'member', role_display: 'عضو' },
+      ] });
+    }
+    if (url === '/chat/conversations/7/pinned/') {
+      return Promise.resolve({ data: [
+        { id: 101, sender_name: 'مدیر مالی', body: 'صورت‌وضعیت بررسی شد', created_at: '2026-11-10T08:10:00Z' },
+      ] });
+    }
     return Promise.resolve({ data: [] });
   });
-  axiosInstance.post.mockResolvedValue({ data: {} });
+  axiosInstance.post.mockResolvedValue({
+    data: { reactions: [{ emoji: '👍', count: 3, mine: true, user_ids: [1, 2, 3] }] },
+  });
 });
 
 test('chat kind meta covers private, group and channel', () => {
@@ -167,7 +182,7 @@ test('emoji picker inserts into the composer and sends the emoji', async () => {
   expect(document.querySelector('[data-testid="chat-emoji-picker"]')).toBeTruthy();
   expect(document.body.textContent).toContain('ایموجی‌ها');
 
-  const emojiNode = document.querySelector('[data-emoji="👍"]');
+  const emojiNode = document.querySelector('[data-testid="chat-emoji-picker"] [data-emoji="👍"]');
   expect(emojiNode).toBeTruthy();
   await act(async () => { emojiNode.click(); await wait(250); });
 
@@ -188,3 +203,79 @@ test('emoji picker inserts into the composer and sends the emoji', async () => {
   await act(async () => { root.unmount(); });
   container.remove();
 });
+
+test('rail filters, info panel, reactions and typing are wired to the API', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  axiosInstance.post.mockClear();
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/chat?conversation=7']}>
+          <ChatPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(400);
+  });
+  await act(async () => { await wait(350); });
+
+  // فیلترهای سریع و فیلتر نوع گفتگو
+  expect(container.querySelector('[data-testid="chat-rail-tabs"]')).toBeTruthy();
+  expect(container.querySelector('[data-testid="chat-kind-filter"]')).toBeTruthy();
+
+  // واکنش‌های ذخیره‌شده روی حباب پیام
+  const reactionChip = container.querySelector('[data-testid="chat-reaction-chip"]');
+  expect(reactionChip).toBeTruthy();
+  expect(reactionChip.textContent).toContain('👍');
+  expect(reactionChip.textContent).toContain('۲');
+
+  // واکنش سریع از نوار اقدام پیام
+  const reactButton = container.querySelector('[data-testid="chat-react-button"]');
+  expect(reactButton).toBeTruthy();
+  await act(async () => { reactButton.click(); await wait(200); });
+  const quick = document.querySelector('[data-testid="chat-quick-reaction"]');
+  expect(quick).toBeTruthy();
+  await act(async () => { quick.click(); await wait(250); });
+  const reactionCall = axiosInstance.post.mock.calls
+    .find(([url]) => String(url).includes('/reactions/'));
+  expect(reactionCall).toBeTruthy();
+  expect(reactionCall[0]).toBe('/chat/messages/101/reactions/');
+  expect(reactionCall[1].emoji).toBe('👍');
+
+  // «در حال نوشتن» با تایپ در نوار نوشتن به سرور اعلام می‌شود
+  const composer = container.querySelector('textarea');
+  const setValue = Object.getOwnPropertyDescriptor(
+    window.HTMLTextAreaElement.prototype, 'value',
+  ).set;
+  await act(async () => {
+    setValue.call(composer, 'سلام');
+    composer.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(250);
+  });
+  const typingCall = axiosInstance.post.mock.calls
+    .find(([url]) => String(url).includes('/typing/'));
+  expect(typingCall).toBeTruthy();
+  expect(typingCall[0]).toBe('/chat/conversations/7/typing/');
+
+  // پنل اطلاعات گفتگو: اعضا و پیام‌های سنجاق‌شده
+  const infoButton = container.querySelector('button[aria-label="اطلاعات گفتگو"]');
+  expect(infoButton).toBeTruthy();
+  await act(async () => { infoButton.click(); await wait(300); });
+  for (let index = 0; index < 4; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(250); });
+  }
+  const infoPanel = container.querySelector('[data-testid="chat-info-panel"]');
+  expect(infoPanel).toBeTruthy();
+  expect(infoPanel.textContent).toContain('اطلاعات گفتگو');
+  expect(infoPanel.textContent).toContain('مدیر مالی');
+  expect(infoPanel.textContent).toContain('پیام‌های سنجاق‌شده');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+

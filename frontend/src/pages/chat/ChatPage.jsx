@@ -1,82 +1,43 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Avatar, Badge, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, IconButton, InputAdornment, MenuItem,
   Select, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
-import AddIcon from '@mui/icons-material/Add';
+import { alpha } from '@mui/material/styles';
 import AlternateEmailOutlinedIcon from '@mui/icons-material/AlternateEmailOutlined';
 import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
-import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import EmojiEmotionsOutlinedIcon from '@mui/icons-material/EmojiEmotionsOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
 import TagIcon from '@mui/icons-material/Tag';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
 import axiosInstance from '../../core/api/axiosConfig';
-import { useDesignTokens } from '../../core/context/DesignTokenContext';
-import { useModulePalette } from '../../core/context/ModulePaletteContext';
 import useAuth from '../../core/hooks/useAuth';
-import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
-import EntityPickerDialog, { ENTITY_MODULE_META } from './EntityPickerDialog';
+import ChatConversationRail from './ChatConversationRail';
 import ChatEmojiPicker from './ChatEmojiPicker';
-import { emojiOnlyFontSize } from './chatMessageText';
+import ChatInfoPanel from './ChatInfoPanel';
+import ChatMessageBubble from './ChatMessageBubble';
+import EntityPickerDialog, { ENTITY_MODULE_META } from './EntityPickerDialog';
+import {
+  CHAT_KIND_META, MUTED, dateLabel, initialsOf, kindMetaOf, useChatLook,
+} from './chatUi';
 
-const ACCENT_FALLBACK = '#0ea5e9';
-const INK = '#0f172a';
-const MUTED = '#64748b';
+export { CHAT_KIND_META, canEditMessage, receiptLabel } from './chatUi';
 
-export const CHAT_KIND_META = {
-  direct: { label: 'خصوصی', icon: PersonOutlineIcon, color: '#0ea5e9' },
-  group: { label: 'گروهی', icon: GroupOutlinedIcon, color: '#8b5cf6' },
-  channel: { label: 'کانال', icon: CampaignOutlinedIcon, color: '#f59e0b' },
-  system: { label: 'سیستمی', icon: LockOutlinedIcon, color: '#64748b' },
-};
+const TYPING_WINDOW_MS = 6000;
+const TYPING_THROTTLE_MS = 3000;
+const draftKeyOf = (id) => `hrms-chat-draft-${id}`;
 
-/** آیا کاربر جاری می‌تواند این پیام را ویرایش کند؟ */
-export const canEditMessage = (message, user) => Boolean(
-  message && !message.deleted_at && message.sender && String(message.sender) === String(user?.id),
-);
-
-/** متن وضعیت رسید پیام (ارسال/تحویل/خواندن) برای نمایش زیر حباب. */
-export const receiptLabel = (message) => {
-  if (!message || message.deleted_at) return '';
-  const read = Number(message.read_count) || 0;
-  const delivered = Number(message.delivered_count) || 0;
-  const members = Number(message.member_count) || 0;
-  if (members > 2) {
-    if (read) return `${toPersianDigits(read)} از ${toPersianDigits(members)} خواندند`;
-    if (delivered) return 'تحویل شد';
-    return 'ارسال شد';
-  }
-  if (read) return 'خوانده شد';
-  if (delivered) return 'تحویل شد';
-  return 'ارسال شد';
-};
-
-const timeLabel = (value) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return toPersianDigits(date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }));
-};
-
-const dateLabel = (value) => (value ? toJalali(String(value).slice(0, 10)) : '');
-
-const useChatQueries = ({ user, activeId, search }) => {
+const useChatQueries = ({ user, activeId, search, threadSearch, infoOpen }) => {
   const qc = useQueryClient();
   const conversationsQuery = useQuery({
     queryKey: ['chat-conversations', search],
@@ -93,10 +54,10 @@ const useChatQueries = ({ user, activeId, search }) => {
   }, [conversationsQuery.data]);
 
   const messagesQuery = useQuery({
-    queryKey: ['chat-messages', activeId, search],
+    queryKey: ['chat-messages', activeId, threadSearch],
     queryFn: () => axiosInstance
       .get(`/chat/conversations/${activeId}/messages/`, {
-        params: { limit: 40, search: search || undefined },
+        params: { limit: 40, search: threadSearch || undefined },
       })
       .then((response) => response.data),
     enabled: Boolean(activeId),
@@ -115,276 +76,139 @@ const useChatQueries = ({ user, activeId, search }) => {
     refetchInterval: 20_000,
   });
 
+  // رویدادها سبک‌اند؛ در گفتگوی فعال سریع‌تر خوانده می‌شوند تا «در حال نوشتن» زنده باشد.
   const eventsQuery = useQuery({
     queryKey: ['chat-events', activeId],
     queryFn: () => axiosInstance.get('/chat/events/', { params: { since: 0 } })
       .then((response) => response.data),
     enabled: Boolean(user?.id),
-    refetchInterval: 15_000,
+    refetchInterval: activeId ? 4_000 : 20_000,
   });
 
+  const knownEventIds = useRef(new Set());
   useEffect(() => {
     const rows = eventsQuery.data?.results || [];
     if (!rows.length) return;
+    const fresh = rows.filter((row) => !knownEventIds.current.has(row.id));
+    rows.forEach((row) => knownEventIds.current.add(row.id));
+    if (!fresh.length) return;
     qc.invalidateQueries({ queryKey: ['chat-conversations'] });
-    if (activeId && rows.some((row) => String(row.conversation) === String(activeId))) {
+    if (activeId && fresh.some((row) => String(row.conversation) === String(activeId))) {
       qc.invalidateQueries({ queryKey: ['chat-messages', activeId] });
     }
     qc.invalidateQueries({ queryKey: ['chat-unread'] });
   }, [eventsQuery.data, activeId, qc]);
 
-  return { conversations, conversationsQuery, messages, messagesQuery, unreadQuery };
+  /** کاربرانی که همین حالا در حال نوشتن‌اند (رویداد typing با عمر کوتاه). */
+  const typingUsers = useMemo(() => {
+    if (!activeId) return [];
+    const rows = eventsQuery.data?.results || [];
+    const now = Date.now();
+    const names = new Map();
+    rows.forEach((row) => {
+      if (row.type !== 'typing') return;
+      if (String(row.conversation) !== String(activeId)) return;
+      const payload = row.payload || {};
+      if (!payload.user || String(payload.user) === String(user?.id)) return;
+      const at = new Date(row.at).getTime();
+      if (!Number.isFinite(at) || now - at > TYPING_WINDOW_MS) return;
+      names.set(String(payload.user), payload.name || 'کاربر');
+    });
+    return Array.from(names.values());
+  }, [eventsQuery.data, activeId, user?.id]);
+
+  const pinnedQuery = useQuery({
+    queryKey: ['chat-pinned', activeId],
+    queryFn: () => axiosInstance
+      .get(`/chat/conversations/${activeId}/pinned/`)
+      .then((response) => response.data),
+    enabled: Boolean(activeId && infoOpen),
+    staleTime: 15_000,
+  });
+
+  return {
+    conversations, conversationsQuery, messages, messagesQuery, unreadQuery,
+    eventsQuery, typingUsers, pinnedQuery,
+  };
 };
-
-
-const ConversationRow = ({ row, active, accent, onSelect }) => {
-  const meta = CHAT_KIND_META[row.kind] || CHAT_KIND_META.group;
-  const Icon = meta.icon;
-  const unread = Number(row.unread_count) || 0;
-  return (
-    <Box
-      onClick={() => onSelect(row)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(event) => { if (event.key === 'Enter') onSelect(row); }}
-      sx={{
-        display: 'flex', gap: 1, alignItems: 'flex-start', px: 1.25, py: 1,
-        cursor: 'pointer', borderRadius: '12px',
-        bgcolor: active ? alpha(accent, 0.1) : 'transparent',
-        border: '1px solid', borderColor: active ? alpha(accent, 0.3) : 'transparent',
-        '&:hover': { bgcolor: active ? alpha(accent, 0.12) : 'action.hover' },
-      }}
-    >
-      <Avatar sx={{
-        width: 38, height: 38, fontSize: 14, fontWeight: 800,
-        bgcolor: alpha(row.color || meta.color, 0.16), color: row.color || meta.color,
-      }}>
-        {row.kind === 'channel'
-          ? <Icon sx={{ fontSize: 18 }} />
-          : String(row.title || 'گ').slice(0, 2)}
-      </Avatar>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Typography noWrap sx={{ fontSize: 12.5, fontWeight: unread ? 900 : 700, color: INK, flex: 1 }}>
-            {row.title || 'گفتگوی خصوصی'}
-          </Typography>
-          <Typography sx={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>
-            {timeLabel(row.last_message_at)}
-          </Typography>
-        </Stack>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Typography noWrap sx={{ fontSize: 11, color: MUTED, flex: 1 }}>
-            {row.last_message?.preview || 'پیامی ثبت نشده است'}
-          </Typography>
-          {unread ? (
-            <Badge color="error" badgeContent={toPersianDigits(unread)} max={99}
-              sx={{ '& .MuiBadge-badge': { fontSize: 9, height: 16, minWidth: 16 } }} />
-          ) : null}
-        </Stack>
-        <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
-          <Chip size="small" label={meta.label} sx={{
-            height: 18, fontSize: 9.5, fontWeight: 800,
-            bgcolor: alpha(meta.color, 0.1), color: meta.color,
-          }} />
-          {row.related_label ? (
-            <Chip size="small" icon={<TagIcon sx={{ fontSize: 12 }} />}
-              label={row.related_label} sx={{ height: 18, fontSize: 9.5, fontWeight: 700 }} />
-          ) : null}
-          {row.is_public ? (
-            <Chip size="small" label="عمومی" sx={{ height: 18, fontSize: 9.5, fontWeight: 700 }} />
-          ) : null}
-        </Stack>
-      </Box>
-    </Box>
-  );
-};
-
 
 
 const DateSeparator = ({ value }) => {
-  const today = new Date();
   const iso = String(value || '').slice(0, 10);
+  const today = new Date();
   const todayIso = today.toISOString().slice(0, 10);
   const yesterday = new Date(today.getTime() - 86400000).toISOString().slice(0, 10);
   const label = iso === todayIso ? 'امروز' : (iso === yesterday ? 'دیروز' : dateLabel(value));
   return (
-    <Stack direction="row" alignItems="center" spacing={1} sx={{ my: 0.4 }}>
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ my: 0.6 }}>
       <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
-      <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: MUTED }}>{label}</Typography>
+      <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: 'text.secondary' }}>
+        {label}
+      </Typography>
       <Box sx={{ flex: 1, height: 1, bgcolor: 'divider' }} />
     </Stack>
   );
 };
 
-const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete, compact = false }) => {
-  const mine = Boolean(message.is_mine);
-  const emojiSize = message.deleted_at ? null : emojiOnlyFontSize(message.body);
+const UnreadDivider = ({ accent }) => (
+  <Stack direction="row" alignItems="center" spacing={0.8} sx={{ my: 0.5 }}
+    data-testid="chat-unread-divider">
+    <Box sx={{ flex: 1, height: 1, bgcolor: alpha(accent, 0.45) }} />
+    <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: accent }}>
+      پیام‌های خوانده‌نشده
+    </Typography>
+    <Box sx={{ flex: 1, height: 1, bgcolor: alpha(accent, 0.45) }} />
+  </Stack>
+);
+
+const TypingIndicator = ({ names, accent }) => {
+  if (!names.length) return null;
+  const text = names.length === 1
+    ? `${names[0]} در حال نوشتن…`
+    : `${toPersianDigits(names.length)} نفر در حال نوشتن…`;
   return (
-    <Box sx={{ display: 'flex', justifyContent: mine ? 'flex-start' : 'flex-end', mt: compact ? -0.5 : 0 }}>
-      <Box sx={{
-        maxWidth: '78%', px: 1.4, py: compact ? 0.7 : 1, borderRadius: '14px',
-        borderTopLeftRadius: mine ? 4 : 14, borderTopRightRadius: mine ? 14 : 4,
-        bgcolor: mine ? accent : 'background.paper',
-        color: mine ? '#ffffff' : (tokens?.colors?.textPrimary || INK),
-        border: '1px solid', borderColor: mine ? alpha(accent, 0.7) : 'divider',
-        boxShadow: tokens?.shadows?.soft || '0 1px 2px rgba(15,23,42,0.06)',
-        '&:hover .chat-msg-actions': { opacity: 1 },
-      }}>
-        {!mine && !compact ? (
-          <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: accent, mb: 0.25 }}>
-            {message.sender_name || 'کاربر'}
-          </Typography>
-        ) : null}
-        {message.reply_to ? (
-          <Box sx={{
-            mb: 0.6, px: 0.9, py: 0.4, borderRadius: '8px',
-            borderInlineStart: `3px solid ${mine ? 'rgba(255,255,255,0.7)' : accent}`,
-            bgcolor: mine ? 'rgba(255,255,255,0.14)' : alpha(accent, 0.07),
-          }}>
-            <Typography sx={{ fontSize: 10, fontWeight: 800 }}>
-              {message.reply_to_sender || 'پاسخ'}
-            </Typography>
-            <Typography noWrap sx={{ fontSize: 10.5, opacity: 0.85 }}>
-              {message.reply_to_preview}
-            </Typography>
-          </Box>
-        ) : null}
-        {message.deleted_at ? (
-          <Typography sx={{ fontSize: 11.5, fontStyle: 'italic', opacity: 0.7 }}>
-            این پیام حذف شده است
-          </Typography>
-        ) : (
-          <Typography
-            data-testid="chat-message-body"
-            data-emoji-only={emojiSize ? 'true' : 'false'}
-            sx={{
-              fontSize: emojiSize || 12.5,
-              lineHeight: emojiSize ? 1.2 : 1.6,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              ...(emojiSize ? {
-                letterSpacing: 0.5,
-                py: 0.2,
-                display: 'inline-block',
-              } : {}),
-            }}
-          >
-            {message.body}
-          </Typography>
-        )}
-        {(message.entity_refs || []).map((ref) => {
-          const meta = ENTITY_MODULE_META[ref.module] || {};
-          const Icon = meta.icon || TagIcon;
-          return (
-            <Box
-              key={ref.id}
-              component={ref.is_accessible && ref.url ? 'a' : 'div'}
-              href={ref.is_accessible && ref.url ? ref.url : undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{
-                mt: 0.6, display: 'flex', alignItems: 'center', gap: 0.6,
-                px: 0.8, py: 0.5, borderRadius: '10px', textDecoration: 'none',
-                border: '1px solid',
-                borderColor: mine ? 'rgba(255,255,255,0.35)' : alpha(meta.color || accent, 0.3),
-                bgcolor: mine ? 'rgba(255,255,255,0.14)' : alpha(meta.color || accent, 0.07),
-                cursor: ref.is_accessible && ref.url ? 'pointer' : 'default',
-                opacity: ref.is_accessible ? 1 : 0.65,
-              }}
-            >
-              <Box sx={{
-                width: 22, height: 22, borderRadius: '6px', display: 'grid',
-                placeItems: 'center', flexShrink: 0,
-                bgcolor: mine ? 'rgba(255,255,255,0.2)' : alpha(meta.color || accent, 0.15),
-                color: mine ? '#fff' : (meta.color || accent),
-              }}>
-                <Icon sx={{ fontSize: 13 }} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 900 }}>
-                  {ref.is_accessible
-                    ? (ref.label || `${meta.label || ref.module} #${ref.object_id}`)
-                    : 'دسترسی به این رکورد ندارید'}
-                </Typography>
-                <Typography noWrap sx={{ fontSize: 9, opacity: 0.8 }}>
-                  {ref.is_accessible ? (meta.label || ref.module) : 'بدون مجوز مشاهده'}
-                </Typography>
-              </Box>
-            </Box>
-          );
-        })}
-        {(message.attachments || []).map((file) => (
-          <Chip
-            key={file.id}
-            size="small"
-            icon={<AttachFileOutlinedIcon sx={{ fontSize: 12 }} />}
-            label={`${file.file_name || file.title} · ${Math.max(1, Math.round((file.size || 0) / 1024))}KB`}
-            component="a"
-            href={file.file_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{
-              mt: 0.5, mr: 0.4, height: 20, fontSize: 9.5, fontWeight: 800,
-              bgcolor: mine ? 'rgba(255,255,255,0.2)' : 'action.hover',
-              color: mine ? '#fff' : INK,
-            }}
-          />
+    <Stack direction="row" spacing={0.5} alignItems="center" data-testid="chat-typing-indicator"
+      sx={{ px: 0.5, py: 0.3 }}>
+      <Box sx={{ display: 'inline-flex', gap: '3px' }}>
+        {[0, 1, 2].map((dot) => (
+          <Box key={dot} sx={{
+            width: 4, height: 4, borderRadius: '50%', bgcolor: accent,
+            animation: 'chatTyping 1.1s infinite',
+            animationDelay: `${dot * 0.15}s`,
+            '@keyframes chatTyping': {
+              '0%, 60%, 100%': { opacity: 0.25, transform: 'translateY(0)' },
+              '30%': { opacity: 1, transform: 'translateY(-2px)' },
+            },
+          }} />
         ))}
-        <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mt: 0.4, opacity: 0.9 }}>
-          <Typography sx={{ fontSize: 9.5 }}>
-            {timeLabel(message.created_at)}{message.edited_at ? ' · ویرایش‌شده' : ''}
-          </Typography>
-          {mine ? (
-            <Tooltip title={receiptLabel(message)}>
-              <DoneAllIcon sx={{ fontSize: 12 }} />
-            </Tooltip>
-          ) : null}
-          <Box sx={{ flex: 1 }} />
-          {message.deleted_at ? null : (
-            <>
-              <Tooltip title="پاسخ">
-                <ReplyIcon sx={{ fontSize: 13, cursor: 'pointer' }} onClick={() => onReply(message)} />
-              </Tooltip>
-              {mine ? (
-                <Tooltip title="ویرایش">
-                  <EditOutlinedIcon sx={{ fontSize: 13, cursor: 'pointer' }}
-                    onClick={() => onEdit(message)} />
-                </Tooltip>
-              ) : null}
-              {mine ? (
-                <Tooltip title="حذف">
-                  <DeleteOutlineIcon sx={{ fontSize: 13, cursor: 'pointer' }}
-                    onClick={() => onDelete(message)} />
-                </Tooltip>
-              ) : null}
-            </>
-          )}
-        </Stack>
       </Box>
-    </Box>
+      <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>{text}</Typography>
+    </Stack>
   );
 };
-
-
 
 const ChatPanel = ({
   initialConversationId = '', syncUrl = true, embedded = false,
   height = 'calc(100vh - 150px)',
 }) => {
-  const theme = useTheme();
-  const { tokens } = useDesignTokens();
-  const { getPalette } = useModulePalette();
+  const look = useChatLook();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [, setSearchParams] = useSearchParams();
+  const accent = look.accent;
 
-  const accent = getPalette('chat')?.accent || getPalette('correspondence')?.accent || ACCENT_FALLBACK;
-  const [activeId, setActiveId] = useState(() => (initialConversationId ? String(initialConversationId) : ''));
-
+  const [activeId, setActiveId] = useState(
+    () => (initialConversationId ? String(initialConversationId) : ''),
+  );
   const [search, setSearch] = useState('');
+  const [threadSearch, setThreadSearch] = useState('');
+  const [threadSearchOpen, setThreadSearchOpen] = useState(false);
+  const [railTab, setRailTab] = useState('all');
+  const [kindFilter, setKindFilter] = useState('all');
+  const [infoOpen, setInfoOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState(null);
-  const [editing, setEditing] = useState(null);
   const [pickedFiles, setPickedFiles] = useState([]);
   const [entityRefs, setEntityRefs] = useState([]);
   const [entityPickerOpen, setEntityPickerOpen] = useState(false);
@@ -398,12 +222,17 @@ const ChatPanel = ({
   const [editValue, setEditValue] = useState('');
   const [editMessage, setEditMessage] = useState(null);
   const [emojiAnchor, setEmojiAnchor] = useState(null);
+  const [highlightId, setHighlightId] = useState(null);
+  const [unreadAfter, setUnreadAfter] = useState(null);
   const composerRef = useRef(null);
   const listEndRef = useRef(null);
+  const messageRefs = useRef({});
+  const typingSentAt = useRef(0);
 
-  const { conversations, conversationsQuery, messages, messagesQuery, unreadQuery } = useChatQueries({
-    user, activeId, search,
-  });
+  const {
+    conversations, conversationsQuery, messages, messagesQuery, unreadQuery,
+    typingUsers, pinnedQuery,
+  } = useChatQueries({ user, activeId, search, threadSearch, infoOpen });
 
   const directoryQuery = useQuery({
     queryKey: ['chat-directory'],
@@ -415,14 +244,62 @@ const ChatPanel = ({
     [directoryQuery.data],
   );
 
+  const membersQuery = useQuery({
+    queryKey: ['chat-members', activeId],
+    queryFn: () => axiosInstance
+      .get(`/chat/conversations/${activeId}/members/`)
+      .then((response) => response.data),
+    enabled: Boolean(activeId && infoOpen),
+    staleTime: 20_000,
+  });
+
   const activeConversation = useMemo(
     () => conversations.find((row) => String(row.id) === String(activeId)) || null,
     [conversations, activeId],
   );
+  const lastReadMarker = activeConversation?.membership?.last_read_message ?? null;
 
   useEffect(() => {
     if (!activeId && conversations.length) setActiveId(String(conversations[0].id));
   }, [conversations, activeId]);
+
+  // نشان «پیام‌های خوانده‌نشده» فقط هنگام ورود به گفتگو محاسبه می‌شود (سبک تلگرام).
+  useEffect(() => {
+    setUnreadAfter(lastReadMarker || null);
+  }, [activeId]); // eslint-disable-line
+
+  // پیش‌نویس هر گفتگو جدا نگه داشته می‌شود.
+  useEffect(() => {
+    if (!activeId) { setDraft(''); return; }
+    try {
+      setDraft(window.localStorage.getItem(draftKeyOf(activeId)) || '');
+    } catch (error) {
+      setDraft('');
+    }
+    setReplyTo(null);
+    setHighlightId(null);
+  }, [activeId]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    try {
+      if (draft) window.localStorage.setItem(draftKeyOf(activeId), draft);
+      else window.localStorage.removeItem(draftKeyOf(activeId));
+    } catch (error) {
+      /* حافظهٔ محلی اختیاری است */
+    }
+  }, [activeId, draft]);
+
+  const scrollToMessage = (messageId) => {
+    const node = messageRefs.current[String(messageId)];
+    setInfoOpen(false);
+    if (!node) return;
+    if (typeof node.scrollIntoView === 'function') {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setHighlightId(String(messageId));
+    window.setTimeout(() => setHighlightId(null), 2600);
+  };
 
   useEffect(() => {
     if (!activeId) return;
@@ -495,6 +372,56 @@ const ChatPanel = ({
     onSuccess: invalidateThread,
     onError: () => setToast('حذف پیام انجام نشد'),
   });
+
+  /** واکنش ایموجی: سرور toggle می‌کند و خلاصهٔ تازه برمی‌گرداند. */
+  const toggleReaction = useMutation({
+    mutationFn: ({ message, emoji }) => axiosInstance
+      .post(`/chat/messages/${message.id}/reactions/`, { emoji }),
+    onSuccess: (response, variables) => {
+      const reactions = response.data?.reactions;
+      if (!Array.isArray(reactions)) return;
+      qc.setQueryData(['chat-messages', activeId, threadSearch], (previous) => {
+        if (!previous) return previous;
+        return {
+          ...previous,
+          results: (previous.results || []).map((row) => (
+            String(row.id) === String(variables.message.id) ? { ...row, reactions } : row
+          )),
+        };
+      });
+    },
+    onError: () => setToast('ثبت واکنش انجام نشد'),
+  });
+
+  /** سنجاق/برداشتن سنجاق پیام. */
+  const togglePin = useMutation({
+    mutationFn: (message) => axiosInstance.post(`/chat/messages/${message.id}/pin/`, {}),
+    onSuccess: () => {
+      invalidateThread();
+      qc.invalidateQueries({ queryKey: ['chat-pinned', activeId] });
+    },
+    onError: () => setToast('سنجاق‌کردن پیام انجام نشد'),
+  });
+
+  /** تنظیمات شخصی گفتگو: سنجاق در فهرست، بی‌صدا، بایگانی. */
+  const updatePrefs = useMutation({
+    mutationFn: (payload) => axiosInstance
+      .post(`/chat/conversations/${activeId}/preferences/`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chat-conversations'] });
+      qc.invalidateQueries({ queryKey: ['chat-typing', activeId] });
+    },
+    onError: () => setToast('ذخیرهٔ تنظیمات گفتگو انجام نشد'),
+  });
+
+  /** اعلام «در حال نوشتن» (throttled؛ هر ۳ ثانیه یک‌بار در هر گفتگو). */
+  const notifyTyping = () => {
+    if (!activeId) return;
+    const now = Date.now();
+    if (now - typingSentAt.current < TYPING_THROTTLE_MS) return;
+    typingSentAt.current = now;
+    axiosInstance.post(`/chat/conversations/${activeId}/typing/`, {}).catch(() => {});
+  };
 
   const createConversation = useMutation({
     mutationFn: () => {
@@ -591,150 +518,122 @@ const ChatPanel = ({
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems="stretch"
         sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
         {/* ---------------- فهرست گفتگوها ---------------- */}
-        <Box sx={{
-          width: { xs: '100%', sm: 300, md: 320, xl: 360 }, flexShrink: 0,
-          display: 'flex', flexDirection: 'column', minHeight: 0,
-          border: '1px solid', borderColor: 'divider', borderRadius: 'var(--hrms-radius-large, 16px)',
-          bgcolor: 'background.paper', overflow: 'hidden',
-        }}>
-          <Box sx={{ px: 1.5, py: 1.25, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Stack direction="row" alignItems="center" spacing={0.75}>
-              <ChatBubbleOutlineIcon sx={{ fontSize: 18, color: accent }} />
-              <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK, flex: 1 }}>
-                گفتگوی سازمانی
-              </Typography>
-              <Tooltip title="گفتگوی خصوصی با یک همکار">
-                <IconButton
-                  size="small" aria-label="گفتگوی خصوصی"
-                  onClick={() => {
-                    setNewForm({ kind: 'direct', title: '', description: '', members: [], user: '' });
-                    setNewDialog(true);
-                  }}
-                  sx={{ color: accent }}
-                >
-                  <PersonAddAltOutlinedIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="گفتگو/کانال جدید">
-                <IconButton size="small" aria-label="گفتگوی جدید" onClick={() => setNewDialog(true)}
-                  sx={{ color: accent, bgcolor: alpha(accent, 0.1) }}>
-                  <AddIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-            <TextField
-              size="small" fullWidth placeholder="جست‌وجو در گفتگوها…" value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16 }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mt: 1, '& .MuiInputBase-input': { fontSize: 11.5 } }}
-            />
-          </Box>
-          <Box sx={{
-            flex: 1, minHeight: 0, overflowY: 'auto', p: 0.75,
-            display: 'flex', flexDirection: 'column', gap: 0.5,
-          }}>
-            {conversationsQuery.isLoading ? (
-              <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={20} /></Box>
-            ) : conversations.length ? (
-              conversations.map((row) => (
-                <ConversationRow
-                  key={row.id} row={row} accent={accent}
-                  active={String(row.id) === String(activeId)}
-                  onSelect={(item) => setActiveId(String(item.id))}
-                />
-              ))
-            ) : (
-              <Box sx={{ py: 4, textAlign: 'center' }}>
-                <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                  هنوز گفتگویی ندارید؛ یک گفتگوی خصوصی با یک همکار شروع کنید.
-                </Typography>
-                <Button
-                  size="small" variant="outlined" sx={{ mt: 1, fontSize: 11 }}
-                  startIcon={<PersonAddAltOutlinedIcon sx={{ fontSize: 15 }} />}
-                  onClick={() => {
-                    setNewForm({ kind: 'direct', title: '', description: '', members: [], user: '' });
-                    setNewDialog(true);
-                  }}
-                >
-                  گفتگوی خصوصی
-                </Button>
-              </Box>
-            )}
-          </Box>
-          <Box sx={{ px: 1.25, py: 0.9, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Stack direction="row" spacing={0.75} alignItems="center">
-              <Badge color="error" badgeContent={toPersianDigits(unreadQuery.data?.mentions || 0)}
-                max={99} invisible={!unreadQuery.data?.mentions}>
-                <AlternateEmailOutlinedIcon sx={{ fontSize: 16, color: MUTED }} />
-              </Badge>
-              <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-                منشن‌های خوانده‌نشده
-              </Typography>
-            </Stack>
-          </Box>
-        </Box>
+        <ChatConversationRail
+          conversations={conversations}
+          activeId={activeId}
+          accent={accent}
+          loading={conversationsQuery.isLoading}
+          unread={unreadQuery.data?.chat || 0}
+          mentions={unreadQuery.data?.mentions || 0}
+          search={search}
+          onSearch={setSearch}
+          tab={railTab}
+          onTab={setRailTab}
+          kindFilter={kindFilter}
+          onKindFilter={setKindFilter}
+          onSelect={(item) => { setActiveId(String(item.id)); setThreadSearch(''); }}
+          onNewDirect={() => {
+            setNewForm({ kind: 'direct', title: '', description: '', members: [], user: '' });
+            setNewDialog(true);
+          }}
+          onNewChat={() => setNewDialog(true)}
+        />
 
         {/* ---------------- رشتهٔ پیام‌ها ---------------- */}
         <Box sx={{
           flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
           border: '1px solid', borderColor: 'divider',
-          borderRadius: 'var(--hrms-radius-large, 16px)',
-          bgcolor: theme.palette.mode === 'dark'
-            ? alpha('#ffffff', 0.02)
-            : alpha('#f8fafc', 0.9),
+          borderRadius: 'var(--hrms-radius-large, 18px)',
+          bgcolor: look.dark ? alpha('#ffffff', 0.02) : alpha('#f8fafc', 0.9),
           overflow: 'hidden',
         }}>
           {activeConversation ? (
             <>
               <Box sx={{
-                px: 1.5, py: 1.1, borderBottom: '1px solid', borderColor: 'divider',
-                bgcolor: 'background.paper', display: 'flex', alignItems: 'center', gap: 1,
+                px: 1.4, py: 1, borderBottom: '1px solid', borderColor: 'divider',
+                bgcolor: 'background.paper',
               }}>
-                <Avatar sx={{
-                  width: 34, height: 34, fontSize: 13, fontWeight: 800,
-                  bgcolor: alpha(accent, 0.14), color: accent,
-                }}>
-                  {String(activeConversation.title || 'گ').slice(0, 2)}
-                </Avatar>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>
-                    {activeConversation.title || 'گفتگوی خصوصی'}
-                  </Typography>
-                  <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                    <Typography sx={{ fontSize: 10, color: MUTED }}>
-                      {CHAT_KIND_META[activeConversation.kind]?.label}
-                      {' · '}
-                      {toPersianDigits(activeConversation.member_count || 0)} عضو
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Avatar sx={{
+                    width: 36, height: 36, fontSize: 12.5, fontWeight: 800,
+                    bgcolor: alpha(accent, 0.14), color: accent,
+                  }}>
+                    {activeConversation.kind === 'channel'
+                      ? (() => {
+                        const KindIcon = kindMetaOf(activeConversation).icon;
+                        return <KindIcon sx={{ fontSize: 18 }} />;
+                      })()
+                      : initialsOf(activeConversation)}
+                  </Avatar>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 900, color: 'text.primary' }}>
+                      {activeConversation.title || 'گفتگوی خصوصی'}
                     </Typography>
-                    {activeConversation.related_label ? (
-                      <Chip size="small" icon={<TagIcon sx={{ fontSize: 11 }} />}
-                        label={activeConversation.related_label} sx={chipTone} />
-                    ) : null}
-                  </Stack>
-                </Box>
-                <Tooltip title="اعضا">
-                  <IconButton size="small" aria-label="اعضای گفتگو"
-                    onClick={() => setMembersDialog(true)}>
-                    <GroupOutlinedIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="بستن">
-                  <IconButton size="small" aria-label="بستن گفتگو" onClick={() => setActiveId('')}>
-                    <CloseIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                </Tooltip>
+                    <Stack direction="row" spacing={0.6} alignItems="center" sx={{ minHeight: 16 }}>
+                      {typingUsers.length ? (
+                        <TypingIndicator names={typingUsers} accent={accent} />
+                      ) : (
+                        <>
+                          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
+                            {kindMetaOf(activeConversation).label}
+                            {' · '}
+                            {toPersianDigits(activeConversation.member_count || 0)} عضو
+                          </Typography>
+                          {activeConversation.related_label ? (
+                            <Chip size="small" icon={<TagIcon sx={{ fontSize: 11 }} />}
+                              label={activeConversation.related_label} sx={chipTone} />
+                          ) : null}
+                        </>
+                      )}
+                    </Stack>
+                  </Box>
+                  <Tooltip title="جست‌وجو در این گفتگو">
+                    <IconButton size="small" aria-label="جست‌وجو در گفتگو"
+                      onClick={() => {
+                        setThreadSearchOpen((open) => !open);
+                        if (threadSearchOpen) setThreadSearch('');
+                      }}>
+                      <SearchIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="اطلاعات و پیام‌های سنجاق‌شده">
+                    <IconButton size="small" aria-label="اطلاعات گفتگو"
+                      onClick={() => setInfoOpen((open) => !open)}>
+                      <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="اعضا">
+                    <IconButton size="small" aria-label="اعضای گفتگو"
+                      onClick={() => setMembersDialog(true)}>
+                      <GroupOutlinedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="بستن">
+                    <IconButton size="small" aria-label="بستن گفتگو" onClick={() => setActiveId('')}>
+                      <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+                {threadSearchOpen ? (
+                  <TextField
+                    size="small" fullWidth autoFocus
+                    sx={{ mt: 0.8, '& .MuiInputBase-input': { fontSize: 11.5 } }}
+                    placeholder="جست‌وجو در پیام‌های این گفتگو…"
+                    value={threadSearch}
+                    onChange={(event) => setThreadSearch(event.target.value)}
+                    inputProps={{ 'aria-label': 'جست‌وجو در پیام‌ها' }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ fontSize: 15 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                ) : null}
               </Box>
 
-              <Box sx={{
-                flex: 1, minHeight: 0, overflowY: 'auto', px: 1.5, py: 1.25,
-                display: 'flex', flexDirection: 'column', gap: 0.9,
-              }}>
+              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 1.4, py: 1.1 }}>
                 {messagesQuery.isLoading ? (
                   <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={20} /></Box>
                 ) : messages.length ? (
@@ -743,6 +642,9 @@ const ChatPanel = ({
                     const day = String(message.created_at || '').slice(0, 10);
                     const prevDay = previous ? String(previous.created_at || '').slice(0, 10) : '';
                     const showDate = Boolean(day) && day !== prevDay;
+                    const showUnread = Boolean(unreadAfter)
+                      && Number(message.id) > Number(unreadAfter)
+                      && (!previous || Number(previous.id) <= Number(unreadAfter));
                     const compact = Boolean(
                       previous && !showDate && previous.sender === message.sender
                       && previous.sender
@@ -752,20 +654,34 @@ const ChatPanel = ({
                     return (
                       <React.Fragment key={message.id}>
                         {showDate ? <DateSeparator value={message.created_at} /> : null}
-                        <MessageBubble
-                          message={message} accent={accent} tokens={tokens} compact={compact}
-                          onReply={setReplyTo}
-                          onEdit={(row) => { setEditMessage(row); setEditValue(row.body || ''); }}
-                          onDelete={(row) => removeMessage.mutate(row)}
-                        />
+                        {showUnread ? <UnreadDivider accent={accent} /> : null}
+                        <Box ref={(node) => {
+                          if (node) messageRefs.current[String(message.id)] = node;
+                          else delete messageRefs.current[String(message.id)];
+                        }}>
+                          <ChatMessageBubble
+                            message={message}
+                            look={look}
+                            compact={compact}
+                            highlight={String(highlightId || '') === String(message.id)}
+                            onReply={setReplyTo}
+                            onEdit={(row) => { setEditMessage(row); setEditValue(row.body || ''); }}
+                            onDelete={(row) => removeMessage.mutate(row)}
+                            onPin={(row) => togglePin.mutate(row)}
+                            onReact={(row, emoji) => toggleReaction.mutate({ message: row, emoji })}
+                            onJumpTo={scrollToMessage}
+                          />
+                        </Box>
                       </React.Fragment>
                     );
                   })
                 ) : (
                   <Box sx={{ py: 5, textAlign: 'center' }}>
                     <ChatBubbleOutlineIcon sx={{ fontSize: 34, color: alpha(accent, 0.5), mb: 0.5 }} />
-                    <Typography sx={{ fontSize: 12, color: MUTED }}>
-                      هنوز پیامی ثبت نشده است؛ اولین پیام را بفرستید.
+                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                      {threadSearch
+                        ? 'پیامی با این عبارت پیدا نشد.'
+                        : 'هنوز پیامی ثبت نشده است؛ اولین پیام را بفرستید.'}
                     </Typography>
                   </Box>
                 )}
@@ -773,11 +689,15 @@ const ChatPanel = ({
               </Box>
 
 
-              <Box sx={{ borderTop: '1px solid', borderColor: 'divider', p: 1, bgcolor: 'background.paper' }}>
+              <Box sx={{
+                borderTop: '1px solid', borderColor: 'divider', p: 0.9,
+                bgcolor: 'background.paper',
+              }}>
                 {replyTo ? (
-                  <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.75 }}>
+                  <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.7 }}
+                    data-testid="chat-reply-bar">
                     <ReplyIcon sx={{ fontSize: 15, color: accent }} />
-                    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, flex: 1 }}>
+                    <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary', flex: 1 }}>
                       پاسخ به {replyTo.sender_name}: {replyTo.body}
                     </Typography>
                     <IconButton size="small" aria-label="لغو پاسخ" onClick={() => setReplyTo(null)}>
@@ -802,12 +722,12 @@ const ChatPanel = ({
                   <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.6 }}>
                     {entityRefs.map((entity, index) => {
                       const meta = ENTITY_MODULE_META[entity.module] || {};
-                      const Icon = meta.icon || TagIcon;
+                      const EntityIcon = meta.icon || TagIcon;
                       return (
                         <Chip
                           key={`${entity.module}-${entity.object_id}-${index}`}
                           size="small"
-                          icon={<Icon sx={{ fontSize: 12 }} />}
+                          icon={<EntityIcon sx={{ fontSize: 12 }} />}
                           label={entity.label || `${meta.label || entity.module} #${entity.object_id}`}
                           onDelete={() => setEntityRefs((rows) => rows.filter((_, i) => i !== index))}
                           sx={{
@@ -820,19 +740,20 @@ const ChatPanel = ({
                     })}
                   </Stack>
                 ) : null}
-                <Stack direction="row" spacing={0.6} alignItems="flex-end">
+                <Stack direction="row" spacing={0.5} alignItems="flex-end">
                   <TextField
                     size="small" fullWidth multiline maxRows={4} value={draft}
                     inputRef={composerRef}
                     placeholder="پیام خود را بنویسید… (Shift+Enter برای خط جدید)"
-                    onChange={(event) => setDraft(event.target.value)}
+                    onChange={(event) => { setDraft(event.target.value); notifyTyping(); }}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' && !event.shiftKey) {
                         event.preventDefault();
                         submit();
                       }
                     }}
-                    sx={{ '& .MuiInputBase-input': { fontSize: 12 } }}
+                    sx={{ '& .MuiInputBase-root': { borderRadius: '12px' },
+                      '& .MuiInputBase-input': { fontSize: 12 } }}
                   />
                   <Tooltip title="ایموجی">
                     <IconButton
@@ -865,25 +786,32 @@ const ChatPanel = ({
                     startIcon={<SendIcon sx={{ fontSize: 16 }} />}
                     sx={{
                       bgcolor: accent, '&:hover': { bgcolor: accent },
-                      minWidth: 80, fontSize: 11.5,
+                      minWidth: 80, fontSize: 11.5, borderRadius: '11px',
                     }}
                   >
                     ارسال
                   </Button>
                 </Stack>
 
-                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.6 }}>
+
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.55 }}>
                   <Tooltip title="الصاق رکورد از ماژول‌ها (قرارداد، پروژه، سند، نامه…)">
                     <Button
                       size="small" variant="outlined" startIcon={<TagIcon sx={{ fontSize: 15 }} />}
                       onClick={() => setEntityPickerOpen(true)}
-                      sx={{ fontSize: 10.5, height: 26, borderColor: alpha(accent, 0.35), color: accent }}
+                      sx={{
+                        fontSize: 10.5, height: 26,
+                        borderColor: alpha(accent, 0.35), color: accent,
+                      }}
                     >
                       الصاق رکورد
                     </Button>
                   </Tooltip>
-                  <Typography sx={{ fontSize: 9.5, color: MUTED }}>
+                  <Typography sx={{ fontSize: 9.5, color: 'text.secondary', flex: 1 }}>
                     داده کپی نمی‌شود؛ فقط ارجاع به رکورد اصلی الصاق می‌شود.
+                  </Typography>
+                  <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }}>
+                    {toPersianDigits((draft || '').length)} نویسه
                   </Typography>
                 </Stack>
               </Box>
@@ -892,16 +820,32 @@ const ChatPanel = ({
             <Box sx={{ flex: 1, display: 'grid', placeItems: 'center', p: 3 }}>
               <Box sx={{ textAlign: 'center' }}>
                 <ChatBubbleOutlineIcon sx={{ fontSize: 46, color: alpha(accent, 0.4) }} />
-                <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK, mt: 1 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 900, color: 'text.primary', mt: 1 }}>
                   یک گفتگو انتخاب کنید
                 </Typography>
-                <Typography sx={{ fontSize: 11.5, color: MUTED, mt: 0.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.5 }}>
                   پیام‌ها رمزنگاری‌شده‌اند و فقط اعضای گفتگو آن‌ها را می‌بینند.
                 </Typography>
               </Box>
             </Box>
           )}
         </Box>
+
+        {infoOpen && activeConversation ? (
+          <ChatInfoPanel
+            look={look}
+            conversation={activeConversation}
+            members={Array.isArray(membersQuery.data) ? membersQuery.data : []}
+            pinned={Array.isArray(pinnedQuery.data) ? pinnedQuery.data : []}
+            pinnedLoading={pinnedQuery.isLoading}
+            onClose={() => setInfoOpen(false)}
+            onPrefs={(payload) => updatePrefs.mutate(payload)}
+            onManageMembers={() => setMembersDialog(true)}
+            onOpenFull={() => navigate(`/chat?conversation=${activeId}`)}
+            onJumpTo={scrollToMessage}
+          />
+        ) : null}
+
 
       </Stack>
 
