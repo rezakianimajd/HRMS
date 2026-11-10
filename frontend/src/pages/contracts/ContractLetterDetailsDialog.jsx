@@ -38,7 +38,7 @@ const ContractLetterDetailsDialog = ({ letter: incomingLetter, onClose }) => {
     staleTime: 60 * 1000,
   });
   const letter = detail && detail.id ? detail : incomingLetter;
-  const previewFiles = (letter?.attachments || []).filter((file) => file?.file_url);
+  const previewFiles = (letter?.attachments || []).filter((file) => file?.file_url || file?.preview_url);
 
   return (
   <>

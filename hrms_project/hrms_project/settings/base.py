@@ -105,6 +105,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'hrms_project.urls'
 
+# پیش‌نمایش پیوست‌ها/نامه‌ها در iframe همان دامنه مجاز است (X-Frame-Options: SAMEORIGIN).
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

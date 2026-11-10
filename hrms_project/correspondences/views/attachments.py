@@ -24,6 +24,9 @@ from correspondences.views.base import (  # noqa: F401 — واردات مشتر
     _log_event, _my_name_variants, _my_referral_filter, _raw_referral_names_for, _truthy,
     _user_employee, _user_name, _user_of_employee,
 )
+from django.http import StreamingHttpResponse
+
+from correspondences.downloads import PREVIEW_HEADERS, iter_chunks, parse_range
 
 
 class LetterAttachmentViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
@@ -129,10 +132,36 @@ class LetterAttachmentViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
         inline = _truthy(request.query_params.get('inline')) and is_inline_safe(storage_name)
         file_name = storage_name.rsplit('/', 1)[-1] or 'attachment'
-        response = FileResponse(handle, as_attachment=not inline, filename=file_name)
-        response['Content-Type'] = content_type_of(file_name)
+        content_type = content_type_of(file_name)
+        try:
+            size = attachment.file.size
+        except (OSError, ValueError):
+            size = 0
+
+        # نمایشگر PDF مرورگر برای فایل بزرگ درخواست بازه‌ای (Range) می‌فرستد
+        chunk = parse_range(request.headers.get('Range'), size) if inline else None
+        if chunk:
+            start, end = chunk
+            handle.seek(start)
+            response = StreamingHttpResponse(
+                iter_chunks(handle, end - start + 1),
+                status=206, content_type=content_type,
+            )
+            response['Content-Range'] = f'bytes {start}-{end}/{size}'
+            response['Content-Length'] = str(end - start + 1)
+            if not inline:
+                response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+        else:
+            response = FileResponse(handle, as_attachment=not inline, filename=file_name)
+            response['Content-Type'] = content_type
+            if not inline:
+                response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+
         response['X-Content-Type-Options'] = 'nosniff'
+        response['Accept-Ranges'] = 'bytes'
         response['Cache-Control'] = 'private, max-age=600'
+        for header, value in PREVIEW_HEADERS.items():
+            response[header] = value
         return response
 
 

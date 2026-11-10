@@ -18,7 +18,7 @@ const MUTED = '#64748b';
 const ACCENT = '#0369a1';
 
 const fileNameOf = (item) => {
-  const raw = item?.file_name || item?.name || item?.title || item?.file_url || '';
+  const raw = item?.file_name || item?.name || item?.title || item?.file_url || item?.preview_url || '';
   const clean = String(raw).split('?')[0].split('#')[0];
   const tail = clean.split('/').pop() || clean;
   try {
@@ -28,9 +28,24 @@ const fileNameOf = (item) => {
   }
 };
 
+const EXTENSION_RE = /\.([a-z0-9]{1,6})(?=[?#]|$)/i;
+
+/**
+ * پسوند فایل از هر نشانه‌ای که در دسترس است.
+ *
+ * لینک امن دانلود (``?t=…&inline=1``) پسوند ندارد و عنوان فارسی هم معمولاً
+ * بدون پسوند است؛ پس همهٔ گزینه‌ها بررسی می‌شوند تا نوع پیش‌نمایش درست انتخاب شود.
+ */
 const extensionOf = (item) => {
-  const match = /\.([a-z0-9]{1,6})$/i.exec(fileNameOf(item));
-  return (match ? match[1] : '').toLowerCase();
+  const candidates = [
+    item?.file_name, item?.name, item?.file, item?.file_url, item?.url,
+    item?.preview_url, item?.download_url, item?.title,
+  ];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const match = EXTENSION_RE.exec(String(candidates[index] || ''));
+    if (match) return match[1].toLowerCase();
+  }
+  return '';
 };
 
 const previewKindOf = (item) => {
@@ -42,6 +57,24 @@ const previewKindOf = (item) => {
   }
   if (['txt', 'csv', 'log', 'json', 'xml'].includes(extension) || hint.startsWith('text/')) return 'text';
   return 'other';
+};
+
+/**
+ * آدرس‌های یک پیوست:
+ * - ``previewUrl``: اندپوینت امن با توکن و ``inline=1`` (برای iframe/تصویر/تب جدید)
+ * - ``downloadUrl``: همان اندپوینت بدون inline (دریافت فایل)
+ * - ``fileUrl``: لینک مستقیم رسانه (fallback ماژول‌هایی که توکن ندارند)
+ */
+export const attachmentUrls = (item) => {
+  const preview = String(item?.preview_url || '').trim();
+  const direct = String(item?.file_url || item?.url || '').trim();
+  const download = String(item?.download_url || '').trim();
+  const previewUrl = preview || direct;
+  return {
+    previewUrl,
+    fileUrl: direct || previewUrl,
+    downloadUrl: download || direct || previewUrl,
+  };
 };
 
 export const fileSizeLabel = (bytes) => {
@@ -64,27 +97,45 @@ const AttachmentPreviewDialog = ({
   open = false, items = [], index = 0, title = '', onClose, accent = ACCENT,
 }) => {
   const files = useMemo(
-    () => (Array.isArray(items) ? items.filter((item) => item && (item.file_url || item.url)) : []),
+    () => (Array.isArray(items)
+      ? items.filter((item) => item && (item.file_url || item.url || item.preview_url))
+      : []),
     [items],
   );
   const [current, setCurrent] = useState(0);
+  const [mediaState, setMediaState] = useState('loading');
 
   useEffect(() => {
     if (!open) return;
     setCurrent(Math.min(Math.max(Number(index) || 0, 0), Math.max(files.length - 1, 0)));
   }, [open, index, files.length]);
 
+  const safeIndex = Math.min(Math.max(current, 0), Math.max(files.length - 1, 0));
+  const activeFile = files[safeIndex] || null;
+  const { previewUrl, downloadUrl } = attachmentUrls(activeFile);
+
+  // اگر مرورگر پیش‌نمایش درون‌برنامه‌ای را نتوانست نمایش دهد (مسدود/کند)،
+  // راهنمای «باز کردن در تب جدید» را نشان می‌دهیم.
+  useEffect(() => {
+    if (!open || !previewUrl) return undefined;
+    setMediaState('loading');
+    const timer = setTimeout(() => setMediaState((state) => (
+      state === 'loaded' ? state : 'slow'
+    )), 8000);
+    return () => clearTimeout(timer);
+  }, [open, previewUrl]);
+
   if (!open || !files.length) return null;
 
-  const safeIndex = Math.min(Math.max(current, 0), files.length - 1);
-  const active = files[safeIndex];
-  const url = active.file_url || active.url;
+  const active = activeFile;
+  const url = previewUrl;
   const name = fileNameOf(active);
   const heading = (active.title || '').trim();
   const kind = previewKindOf(active);
   const size = fileSizeLabel(active.size);
   const kindLabel = active.kind_display || active.document_type || 'پیوست';
   const canNavigate = files.length > 1;
+  const showFallbackHint = mediaState === 'slow' || mediaState === 'error';
 
   const go = (step) => setCurrent((previous) => {
     const next = previous + step;
@@ -98,7 +149,9 @@ const AttachmentPreviewDialog = ({
         <Box
           component="iframe"
           title={name || 'پیش‌نمایش پیوست'}
-          src={`${url}#view=FitH`}
+          src={kind === 'pdf' ? `${url}#view=FitH` : url}
+          onLoad={() => setMediaState('loaded')}
+          onError={() => setMediaState('error')}
           sx={{
             width: '100%', height: { xs: '60vh', md: '70vh' }, border: 0,
             borderRadius: '12px', bgcolor: '#fff', display: 'block',
@@ -113,6 +166,8 @@ const AttachmentPreviewDialog = ({
             component="img"
             src={url}
             alt={name || 'پیش‌نمایش تصویر'}
+            onLoad={() => setMediaState('loaded')}
+            onError={() => setMediaState('error')}
             sx={{
               maxWidth: '100%', maxHeight: { xs: '58vh', md: '68vh' },
               objectFit: 'contain', borderRadius: '8px',
@@ -134,6 +189,26 @@ const AttachmentPreviewDialog = ({
           فایل را در تب جدید باز کنید یا دریافت کنید.
         </Typography>
       </Box>
+    );
+  };
+
+  const renderFallbackHint = () => {
+    if (!showFallbackHint || (kind !== 'pdf' && kind !== 'text' && kind !== 'image')) return null;
+    return (
+      <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center"
+        sx={{
+          mt: 1, px: 1.25, py: 0.75, borderRadius: '10px',
+          bgcolor: alpha('#b45309', 0.07), border: '1px solid', borderColor: alpha('#b45309', 0.28),
+        }}>
+        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: '#92400e' }}>
+          پیش‌نمایش درون‌برنامه‌ای نمایش داده نشد؛ فایل را در تب جدید باز کنید.
+        </Typography>
+        <Button size="small" variant="outlined" startIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
+          component="a" href={url} target="_blank" rel="noopener noreferrer"
+          sx={{ height: 24, fontSize: 11, fontWeight: 800, borderColor: alpha('#b45309', 0.4), color: '#92400e' }}>
+          باز کردن در تب جدید
+        </Button>
+      </Stack>
     );
   };
 
@@ -192,6 +267,7 @@ const AttachmentPreviewDialog = ({
       </DialogTitle>
       <DialogContent dividers sx={{ bgcolor: '#f1f5f9' }}>
         {renderBody()}
+        {renderFallbackHint()}
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1 }}>
         <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ flex: 1 }}>
@@ -200,7 +276,7 @@ const AttachmentPreviewDialog = ({
             باز کردن در تب جدید
           </Button>
           <Button size="small" variant="contained" startIcon={<DownloadIcon />}
-            component="a" href={url} download={name || undefined}
+            component="a" href={downloadUrl} download={name || undefined}
             sx={{ bgcolor: accent, '&:hover': { bgcolor: accent } }}>
             دریافت فایل
           </Button>

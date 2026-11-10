@@ -327,9 +327,15 @@ PROVIDERS['<module>'] = [
 4. آپلود فایل ماژول: `core/engines/archive_storage_engine.resolve_upload_path(company_id, module_key, fields, filename, fallback_dir=…)` → `archive/company_<id>/<root>/<entity>/<uuid.ext>`.
 
 ### 7.6 پیوست + پیش‌نمایش (بدون دانلود)
-- serializer پیوست: `file_url` مطلق (`request.build_absolute_uri(obj.file.url)`).
+- serializer پیوست: `file_url` (لینک مستقیم رسانه) + `download_url` + `preview_url` (`?t=<توکن>&inline=1`).
+- فرانت: **همیشه `preview_url` برای iframe/`img`/«تب جدید» و `download_url` برای «دریافت»** استفاده شود
+  (`AttachmentPreviewDialog.attachmentUrls`).
+- ⚠️ پیش‌نمایش در iframe فقط با `X_FRAME_OPTIONS='SAMEORIGIN'` (settings) + هدرهای `downloads.PREVIEW_HEADERS`
+  + بلوک `/media/` در nginx کار می‌کند؛ `DENY` ⇒ خطای «refused to connect».
+- اندپوینت دانلود از **HTTP Range** پشتیبانی می‌کند (`206` + `Content-Range`) تا نمایشگر PDF فایل بزرگ را
+  تکه‌تکه بخواند.
 - فرانت: `<AttachmentPreviewDialog open items={files} index={i} title={subject} onClose={…} />` و دکمه با `aria-label="مشاهدهٔ پیوست"`.
-- در فهرست سبک، پیوست‌های فشرده (`id/title/kind_display/file_url/size`) را نگه دارید تا پیش‌نمایش بدون درخواست اضافه باز شود.
+- در فهرست سبک، پیوست‌های فشرده (`id/title/kind_display/file_url/download_url/preview_url/size`) را نگه دارید تا پیش‌نمایش بدون درخواست اضافه باز شود.
 
 
 ---
@@ -553,13 +559,46 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    همچنین `deploy-frontend.ps1` در اجرای detached می‌تواند در مرحلهٔ ۳/۴ روی SSH معلق بماند؛ در آن حالت
    `tar -czf` + `scp` بفرستید و جای‌گذاری اتمیک را با یک دستور تک‌خطی ssh انجام دهید
    (`mv build build.old.$(date +%s)` → `mv $TMP/build build` → `chmod -R u=rwX,g=rX,o=rX`).
+17. **پیش‌نمایش iframe با `X_FRAME_OPTIONS='DENY'` می‌شکند** («refused to connect»): برای قاب‌گرفتن فایل‌های
+   خودمان `SAMEORIGIN` بگذارید (settings + nginx `/media/`) و در پاسخ دانلود هم صریح
+   `X-Frame-Options` + `frame-ancestors 'self'` بدهید. علاوه بر این، نمایشگر PDF مرورگر برای فایل‌های
+   بزرگ **Range** می‌خواهد؛ بدون پاسخ `206`/`Accept-Ranges` پیش‌نمایش ناقص/کند می‌شود.
+18. **در PowerShell داخل `ssh "... \\$VAR"` متغیر محلی خالی می‌شود.** برای اسکریپت‌های چندخطی سرور، یک فایل
+   `.sh` بسازید، `scp` کنید، `sed -i 's/\r$//'` بزنید و `sudo bash /var/tmp/x.sh` اجرا کنید.
 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `feat(correspondence): return contract letters to the internal desk and attach their scans`
-- **Live:** frontend `main.4abebba7.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص)، `correspondences.0021` (گروه‌های شماره‌گذاری) و `correspondences.0022` (تاریخ نامهٔ اختیاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + اصلاح شمارندهٔ شماره‌گذاری پیشنهادی + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **Last commit:** `fix(correspondence): make attachment previews embed inside the app again`
+- **Live:** frontend `main.0f51c230.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص)، `correspondences.0021` (گروه‌های شماره‌گذاری) و `correspondences.0022` (تاریخ نامهٔ اختیاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + اصلاح شمارندهٔ شماره‌گذاری پیشنهادی + پیش‌نمایش درون‌برنامه‌ای پیوست‌ها + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **پیش‌نمایش پیوست‌ها داخل برنامه (۲۰۲۶-۱۱-۱۰ — رفع «refused to connect»):** پیش‌نمایش PDF در
+  iframe خطای مرورگر می‌داد و فقط «باز کردن در تب جدید» کار می‌کرد؛ علت‌ها و اصلاح‌ها:
+  - **علت اصلی:** در فهرست مکاتبات، `previewItems` آدرس امن اندپوینت (`/api/letter-attachments/{id}/download/?t=…&inline=1`)
+    را در `file_url` می‌گذاشت و جنگو با `X_FRAME_OPTIONS='DENY'` (production) پاسخ می‌داد ⇒ مرورگر قاب را
+    مسدود می‌کرد.
+  - **بک‌اند:** `X_FRAME_OPTIONS = 'SAMEORIGIN'` در `base.py` و `production.py` (ضد clickjacking برای
+    سایت‌های دیگر حفظ می‌شود) + هدرهای صریح روی پاسخ دانلود (`downloads.PREVIEW_HEADERS`:
+    `X-Frame-Options: SAMEORIGIN` و CSP `default-src 'self'; script-src 'none'; object-src 'self';
+    base-uri 'none'; frame-ancestors 'self'`) + پشتیبانی **HTTP Range** (`parse_range`/`iter_chunks` →
+    پاسخ `206` با `Content-Range`) تا نمایشگر PDF مرورگر فایل را تکه‌تکه بخواند؛ `Accept-Ranges: bytes`
+    و `Content-Disposition: inline` برای PDF/تصویر.
+  - **nginx (`/etc/nginx/sites-enabled/hrms`، بلوک `location /media/`):** پیش‌تر تنها `nosniff` و یک CSP
+    با `default-src 'none'` داشت؛ حالا `X-Frame-Options "SAMEORIGIN"` و CSP
+    `default-src 'self'; script-src 'none'; object-src 'self'; base-uri 'none'; frame-ancestors 'self'`
+    (بکاپ: `/var/tmp/hrms.nginx.bak`).
+  - **فرانت (`AttachmentPreviewDialog.jsx`):** تابع `attachmentUrls()` — پیش‌نمایش و «تب جدید» از
+    `preview_url`، دکمهٔ «دریافت» از `download_url`، و fallback به `file_url/url`. تشخیص نوع فایل حالا از
+    **همهٔ** نشانه‌ها (`file_name`/`file`/`file_url`/`preview_url`/`download_url`/`title`) پسوند می‌گیرد
+    (قبلاً عنوان فارسی بدون پسوند باعث می‌شد PDF «پیش‌نمایش ممکن نیست» شود). اگر iframe تا ۸ ثانیه
+    لود نشود یا تصویر خطا بدهد، نوار راهنمای «باز کردن در تب جدید» نمایش داده می‌شود.
+  - `LetterAttachmentBriefSerializer` هم `download_url` گرفت؛ `CorrespondenceLettersPage.previewItems`
+    دیگر `file_url` را بازنویسی نمی‌کند؛ `ContractLetterDetailsDialog` آیتم‌های `preview_url`-دار را هم می‌پذیرد.
+  - تست: `correspondences/tests_permissions.py` (+۷ تست: هدرها، تنظیم SAMEORIGIN، Range کامل/باز/پسوندی/نامعتبر،
+    `iter_chunks`) → **۲۳۹ تست** سبز؛ `__tests__/attachmentPreviewDialog.test.js` (۵ تست) و
+    `correspondenceSmoke` (۱۷) سبز. تأیید زنده: پاسخ دانلود ۲۰۰ با `X-Frame-Options: SAMEORIGIN` و
+    `Content-Disposition: inline`؛ درخواست `Range: bytes=0-1023` → **۲۰۶** با `Content-Range`؛
+    `/media/…pdf` هم `X-Frame-Options: SAMEORIGIN` می‌دهد.
 - **قراردادها به دفتر داخلی برگشتند + الصاق ۳۳۸ پیوست (۲۰۲۶-۱۱-۱۰، تصمیم کاربر):** ۴۲۰ نامهٔ
   شیت «قرارداد» از **صادره → داخلی** منتقل شدند (`direction='internal'`) و پیوست‌های همان شیت
   (هایپرلینک‌های اکسل) استخراج و به نامه‌ها الصاق شد:

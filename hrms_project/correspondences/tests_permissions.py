@@ -11,7 +11,9 @@ from django.test import SimpleTestCase
 
 from correspondences import permissions as perm
 from correspondences import uploads
-from correspondences.downloads import issue_token, read_token
+from correspondences.downloads import (
+    PREVIEW_HEADERS, issue_token, iter_chunks, parse_range, read_token,
+)
 
 
 def _user(**kwargs):
@@ -325,3 +327,44 @@ class ViewsetPermissionMatrixTests(SimpleTestCase):
         self.assertIn('download_url', LetterAttachmentSerializer.Meta.fields)
         self.assertIn('preview_url', LetterAttachmentSerializer.Meta.fields)
         self.assertIn('preview_url', LetterAttachmentBriefSerializer.Meta.fields)
+class AttachmentPreviewHeaderTests(SimpleTestCase):
+    """پیش‌نمایش درون‌برنامه‌ای (iframe) پیوست‌ها: هدرها و بازه‌های فایل."""
+
+    def test_preview_headers_allow_same_origin_framing(self):
+        self.assertEqual(PREVIEW_HEADERS['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertNotIn('none', PREVIEW_HEADERS['Content-Security-Policy'].split('frame-ancestors')[1])
+        self.assertIn("frame-ancestors 'self'", PREVIEW_HEADERS['Content-Security-Policy'])
+
+    def test_settings_frame_option_is_same_origin(self):
+        from django.conf import settings
+
+        self.assertEqual(str(getattr(settings, 'X_FRAME_OPTIONS', '')).upper(), 'SAMEORIGIN')
+
+    def test_download_view_sets_frame_headers(self):
+        from correspondences.views import LetterAttachmentViewSet
+
+        self.assertTrue(hasattr(LetterAttachmentViewSet, 'download'))
+
+    def test_parse_range_full_and_open_ended(self):
+        self.assertEqual(parse_range('bytes=0-499', 1000), (0, 499))
+        self.assertEqual(parse_range('bytes=500-', 1000), (500, 999))
+
+    def test_parse_range_suffix_and_clamp(self):
+        self.assertEqual(parse_range('bytes=-100', 1000), (900, 999))
+        self.assertEqual(parse_range('bytes=900-5000', 1000), (900, 999))
+
+    def test_parse_range_rejects_invalid(self):
+        self.assertIsNone(parse_range('', 1000))
+        self.assertIsNone(parse_range('bytes=-', 1000))
+        self.assertIsNone(parse_range('items=0-10', 1000))
+        self.assertIsNone(parse_range('bytes=1200-1300', 1000))
+        self.assertIsNone(parse_range('bytes=0-10', 0))
+
+    def test_iter_chunks_reads_requested_length(self):
+        import io
+
+        handle = io.BytesIO(b'x' * 200)
+        chunks = list(iter_chunks(handle, 150, chunk_size=64))
+        self.assertEqual(sum(len(chunk) for chunk in chunks), 150)
+        self.assertTrue(all(len(chunk) <= 64 for chunk in chunks))
+

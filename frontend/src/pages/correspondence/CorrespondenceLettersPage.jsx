@@ -305,8 +305,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
 
   /** آیتم‌های پیش‌نمایش: آدرس امن (توکن‌دار) با fallback مسیر مستقیم. */
   const previewItems = (files) => (files || [])
-    .filter((file) => file && (file.preview_url || file.file_url))
-    .map((file) => ({ ...file, file_url: file.preview_url || file.file_url }));
+    .filter((file) => file && (file.preview_url || file.file_url));
 
   const openPreview = (files, index, title) => {
     const items = previewItems(files);

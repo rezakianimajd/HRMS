@@ -440,13 +440,15 @@ class LetterAttachmentBriefSerializer(AttachmentUrlMixin, serializers.ModelSeria
 
     kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     file_url = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
     preview_url = serializers.SerializerMethodField()
 
     class Meta:
         from correspondences.models import LetterAttachment
 
         model = LetterAttachment
-        fields = ['id', 'title', 'kind', 'kind_display', 'file_url', 'preview_url', 'size']
+        fields = ['id', 'title', 'kind', 'kind_display', 'file_url', 'download_url',
+                  'preview_url', 'size']
         read_only_fields = fields
 
     def get_file_url(self, obj):
@@ -458,6 +460,9 @@ class LetterAttachmentBriefSerializer(AttachmentUrlMixin, serializers.ModelSeria
         except ValueError:
             return ''
         return request.build_absolute_uri(url) if request else url
+
+    def get_download_url(self, obj):
+        return self.attachment_urls(obj)[0] or self.get_file_url(obj)
 
     def get_preview_url(self, obj):
         return self.attachment_urls(obj)[1] or self.get_file_url(obj)
