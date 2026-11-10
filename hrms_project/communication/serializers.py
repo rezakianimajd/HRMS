@@ -213,7 +213,7 @@ class ChatAuditLogSerializer(serializers.ModelSerializer):
 
 
 def conversations_with_stats(user):
-    """QuerySet گفتگوها با شمارنده‌های سبک (بدون N+1)."""
+    """QuerySet گفتگوها با شمارنده‌های سبک (بدون N+1) و ترتیب پایدار صفحه‌بندی."""
     last_message = Message.objects.filter(conversation=OuterRef('pk')).order_by('-id')
     return (
         permissions.visible_conversations(user)
@@ -222,5 +222,6 @@ def conversations_with_stats(user):
             last_body=Subquery(last_message.values('body')[:1]),
             last_sender_name=Subquery(last_message.values('sender_name')[:1]),
         )
+        .order_by('-last_message_at', '-created_at', '-id')
     )
 
