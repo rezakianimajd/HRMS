@@ -572,6 +572,20 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 20. **در کامپوننت‌های تازه هر متغیری مثل `user` را از هوک بگیرید** (`const { user } = useAuth()`)، وگرنه
    `ReferenceError: user is not defined` فقط هنگام باز شدن همان دیالوگ/تب رخ می‌دهد (صفحهٔ خطای ErrorBoundary).
    تست smoke باید خودِ دیالوگ را هم باز کند (مثل «وظیفه جدید» در `planningSmoke`) تا این نوع خطا گرفته شود.
+21. **ترتیب زنجیرهٔ صورت‌وضعیت «دوره» است، نه `pk`:** اگر «دورهٔ قبل» با `pk__lt` تعیین شود، ثبت سند
+   شمارهٔ ۱ برای قراردادی که از قبل سند شمارهٔ ۱۴ دارد خطای «مبلغ تجمعی کمتر از دوره قبل» می‌دهد.
+   قاعده در `contracts/statement_chain.py` و آینهٔ فرانت `pages/contracts/statementChain.js` است:
+   شمارهٔ عددی یکتا ⇒ مرتب‌سازی/مقایسه با شماره، در غیر این صورت شناسه (رفتار قبلی). بازمحاسبهٔ زنجیره
+   (`statement_totals.recalculate_contract_statements`) هم باید با همان تابع مرتب شود، وگرنه سند تازه با
+   کارکرد صفر بازنویسی می‌شود. اعتبارسنجی «قبل از ذخیره» در فرانت هم باید عدد را از `form.number` بگیرد.
+22. **حریم خصوصی چت مقدم بر نقش مدیریتی است:** استثنای `is_superuser` در «دیدن گفتگو» یعنی مدیر سیستم
+   می‌تواند گفتگوی خصوصی دو همکار را بخواند؛ در `communication/permissions.py` هیچ‌کدام از
+   `can_view`/`visible_conversations`/`can_post`/`is_privileged` نباید شاخهٔ سوپریوزر داشته باشد
+   (تنها استثنا: کانال عمومی). تستِ `ChatPrivacyTests` همین را قفل می‌کند.
+23. **بیلد CRA را با `npm run build` در محیط غیرتعاملی اجرا نکنید:** `npm.ps1` هنگام ریدایرکت خروجی با
+   خطای «SetConsoleWindowTitle / No process is on the other end of the pipe» می‌میرد و بیلد نیمه‌کاره
+   می‌ماند. راه مطمئن: `node node_modules/react-scripts/bin/react-scripts.js build` با
+   `PUBLIC_URL='/assets'` (و به‌صورت detached، چون ابزار اجرای دستور پس از ۳۰ ثانیه قطع می‌شود).
 
 
 
@@ -579,6 +593,52 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **حریم خصوصی چت: بدون عضویت، هیچ‌کس (حتی سوپریوزر) گفتگو را نمی‌بیند (۲۰۲۶-۱۱-۱۰):** کاربرِ مدیر
+  سیستم گفتگوی خصوصی دو همکار را در فهرست چت می‌دید، چون `communication/permissions.py` برای
+  `is_superuser` استثنا داشت (`can_view`/`visible_conversations`/`can_post`/`is_privileged` همه True).
+  - حالا **دیدن/ارسال/مدیریت عضو فقط با عضویت** است؛ تنها استثنا **کانال عمومی** (`kind='channel'` و
+    `is_public=True`) که برای همهٔ کاربران شرکت خواندنی است (ارسال/join پس از عضویت).
+  - `visible_conversations` دیگر شاخهٔ `Conversation.objects.all()` برای سوپریوزر ندارد؛ بنابراین
+    فهرست، جست‌وجوی پیام (`/chat/search/`)، پیوست‌ها (`AttachmentViewSet.download`)،
+    `MessageViewSet` (ویرایش/حذف/سنجاق) و کارتابل همه با همان فیلتر عضویت کار می‌کنند و
+    دسترسی مستقیم به گفتگوی غیرخودی `404` می‌دهد.
+  - **تأیید زندهٔ `kpsmi`:** سوپریوزر ۵ گفتگو از ۶ گفتگوی خصوصیِ خودش را می‌بیند؛ گفتگوی دو نفرِ دیگر
+    لو نمی‌رود و `/api/chat/conversations/9/` و `.../9/messages/` برایش **404** است.
+  - تست: `communication/tests.py::ChatPrivacyTests` (۶ تست) + کل `communication` (**۲۶ تست**).
+- **ایموجی در چت (۲۰۲۶-۱۱-۱۰):** `frontend/src/pages/chat/ChatEmojiPicker.jsx` — بدون وابستگی بیرونی:
+  ۵ گروه (چهره‌ها/دست‌ها/کار اداری/اشیا و نمادها/طبیعت و غذا، ~۳۵۰ ایموجی)، جست‌وجوی فارسی
+  (نام/کلیدواژهٔ گروه + خود ایموجی)، چیپ دسته‌ها و فهرست «اخیر» در `localStorage`
+  (`hrms-chat-emoji-recent`). در نوار نوشتن، دکمهٔ «ایموجی» (`aria-label="ایموجی"`) پاپ‌اور را باز
+  می‌کند و انتخاب، ایموجی را **در محل نشانگر** درج می‌کند (`composerRef` + `setSelectionRange`).
+  - **ایموجیِ تنها بزرگ‌تر نمایش داده می‌شود (سبک تلگرام):** `pages/chat/chatMessageText.js` با
+    `isEmojiOnly` (پشتیبانی از ZWJ، flag، keycap، رنگ پوست و variation selector) و
+    `emojiOnlyFontSize` — ۱ ایموجی ۴۴px، ۲ ⇒ ۳۸، ۳ ⇒ ۳۲، ۴ ⇒ ۲۸، ۵ ⇒ ۲۴، ۶ و بیشتر ⇒ ۲۰
+    (متن معمولی همان ۱۲٫۵px). در `MessageBubble` با `data-testid="chat-message-body"` و
+    `data-emoji-only` قابل تست است.
+  استایل کاملاً توکن‌محور است (`--hrms-radius-large`, `--hrms-shadow-dialog`, accent ماژول).
+  تست: `chatSmoke` (۳ تست؛ انتخابگر، درج در متن، ارسال `👍` در `FormData` و بزرگ‌بودن حباب ایموجی)
+  + `chatMessageText.test.js` (۴ تست). باندل زندهٔ فرانت: **`main.8eb1b3b0.js`**.
+- **زنجیرهٔ صورت‌وضعیت «شماره‌محور» شد (۲۰۲۶-۱۱-۱۰):** ثبت صورت‌وضعیت شمارهٔ ۱ برای قرارداد
+  `C-KPSMI-05-073` خطای «مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد» می‌داد،
+  چون «دورهٔ قبل» با `pk__lt` تعیین می‌شد و سند شمارهٔ ۱۴ (`119,418,749,420` ریال) «دورهٔ قبل» حساب می‌شد.
+  - **بک‌اند** `contracts/statement_chain.py` (خالص/DB-free): `chain_mode` / `order_statements` /
+    `previous_rows` — وقتی همهٔ اسناد یک زنجیره شمارهٔ عددی **یکتا** دارند ترتیب با شماره است، وگرنه
+    (شمارهٔ خالی/غیرعددی/تکراری) مثل قبل با شناسه. زنجیرهٔ «صورت‌وضعیت/چندسطحی» و «تعدیل‌ها» جدا
+    شمرده می‌شوند (`kind__in` در همان کوئری) تا شمارهٔ تعدیل، شمارهٔ صورت‌وضعیت را خراب نکند.
+    `StatementSerializer._previous_cumulative` / `_previous_foreign_cumulative` /
+    `_previous_adjustment_cumulative` و `previous_level_cumulatives` شمارهٔ سند را می‌گیرند و
+    `statement_totals.recalculate_contract_statements` هم با `order_statements` مرتب می‌کند (وگرنه سند
+    تازه با کارکرد صفر بازنویسی می‌شد).
+  - **فرانت** `pages/contracts/statementChain.js` (آینهٔ همان قاعده): `previousPeriodRows` /
+    `previousCumulativeFor` / `foreignCumulativeFor` / `adjustmentCumulativeFor` / `seedLevelsFrom`؛
+    `StatementEditorPage` از آن استفاده می‌کند و افکت «بازمحاسبهٔ تجمعی دوره قبل» با `form.number`
+    (وابستگی جدید effect) اجرا می‌شود.
+  - **تأیید زنده (kpsmi):** سریالایزر با شمارهٔ `1`/`01` معتبر و `cumulative_previous_amount=0`؛
+    شمارهٔ `15` همچنان خطای «کمتر از دوره قبل» می‌دهد. شبیه‌سازی ساخت سند #۰۱ + بازمحاسبه داخل
+    `transaction.atomic()` (و rollback): سند ۵۴۹ با `previous=0, work=10,000,000` و سند ۱۴ با
+    `previous=10,000,000`؛ دادهٔ واقعی دست‌نخورده ماند. `manage.py check` پاک، gunicorn ری‌استارت شد.
+  - تست: `contracts/tests_statement_chain.py` (۱۲ تست DB-free)، `__tests__/statementChain.test.js`
+    (۸ تست)، `contractStatementsSmoke` (۴ تست). باندل زندهٔ فرانت: **`main.a60bb616.js`**.
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
 - **Live:** frontend `main.445d7ea0.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
 - **اعلان‌ها و حریم خصوصی برنامه‌ریزی (۲۰۲۶-۱۱-۱۰):** دو اصلاح مهم:
