@@ -15,6 +15,41 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
+# اعلان‌های «شخصی» هرگز نباید برای کاربر دیگری (حتی سوپریوزر) نمایش داده شوند.
+PERSONAL_CATEGORIES = (
+    'chat_message',
+    'chat_mention',
+    'chat_member_added',
+    'planning_share',
+    'planning_due',
+)
+
+
+def apply_notification_visibility(qs, user):
+    """فیلتر مالکیت اعلان‌ها.
+
+    - دسته‌های چت/برنامه‌ریزی **همیشه** فقط برای گیرندهٔ همان اعلان (`user_id=خودم`).
+    - بقیهٔ دسته‌ها: سوپریوزر همه را می‌بیند و بقیه، اعلان شخصی خود + اعلان سراسری
+      (`user_id IS NULL`).
+    """
+    from django.db.models import Q
+
+    personal = Q(category__in=PERSONAL_CATEGORIES)
+    qs = qs.exclude(personal & ~Q(user_id=getattr(user, 'pk', None)))
+
+    if getattr(user, 'is_superuser', False):
+        return qs
+
+    from core.models.user import UserProfile  # noqa: F401 — سازگاری با نقش قدیمی
+
+    profile = getattr(user, 'profile', None)
+    admin_roles = ['super_admin', 'hr_manager', 'hr_specialist']
+    is_admin = bool(profile and profile.role in admin_roles)
+    if is_admin:
+        return (qs.filter(user_id__isnull=True) | qs.filter(user_id=user.pk)).distinct()
+    return qs.filter(user_id=user.pk)
+
+
 class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     List / retrieve notifications for the current user.
@@ -22,6 +57,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
     A user sees notifications where:
       * user_id == request.user.id  (direct), OR
       * user_id IS NULL and they are a superuser / HR-typed profile (global)
+    Chat/planning notifications are always personal (never shown to other users).
     """
     serializer_class = NotificationSerializer
     filter_backends = [filters.OrderingFilter, filters.SearchFilter]
@@ -36,20 +72,7 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(company=company)
 
         user = self.request.user
-        if user.is_superuser:
-            # superuser sees everything in this tenant
-            pass
-        else:
-            # direct + global (user_id IS NULL)
-            from core.models.user import UserProfile
-            profile = getattr(user, 'profile', None)
-            admin_roles = ['super_admin', 'hr_manager', 'hr_specialist']
-            is_admin = bool(profile and profile.role in admin_roles)
-            if is_admin:
-                qs = qs.filter(user_id__isnull=True) | qs.filter(user_id=user.id)
-            else:
-                qs = qs.filter(user_id=user.id)
-            qs = qs.distinct()
+        qs = apply_notification_visibility(qs, user)
 
         is_read = self.request.query_params.get('is_read')
         if is_read in ('true', 'false'):

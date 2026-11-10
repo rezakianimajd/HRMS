@@ -89,7 +89,8 @@ class NoteViewSet(PlanningBaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = services.visible_notes(user).select_related('owner').order_by(
+        scope = (self.request.query_params.get('scope') or 'mine').lower()
+        qs = services.notes_for_scope(user, scope).select_related('owner').order_by(
             '-is_pinned', '-updated_at',
         )
         params = self.request.query_params
@@ -99,11 +100,6 @@ class NoteViewSet(PlanningBaseViewSet):
                 Q(title__icontains=query) | Q(related_label__icontains=query)
                 | Q(tags__icontains=query),
             )
-        scope = params.get('scope')
-        if scope == 'mine':
-            qs = qs.filter(owner=user)
-        elif scope == 'shared':
-            qs = qs.filter(is_shared=True)
         return qs
 
 
@@ -113,8 +109,9 @@ class TaskViewSet(PlanningBaseViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = services.visible_tasks(user).select_related('owner')
         params = self.request.query_params
+        scope = (params.get('scope') or 'mine').lower()
+        qs = services.tasks_for_scope(user, scope).select_related('owner')
         state = params.get('status')
         if state in ('todo', 'doing', 'done', 'cancelled'):
             qs = qs.filter(status=state)
@@ -129,11 +126,6 @@ class TaskViewSet(PlanningBaseViewSet):
         query = (params.get('q') or params.get('search') or '').strip()
         if query:
             qs = qs.filter(Q(title__icontains=query) | Q(related_label__icontains=query))
-        scope = params.get('scope')
-        if scope == 'mine':
-            qs = qs.filter(owner=user)
-        elif scope == 'shared':
-            qs = qs.filter(is_shared=True)
         return qs.order_by('-is_pinned', 'status', 'due_date', '-created_at')
 
     @action(detail=True, methods=['post'], url_path='toggle')
@@ -157,17 +149,18 @@ class PlanningSummaryAPIView(APIView):
         from django.utils import timezone
 
         user = request.user
-        notes = services.visible_notes(user)
-        tasks = services.visible_tasks(user)
+        notes = services.notes_for_scope(user, 'mine')
+        tasks = services.tasks_for_scope(user, 'mine')
         today = timezone.localdate()
         open_states = (Task.Status.DONE, Task.Status.CANCELLED)
         return Response({
             'notes': notes.count(),
-            'shared_notes': notes.filter(is_shared=True).count(),
+            'shared_notes': services.notes_for_scope(user, 'shared').count(),
             'tasks': tasks.count(),
             'open_tasks': tasks.exclude(status__in=open_states).count(),
             'done_tasks': tasks.filter(status=Task.Status.DONE).count(),
             'due_today': tasks.filter(due_date=today).exclude(status__in=open_states).count(),
             'overdue': tasks.filter(due_date__lt=today).exclude(status__in=open_states).count(),
+            'shared_tasks': services.tasks_for_scope(user, 'shared').count(),
         })
 

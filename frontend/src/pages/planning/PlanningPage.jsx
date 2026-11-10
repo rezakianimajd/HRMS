@@ -65,7 +65,7 @@ const PlanningPanel = ({ initialTab = 0 }) => {
 
   const [tab, setTab] = useState(Number(initialTab) || 0);
   const [search, setSearch] = useState('');
-  const [scope, setScope] = useState('all');
+  const [scope, setScope] = useState('mine');
   const [taskFilter, setTaskFilter] = useState('open');
   const [toast, setToast] = useState('');
   const [noteForm, setNoteForm] = useState(EMPTY_NOTE);
@@ -232,7 +232,7 @@ const PlanningPanel = ({ initialTab = 0 }) => {
               برنامه‌ریزی شخصی
             </Typography>
             <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-              یادداشت‌ها و وظایف شخصی؛ قابل اشتراک با همکاران
+              یادداشت‌ها و وظایف شما خصوصی هستند؛ فقط با «اشتراک‌گذاری» صریح برای دیگران دیده می‌شوند.
             </Typography>
           </Box>
         </Stack>
@@ -247,10 +247,10 @@ const PlanningPanel = ({ initialTab = 0 }) => {
           sx={{ minWidth: 220, '& .MuiInputBase-input': { fontSize: 11.5 } }}
         />
         <Select size="small" value={scope} onChange={(event) => setScope(event.target.value)}
-          sx={{ fontSize: 11, height: 34, minWidth: 120 }}>
-          <MenuItem value="all">همه</MenuItem>
+          sx={{ fontSize: 11, height: 34, minWidth: 150 }}>
           <MenuItem value="mine">فقط من</MenuItem>
-          <MenuItem value="shared">اشتراکی</MenuItem>
+          <MenuItem value="shared">اشتراکی با من</MenuItem>
+          <MenuItem value="all">همه (من + اشتراکی)</MenuItem>
         </Select>
         <Button
           variant="contained" size="small" startIcon={<AddIcon />}

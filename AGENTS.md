@@ -577,8 +577,20 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
-- **Live:** frontend `main.81d6f90e.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
-- **ماژول‌های تازه: «گفتگوی سازمانی» و «برنامه‌ریزی شخصی» (۲۰۲۶-۱۱-۱۰):** دو اپ مستقل در TENANT_APPS —
+- **Live:** frontend `main.d3439444.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **اعلان‌ها و حریم خصوصی برنامه‌ریزی (۲۰۲۶-۱۱-۱۰):** دو اصلاح مهم:
+  - **اعلان‌های چت/برنامه‌ریزی همیشه شخصی‌اند:** `notifications/views.py::apply_notification_visibility`
+    دسته‌های `chat_message|chat_mention|chat_member_added|planning_share|planning_due` را **حتی برای
+    سوپریوزر** به `user_id=خودم` محدود می‌کند؛ قبلاً سوپریوزر همهٔ اعلان‌های شرکت را می‌دید و اعلانِ
+    ساخته‌شده برای سایر اعضا (بابت پیام خودش) به‌نظر «اعلان پیام خودم» می‌آمد. تست: `notifications/tests.py` (۴).
+  - **یادداشت/وظیفه به‌صورت پیش‌فرض خصوصی:** `planning.services.notes_for_scope/tasks_for_scope` با
+    `scope=mine|shared|all` و **پیش‌فرض `mine`** (فقط مالک)؛ `scope=shared` فقط آیتم‌های اشتراک‌گذاری‌شده با من؛
+    `all` صریحاً هر دو. نشان سایدبار و `/planning/summary/` هم فقط آیتم‌های خود کاربر را می‌شمارند و
+    `shared_notes`/`shared_tasks` جدا گزارش می‌شوند. فرانت: انتخابگر «فقط من / اشتراکی با من / همه»
+    با پیش‌فرض «فقط من» و پیام «یادداشت‌ها و وظایف شما خصوصی هستند…».
+  - **تأیید زنده (`kpsmi`):** سوپریوزر اعلان چت خودش را می‌بیند و اعلان چت کاربر دیگر را **نه**؛
+    کاربر دوم یادداشت مدیر را در `mine` و `all` (قبل از اشتراک) نمی‌بیند، پس از اشتراک فقط در `shared`
+    می‌بیند و در `mine` هرگز. دادهٔ تست پاک شد.
   `communication` (چت) و `planning` (یادداشت/وظیفه) — با معماری «چت لایهٔ ارتباطی است، نه مالک داده».
   - **مدل‌ها (communication):** `Conversation` (نوع `direct|group|channel|system`، `related_module/object_*`،
     `post_policy`, `is_public`, `direct_key` یکتا برای گفتگوی خصوصی)، `ConversationMember` (نقش،

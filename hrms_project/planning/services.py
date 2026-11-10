@@ -70,6 +70,28 @@ def visible_tasks(user):
     )
 
 
+def notes_for_scope(user, scope='mine'):
+    """دامنهٔ فهرست یادداشت‌ها: ``mine`` (پیش‌فرض) / ``shared`` / ``all``."""
+    if scope == 'all':
+        return visible_notes(user)
+    if scope == 'shared':
+        return Note.objects.filter(
+            pk__in=shared_ids(user, PlanningShare.ItemKind.NOTE),
+        ).exclude(owner=user)
+    return Note.objects.filter(owner=user)
+
+
+def tasks_for_scope(user, scope='mine'):
+    """دامنهٔ فهرست وظایف: ``mine`` (پیش‌فرض) / ``shared`` / ``all``."""
+    if scope == 'all':
+        return visible_tasks(user)
+    if scope == 'shared':
+        return Task.objects.filter(
+            pk__in=shared_ids(user, PlanningShare.ItemKind.TASK),
+        ).exclude(owner=user)
+    return Task.objects.filter(owner=user)
+
+
 def share_item(company, item, kind, shared_by, user_ids=(), permission='view'):
     """اشتراک‌گذاری با چند کاربر + علامت‌زدن آیتم به‌عنوان اشتراکی."""
     from django.contrib.auth import get_user_model
@@ -127,11 +149,13 @@ def _notify_share(company, item, kind, shared_by, users):
 
 
 def upcoming_summary(user):
-    """نشان سایدبار: وظایف سررسیدشده/امروز + یادداشت‌های اشتراکی جدید."""
+    """نشان سایدبار: وظایف **خودِ کاربر** که سررسیدشان رسیده/گذشته است."""
     if not getattr(user, 'is_authenticated', False):
         return {'planning': 0, 'planning_overdue': 0}
     today = timezone.localdate()
-    tasks = visible_tasks(user).exclude(status__in=(Task.Status.DONE, Task.Status.CANCELLED))
+    tasks = Task.objects.filter(owner=user).exclude(
+        status__in=(Task.Status.DONE, Task.Status.CANCELLED),
+    )
     due = tasks.filter(due_date__lte=today).count()
     overdue = tasks.filter(due_date__lt=today).count()
     return {'planning': due, 'planning_overdue': overdue}

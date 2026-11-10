@@ -450,9 +450,9 @@ class UnreadAPIView(ChatUtilityAPIView):
     def get(self, request):
         summary = services.unread_summary(request.user)
         try:
-            from planning.services import unpcoming_summary
+            from planning.services import upcoming_summary
 
-            summary.update(unpcoming_summary(request.user))
+            summary.update(upcoming_summary(request.user))
         except Exception:  # noqa: BLE001 — ماژول برنامه‌ریزی اختیاری است
             summary.setdefault('planning', 0)
         return Response(summary)
