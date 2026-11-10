@@ -10,11 +10,15 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import axiosInstance from '../../core/api/axiosConfig';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
 import { useModulePalette } from '../../core/context/ModulePaletteContext';
@@ -45,6 +49,7 @@ const EMPTY_NOTE = { id: null, title: '', body: '', color: FALLBACK, tags: '', i
 const EMPTY_TASK = {
   id: null, title: '', description: '', status: 'todo', priority: 'normal',
   due_date: '', due_time: '', is_pinned: false,
+  assigneeIds: [], groupIds: [], assignMode: 'me',
 };
 
 const tagsOf = (value) => String(value || '')
@@ -75,6 +80,8 @@ const PlanningPanel = ({ initialTab = 0 }) => {
   const [shareTarget, setShareTarget] = useState(null);
   const [shareUsers, setShareUsers] = useState([]);
   const [sharePermission, setSharePermission] = useState('view');
+  const [groupsOpen, setGroupsOpen] = useState(false);
+  const [groupForm, setGroupForm] = useState({ id: null, name: '', color: '#6366f1', members: [] });
 
   const summaryQuery = useQuery({
     queryKey: ['planning-summary'],
@@ -121,6 +128,15 @@ const PlanningPanel = ({ initialTab = 0 }) => {
     [directoryQuery.data],
   );
 
+  const groupsQuery = useQuery({
+    queryKey: ['planning-groups'],
+    queryFn: () => axiosInstance.get('/planning/groups/').then((response) => response.data),
+  });
+  const groups = useMemo(() => {
+    const payload = groupsQuery.data;
+    return Array.isArray(payload) ? payload : payload?.results || [];
+  }, [groupsQuery.data]);
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['planning-notes'] });
     qc.invalidateQueries({ queryKey: ['planning-tasks'] });
@@ -161,6 +177,8 @@ const PlanningPanel = ({ initialTab = 0 }) => {
         due_date: taskForm.due_date || null,
         due_time: taskForm.due_time || null,
         is_pinned: Boolean(taskForm.is_pinned),
+        assignees: taskForm.assignMode === 'people' ? taskForm.assigneeIds : [],
+        groups: taskForm.assignMode === 'group' ? taskForm.groupIds : [],
       };
       return taskForm.id
         ? axiosInstance.patch(`/planning/tasks/${taskForm.id}/`, body)
@@ -168,6 +186,24 @@ const PlanningPanel = ({ initialTab = 0 }) => {
     },
     onSuccess: () => { setTaskOpen(false); setTaskForm(EMPTY_TASK); invalidate(); },
     onError: () => setToast('ذخیرهٔ وظیفه انجام نشد'),
+  });
+
+  const saveGroup = useMutation({
+    mutationFn: () => {
+      const body = {
+        name: groupForm.name, color: groupForm.color, members: groupForm.members,
+      };
+      return groupForm.id
+        ? axiosInstance.patch(`/planning/groups/${groupForm.id}/`, body)
+        : axiosInstance.post('/planning/groups/', body);
+    },
+    onSuccess: () => {
+      setGroupsOpen(false);
+      setGroupForm({ id: null, name: '', color: '#6366f1', members: [] });
+      qc.invalidateQueries({ queryKey: ['planning-groups'] });
+      setToast('گروه ذخیره شد');
+    },
+    onError: () => setToast('ذخیرهٔ گروه انجام نشد'),
   });
 
   const toggleTask = useMutation({
@@ -211,12 +247,21 @@ const PlanningPanel = ({ initialTab = 0 }) => {
   };
   const openTaskNew = () => { setTaskForm(EMPTY_TASK); setTaskOpen(true); };
   const openTaskEdit = (row) => {
+    const assigneeIds = (row.assignees || []).map((person) => person.id);
+    const groupIds = (row.assignee_groups || []).map((group) => group.id);
     setTaskForm({
       id: row.id, title: row.title || '', description: row.description || '',
       status: row.status || 'todo', priority: row.priority || 'normal',
       due_date: row.due_date || '', due_time: row.due_time || '', is_pinned: row.is_pinned,
+      assigneeIds,
+      groupIds,
+      assignMode: groupIds.length ? 'group' : (assigneeIds.length ? 'people' : 'me'),
     });
     setTaskOpen(true);
+  };
+  const openGroupNew = () => {
+    setGroupForm({ id: null, name: '', color: accent, members: [] });
+    setGroupsOpen(true);
   };
 
   return (
@@ -272,6 +317,14 @@ const PlanningPanel = ({ initialTab = 0 }) => {
             <MenuItem value="done">انجام‌شده</MenuItem>
             <MenuItem value="cancelled">لغو‌شده</MenuItem>
           </Select>
+        ) : null}
+        {tab === 1 ? (
+          <Button
+            size="small" variant="outlined" startIcon={<GroupOutlinedIcon fontSize="small" />}
+            onClick={openGroupNew} sx={{ fontSize: 11.5 }}
+          >
+            گروه‌ها
+          </Button>
         ) : null}
       </Stack>
 
@@ -420,7 +473,42 @@ const PlanningPanel = ({ initialTab = 0 }) => {
                         sx={{ height: 18, fontSize: 9.5, fontWeight: 800, bgcolor: alpha(statusMeta.color, 0.12), color: statusMeta.color }} />
                       <Chip size="small" label={priorityMeta.label}
                         sx={{ height: 18, fontSize: 9.5, fontWeight: 800, bgcolor: alpha(priorityMeta.color, 0.12), color: priorityMeta.color }} />
-                      {task.is_shared ? <Chip size="small" label="اشتراکی" sx={chipTone} /> : null}
+                      {(task.assignee_groups || []).map((group) => (
+                        <Chip
+                          key={`group-${group.id}`} size="small"
+                          icon={<GroupOutlinedIcon sx={{ fontSize: 12 }} />}
+                          label={group.name}
+                          sx={{
+                            height: 18, fontSize: 9.5, fontWeight: 800,
+                            bgcolor: alpha(group.color || accent, 0.12),
+                            color: group.color || accent,
+                          }}
+                        />
+                      ))}
+                      {(task.assignees || []).length ? (
+                        <Stack direction="row" spacing={-0.5} alignItems="center">
+                          {(task.assignees || []).slice(0, 3).map((person) => (
+                            <Tooltip key={`assignee-${person.id}`} title={`مسئول: ${person.name}`}>
+                              <Avatar sx={{
+                                width: 18, height: 18, fontSize: 8.5, fontWeight: 900,
+                                bgcolor: alpha(accent, 0.16), color: accent,
+                                border: '1px solid', borderColor: 'background.paper',
+                              }}>
+                                {String(person.name || '?').trim().slice(0, 2)}
+                              </Avatar>
+                            </Tooltip>
+                          ))}
+                          {task.assignees.length > 3 ? (
+                            <Typography sx={{ fontSize: 9.5, color: MUTED, ml: 0.5 }}>
+                              +{toPersianDigits(task.assignees.length - 3)}
+                            </Typography>
+                          ) : null}
+                        </Stack>
+                      ) : null}
+                      {task.is_private ? (
+                        <Chip size="small" label="فقط من"
+                          sx={{ height: 18, fontSize: 9.5, fontWeight: 800 }} />
+                      ) : null}
                       {!task.is_mine ? (
                         <Typography sx={{ fontSize: 9.5, color: MUTED }}>
                           · {task.owner_name}
@@ -584,6 +672,102 @@ const PlanningPanel = ({ initialTab = 0 }) => {
                 sx={{ width: 140, '& .MuiInputBase-input': { fontSize: 11 } }}
               />
             </Stack>
+            <Divider />
+            <Box>
+              <Typography sx={{ fontSize: 11, fontWeight: 900, color: INK, mb: 0.6 }}>
+                این وظیفه برای چه کسی است؟
+              </Typography>
+              <ToggleButtonGroup
+                size="small" exclusive fullWidth value={taskForm.assignMode}
+                onChange={(_event, value) => {
+                  if (!value) return;
+                  setTaskForm((previous) => ({
+                    ...previous,
+                    assignMode: value,
+                    assigneeIds: value === 'people' ? previous.assigneeIds : [],
+                    groupIds: value === 'group' ? previous.groupIds : [],
+                  }));
+                }}
+                sx={{ mb: 0.75, '& .MuiToggleButton-root': { fontSize: 10.5, py: 0.4, fontWeight: 800 } }}
+              >
+                <ToggleButton value="me">
+                  <PersonOutlineIcon sx={{ fontSize: 14, mr: 0.4 }} /> فقط خودم
+                </ToggleButton>
+                <ToggleButton value="people">
+                  <PersonOutlineIcon sx={{ fontSize: 14, mr: 0.4 }} /> یک یا چند نفر
+                </ToggleButton>
+                <ToggleButton value="group">
+                  <GroupOutlinedIcon sx={{ fontSize: 14, mr: 0.4 }} /> گروه
+                </ToggleButton>
+              </ToggleButtonGroup>
+
+              {taskForm.assignMode === 'people' ? (
+                <Select
+                  size="small" multiple fullWidth displayEmpty
+                  value={taskForm.assigneeIds}
+                  onChange={(event) => setTaskForm((previous) => ({
+                    ...previous, assigneeIds: event.target.value,
+                  }))}
+                  renderValue={(selected) => (selected.length
+                    ? (selected
+                      .map((id) => directory.find((person) => person.id === id)?.name)
+                      .filter(Boolean).join('، '))
+                    : 'یک یا چند همکار را انتخاب کنید')}
+                  sx={{ fontSize: 11 }}
+                >
+                  {directory
+                    .filter((person) => String(person.id) !== String(user?.id))
+                    .map((person) => (
+                      <MenuItem key={person.id} value={person.id}>{person.name}</MenuItem>
+                    ))}
+                </Select>
+              ) : null}
+
+              {taskForm.assignMode === 'group' ? (
+                <Stack spacing={0.6}>
+                  <Select
+                    size="small" multiple fullWidth displayEmpty
+                    value={taskForm.groupIds}
+                    onChange={(event) => setTaskForm((previous) => ({
+                      ...previous, groupIds: event.target.value,
+                    }))}
+                    renderValue={(selected) => (selected.length
+                      ? (selected
+                        .map((id) => groups.find((group) => group.id === id)?.name)
+                        .filter(Boolean).join('، '))
+                      : 'یک یا چند گروه را انتخاب کنید')}
+                    sx={{ fontSize: 11 }}
+                  >
+                    {groups.map((group) => (
+                      <MenuItem key={group.id} value={group.id}>
+                        {group.name} · {toPersianDigits(group.member_count || 0)} عضو
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Button
+                    size="small" variant="text" startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+                    onClick={openGroupNew} sx={{ fontSize: 10.5, alignSelf: 'flex-start' }}
+                  >
+                    ساخت گروه جدید
+                  </Button>
+                  {!groups.length ? (
+                    <Typography sx={{ fontSize: 10, color: MUTED }}>
+                      هنوز گروهی نساخته‌اید؛ از دکمهٔ «گروه‌ها» بالای صفحه یک تیم بسازید.
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ) : null}
+
+              {taskForm.assignMode === 'me' ? (
+                <Typography sx={{ fontSize: 10, color: MUTED }}>
+                  این وظیفه فقط برای شماست و هیچ‌کس دیگری آن را نمی‌بیند.
+                </Typography>
+              ) : (
+                <Typography sx={{ fontSize: 10, color: MUTED }}>
+                  افراد انتخاب‌شده وظیفه را در «وظایف من» می‌بینند، اعلان می‌گیرند و می‌توانند وضعیت را تغییر دهند.
+                </Typography>
+              )}
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -637,6 +821,74 @@ const PlanningPanel = ({ initialTab = 0 }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ---------------- دیالوگ گروه‌ها ---------------- */}
+      <Dialog open={groupsOpen} onClose={() => setGroupsOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontSize: 13, fontWeight: 900, pb: 0.5 }}>
+          گروه‌های محول‌کردن وظیفه
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1} sx={{ pt: 0.5 }}>
+            <TextField
+              size="small" label="نام گروه (مثلاً تیم مالی)" value={groupForm.name}
+              onChange={(event) => setGroupForm((previous) => ({
+                ...previous, name: event.target.value,
+              }))}
+            />
+            <Select
+              size="small" multiple fullWidth displayEmpty
+              value={groupForm.members}
+              onChange={(event) => setGroupForm((previous) => ({
+                ...previous, members: event.target.value,
+              }))}
+              renderValue={(selected) => (selected.length
+                ? `${toPersianDigits(selected.length)} عضو`
+                : 'انتخاب اعضا')}
+              sx={{ fontSize: 11 }}
+            >
+              {directory.map((person) => (
+                <MenuItem key={person.id} value={person.id}>{person.name}</MenuItem>
+              ))}
+            </Select>
+            <Divider />
+            <Typography sx={{ fontSize: 10.5, color: MUTED }}>گروه‌های ساخته‌شده</Typography>
+            {groups.length ? groups.map((group) => (
+              <Stack key={group.id} direction="row" alignItems="center" spacing={0.6}
+                sx={{ p: 0.5, borderRadius: '8px', '&:hover': { bgcolor: 'action.hover' } }}>
+                <GroupOutlinedIcon sx={{ fontSize: 15, color: group.color || accent }} />
+                <Typography sx={{ fontSize: 11.5, flex: 1 }}>
+                  {group.name}
+                  <Typography component="span" sx={{ fontSize: 10, color: MUTED }}>
+                    {' · '}{toPersianDigits(group.member_count || 0)} عضو
+                  </Typography>
+                </Typography>
+                <IconButton size="small" aria-label={`ویرایش ${group.name}`}
+                  onClick={() => setGroupForm({
+                    id: group.id, name: group.name, color: group.color || accent,
+                    members: (group.members || []).map((person) => person.id),
+                  })}>
+                  <EditOutlinedIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Stack>
+            )) : (
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                هنوز گروهی ساخته نشده است.
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGroupsOpen(false)}>بستن</Button>
+          <Button
+            variant="contained" disabled={!groupForm.name.trim() || saveGroup.isPending}
+            onClick={() => saveGroup.mutate()}
+            sx={{ bgcolor: accent, '&:hover': { bgcolor: accent } }}
+          >
+            {groupForm.id ? 'ذخیرهٔ تغییرات' : 'ساخت گروه'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 };

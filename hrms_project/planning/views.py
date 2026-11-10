@@ -8,8 +8,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from planning import services
-from planning.models import Note, PlanningShare, Task
-from planning.serializers import NoteSerializer, PlanningShareSerializer, TaskSerializer
+from planning.models import Note, PlanningGroup, PlanningGroupMember, PlanningShare, Task
+from planning.serializers import (
+    NoteSerializer, PlanningGroupSerializer, PlanningShareSerializer, TaskSerializer,
+)
 
 
 def _company(request):
@@ -107,6 +109,34 @@ class TaskViewSet(PlanningBaseViewSet):
     serializer_class = TaskSerializer
     item_kind = PlanningShare.ItemKind.TASK
 
+    @staticmethod
+    def _id_list(value):
+        if value in (None, '', 'null'):
+            return []
+        if isinstance(value, (list, tuple)):
+            return [str(item) for item in value]
+        return [part for part in str(value).split(',') if part.strip()]
+
+    def _apply_assignments(self, task):
+        """محول‌کردن به افراد/گروه‌ها بعد از ساخت/ویرایش (اختیاری)."""
+        data = self.request.data
+        if 'assignees' not in data and 'groups' not in data:
+            return
+        services.assign_task(
+            _company(self.request), task, self.request.user,
+            user_ids=self._id_list(data.get('assignees')),
+            group_ids=self._id_list(data.get('groups')),
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(company=_company(self.request), owner=self.request.user)
+        self._apply_assignments(serializer.instance)
+
+    def perform_update(self, serializer):
+        self._ensure(serializer.instance, edit=True)
+        serializer.save()
+        self._apply_assignments(serializer.instance)
+
     def get_queryset(self):
         user = self.request.user
         params = self.request.query_params
@@ -138,6 +168,51 @@ class TaskViewSet(PlanningBaseViewSet):
             task.status = Task.Status.DONE
         task.save(update_fields=['status', 'completed_at', 'updated_at'])
         return Response(self.get_serializer(task).data)
+
+
+class PlanningGroupViewSet(viewsets.ModelViewSet):
+    """گروه‌های برنامه‌ریزی برای محول‌کردن سریع وظیفه به چند نفر."""
+
+    serializer_class = PlanningGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = PlanningGroup.objects.filter(company=_company(self.request))
+        if getattr(self.request.user, 'is_superuser', False):
+            return qs.prefetch_related('member_rows')
+        return qs.filter(created_by=self.request.user).prefetch_related('member_rows')
+
+    def perform_create(self, serializer):
+        group = serializer.save(company=_company(self.request), created_by=self.request.user)
+        self._sync_members(group)
+
+    def perform_update(self, serializer):
+        group = serializer.save()
+        self._sync_members(group)
+
+    @staticmethod
+    def _id_list(value):
+        if value in (None, '', 'null'):
+            return []
+        if isinstance(value, (list, tuple)):
+            return [int(item) for item in value if str(item).strip().isdigit()]
+        return [int(part) for part in str(value).split(',') if part.strip().isdigit()]
+
+    def _sync_members(self, group):
+        data = self.request.data
+        if 'members' not in data:
+            return
+        from django.contrib.auth import get_user_model
+
+        ids = self._id_list(data.get('members'))
+        users = get_user_model().objects.filter(pk__in=ids, is_active=True)
+        PlanningGroupMember.objects.filter(group=group).exclude(
+            user_id__in=[user.pk for user in users],
+        ).delete()
+        for user in users:
+            PlanningGroupMember.objects.get_or_create(
+                company=group.company, group=group, user=user,
+            )
 
 
 class PlanningSummaryAPIView(APIView):

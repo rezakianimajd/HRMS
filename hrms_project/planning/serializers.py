@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from planning import services
-from planning.models import Note, PlanningShare, Task
+from planning.models import Note, PlanningGroup, PlanningShare, Task
 
 
 def _display_name(user):
@@ -31,6 +31,42 @@ class PlanningShareSerializer(serializers.ModelSerializer):
 
     def get_shared_with_name(self, obj):
         return _display_name(obj.shared_with)
+
+
+class PlanningGroupSerializer(serializers.ModelSerializer):
+    member_count = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PlanningGroup
+        fields = ['id', 'name', 'description', 'color', 'member_count', 'members', 'created_at']
+        read_only_fields = ['id', 'member_count', 'members', 'created_at']
+
+    def get_member_count(self, obj):
+        rows = self.context.setdefault('_group_members', {})
+        if obj.pk not in rows:
+            rows[obj.pk] = list(
+                obj.member_rows.select_related('user').values(
+                    'user_id', 'user__first_name', 'user__last_name',
+                ),
+            )
+        return len(rows[obj.pk])
+
+    def get_members(self, obj):
+        rows = self.context.setdefault('_group_members', {})
+        if obj.pk not in rows:
+            rows[obj.pk] = list(
+                obj.member_rows.select_related('user').values(
+                    'user_id', 'user__first_name', 'user__last_name',
+                ),
+            )
+        return [
+            {
+                'id': row['user_id'],
+                'name': f"{row['user__first_name'] or ''} {row['user__last_name'] or ''}".strip(),
+            }
+            for row in rows[obj.pk]
+        ]
 
 
 class NoteSerializer(serializers.ModelSerializer):
@@ -86,6 +122,9 @@ class TaskSerializer(serializers.ModelSerializer):
     is_overdue = serializers.BooleanField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    assignees = serializers.SerializerMethodField()
+    assignee_groups = serializers.SerializerMethodField()
+    is_private = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -95,11 +134,13 @@ class TaskSerializer(serializers.ModelSerializer):
             'checklist', 'tags', 'is_pinned', 'is_shared', 'is_overdue',
             'related_module', 'related_object_type', 'related_object_id', 'related_label',
             'source_message', 'owner', 'owner_name', 'shares', 'access', 'is_mine',
+            'assignees', 'assignee_groups', 'is_private',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'owner', 'owner_name', 'shares', 'access', 'is_mine',
                             'is_shared', 'is_overdue', 'completed_at', 'created_at',
-                            'updated_at', 'status_display', 'priority_display']
+                            'updated_at', 'status_display', 'priority_display',
+                            'assignees', 'assignee_groups', 'is_private']
 
     def get_description(self, obj):
         return services.decrypt_text(obj.description)
@@ -116,6 +157,18 @@ class TaskSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         return bool(user and obj.owner_id == user.pk)
+
+    def get_assignees(self, obj):
+        cache = self.context.setdefault('_assignee_cache', {})
+        if obj.pk not in cache:
+            cache[obj.pk] = services.task_assignees(obj)
+        return cache[obj.pk]
+
+    def get_assignee_groups(self, obj):
+        return services.assignee_groups(obj)
+
+    def get_is_private(self, obj):
+        return not (obj.is_shared or self.get_assignees(obj))
 
     def create(self, validated_data):
         validated_data['description'] = services.encrypt_text(

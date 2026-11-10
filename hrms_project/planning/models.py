@@ -92,6 +92,10 @@ class Task(BaseModel):
         null=True, blank=True, verbose_name=_('پیام مبدأ چت'),
         help_text=_('اگر این وظیفه از یک پیام چت ساخته شده باشد.'),
     )
+    assignee_groups = models.ManyToManyField(
+        'planning.PlanningGroup', blank=True, related_name='tasks',
+        verbose_name=_('گروه‌های مسئول'),
+    )
 
     class Meta:
         verbose_name = _('وظیفه')
@@ -120,7 +124,7 @@ class Task(BaseModel):
 
 
 class PlanningShare(BaseModel):
-    """اشتراک‌گذاری یادداشت/وظیفه با کاربر دیگر."""
+    """اشتراک‌گذاری یادداشت/وظیفه با کاربر دیگر یا «محول‌کردن» وظیفه."""
 
     class ItemKind(models.TextChoices):
         NOTE = 'note', _('یادداشت')
@@ -130,6 +134,11 @@ class PlanningShare(BaseModel):
         VIEW = 'view', _('فقط مشاهده')
         EDIT = 'edit', _('مشاهده و ویرایش')
 
+    class Role(models.TextChoices):
+        ASSIGNEE = 'assignee', _('مسئول انجام')
+        EDITOR = 'editor', _('همکار ویرایش')
+        VIEWER = 'viewer', _('مشاهده‌کننده')
+
     item_kind = models.CharField(max_length=10, choices=ItemKind.choices,
                                  verbose_name=_('نوع آیتم'))
     item_id = models.PositiveIntegerField(verbose_name=_('شناسهٔ آیتم'))
@@ -138,6 +147,13 @@ class PlanningShare(BaseModel):
                            on_delete=models.CASCADE)
     permission = models.CharField(max_length=10, choices=Permission.choices,
                                   default=Permission.VIEW, verbose_name=_('سطح دسترسی'))
+    role = models.CharField(max_length=12, choices=Role.choices, default=Role.VIEWER,
+                            verbose_name=_('نقش'))
+    group = models.ForeignKey(
+        'planning.PlanningGroup', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='shares', db_constraint=False, verbose_name=_('گروه مبدأ'),
+        help_text=_('اگر این دسترسی از یک گروه آمده باشد.'),
+    )
 
     class Meta:
         verbose_name = _('اشتراک‌گذاری')
@@ -152,4 +168,48 @@ class PlanningShare(BaseModel):
 
     def __str__(self):
         return f'{self.get_item_kind_display()} #{self.item_id}'
+
+
+
+class PlanningGroup(BaseModel):
+    """گروه کاربران برای محول‌کردن سریع یادداشت/وظیفه (مثلاً «تیم مالی»)."""
+
+    name = models.CharField(max_length=120, verbose_name=_('نام گروه'))
+    description = models.CharField(max_length=200, blank=True, verbose_name=_('توضیح'))
+    color = models.CharField(max_length=20, blank=True, verbose_name=_('رنگ'))
+    created_by = _user_fk('planning_groups', _('سازنده'))
+
+    class Meta:
+        verbose_name = _('گروه برنامه‌ریزی')
+        verbose_name_plural = _('گروه‌های برنامه‌ریزی')
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'name'], name='uniq_planning_group_name',
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class PlanningGroupMember(BaseModel):
+    """عضویت یک کاربر در یک گروه برنامه‌ریزی."""
+
+    group = models.ForeignKey(PlanningGroup, on_delete=models.CASCADE,
+                              related_name='member_rows', verbose_name=_('گروه'))
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='planning_group_memberships', db_constraint=False,
+                             verbose_name=_('کاربر'))
+
+    class Meta:
+        verbose_name = _('عضو گروه برنامه‌ریزی')
+        verbose_name_plural = _('اعضای گروه برنامه‌ریزی')
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(fields=['group', 'user'], name='uniq_planning_group_member'),
+        ]
+
+    def __str__(self):
+        return f'{self.group_id} · {self.user_id}'
 

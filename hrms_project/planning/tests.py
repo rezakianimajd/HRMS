@@ -32,6 +32,30 @@ class PlanningPermissionTests(SimpleTestCase):
         self.assertEqual(services.upcoming_summary(user)['planning'], 0)
 
 
+class AssignmentMetadataTests(SimpleTestCase):
+    """نقش‌ها و گروه‌های محول‌کردن وظیفه."""
+
+    def test_assignee_role_is_defined(self):
+        self.assertEqual(PlanningShare.Role.ASSIGNEE, 'assignee')
+        self.assertIn('assignee', dict(PlanningShare.Role.choices))
+
+    def test_assignee_groups_reads_task_relation(self):
+        fake_group = SimpleNamespace(pk=3, name='تیم مالی', color='#0ea5e9')
+
+        class _Manager:
+            @staticmethod
+            def all():
+                return [fake_group]
+
+        task = SimpleNamespace(assignee_groups=_Manager())
+        self.assertEqual(services.assignee_groups(task), [
+            {'id': 3, 'name': 'تیم مالی', 'color': '#0ea5e9'},
+        ])
+
+    def test_group_member_ids_is_empty_without_groups(self):
+        self.assertEqual(services.group_member_ids(SimpleNamespace(pk=1), []), [])
+
+
 class TaskModelLogicTests(SimpleTestCase):
     def test_overdue_flag_is_safe_without_database(self):
         task = Task(status=Task.Status.TODO)

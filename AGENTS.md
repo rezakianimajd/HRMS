@@ -577,7 +577,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
-- **Live:** frontend `main.d3439444.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.cc79d2e5.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
 - **اعلان‌ها و حریم خصوصی برنامه‌ریزی (۲۰۲۶-۱۱-۱۰):** دو اصلاح مهم:
   - **اعلان‌های چت/برنامه‌ریزی همیشه شخصی‌اند:** `notifications/views.py::apply_notification_visibility`
     دسته‌های `chat_message|chat_mention|chat_member_added|planning_share|planning_due` را **حتی برای
@@ -636,6 +636,18 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     ⚠️ ارتفاع داخل دیالوگ **صریح** است (`calc(92vh - 150px)` که dock پاس می‌دهد) چون زنجیرهٔ `height:100%`
     در فلکس دیالوگ می‌تواند کوچک حل شود؛ پهنای دیالوگ `calc(100vw - 40px)` با `maxWidth:1700px` و
     فهرست گفتگوها ۳۲۰–۳۶۰px است و بقیهٔ فضا برای رشتهٔ پیام.
+  - **محول‌کردن وظیفه (۲۰۲۶-۱۱-۱۰):** در فرم ساخت/ویرایش وظیفه سه حالت وجود دارد:
+    **فقط خودم** (پیش‌فرض، کاملاً خصوصی) / **یک یا چند نفر** / **گروه**. مدل تازه:
+    `PlanningGroup` + `PlanningGroupMember` (گروه‌های کاربری مثل «تیم مالی») و روی `Task` فیلد M2M
+    `assignee_groups`؛ روی `PlanningShare` فیلدهای `role` (`assignee|editor|viewer`) و `group`.
+    سرویس `planning.services.assign_task` اعضای افراد+گروه‌ها را باز می‌کند، برای هر نفر یک
+    `PlanningShare(role=assignee, permission=edit)` می‌سازد (idempotent)، اعلان «وظیفه‌ای به شما محول شد»
+    می‌فرستد و گروه‌های انتخابی را روی تسک ثبت می‌کند. `tasks_for_scope(scope='mine')` حالا
+    «مالک **یا** مسئول انجام» است؛ `shared` فقط اشتراکی‌ها و `all` همه. API گروه‌ها:
+    `/api/planning/groups/` (+`members`) و در تسک `assignees`/`groups` در بدنهٔ POST/PATCH.
+    نمایش فهرست: چیپ گروه + آواتار مسئولان + چیپ «فقط من» برای وظیفهٔ خصوصی.
+    تأیید زنده: گروه ۲ نفره → تسک محول‌شده به گروه، هر دو نفر در `scope=mine` دیدند و اعلان گرفتند؛
+    وظیفهٔ بدون مسئول برای دیگری دیده نشد.
   - **تست:** `communication/tests.py` (۱۴) + `planning/tests.py` (۷) DB-free؛ فرانت `chatSmoke` (۲) و
     `planningSmoke` (۲). **تأیید زندهٔ `kpsmi`:** جدول‌ها ساخته شد؛ بدنهٔ پیام در DB `gAAAAA…` (رمز)،
     `search_tokens` تولید شد، جست‌وجوی کور نتیجه داد، اعلان برای عضو ساخته شد، ویرایش در `ChatAuditLog`
