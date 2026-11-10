@@ -1,6 +1,7 @@
 """Views/API for the Document Management (DMS) module."""
 import logging
 import os
+import re
 from datetime import date, timedelta
 
 from django.core.exceptions import PermissionDenied
@@ -87,6 +88,19 @@ def _accessible_documents(request):
     return qs
 
 
+def _get_company_id(request):
+    company = _company(request)
+    return getattr(company, 'pk', company)
+
+
+def _id_list(value):
+    """فهرست شناسه‌های عددی از پارامتر متنی (``1,2 3``) — قابل تست بدون دیتابیس."""
+    return [
+        int(part) for part in re.split(r'[,\s]+', str(value or ''))
+        if str(part).strip().isdigit()
+    ]
+
+
 class DocumentFolderViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentFolderSerializer
     queryset = DocumentFolder.objects.all()
@@ -138,6 +152,36 @@ class ManagedDocumentViewSet(viewsets.ModelViewSet):
         folder = params.get('folder')
         if folder:
             qs = qs.filter(folder_id=folder)
+        # فیلتر پوشه با زیرمجموعه‌ها (کتابخانه به‌صورت سروری صفحه‌بندی می‌شود)
+        folder_ids = params.get('folder_ids') or params.get('folders')
+        if folder_ids:
+            ids = _id_list(folder_ids)
+            if ids:
+                qs = qs.filter(folder_id__in=ids)
+        # ریشه‌های پوشه (ماژول) → همهٔ زیرشاخه‌ها سمت سرور محاسبه می‌شود
+        folder_roots = params.get('folder_roots')
+        if folder_roots:
+            root_ids = _id_list(folder_roots)
+            if root_ids:
+                company = _company(self.request)
+                tree = DocumentFolder.objects.all()
+                if company:
+                    tree = tree.filter(company=company)
+                children = {}
+                for folder_id, parent_id in tree.values_list('id', 'parent_id'):
+                    children.setdefault(parent_id, []).append(folder_id)
+                collected, stack = set(), list(root_ids)
+                while stack:
+                    current = stack.pop()
+                    if current in collected:
+                        continue
+                    collected.add(current)
+                    stack.extend(children.get(current, []))
+                qs = qs.filter(folder_id__in=list(collected))
+        # فیلتر ماژول: کلید بایگانی ماژول یا کد پوشهٔ ریشهٔ همان ماژول
+        module = params.get('module')
+        if module:
+            qs = qs.filter(Q(source_module_key=module) | Q(folder__code=module))
         workflow_status = params.get('workflow_status') or params.get('workflow')
         state = params.get('status')
         if state:
@@ -164,8 +208,17 @@ class ManagedDocumentViewSet(viewsets.ModelViewSet):
         tag = params.get('tag')
         if tag:
             qs = qs.filter(tags__icontains=tag)
-        if params.get('mine') in ('1', 'true', 'yes'):
+        # دامنه‌های آماده (هم‌ارز فیلترهای سمت کلاینت قبلی)
+        scope = params.get('scope')
+        if scope in ('mine', 'true', '1') or params.get('mine') in ('1', 'true', 'yes'):
             qs = qs.filter(created_by=self.request.user)
+        if scope == 'expiring':
+            qs = qs.filter(
+                expiry_date__gte=date.today(),
+                expiry_date__lte=date.today() + timedelta(days=30),
+            )
+        elif scope == 'expired':
+            qs = qs.filter(expiry_date__lt=date.today())
         due_review = params.get('review')
         if due_review == 'due':
             qs = qs.filter(review_date__isnull=False, review_date__lte=date.today())

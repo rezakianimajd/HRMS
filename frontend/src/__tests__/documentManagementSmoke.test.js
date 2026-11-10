@@ -125,15 +125,56 @@ const employees = [{
 
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/* شبیه‌سازی فیلترهای سروری: پوشه (با زیرشاخه)، ماژول، جست‌وجو و نوع/وضعیت */
+const filterDocuments = (params = {}) => {
+  const descendantsOf = (rootIds) => {
+    const ids = new Set(rootIds.map(String));
+    let changed = true;
+    while (changed) {
+      changed = false;
+      folders.forEach((folder) => {
+        if (folder.parent && ids.has(String(folder.parent)) && !ids.has(String(folder.id))) {
+          ids.add(String(folder.id));
+          changed = true;
+        }
+      });
+    }
+    return ids;
+  };
+  let rows = documents;
+  const roots = params.folder_roots || '';
+  const folderIds = params.folder_ids || '';
+  if (roots) {
+    const ids = descendantsOf(String(roots).split(',').filter(Boolean));
+    rows = rows.filter((row) => ids.has(String(row.folder)));
+  } else if (folderIds) {
+    const ids = new Set(String(folderIds).split(',').filter(Boolean));
+    rows = rows.filter((row) => ids.has(String(row.folder)));
+  }
+  if (params.document_type) rows = rows.filter((row) => row.document_type === params.document_type);
+  if (params.status) rows = rows.filter((row) => row.status === params.status);
+  if (params.workflow_status) rows = rows.filter((row) => row.workflow_status === params.workflow_status);
+  if (params.confidentiality) rows = rows.filter((row) => row.confidentiality === params.confidentiality);
+  if (params.search) {
+    const query = String(params.search).toLowerCase();
+    rows = rows.filter((row) => [row.title, row.description, row.tags, row.reference_number]
+      .some((value) => String(value || '').toLowerCase().includes(query)));
+  }
+  return rows;
+};
+
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   window.matchMedia = window.matchMedia || (() => ({
     matches: false, addListener: () => {}, removeListener: () => {},
     addEventListener: () => {}, removeEventListener: () => {},
   }));
-  axiosInstance.get.mockImplementation((url) => {
+  axiosInstance.get.mockImplementation((url, config = {}) => {
     if (url === '/document-management/folders/') return Promise.resolve({ data: folders });
-    if (url === '/document-management/documents/') return Promise.resolve({ data: documents });
+    if (url === '/document-management/documents/') {
+      const results = filterDocuments(config.params || {});
+      return Promise.resolve({ data: { count: results.length, next: null, previous: null, results } });
+    }
     if (url === '/document-management/stats/') return Promise.resolve({ data: stats });
     if (url === '/document-management/activities/') return Promise.resolve({ data: [activity] });
     if (url === '/employees/') return Promise.resolve({ data: { count: employees.length, next: null, results: employees } });
@@ -227,6 +268,12 @@ test('personnel library lists documents in the same standard table', async () =>
   for (let index = 0; index < 3; index += 1) {
     // eslint-disable-next-line no-await-in-loop
     await act(async () => { await wait(180); });
+  }
+  /* فهرست پرسنل و مدارک دو درخواست جدا هستند؛ تا رسیدن ردیف‌ها صبر می‌کنیم */
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (container.textContent.includes('۱۰۰۱')) break;
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
   }
 
   expect(container.textContent).toContain('کتابخانه اسناد · پرسنل');

@@ -565,13 +565,40 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    بزرگ **Range** می‌خواهد؛ بدون پاسخ `206`/`Accept-Ranges` پیش‌نمایش ناقص/کند می‌شود.
 18. **در PowerShell داخل `ssh "... \\$VAR"` متغیر محلی خالی می‌شود.** برای اسکریپت‌های چندخطی سرور، یک فایل
    `.sh` بسازید، `scp` کنید، `sed -i 's/\r$//'` بزنید و `sudo bash /var/tmp/x.sh` اجرا کنید.
+19. **فهرست‌های بزرگ را با `page_size` ثابت + فیلتر سمت کلاینت نسازید.** کتابخانهٔ اسناد ۵۰۰ سند آخر را
+   می‌گرفت و بقیه (قراردادها/پرسنل/سازمانی) «گم» می‌شدند، در حالی که همه در DB و بایگانی بودند.
+   الگوی درست: کوئری با `page`/`page_size` + پارامترهای فیلتر سروری + `ModulePager` با `count`؛
+   برای پوشه هم `folder_roots` بفرستید تا بک‌اند زیرشاخه‌ها را خودش باز کند (نه محاسبهٔ کلاینتی).
+
+
 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `fix(correspondence): make attachment previews embed inside the app again`
-- **Live:** frontend `main.0f51c230.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص)، `correspondences.0021` (گروه‌های شماره‌گذاری) و `correspondences.0022` (تاریخ نامهٔ اختیاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + اصلاح شمارندهٔ شماره‌گذاری پیشنهادی + پیش‌نمایش درون‌برنامه‌ای پیوست‌ها + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **Last commit:** `fix(documents): paginate and filter the document library on the server`
+- **Live:** frontend `main.00f52485.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص)، `correspondences.0021` (گروه‌های شماره‌گذاری) و `correspondences.0022` (تاریخ نامهٔ اختیاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + اصلاح شمارندهٔ شماره‌گذاری پیشنهادی + پیش‌نمایش درون‌برنامه‌ای پیوست‌ها + فیلتر/صفحه‌بندی سروری کتابخانهٔ اسناد + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
+- **مدیریت اسناد: کتابخانه حالا سروری صفحه‌بندی/فیلتر می‌شود (۲۰۲۶-۱۱-۱۰):** علت «مدارک قرارداد/پرسنلی/
+  سازمانی در کتابخانه دیده نمی‌شوند» داده نبود؛ فرانت **فقط ۵۰۰ سند آخر** را یک‌جا می‌گرفت
+  (`page_size: 500`) و فیلتر/جست‌وجو/صفحه‌بندی را سمت کلاینت انجام می‌داد، بنابراین با ۷٬۵۷۲ سند
+  (۷٬۱۳۲ مکاتبه در صدر) مدارک قدیمی‌ترِ قرارداد/پرسنل هرگز بارگذاری نمی‌شدند.
+  - **همه‌چیز از قبل یک‌جا بود:** همهٔ فایل‌ها زیر `archive/company_1/<root>/…` هستند و ایندکس شده‌اند —
+    HR **۱۲۱/۱۲۱**، سازمانی **۷/۷** (همه «افراد تحت تکفل» → طبق قاعده در پروندهٔ پرسنل)، قرارداد **۲۶۷**،
+    مکاتبات **۷٬۱۳۲**؛ `sync_archive_files` نتیجهٔ `created: 0` داد (چیزی بیرون بایگانی نیست).
+  - **بک‌اند** (`ManagedDocumentViewSet.get_queryset`): پارامترهای تازهٔ `folder_ids`، `folder_roots`
+    (زیرشاخه‌ها با پیمایش سروری درخت پوشه)، `module` (`source_module_key` یا `folder.code`)،
+    `scope=mine|expiring|expired` و `ordering` — هم‌ارز همان فیلترهای سمت کلاینت. `_id_list` برای پارس
+    پارامترها + ۲ تست DB-free در `documents/tests.py`.
+  - **فرانت** (`pages/DocumentManagementPage.jsx`): یک کوئری سروری با
+    `page/page_size/search/folder_roots/document_type/status/workflow_status/confidentiality/review/scope/ordering`،
+    `count` برای `ModulePager`، حذف `filtered`/`matchesDocumentFilters`، جدول از `tableRows` (نمای پرسنلی از
+    `personnelRows`)، خروجی CSV با پیمایش همهٔ صفحه‌ها، و آمار پایین جدول از `/stats/` (حجم کل/انقضا) به‌جای
+    جمع صفحه. تا رسیدن فهرست پرسنل، متن «در حال بارگذاری فهرست پرسنل…» نمایش داده می‌شود.
+  - **تأیید زنده (API، `kpsmi`):** `count=7572` با صفحه‌بندی؛ `folder_roots=42` (قراردادها) = **۲۶۷**؛
+    `folder_roots=1` (پرسنل) = **۱۶۹**؛ `folder_roots=266` (مکاتبات) = **۷٬۱۳۲**؛ `search=قرارداد` = ۲۶۹؛
+    `document_type=contract` = ۲۶۷.
+  - تست: `documents` (**۳۶**) + `documentManagementSmoke` (۴، با mock فیلتر سروری) +
+    `documentManagementDashboardSmoke` (۱).
 - **پیش‌نمایش پیوست‌ها داخل برنامه (۲۰۲۶-۱۱-۱۰ — رفع «refused to connect»):** پیش‌نمایش PDF در
   iframe خطای مرورگر می‌داد و فقط «باز کردن در تب جدید» کار می‌کرد؛ علت‌ها و اصلاح‌ها:
   - **علت اصلی:** در فهرست مکاتبات، `previewItems` آدرس امن اندپوینت (`/api/letter-attachments/{id}/download/?t=…&inline=1`)

@@ -431,3 +431,25 @@ class DocumentUploadPolicyTests(SimpleTestCase):
 
         self.assertEqual(list(DocumentEngine.get_documents('undefined')), [])
         self.assertEqual(list(DocumentEngine.get_documents(None)), [])
+
+
+class DocumentListFilterTests(SimpleTestCase):
+    """پارامترهای فیلتر سروری کتابخانهٔ اسناد (بدون دیتابیس)."""
+
+    def test_id_list_parses_comma_and_space_separated_values(self):
+        from documents.management_views import _id_list
+
+        self.assertEqual(_id_list('1,2,3'), [1, 2, 3])
+        self.assertEqual(_id_list('4 5  6'), [4, 5, 6])
+        self.assertEqual(_id_list(''), [])
+        self.assertEqual(_id_list(None), [])
+        self.assertEqual(_id_list('7,abc,8'), [7, 8])
+
+    def test_documents_list_is_paginated(self):
+        """فهرست باید صفحه‌بندی سروری داشته باشد (نه صفحهٔ ۵۰۰ ردیفی)."""
+        from documents.management_views import ManagedDocumentViewSet
+
+        pagination = ManagedDocumentViewSet.pagination_class
+        self.assertIsNotNone(pagination)
+        self.assertEqual(pagination.page_size, 100)
+

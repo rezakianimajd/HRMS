@@ -29,13 +29,22 @@ import {
 } from './contracts/DocumentManagementUI';
 import { buildPersonnelRows, normalizeText } from './contracts/personnelDocuments';
 import {
-  documentMatchesModuleText, findDocumentModule, findModuleForFolder,
-  folderDescendants, moduleFolderIds, scopedLibraryFolders,
+  findDocumentModule, findModuleForFolder,
+  moduleFolderIds, moduleRootFolders, scopedLibraryFolders,
 } from '../core/config/documentLibraryModules';
 import {
   ModulePager, ModuleTable, ModuleToolbar,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
+
+/* نگاشت گزینه‌های مرتب‌سازی نوار ابزار به ordering سرور */
+const SORT_PARAMS = {
+  newest: '-created_at',
+  updated: '-updated_at',
+  title: 'title',
+  reference: 'reference_number',
+  expiry: 'expiry_date',
+};
 
 const EMPTY_DOCUMENT = {
   id: null, title: '', folder: '', description: '', tags: '', reference_number: '',
@@ -131,15 +140,6 @@ const DocumentManagementPage = () => {
     [foldersQuery.data],
   );
 
-  const documentsQuery = useQuery({
-    queryKey: ['dms-documents'],
-    queryFn: () => axiosInstance.get('/document-management/documents/', { params: { page_size: 500, include_archived: 1 } }).then((response) => response.data),
-  });
-  const documents = useMemo(
-    () => (Array.isArray(documentsQuery.data) ? documentsQuery.data : documentsQuery.data?.results || []),
-    [documentsQuery.data],
-  );
-
   const statsQuery = useQuery({
     queryKey: ['dms-stats'],
     queryFn: () => axiosInstance.get('/document-management/stats/').then((response) => response.data),
@@ -154,10 +154,6 @@ const DocumentManagementPage = () => {
   const detailActivities = Array.isArray(detailActivitiesQuery.data) ? detailActivitiesQuery.data : detailActivitiesQuery.data?.results || [];
 
   const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
-  const folderIds = useMemo(() => {
-    if (!folderId) return null;
-    return folderDescendants(folders, [folderId]);
-  }, [folderId, folders]);
 
   const scopedLibrary = useMemo(
     () => scopedLibraryFolders(folders, { moduleKey: moduleFilter, folderId }),
@@ -167,59 +163,73 @@ const DocumentManagementPage = () => {
     || findModuleForFolder(selectedFolder, folders)
     || (moduleFilter ? findDocumentModule(moduleFilter) : null);
   const activeModuleKey = moduleFilter || activeModule?.key || '';
-  const scopedModuleIds = useMemo(
-    () => (activeModuleKey ? moduleFolderIds(folders, activeModuleKey) : null),
-    [activeModuleKey, folders],
-  );
   const scopedFolders = scopedLibrary.folders;
 
-  const matchesDocumentFilters = (row) => {
-    const scopeIds = folderIds || scopedModuleIds;
-    if (scopeIds && !scopeIds.has(String(row.folder))) return false;
-    if (!scopeIds && activeModuleKey && !documentMatchesModuleText(row, activeModuleKey)) return false;
-    if (statusFilter === 'all') {
-      if (workflowFilter === 'all' && row.status === 'archived') return false;
-    } else if (row.status !== statusFilter) return false;
-    if (typeFilter !== 'all' && row.document_type !== typeFilter) return false;
-    if (workflowFilter !== 'all' && row.workflow_status !== workflowFilter) return false;
-    if (confidentialityFilter !== 'all' && row.confidentiality !== confidentialityFilter) return false;
-    if (scope === 'mine' && String(row.created_by) !== String(user?.id)) return false;
-    if (scope === 'expiring' && !(row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30)) return false;
-    if (scope === 'expired' && !row.is_expired) return false;
-    if (reviewFilter === 'due') {
-      if (!row.review_date || String(row.review_date) > new Date().toISOString().slice(0, 10)) return false;
-    }
-    if (reviewFilter === 'soon') {
-      const today = new Date().toISOString().slice(0, 10);
-      const limit = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-      if (!row.review_date || String(row.review_date) < today || String(row.review_date) > limit) return false;
-    }
-    return true;
-  };
+  const moduleTheme = useModuleTheme();
+  const pageSize = moduleTheme.tableTheme.rowsPerPage;
+  const [page, setPage] = useState(0);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    let result = documents.filter((row) => {
-      if (!matchesDocumentFilters(row)) return false;
-      if (!query) return true;
-      return [row.title, row.description, row.tags, row.reference_number, row.folder_path, row.file_name]
-        .some((value) => String(value || '').toLowerCase().includes(query));
-    });
-    result = [...result].sort((a, b) => {
-      if (sortBy === 'title') return String(a.title || '').localeCompare(String(b.title || ''), 'fa');
-      if (sortBy === 'reference') return String(a.reference_number || '').localeCompare(String(b.reference_number || ''), 'fa');
-      if (sortBy === 'updated') return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
-      if (sortBy === 'expiry') return String(a.expiry_date || '9999').localeCompare(String(b.expiry_date || '9999'));
-      if (sortBy === 'size') return Number(b.file_size || 0) - Number(a.file_size || 0);
-      return String(b.created_at || '').localeCompare(String(a.created_at || ''));
-    });
-    return result;
-  }, [documents, folderIds, scopedModuleIds, activeModuleKey, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id, search, sortBy]);
+  /* ---- فهرست سروری: فیلتر/جست‌وجو و صفحه‌بندی روی همهٔ اسناد کتابخانه ---- */
+  const documentParams = useMemo(() => {
+    const next = { page_size: pageSize, include_archived: 1, page: page + 1 };
+    if (search.trim()) next.search = search.trim();
+    if (folderId) {
+      // سرور خودش زیرشاخه‌ها را اضافه می‌کند؛ پس منتظر درخت پوشه‌ها نمی‌مانیم
+      next.folder_roots = String(folderId);
+    } else if (activeModuleKey) {
+      const roots = moduleRootFolders(folders, activeModuleKey);
+      if (roots.length) next.folder_roots = roots.map((folder) => folder.id).join(',');
+      else {
+        const ids = moduleFolderIds(folders, activeModuleKey);
+        if (ids && ids.size) next.folder_ids = Array.from(ids).join(',');
+        else next.module = activeModuleKey;
+      }
+    }
+    if (typeFilter !== 'all') next.document_type = typeFilter;
+    if (statusFilter !== 'all') next.status = statusFilter;
+    else if (workflowFilter !== 'all') next.workflow_status = workflowFilter;
+    if (confidentialityFilter !== 'all') next.confidentiality = confidentialityFilter;
+    if (reviewFilter) next.review = reviewFilter;
+    if (scope !== 'all') next.scope = scope;
+    if (SORT_PARAMS[sortBy]) next.ordering = SORT_PARAMS[sortBy];
+    return next;
+  }, [
+    page, pageSize, search, folderId, activeModuleKey, folders, typeFilter, statusFilter,
+    workflowFilter, confidentialityFilter, reviewFilter, scope, sortBy,
+  ]);
 
-  const personnelDocuments = useMemo(
-    () => documents.filter(matchesDocumentFilters),
-    [documents, folderIds, scopedModuleIds, activeModuleKey, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id],
-  );
+  const documentsQuery = useQuery({
+    queryKey: ['dms-documents', documentParams],
+    queryFn: () => axiosInstance
+      .get('/document-management/documents/', { params: documentParams })
+      .then((response) => response.data),
+    placeholderData: (previous) => previous,
+    staleTime: 30_000,
+  });
+  const pagedRows = useMemo(() => {
+    const payload = documentsQuery.data;
+    if (Array.isArray(payload)) return payload;
+    return payload?.results || [];
+  }, [documentsQuery.data]);
+  const total = Number(documentsQuery.data?.count) || pagedRows.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pageNumbers = useMemo(() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    const end = Math.min(totalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
+  }, [page, totalPages]);
+  useEffect(() => {
+    setPage(0);
+  }, [
+    search, folderId, moduleFilter, typeFilter, statusFilter, workflowFilter,
+    confidentialityFilter, reviewFilter, scope, sortBy, pageSize,
+  ]);
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+
+  const personnelDocuments = pagedRows;
 
   const personnelMode = activeModuleKey === 'employees'
     || findModuleForFolder(selectedFolder, folders)?.key === 'employees'
@@ -231,9 +241,12 @@ const DocumentManagementPage = () => {
     staleTime: 5 * 60 * 1000,
   });
   const personnelEmployees = Array.isArray(personnelEmployeesQuery.data) ? personnelEmployeesQuery.data : [];
+  const personnelLoading = personnelMode && !personnelEmployeesQuery.isFetched;
   const personnel = useMemo(
-    () => (personnelMode ? buildPersonnelRows(personnelEmployees, personnelDocuments, search) : { rows: [], unassigned: [] }),
-    [personnelMode, personnelEmployees, personnelDocuments, search],
+    () => (personnelMode && !personnelLoading
+      ? buildPersonnelRows(personnelEmployees, personnelDocuments, search)
+      : { rows: [], unassigned: [] }),
+    [personnelMode, personnelLoading, personnelEmployees, personnelDocuments, search],
   );
   /* نمای پرسنلی هم جدولی است: هر ردیف یک مدرک + نام و کد پرسنلی */
   const personnelRows = useMemo(() => (personnelMode
@@ -258,7 +271,7 @@ const DocumentManagementPage = () => {
     : []), [personnelMode, personnel.rows, personnel.unassigned]);
 
   const replacementOptions = supersedeRow
-    ? documents.filter((row) => String(row.id) !== String(supersedeRow.id) && ['approved', 'published'].includes(row.workflow_status))
+    ? pagedRows.filter((row) => String(row.id) !== String(supersedeRow.id) && ['approved', 'published'].includes(row.workflow_status))
     : [];
   const activeModuleMeta = findModuleForFolder(selectedFolder, folders)
     || scopedLibrary.module
@@ -293,21 +306,9 @@ const DocumentManagementPage = () => {
                   ? { title: 'اسناد محرمانه', subtitle: 'اسناد با سطح دسترسی محدود' }
                   : { title: 'کتابخانه اسناد', subtitle: 'کتابخانه مرکزی اسناد با نسخه‌بندی، متادیتا و تاریخچه — نمای جدولی' };
 
-  /* ---- جدول استاندارد استودیوتم ---- */
-  const moduleTheme = useModuleTheme();
-  const tableRows = personnelMode ? personnelRows : filtered;
-  const pageSize = moduleTheme.tableTheme.rowsPerPage;
-  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    tableRows.length, pageSize, [
-    search, folderId, moduleFilter, statusFilter, confidentialityFilter,
-    typeFilter, workflowFilter, reviewFilter, scope, sortBy, personnelMode, pageSize,
-  ],
-  );
-  const pagedRows = useMemo(
-    () => tableRows.slice(page * pageSize, (page + 1) * pageSize),
-    [tableRows, page, pageSize],
-  );
-  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
+  /* ---- جدول استاندارد استودیوتم (صفحه‌بندی سروری) ---- */
+  const tableRows = personnelMode ? personnelRows : pagedRows;
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, tableRows.length);
 
   const filterOptions = (meta) => [
     { value: 'all', label: 'همه' },
@@ -320,10 +321,8 @@ const DocumentManagementPage = () => {
     workflowFilter !== 'all' ? { key: 'workflow', label: `گردش‌کار: ${WORKFLOW_STATUS[workflowFilter]?.label || workflowFilter}`, clear: () => setWorkflowFilter('all') } : null,
   ].filter(Boolean);
 
-  const totalSize = tableRows.reduce((sum, row) => sum + Number(row.file_size || 0), 0);
-  const totalVersions = tableRows.reduce((sum, row) => sum + Number(row.version_count || 1), 0);
-  const expiringSoon = tableRows.filter((row) => row.days_until_expiry != null
-    && row.days_until_expiry >= 0 && row.days_until_expiry <= 30).length;
+  /* آمار پایین جدول: مجموع کل (از stats) + جمع همین صفحه برای نسخه‌ها */
+  const pageVersionCount = pagedRows.reduce((sum, row) => sum + Number(row.version_count || 1), 0);
   const dateCell = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
   /* عنوان سند در بایگانی قرارداد: از عنوانِ قرارداد در ماژول قراردادها خوانده می‌شود */
   const CONTRACT_PATTERN = /contract/i;
@@ -616,9 +615,23 @@ const DocumentManagementPage = () => {
     setFolderDialog(true);
   };
 
-  const exportCsv = () => {
+  /* خروجی CSV از همهٔ نتیجهٔ فیلتر (نه فقط صفحهٔ جاری) */
+  const exportCsv = async () => {
     const headers = ['عنوان', 'نوع سند', 'پوشه', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'تاریخ صدور', 'تاریخ انقضا', 'برچسب‌ها'];
-    const body = filtered.map((row) => [
+    const rows = [];
+    let nextPage = 1;
+    let guard = 0;
+    while (nextPage && guard < 40) {
+      guard += 1;
+      // eslint-disable-next-line no-await-in-loop
+      const response = await axiosInstance.get('/document-management/documents/', {
+        params: { ...documentParams, page: nextPage, page_size: 1000 },
+      });
+      const payload = response.data || {};
+      rows.push(...(payload.results || []));
+      nextPage = payload.next ? nextPage + 1 : 0;
+    }
+    const body = rows.map((row) => [
       row.title, DOCUMENT_TYPE[row.document_type]?.label || '', row.folder_path || '',
       row.confidentiality_display || '', WORKFLOW_STATUS[row.workflow_status]?.label || row.workflow_status_display || '',
       row.version_count || 1, row.file_size || 0, row.issue_date || '', row.expiry_date || '', row.tags || '',
@@ -632,6 +645,7 @@ const DocumentManagementPage = () => {
     link.download = `document-library-${selectedFolder?.name || 'all'}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
+    setToast(`${formatPersianNumber(rows.length)} سند در فایل CSV ذخیره شد`);
   };
 
   if (documentsQuery.isLoading || foldersQuery.isLoading) {
@@ -859,8 +873,8 @@ const DocumentManagementPage = () => {
         subtitle={viewMeta.subtitle}
         badge={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>
           {personnelMode
-            ? `${formatPersianNumber(personnelRows.length)} مدرک · ${formatPersianNumber(personnel.rows.length)} پرسنل`
-            : `${formatPersianNumber(filtered.length)} سند`}
+            ? `${formatPersianNumber(total)} مدرک · ${formatPersianNumber(personnel.rows.length)} پرسنل این صفحه`
+            : `${formatPersianNumber(total)} سند`}
         </Typography>}
         actions={(
           <>
@@ -930,10 +944,12 @@ const DocumentManagementPage = () => {
           tableHeight={tableHeight}
           rowHeight={rowHeight}
           dimmed={documentsQuery.isFetching}
-          rows={pagedRows}
+          rows={tableRows}
           rowKey={(row) => row.id}
           onRowClick={(row) => setDetail(row)}
-          emptyText="سندی با این مشخصات پیدا نشد؛ فیلترها یا عبارت جست‌وجو را تغییر دهید."
+          emptyText={personnelLoading
+            ? 'در حال بارگذاری فهرست پرسنل…'
+            : 'سندی با این مشخصات پیدا نشد؛ فیلترها یا عبارت جست‌وجو را تغییر دهید.'}
           columns={tableColumns}
         />
         <ModulePager
@@ -942,17 +958,17 @@ const DocumentManagementPage = () => {
           onPage={setPage}
           totalPages={totalPages}
           pageNumbers={pageNumbers}
-          total={tableRows.length}
+          total={total}
           pageSize={pageSize}
           unit="سند"
         />
         <Stack direction="row" spacing={2.5} useFlexGap flexWrap="wrap"
           sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
           {[
-            ['اسناد', formatPersianNumber(tableRows.length)],
-            ['نسخه‌ها', formatPersianNumber(totalVersions)],
-            ['حجم کل', sizeCell(totalSize)],
-            ['انقضا تا ۳۰ روز', formatPersianNumber(expiringSoon)],
+            ['اسناد (نتیجهٔ فیلتر)', formatPersianNumber(total)],
+            ['نسخه‌های این صفحه', formatPersianNumber(pageVersionCount)],
+            ['حجم کل کتابخانه', sizeCell(stats.storage_bytes)],
+            ['انقضا تا ۳۰ روز', formatPersianNumber(stats.expiring_soon || 0)],
           ].map(([label, value]) => (
             <Box key={label}>
               <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
