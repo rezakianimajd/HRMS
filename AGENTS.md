@@ -577,7 +577,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
-- **Live:** frontend `main.488a56cc.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.4254d366.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
 - **ماژول‌های تازه: «گفتگوی سازمانی» و «برنامه‌ریزی شخصی» (۲۰۲۶-۱۱-۱۰):** دو اپ مستقل در TENANT_APPS —
   `communication` (چت) و `planning` (یادداشت/وظیفه) — با معماری «چت لایهٔ ارتباطی است، نه مالک داده».
   - **مدل‌ها (communication):** `Conversation` (نوع `direct|group|channel|system`، `related_module/object_*`،
