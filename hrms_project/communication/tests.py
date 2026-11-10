@@ -1,12 +1,14 @@
 """تست‌های واحد ماژول گفتگوی سازمانی (بدون دیتابیس)."""
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase, override_settings
+from rest_framework.exceptions import PermissionDenied
 
 from communication import crypto
 from communication import permissions as chat_permissions
 from communication import services, uploads
+from communication.models import Conversation, ConversationMember
 from communication.realtime import DatabaseEventPublisher, _publisher
 
 
@@ -108,6 +110,96 @@ class ChatPermissionTests(SimpleTestCase):
 
     def test_publisher_defaults_to_database_outbox(self):
         self.assertIsInstance(_publisher(), DatabaseEventPublisher)
+
+
+class ChatPrivacyTests(SimpleTestCase):
+    """حریم خصوصی گفتگو: بدون عضویت، هیچ‌کس (حتی سوپریوزر) گفتگو را نمی‌بیند."""
+
+    def _superuser(self):
+        return SimpleNamespace(pk=1, is_superuser=True, is_authenticated=True)
+
+    def _member_user(self):
+        return SimpleNamespace(pk=2, is_superuser=False, is_authenticated=True)
+
+    @staticmethod
+    def _query(member):
+        query = MagicMock()
+        query.first.return_value = member
+        query.exists.return_value = member is not None
+        return query
+
+    def _direct(self):
+        return SimpleNamespace(
+            kind=Conversation.Kind.DIRECT, is_public=False,
+            status=Conversation.Status.ACTIVE, post_policy=Conversation.PostPolicy.MEMBERS,
+        )
+
+    def _public_channel(self):
+        return SimpleNamespace(
+            kind=Conversation.Kind.CHANNEL, is_public=True,
+            status=Conversation.Status.ACTIVE, post_policy=Conversation.PostPolicy.MEMBERS,
+        )
+
+    def test_superuser_cannot_view_post_or_manage_others_direct_chat(self):
+        conversation = self._direct()
+        with patch.object(
+            ConversationMember.objects, 'filter', return_value=self._query(None),
+        ):
+            self.assertFalse(chat_permissions.can_view(self._superuser(), conversation))
+            self.assertFalse(chat_permissions.can_post(self._superuser(), conversation))
+            self.assertFalse(chat_permissions.is_privileged(self._superuser(), conversation))
+            self.assertFalse(chat_permissions.can_manage_members(self._superuser(), conversation))
+            with self.assertRaises(PermissionDenied):
+                chat_permissions.ensure_view(self._superuser(), conversation)
+
+    def test_superuser_cannot_view_private_group_chat(self):
+        conversation = SimpleNamespace(
+            kind=Conversation.Kind.GROUP, is_public=False,
+            status=Conversation.Status.ACTIVE, post_policy=Conversation.PostPolicy.MEMBERS,
+        )
+        with patch.object(
+            ConversationMember.objects, 'filter', return_value=self._query(None),
+        ):
+            self.assertFalse(chat_permissions.can_view(self._superuser(), conversation))
+
+    def test_member_can_view_and_post(self):
+        conversation = self._direct()
+        member = SimpleNamespace(is_privileged=False, role='member')
+        with patch.object(
+            ConversationMember.objects, 'filter', return_value=self._query(member),
+        ):
+            self.assertTrue(chat_permissions.can_view(self._member_user(), conversation))
+            self.assertTrue(chat_permissions.can_post(self._member_user(), conversation))
+            self.assertTrue(chat_permissions.can_view(self._superuser(), conversation))
+
+    def test_public_channel_is_visible_without_membership(self):
+        with patch.object(
+            ConversationMember.objects, 'filter', return_value=self._query(None),
+        ):
+            self.assertTrue(chat_permissions.can_view(self._member_user(), self._public_channel()))
+            # پست‌دادن در کانال بدون عضویت مجاز نیست (اول join).
+            self.assertFalse(chat_permissions.can_post(self._member_user(), self._public_channel()))
+
+    def test_private_channel_stays_hidden(self):
+        conversation = SimpleNamespace(
+            kind=Conversation.Kind.CHANNEL, is_public=False,
+            status=Conversation.Status.ACTIVE, post_policy=Conversation.PostPolicy.MEMBERS,
+        )
+        with patch.object(
+            ConversationMember.objects, 'filter', return_value=self._query(None),
+        ):
+            self.assertFalse(chat_permissions.can_view(self._member_user(), conversation))
+
+    def test_visible_conversations_has_no_superuser_shortcut(self):
+        queryset = MagicMock()
+        queryset.distinct.return_value = 'VISIBLE'
+        with patch.object(Conversation.objects, 'all') as all_mock, patch.object(
+            Conversation.objects, 'filter', return_value=queryset,
+        ) as filter_mock:
+            result = chat_permissions.visible_conversations(self._superuser())
+        self.assertEqual(result, 'VISIBLE')
+        filter_mock.assert_called_once()
+        all_mock.assert_not_called()
 
 
 class EntitySearchTests(SimpleTestCase):

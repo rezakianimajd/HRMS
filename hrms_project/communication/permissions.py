@@ -1,6 +1,8 @@
 """قواعد دسترسی چت.
 
-- دیدن گفتگو: عضویت در آن، یا کانال عمومی.
+- دیدن گفتگو: عضویت در آن، یا **کانال عمومی**. هیچ استثنایی برای سوپریوزر نیست؛
+  یعنی گفتگوی خصوصی (دو نفره) و گروهیِ دیگران حتی برای مدیر سیستم هم قابل مشاهده،
+  ارسال پیام یا مدیریت عضو نیست. (حریم خصوصی پیام‌ها مقدم بر نقش مدیریتی است.)
 - فرستادن پیام: عضو + (کانال با ``post_policy='admins'`` فقط مدیران/مالک).
 - هر پیام/ارجاع فقط برای اعضای همان گفتگو قابل مشاهده است؛ بنابراین چت هیچ‌وقت
   راه میان‌بُری برای دیدن رکوردهای ماژول‌های دیگر نمی‌شود.
@@ -29,8 +31,9 @@ READ_ACTIONS = ('view', 'list', 'retrieve', 'export', 'print')
 
 
 def is_privileged(user, conversation) -> bool:
-    if getattr(user, 'is_superuser', False):
-        return True
+    """مدیر/مالک همان گفتگو (سوپریوزر بدون عضویت، مدیر آن گفتگو نیست)."""
+    if not getattr(user, 'is_authenticated', False):
+        return False
     return ConversationMember.objects.filter(
         conversation=conversation, user=user,
         role__in=(ConversationMember.Role.OWNER, ConversationMember.Role.ADMIN),
@@ -44,8 +47,10 @@ def membership(user, conversation):
 
 
 def can_view(user, conversation) -> bool:
-    if getattr(user, 'is_superuser', False):
-        return True
+    """دیدن گفتگو فقط با عضویت؛ تنها استثنا: کانال عمومی.
+
+    ⚠️ سوپریوزر هم بدون عضویت نمی‌تواند گفتگوی خصوصی/گروهی دیگران را ببیند.
+    """
     if membership(user, conversation):
         return True
     return bool(conversation.is_public and conversation.kind == Conversation.Kind.CHANNEL)
@@ -58,8 +63,7 @@ def ensure_view(user, conversation):
 
 
 def can_post(user, conversation) -> bool:
-    if getattr(user, 'is_superuser', False):
-        return True
+    """ارسال پیام فقط با عضویت (حتی برای سوپریوزر)."""
     member = membership(user, conversation)
     if not member:
         return False
@@ -69,7 +73,7 @@ def can_post(user, conversation) -> bool:
         conversation.kind == Conversation.Kind.CHANNEL
         and conversation.post_policy == Conversation.PostPolicy.ADMINS
     ):
-        return member.is_privileged
+        return bool(member.is_privileged) or bool(getattr(user, 'is_superuser', False))
     return True
 
 
@@ -80,17 +84,16 @@ def ensure_can_post(user, conversation):
 
 
 def can_manage_members(user, conversation) -> bool:
+    """افزودن/حذف عضو فقط برای مدیر/مالک همان گفتگو (نه هر سوپریوزری)."""
     return is_privileged(user, conversation)
 
 
 def visible_conversations(user):
-    """گفتگوهای قابل مشاهده: عضویت + کانال‌های عمومی."""
+    """گفتگوهای قابل مشاهده: عضویت + کانال‌های عمومی (بدون استثنای سوپریوزر)."""
     from django.db.models import Q
 
     if not getattr(user, 'is_authenticated', False):
         return Conversation.objects.none()
-    if getattr(user, 'is_superuser', False):
-        return Conversation.objects.all()
     return Conversation.objects.filter(
         Q(members__user=user)
         | Q(kind=Conversation.Kind.CHANNEL, is_public=True)
