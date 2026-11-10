@@ -22,6 +22,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import axiosInstance from '../../core/api/axiosConfig';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
 import { useModulePalette } from '../../core/context/ModulePaletteContext';
+import useAuth from '../../core/hooks/useAuth';
 import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 
@@ -65,6 +66,7 @@ const dueLabel = (value) => {
 
 const PlanningPanel = ({ initialTab = 0 }) => {
   const { getPalette } = useModulePalette();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const accent = getPalette('planning')?.accent || getPalette('chat')?.accent || FALLBACK;
 

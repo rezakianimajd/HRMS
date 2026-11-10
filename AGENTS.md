@@ -569,6 +569,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    می‌گرفت و بقیه (قراردادها/پرسنل/سازمانی) «گم» می‌شدند، در حالی که همه در DB و بایگانی بودند.
    الگوی درست: کوئری با `page`/`page_size` + پارامترهای فیلتر سروری + `ModulePager` با `count`؛
    برای پوشه هم `folder_roots` بفرستید تا بک‌اند زیرشاخه‌ها را خودش باز کند (نه محاسبهٔ کلاینتی).
+20. **در کامپوننت‌های تازه هر متغیری مثل `user` را از هوک بگیرید** (`const { user } = useAuth()`)، وگرنه
+   `ReferenceError: user is not defined` فقط هنگام باز شدن همان دیالوگ/تب رخ می‌دهد (صفحهٔ خطای ErrorBoundary).
+   تست smoke باید خودِ دیالوگ را هم باز کند (مثل «وظیفه جدید» در `planningSmoke`) تا این نوع خطا گرفته شود.
 
 
 
@@ -577,7 +580,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
-- **Live:** frontend `main.561b1217.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.445d7ea0.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
 - **اعلان‌ها و حریم خصوصی برنامه‌ریزی (۲۰۲۶-۱۱-۱۰):** دو اصلاح مهم:
   - **اعلان‌های چت/برنامه‌ریزی همیشه شخصی‌اند:** `notifications/views.py::apply_notification_visibility`
     دسته‌های `chat_message|chat_mention|chat_member_added|planning_share|planning_due` را **حتی برای

@@ -16,6 +16,11 @@ jest.mock('../core/context/ModulePaletteContext', () => ({
   useModulePalette: () => ({ getPalette: () => null, typography: {} }),
 }));
 
+jest.mock('../core/hooks/useAuth', () => ({
+  __esModule: true,
+  default: () => ({ user: { id: 1, first_name: 'مدیر', is_superuser: true } }),
+}));
+
 const notes = [
   {
     id: 3, title: 'پیگیری مالیات قرارداد ۱۲۵', body: 'با واحد مالی هماهنگ شود',
@@ -86,6 +91,14 @@ test('planning page renders notes and can switch to tasks', async () => {
   expect(tasksTab).toBeTruthy();
   await act(async () => { tasksTab.click(); await wait(200); });
   expect(container.textContent).toContain('بررسی صورت‌وضعیت شماره ۴');
+
+  // دیالوگ ساخت وظیفه باید بدون خطا باز شود و بخش «محول به» را نشان دهد
+  const newTaskButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('وظیفه جدید'));
+  expect(newTaskButton).toBeTruthy();
+  await act(async () => { newTaskButton.click(); await wait(250); });
+  expect(document.body.textContent).toContain('این وظیفه برای چه کسی است؟');
+  expect(document.body.textContent).toContain('فقط خودم');
 
   await act(async () => { root.unmount(); });
   container.remove();
