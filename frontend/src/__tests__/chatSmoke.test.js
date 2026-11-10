@@ -36,6 +36,11 @@ const messages = [
     kind: 'text', is_mine: false, read_count: 1, delivered_count: 1, member_count: 3,
     attachments: [], entity_refs: [], created_at: '2026-11-10T08:10:00Z',
   },
+  {
+    id: 102, conversation: 7, sender: 1, sender_name: 'مدیر', body: '👍',
+    kind: 'text', is_mine: true, read_count: 0, delivered_count: 1, member_count: 3,
+    attachments: [], entity_refs: [], created_at: '2026-11-10T08:12:00Z',
+  },
 ];
 
 const wait = (ms = 120) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -98,6 +103,18 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   expect(container.textContent).toContain('صورت‌وضعیت بررسی شد');
   expect(container.querySelector('input[type="file"]')).toBeTruthy();
 
+  // پیامِ فقط‌ایموجی بزرگ‌تر از متن معمولی رندر می‌شود.
+  await act(async () => { await wait(400); });
+  const emojiBubble = container.querySelector(
+    '[data-testid="chat-message-body"][data-emoji-only="true"]',
+  );
+  expect(emojiBubble).toBeTruthy();
+  expect(emojiBubble.textContent).toBe('👍');
+  const textBubble = container.querySelector(
+    '[data-testid="chat-message-body"][data-emoji-only="false"]',
+  );
+  expect(textBubble).toBeTruthy();
+
   // گفتگوی خصوصی از همان صفحه قابل شروع است (نه فقط گروه/کانال)
   const directButton = container.querySelector('button[aria-label="گفتگوی خصوصی"]');
   expect(directButton).toBeTruthy();
@@ -116,6 +133,57 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   await act(async () => { entityButton.click(); await wait(250); });
   expect(document.body.textContent).toContain('الصاق رکورد از ماژول‌ها');
   expect(document.body.textContent).toContain('در ماژول‌های مجاز جست‌وجو شود');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
+test('emoji picker inserts into the composer and sends the emoji', async () => {
+  window.localStorage.removeItem('hrms-chat-emoji-recent');
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  axiosInstance.post.mockClear();
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/chat?conversation=7']}>
+          <ChatPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(400);
+  });
+  await act(async () => { await wait(250); });
+
+  expect(container.querySelector('textarea')).toBeTruthy();
+
+  const emojiButton = container.querySelector('button[aria-label="ایموجی"]');
+  expect(emojiButton).toBeTruthy();
+  await act(async () => { emojiButton.click(); await wait(250); });
+
+  expect(document.querySelector('[data-testid="chat-emoji-picker"]')).toBeTruthy();
+  expect(document.body.textContent).toContain('ایموجی‌ها');
+
+  const emojiNode = document.querySelector('[data-emoji="👍"]');
+  expect(emojiNode).toBeTruthy();
+  await act(async () => { emojiNode.click(); await wait(250); });
+
+  expect(container.querySelector('textarea').value).toContain('👍');
+  // انتخاب ایموجی در فهرست «اخیر» ذخیره می‌شود.
+  expect(JSON.parse(window.localStorage.getItem('hrms-chat-emoji-recent'))).toContain('👍');
+
+  const sendButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'ارسال');
+  expect(sendButton).toBeTruthy();
+  await act(async () => { sendButton.click(); await wait(300); });
+
+  const call = axiosInstance.post.mock.calls
+    .find(([url]) => String(url).endsWith('/messages/'));
+  expect(call).toBeTruthy();
+  expect(call[1].get('body')).toContain('👍');
 
   await act(async () => { root.unmount(); });
   container.remove();

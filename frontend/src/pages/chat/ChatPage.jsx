@@ -15,6 +15,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import EmojiEmotionsOutlinedIcon from '@mui/icons-material/EmojiEmotionsOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -31,6 +32,8 @@ import useAuth from '../../core/hooks/useAuth';
 import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import EntityPickerDialog, { ENTITY_MODULE_META } from './EntityPickerDialog';
+import ChatEmojiPicker from './ChatEmojiPicker';
+import { emojiOnlyFontSize } from './chatMessageText';
 
 const ACCENT_FALLBACK = '#0ea5e9';
 const INK = '#0f172a';
@@ -215,6 +218,7 @@ const DateSeparator = ({ value }) => {
 
 const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete, compact = false }) => {
   const mine = Boolean(message.is_mine);
+  const emojiSize = message.deleted_at ? null : emojiOnlyFontSize(message.body);
   return (
     <Box sx={{ display: 'flex', justifyContent: mine ? 'flex-start' : 'flex-end', mt: compact ? -0.5 : 0 }}>
       <Box sx={{
@@ -250,7 +254,21 @@ const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete, com
             این پیام حذف شده است
           </Typography>
         ) : (
-          <Typography sx={{ fontSize: 12.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <Typography
+            data-testid="chat-message-body"
+            data-emoji-only={emojiSize ? 'true' : 'false'}
+            sx={{
+              fontSize: emojiSize || 12.5,
+              lineHeight: emojiSize ? 1.2 : 1.6,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              ...(emojiSize ? {
+                letterSpacing: 0.5,
+                py: 0.2,
+                display: 'inline-block',
+              } : {}),
+            }}
+          >
             {message.body}
           </Typography>
         )}
@@ -379,6 +397,8 @@ const ChatPanel = ({
   const [membersDialog, setMembersDialog] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [editMessage, setEditMessage] = useState(null);
+  const [emojiAnchor, setEmojiAnchor] = useState(null);
+  const composerRef = useRef(null);
   const listEndRef = useRef(null);
 
   const { conversations, conversationsQuery, messages, messagesQuery, unreadQuery } = useChatQueries({
@@ -535,6 +555,26 @@ const ChatPanel = ({
   const applyMention = (person) => {
     setDraft((previous) => `${previous}${previous.endsWith(' ') || !previous ? '' : ' '}@${person.name} `);
     setMentionIds((previous) => (previous.includes(person.id) ? previous : [...previous, person.id]));
+  };
+
+  /** درج ایموجی در محل نشانگر نوشتن (نه انتهای متن). */
+  const insertEmoji = (emoji) => {
+    const node = composerRef.current;
+    const start = typeof node?.selectionStart === 'number' ? node.selectionStart : draft.length;
+    const end = typeof node?.selectionEnd === 'number' ? node.selectionEnd : start;
+    const next = `${draft.slice(0, start)}${emoji}${draft.slice(end)}`;
+    setDraft(next);
+    setEmojiAnchor(null);
+    requestAnimationFrame(() => {
+      if (!node || typeof node.setSelectionRange !== 'function') return;
+      node.focus();
+      const caret = start + emoji.length;
+      try {
+        node.setSelectionRange(caret, caret);
+      } catch (error) {
+        /* مرورگرهای قدیمی — نادیده */
+      }
+    });
   };
 
   const chipTone = {
@@ -783,6 +823,7 @@ const ChatPanel = ({
                 <Stack direction="row" spacing={0.6} alignItems="flex-end">
                   <TextField
                     size="small" fullWidth multiline maxRows={4} value={draft}
+                    inputRef={composerRef}
                     placeholder="پیام خود را بنویسید… (Shift+Enter برای خط جدید)"
                     onChange={(event) => setDraft(event.target.value)}
                     onKeyDown={(event) => {
@@ -793,6 +834,18 @@ const ChatPanel = ({
                     }}
                     sx={{ '& .MuiInputBase-input': { fontSize: 12 } }}
                   />
+                  <Tooltip title="ایموجی">
+                    <IconButton
+                      size="small" aria-label="ایموجی"
+                      onClick={(event) => setEmojiAnchor(
+                        emojiAnchor ? null : event.currentTarget,
+                      )}
+                      aria-haspopup="true"
+                      aria-expanded={Boolean(emojiAnchor)}
+                    >
+                      <EmojiEmotionsOutlinedIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="پیوست فایل">
                     <IconButton component="label" size="small" aria-label="پیوست فایل">
                       <AttachFileOutlinedIcon sx={{ fontSize: 18 }} />
@@ -874,6 +927,15 @@ const ChatPanel = ({
           });
           return merged;
         })}
+      />
+
+      {/* ---------------- انتخابگر ایموجی ---------------- */}
+      <ChatEmojiPicker
+        open={Boolean(emojiAnchor)}
+        anchorEl={emojiAnchor}
+        accent={accent}
+        onClose={() => setEmojiAnchor(null)}
+        onPick={insertEmoji}
       />
 
       {/* ---------------- دیالوگ ساخت گفتگو/کانال ---------------- */}
