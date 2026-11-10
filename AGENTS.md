@@ -593,6 +593,32 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **بازطراحی حرفه‌ای چت + امکانات پیشرفته (۲۰۲۶-۱۱-۱۰):** صفحهٔ چت به سه ستون بازنویسی شد
+  (فهرست گفتگوها · رشتهٔ پیام · پنل اطلاعات) و کامپوننت‌ها شکسته شدند تا هر فایل کوچک بماند:
+  `chat/chatUi.jsx` (فراداده/برچسب‌ها/هوک ظاهری `useChatLook`)، `chat/ChatMessageBubble.jsx`،
+  `chat/ChatConversationRail.jsx`، `chat/ChatInfoPanel.jsx` و خودِ `ChatPage.jsx`.
+  - **واکنش ایموجی:** مدل `MessageReaction` (+ مایگریشن `communication.0002`) و ماژول خالص/سرویس
+    `communication/reactions.py` (`clean_emoji`، `summarize_reactions`، `toggle_reaction`).
+    `POST /api/chat/messages/{id}/reactions/` با `{emoji}` به‌صورت toggle کار می‌کند و خلاصهٔ تازهٔ
+    `[{emoji, count, mine, user_ids}]` را برمی‌گرداند؛ `MessageSerializer.reactions` با
+    `prefetch_related('reactions')` (بدون N+1) و رویداد `reaction` در outbox.
+    در UI: نوار اقدام شناور روی حباب (واکنش/پاسخ/کپی/سنجاق/ویرایش/حذف)، ۶ واکنش سریع و چیپ‌های
+    واکنش با شمارش فارسی.
+  - **«در حال نوشتن»:** `POST /api/chat/conversations/{id}/typing/` (بدون مدل جدید؛ رویداد `typing`
+    در `ChatEvent` با `audience` اعضا و پاک‌سازی رویدادهای قدیمی‌تر از ۱۰ دقیقه). فرانت با
+    throttle ۳ ثانیه اعلام می‌کند و از polling رویدادها (۴ ثانیه در گفتگوی فعال) نشان می‌دهد.
+  - **سایر امکانات تازه:** تب‌های فهرست (همه/خوانده‌نشده/سنجاق‌شده) + فیلتر نوع (خصوصی/گروه/کانال)،
+    نشان سنجاق/بی‌صدا روی ردیف‌ها، جست‌وجوی درون‌گفتگو (`?search=` روی پیام‌ها)، جداکنندهٔ
+    «پیام‌های خوانده‌نشده» (بر اساس `membership.last_read_message`)، پرش و هایلایت پیامِ پاسخ/سنجاق،
+    پیش‌نویس جدا برای هر گفتگو (`localStorage`)، پنل اطلاعات با اعضا + پیام‌های سنجاق‌شده + تنظیمات
+    شخصی (سنجاق/بی‌صدا/بایگانی)، شمارندهٔ نویسه و «باز کردن در صفحهٔ کامل».
+  - مایگریشن `notifications.0005` (فقط choices دسته‌ها) هم روی همهٔ schemaها اعمال شد تا
+    `migrate_schemas` بدون هشدار باشد.
+  - تست: بک‌اند `communication` (**۳۱**؛ شامل `ChatPrivacyTests` و `ReactionRulesTests`)، فرانت
+    `chatSmoke` (۴)، `chatRail` (۴)، `chatMessageText` (۴)، `workspaceDock` (۱).
+    **تأیید زندهٔ `kpsmi` (داخل تراکنش و rollback):** واکنش add/toggle = ۲۰۰ و `mine:true`،
+    typing = ۲۰۰ با `audience=1` و ثبت رویداد، فهرست پیام‌ها کلید `reactions` را دارد.
+    باندل زندهٔ فرانت: **`main.5b9a7ce9.js`**.
 - **نوار جست‌وجوی «پروندهٔ پرسنل» استاندارد شد (۲۰۲۶-۱۱-۱۰):** `pages/EmployeeListPage.jsx` روی کیت مشترک
   تم بازنویسی شد (`useModuleTheme` + `ModuleToolbar` + `ModuleTable` + `ModulePager` + `useRowHeight`)؛
   نوار شیشه‌ای/هاردکد قبلی حذف و شعاع/سایه/ارتفاع/چیدمان از استودیو تم می‌آید.
