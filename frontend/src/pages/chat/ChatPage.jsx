@@ -308,16 +308,20 @@ const MessageBubble = ({ message, accent, tokens, onReply, onEdit, onDelete }) =
 
 
 
-const ChatPage = () => {
+const ChatPanel = ({
+  initialConversationId = '', syncUrl = true, embedded = false,
+  height = 'calc(100vh - 150px)',
+}) => {
   const theme = useTheme();
   const { tokens } = useDesignTokens();
   const { getPalette } = useModulePalette();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [, setSearchParams] = useSearchParams();
 
   const accent = getPalette('chat')?.accent || getPalette('correspondence')?.accent || ACCENT_FALLBACK;
-  const [activeId, setActiveId] = useState(() => searchParams.get('conversation') || '');
+  const [activeId, setActiveId] = useState(() => (initialConversationId ? String(initialConversationId) : ''));
+
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState(null);
@@ -360,11 +364,13 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (!activeId) return;
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      next.set('conversation', activeId);
-      return next;
-    }, { replace: true });
+    if (syncUrl) {
+      setSearchParams((previous) => {
+        const next = new URLSearchParams(previous);
+        next.set('conversation', activeId);
+        return next;
+      }, { replace: true });
+    }
     const markRead = async () => {
       try {
         await axiosInstance.post(`/chat/conversations/${activeId}/read/`, {});
@@ -375,7 +381,7 @@ const ChatPage = () => {
       }
     };
     markRead();
-  }, [activeId, messages.length, qc, setSearchParams]);
+  }, [activeId, messages.length, qc, setSearchParams, syncUrl]);
 
   useEffect(() => {
     if (!listEndRef.current) return;
@@ -495,9 +501,9 @@ const ChatPage = () => {
   };
 
   return (
-    <Box sx={{ pb: 1 }}>
+    <Box sx={{ pb: 1, height: embedded ? '100%' : undefined, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems="stretch"
-        sx={{ minHeight: 'calc(100vh - 150px)' }}>
+        sx={{ height, minHeight: 0, flex: 1 }}>
         {/* ---------------- فهرست گفتگوها ---------------- */}
         <Box sx={{
           width: { xs: '100%', md: 320 }, flexShrink: 0, display: 'flex', flexDirection: 'column',
@@ -968,5 +974,13 @@ const ChatPage = () => {
   );
 };
 
+/** صفحهٔ کامل چت (مسیر `/chat`) — همان پنل با همگام‌سازی آدرس. */
+const ChatPage = () => {
+  const [searchParams] = useSearchParams();
+  const conversation = searchParams.get('conversation') || '';
+  return <ChatPanel initialConversationId={conversation} syncUrl />;
+};
+
+export { ChatPanel };
 export default ChatPage;
 

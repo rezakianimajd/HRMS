@@ -58,12 +58,12 @@ const dueLabel = (value) => {
   return toJalali(iso);
 };
 
-const PlanningPage = () => {
+const PlanningPanel = ({ initialTab = 0 }) => {
   const { getPalette } = useModulePalette();
   const qc = useQueryClient();
   const accent = getPalette('planning')?.accent || getPalette('chat')?.accent || FALLBACK;
 
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(Number(initialTab) || 0);
   const [search, setSearch] = useState('');
   const [scope, setScope] = useState('all');
   const [taskFilter, setTaskFilter] = useState('open');
@@ -641,5 +641,9 @@ const PlanningPage = () => {
   );
 };
 
+/** صفحهٔ کامل برنامه‌ریزی (مسیر `/planning`). */
+const PlanningPage = () => <PlanningPanel />;
+
+export { PlanningPanel };
 export default PlanningPage;
 

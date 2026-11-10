@@ -70,6 +70,7 @@ import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
 import NotificationBell from './NotificationBell';
+import { useWorkspaceDock } from './WorkspaceDock';
 import AppSwitcher from './AppSwitcher';
 import WorkspaceTabs from './WorkspaceTabs';
 import CommandPalette from './CommandPalette';
@@ -237,6 +238,7 @@ const Layout = ({ children }) => {
   const workspaceBadges = workspaceQuery.data || {};
   const chatBadge = Number(workspaceBadges.chat) || 0;
   const planningBadge = Number(workspaceBadges.planning) || 0;
+  const { openChat, openPlanning } = useWorkspaceDock();
   const menu = getMenuForApp(currentApp?.slug, {
     folders: dmsFolders,
     permissions: user?.fine_permissions,
@@ -666,7 +668,7 @@ const Layout = ({ children }) => {
           placement="left" arrow>
           <IconButton
             size="small"
-            onClick={() => navigateTo('/chat')}
+            onClick={() => openChat()}
             aria-label={chatBadge ? `گفتگوی سازمانی (${chatBadge} خوانده‌نشده)` : 'گفتگوی سازمانی'}
             aria-current={location.pathname.startsWith('/chat') ? 'page' : undefined}
             sx={{
@@ -701,7 +703,7 @@ const Layout = ({ children }) => {
           placement="left" arrow>
           <IconButton
             size="small"
-            onClick={() => navigateTo('/planning')}
+            onClick={() => openPlanning()}
             aria-label={planningBadge ? `برنامه‌ریزی شخصی (${planningBadge} وظیفه)` : 'برنامه‌ریزی شخصی'}
             aria-current={location.pathname.startsWith('/planning') ? 'page' : undefined}
             sx={{

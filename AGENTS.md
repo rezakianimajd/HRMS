@@ -577,7 +577,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 
 - **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
-- **Live:** frontend `main.4254d366.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **Live:** frontend `main.a2c1e5d8.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
 - **ماژول‌های تازه: «گفتگوی سازمانی» و «برنامه‌ریزی شخصی» (۲۰۲۶-۱۱-۱۰):** دو اپ مستقل در TENANT_APPS —
   `communication` (چت) و `planning` (یادداشت/وظیفه) — با معماری «چت لایهٔ ارتباطی است، نه مالک داده».
   - **مدل‌ها (communication):** `Conversation` (نوع `direct|group|channel|system`، `related_module/object_*`،
@@ -614,6 +614,13 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     (`ConversationSerializer.to_representation`) و `member_count` برای نمونهٔ تازه هم درست است.
     در UI: دکمهٔ «گفتگوی خصوصی» در سربرگ فهرست، گزینهٔ «گفتگوی خصوصی (دو نفره)» در دیالوگ ساخت،
     کلیک روی هر عضو در دیالوگ اعضا، و دکمهٔ میان‌بر در حالت خالی.
+  - **پنجرهٔ کاری شناور (۲۰۲۶-۱۱-۱۰):** چت و برنامه‌ریزی دیگر الزاماً صفحه نیستند؛
+    `core/components/ui/WorkspaceDock.jsx` (`WorkspaceDockProvider` + `useWorkspaceDock`) دو دیالوگ بزرگ
+    `maxWidth="xl"` با ارتفاع ۹۰vh روی **همان صفحه‌ای که کاربر در آن است** باز می‌کند
+    (`openChat(conversationId?)` / `openPlanning(tab?)` / `close…`)، پس کاربر مجبور نیست صفحه را ترک کند.
+    دکمه‌های ریل سایدبار و اعلان‌ها همین شناور را باز می‌کنند؛ مسیرهای `/chat` و `/planning` هم به‌عنوان
+    **صفحهٔ کامل (deep link)** باقی مانده‌اند و داخل دیالوگ دکمهٔ «باز کردن در صفحهٔ کامل» دارد.
+    منطق مشترک در `ChatPanel`/`PlanningPanel` است (`embedded`, `syncUrl`, `height`)، صفحه‌ها فقط wrapperند.
   - **تست:** `communication/tests.py` (۱۴) + `planning/tests.py` (۷) DB-free؛ فرانت `chatSmoke` (۲) و
     `planningSmoke` (۲). **تأیید زندهٔ `kpsmi`:** جدول‌ها ساخته شد؛ بدنهٔ پیام در DB `gAAAAA…` (رمز)،
     `search_tokens` تولید شد، جست‌وجوی کور نتیجه داد، اعلان برای عضو ساخته شد، ویرایش در `ChatAuditLog`

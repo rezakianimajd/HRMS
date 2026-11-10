@@ -18,6 +18,7 @@ import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
 import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
 import FaviconSync from './core/components/ui/FaviconSync';
+import WorkspaceDockProvider from './core/components/ui/WorkspaceDock';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
 import { mixHex } from './core/theme/tokens';
 import { DEFAULT_TYPOGRAPHY, fontStack } from './core/theme/appearanceDefaults';
@@ -528,7 +529,9 @@ const ThemedApp = () => {
           <HelpDialog />
           <GlobalErrorSnackbar />
           <SystemBroadcastGate />
-          <AppRoutes />
+          <WorkspaceDockProvider>
+            <AppRoutes />
+          </WorkspaceDockProvider>
         </ErrorBoundary>
       </DesignTokenProvider>
     </ThemeProvider>

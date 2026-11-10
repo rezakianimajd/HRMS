@@ -13,6 +13,7 @@ import {
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from '../../hooks/useNotifications';
+import { useWorkspaceDock } from './WorkspaceDock';
 import { toJalali } from '../../utils/dateUtils';
 import { toPersianDigits } from '../../utils/numberUtils';
 
@@ -71,6 +72,7 @@ const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
   const { data: unread = 0 } = useUnreadNotificationsCount();
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const dock = useWorkspaceDock();
 
   const handleOpen = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
@@ -85,11 +87,11 @@ const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
     } else if (n.entity_type === 'document') {
       navigate('/documents');
     } else if (n.entity_type === 'chat_conversation' && n.entity_id) {
-      navigate(`/chat?conversation=${n.entity_id}`);
+      dock.openChat(n.entity_id);
     } else if (n.entity_type === 'planning_note') {
-      navigate('/planning');
+      dock.openPlanning(0);
     } else if (n.entity_type === 'planning_task') {
-      navigate('/planning');
+      dock.openPlanning(1);
     }
     if (!n.is_read) {
       markRead.mutate(n.id);
