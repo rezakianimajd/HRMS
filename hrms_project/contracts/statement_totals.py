@@ -10,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from contracts.models import Statement
+from contracts.statement_chain import order_statements
 
 
 def _decimal(value):
@@ -39,12 +40,13 @@ def _normalize_items(items, work):
 def recalculate_contract_statements(contract):
     """بازمحاسبهٔ previous/work/net همهٔ صورت‌وضعیت‌های یک قرارداد.
 
-    ترتیب زنجیره، ترتیب ثبت (شناسه) است. تاریخ برای نمایش/فیلتر است و
-    ویرایش آن نباید مبلغ تجمعی دورهٔ قبل را صفر کند.
+    ترتیب زنجیره همان ترتیب «دوره» است: اگر همهٔ اسناد شمارهٔ عددی یکتا دارند
+    بر اساس شماره (نه شناسه) و در غیر این صورت بر اساس شناسهٔ ثبت. تاریخ فقط
+    برای نمایش/فیلتر است و ویرایش آن نباید مبلغ تجمعی دورهٔ قبل را صفر کند.
     """
     if not contract:
         return
-    rows = list(Statement.objects.filter(contract=contract).order_by('pk'))
+    rows = order_statements(list(Statement.objects.filter(contract=contract)))
     prior_amount = Decimal('0')
     prior_work = Decimal('0')
     prior_foreign = Decimal('0')

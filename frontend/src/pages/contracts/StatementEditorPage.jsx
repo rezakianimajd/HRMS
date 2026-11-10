@@ -65,6 +65,10 @@ import {
 import {
   paymentStatusOf, rowPaid, rowRemaining, invalidateContractFinanceQueries,
 } from './contractPaymentsSummary';
+import {
+  adjustmentCumulativeFor, adjustmentForeignCumulativeFor, contractHasMultiLevels,
+  foreignCumulativeFor, previousCumulativeFor, previousPeriodRows, seedLevelsFrom,
+} from './statementChain';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
@@ -489,79 +493,6 @@ const compareStatements = (a, b) => {
   const dateCompare = String(a?.date || '').localeCompare(String(b?.date || ''));
   if (dateCompare) return dateCompare;
   return Number(a?.id || 0) - Number(b?.id || 0);
-};
-
-/**
- * مبنای «مبلغ تجمعی دوره قبل» در فرم.
- * ترتیب زنجیره بر اساس ترتیب ثبت (شناسه) است؛ ویرایش تاریخ نباید
- * باعث صفر شدن مبلغ دوره قبل شود.
- */
-const previousCumulativeFor = (rows, { excludeId = null } = {}) => {
-  const candidates = (Array.isArray(rows) ? rows : [])
-    .filter((row) => !isAdjustmentKind(row))
-    .filter((row) => String(row?.id || '') !== String(excludeId || ''));
-  const prior = candidates
-    .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
-    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-  if (!prior.length) return null;
-  const last = prior[prior.length - 1];
-  return Math.max(
-    num(last?.amount),
-    prior.reduce((sum, row) => sum + rowMetrics(row).work, 0),
-  );
-};
-
-/** تجمع ارزی دوره‌های قبل؛ کارکرد هر دوره با نرخ تاریخی خودش. */
-const foreignCumulativeFor = (rows, { beforeId = null } = {}) => (
-  (Array.isArray(rows) ? rows : [])
-    .filter((row) => !isAdjustmentKind(row))
-    .filter((row) => !beforeId || Number(row.id || 0) < Number(beforeId))
-    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
-    .reduce((sum, row) => {
-      const rate = rateOfStatement(row, 1);
-      const work = num(row.work_done) || rowMetrics(row).work;
-      return sum + (rate > 1 ? work / rate : work);
-    }, 0)
-);
-
-/** تجمع تعدیل‌ها (علامت‌دار) تا پیش از سند جاری. */
-const adjustmentCumulativeFor = (rows, { excludeId = null } = {}) => (
-  (Array.isArray(rows) ? rows : [])
-    .filter(isAdjustmentKind)
-    .filter((row) => String(row?.id || '') !== String(excludeId || ''))
-    .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
-    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
-    .reduce((sum, row) => sum + num(row.adjustment_work_done ?? row.work_done), 0)
-);
-
-const adjustmentForeignCumulativeFor = (rows, { excludeId = null } = {}) => (
-  (Array.isArray(rows) ? rows : [])
-    .filter(isAdjustmentKind)
-    .filter((row) => String(row?.id || '') !== String(excludeId || ''))
-    .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
-    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
-    .reduce((sum, row) => sum + num(row.adjustment_foreign_work_done ?? row.foreign_work_done), 0)
-);
-
-/** آیا قرارداد سند چند سطحی دارد؟ (پس از آن، اسناد جدید باید چند سطحی باشند) */
-const contractHasMultiLevels = (rows) => (Array.isArray(rows) ? rows : [])
-  .some((row) => isMultiKind(row));
-
-/** سطوح آخرین سند چند سطحی قرارداد را برای انتقال مستقل به سند جدید آماده می‌کند. */
-const seedLevelsFrom = (rows) => {
-  const prior = (Array.isArray(rows) ? rows : [])
-    .filter((row) => isMultiKind(row))
-    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
-  const last = prior[prior.length - 1];
-  if (!last) return [];
-  return (Array.isArray(last.levels) ? last.levels : []).map((level) => ({
-    title: level.title || '',
-    amount: Number(level.amount) || 0,
-    amount_foreign: Number(level.amount_foreign) || 0,
-    includes_charges: Boolean(
-      level.includes_charges ?? level.includes_additions ?? level.includes_deductions,
-    ),
-  }));
 };
 
 const StatementEditorPage = () => {
@@ -1062,13 +993,13 @@ const StatementEditorPage = () => {
   const levels = Array.isArray(form.levels) ? form.levels : [];
   const levelKeyOf = (title) => String(title || '')
     .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-  /** آخرین مبلغ تجمعی هر سطح در اسناد قبلی همان قرارداد. */
+  /** آخرین مبلغ تجمعی هر سطح در اسناد «دورهٔ قبل» همان قرارداد. */
   const levelPreviousMap = (() => {
     const map = {};
-    (Array.isArray(scopedList) ? scopedList : [])
-      .filter((row) => !isAdjustmentKind(row))
-      .filter((row) => !form.id || Number(row.id || 0) < Number(form.id))
-      .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+    previousPeriodRows(
+      (Array.isArray(scopedList) ? scopedList : []).filter((row) => !isAdjustmentKind(row)),
+      { excludeId: form.id, number: form.number },
+    )
       .forEach((row) => {
         (Array.isArray(row.levels) ? row.levels : []).forEach((level) => {
           const key = levelKeyOf(level.title);
@@ -1312,10 +1243,10 @@ const StatementEditorPage = () => {
       const adjustment = isAdjustmentKind(kind);
       const multi = isMultiKind(kind);
       const priorAdjustment = adjustment
-        ? adjustmentCumulativeFor(scopedList, { excludeId: previous.id })
+        ? adjustmentCumulativeFor(scopedList, { excludeId: previous.id, number: previous.number })
         : 0;
       const priorAdjustmentForeign = adjustment
-        ? adjustmentForeignCumulativeFor(scopedList, { excludeId: previous.id })
+        ? adjustmentForeignCumulativeFor(scopedList, { excludeId: previous.id, number: previous.number })
         : 0;
       const existingLevels = Array.isArray(previous.levels) ? previous.levels : [];
       return {
@@ -1504,7 +1435,7 @@ const StatementEditorPage = () => {
     );
     const calculatedPrevious = previousCumulativeFor(
       allStatements.filter((item) => String(item.contract) === String(row.contract)),
-      { excludeId: row.id },
+      { excludeId: row.id, number: row.number },
     );
     const previousCumulative = calculatedPrevious == null
       ? Number(row.cumulative_previous_amount || 0)
@@ -1513,7 +1444,7 @@ const StatementEditorPage = () => {
       ? Number(row.foreign_previous_amount || 0)
       : foreignCumulativeFor(
         allStatements.filter((item) => String(item.contract) === String(row.contract)),
-        { beforeId: row.id },
+        { beforeId: row.id, number: row.number },
       );
     const rowForeignAmount = row.foreign_amount != null
       ? Number(row.foreign_amount || 0)
@@ -1584,15 +1515,17 @@ const StatementEditorPage = () => {
     setMode('form');
   };
 
-  // با تغییر تاریخ/قرارداد در فرم، «مبلغ تجمعی دوره قبل» را دوباره از
-  // داده‌های موجود محاسبه می‌کنیم تا صفرِ ناشی از تاریخ قدیمی باقی نماند.
+  // با تغییر شماره/تاریخ/قرارداد در فرم، «مبلغ تجمعی دوره قبل» را دوباره از
+  // داده‌های موجود محاسبه می‌کنیم تا زنجیرهٔ دوره (شماره‌محور) درست بماند.
   useEffect(() => {
     if (mode !== 'form' || !form.contract || !form.date) return;
     const rows = allStatements.filter((item) => String(item.contract) === String(form.contract));
-    const next = previousCumulativeFor(rows, { excludeId: form.id }) ?? 0;
-    const nextForeign = foreignCumulativeFor(rows, { beforeId: form.id });
-    const nextAdjustment = adjustmentCumulativeFor(rows, { excludeId: form.id });
-    const nextAdjustmentForeign = adjustmentForeignCumulativeFor(rows, { excludeId: form.id });
+    const next = previousCumulativeFor(rows, { excludeId: form.id, number: form.number }) ?? 0;
+    const nextForeign = foreignCumulativeFor(rows, { beforeId: form.id, number: form.number });
+    const nextAdjustment = adjustmentCumulativeFor(rows, { excludeId: form.id, number: form.number });
+    const nextAdjustmentForeign = adjustmentForeignCumulativeFor(
+      rows, { excludeId: form.id, number: form.number },
+    );
     setForm((previous) => {
       if (
         !previous
@@ -1611,7 +1544,7 @@ const StatementEditorPage = () => {
         adjustment_previous_foreign: nextAdjustmentForeign,
       };
     });
-  }, [mode, form.contract, form.date, form.id, allStatements]);
+  }, [mode, form.contract, form.date, form.id, form.number, allStatements]);
 
   const openPrint = (row) => {
     setPrintPending(true);

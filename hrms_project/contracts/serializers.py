@@ -14,6 +14,7 @@ from contracts.models import (
 )
 from contracts.accounting_mapping import account_brief, mapping_payload, missing_fields
 from contracts.numbering import normalize_statement_number
+from contracts.statement_chain import previous_rows
 
 
 # ---------------------------------------------------------------------------
@@ -369,16 +370,18 @@ def statement_level_key(value):
     return normalize_level_title(value).lower()
 
 
-def previous_level_cumulatives(contract, *, before_pk=None):
-    """آخرین مبلغ تجمعی (ریالی/ارزی) هر سطح در اسناد چند سطحی قبلی قرارداد."""
+def previous_level_cumulatives(contract, *, before_pk=None, number=None):
+    """آخرین مبلغ تجمعی (ریالی/ارزی) هر سطح در اسناد چند سطحی «قبل از این دوره»."""
     if not contract:
         return {}
-    queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.MULTI)
-    if before_pk:
-        queryset = queryset.filter(pk__lt=before_pk)
+    rows = list(
+        Statement.objects.filter(contract=contract, kind=Statement.Kind.MULTI)
+        .values('id', 'number', 'levels')
+    )
+    rows = previous_rows(rows, number=number, pk=before_pk)
     cumulative = {}
-    for row in queryset.order_by('pk').only('levels'):
-        for level in row.levels or []:
+    for row in rows:
+        for level in row.get('levels') or []:
             if not isinstance(level, dict):
                 continue
             key = statement_level_key(level.get('title'))
@@ -545,51 +548,60 @@ class StatementSerializer(serializers.ModelSerializer):
     def _is_adjustment_kind(kind):
         return kind in (Statement.Kind.INCREASE, Statement.Kind.DECREASE)
 
-    def _previous_cumulative(self, contract):
-        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی/چند سطحی قبلی (تعدیل‌ها وارد زنجیره نمی‌شوند).
+    def _previous_cumulative(self, contract, number=None):
+        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی/چند سطحی **قبل از این دوره**.
 
-        در اسناد چند سطحی، «کارکرد دوره» شامل کارکرد بندها هم هست؛ پس جمع
-        کارکرد فقط از اسناد عادی گرفته می‌شود تا زنجیرهٔ تجمعی سطح سند
-        دست‌نخورده بماند و مبنای دورهٔ بعد با کارکرد بندها بالا نرود.
+        «دورهٔ قبل» بر اساس شمارهٔ سند تعیین می‌شود (نه pk) تا وقتی سند شمارهٔ ۱
+        بعد از اسناد قدیمی ثبت می‌شود، زنجیره اشتباه نبندد. در اسناد چند سطحی،
+        «کارکرد دوره» شامل کارکرد بندها هم هست؛ پس جمع کارکرد فقط از اسناد عادی
+        گرفته می‌شود تا زنجیرهٔ تجمعی سطح سند دست‌نخورده بماند.
         """
         if not contract:
             return Decimal('0')
         current_pk = getattr(self.instance, 'pk', None)
-        level_queryset = Statement.objects.filter(contract=contract, kind__in=LEVEL_KINDS)
-        work_queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.STATEMENT)
-        if current_pk:
-            level_queryset = level_queryset.filter(pk__lt=current_pk)
-            work_queryset = work_queryset.filter(pk__lt=current_pk)
-        previous = level_queryset.order_by('-pk').only('amount').first()
-        previous_amount = Decimal(previous.amount or 0) if previous else Decimal('0')
-        prior_work = work_queryset.aggregate(total=Sum('work_done'))['total'] or 0
-        return max(previous_amount, Decimal(str(prior_work or 0)))
+        rows = list(Statement.objects.filter(
+            contract=contract, kind__in=LEVEL_KINDS,
+        ).values('id', 'number', 'kind', 'amount', 'work_done'))
+        prior = previous_rows(rows, number=number, pk=current_pk)
+        levels = [row for row in prior if row['kind'] in LEVEL_KINDS]
+        works = [row for row in prior if row['kind'] == Statement.Kind.STATEMENT]
+        previous_amount = Decimal(str(levels[-1]['amount'] or 0)) if levels else Decimal('0')
+        prior_work = sum(Decimal(str(row['work_done'] or 0)) for row in works)
+        return max(previous_amount, prior_work)
 
-    def _previous_foreign_cumulative(self, contract):
-        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت عادی/چند سطحی قبلی."""
+    def _previous_foreign_cumulative(self, contract, number=None):
+        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت عادی/چند سطحی قبل از این دوره."""
         if not contract:
             return Decimal('0')
-        queryset = Statement.objects.filter(contract=contract, kind__in=LEVEL_KINDS)
         current_pk = getattr(self.instance, 'pk', None)
-        prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
-        previous = prior.order_by('-pk').only('foreign_amount').first()
-        if not previous:
+        rows = list(Statement.objects.filter(
+            contract=contract, kind__in=LEVEL_KINDS,
+        ).values('id', 'number', 'kind', 'foreign_amount'))
+        prior = [
+            row for row in previous_rows(rows, number=number, pk=current_pk)
+            if row['kind'] in LEVEL_KINDS
+        ]
+        if not prior:
             return Decimal('0')
-        return Decimal(previous.foreign_amount or 0)
+        return Decimal(str(prior[-1]['foreign_amount'] or 0))
 
-    def _previous_adjustment_cumulative(self, contract):
-        """تعدیل تجمعی علامت‌دار پیش از این رکورد (مستقل از صورت‌وضعیت)."""
+    def _previous_adjustment_cumulative(self, contract, number=None):
+        """تعدیل تجمعی علامت‌دار پیش از این دوره (مستقل از صورت‌وضعیت)."""
         if not contract:
             return Decimal('0'), Decimal('0')
-        queryset = Statement.objects.filter(contract=contract, kind__in=ADJUSTMENT_KINDS)
         current_pk = getattr(self.instance, 'pk', None)
-        prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
-        previous = prior.order_by('-pk').only('adjustment_amount', 'adjustment_foreign_amount').first()
-        if not previous:
+        rows = list(Statement.objects.filter(
+            contract=contract, kind__in=ADJUSTMENT_KINDS,
+        ).values('id', 'number', 'kind', 'adjustment_amount', 'adjustment_foreign_amount'))
+        prior = [
+            row for row in previous_rows(rows, number=number, pk=current_pk)
+            if row['kind'] in ADJUSTMENT_KINDS
+        ]
+        if not prior:
             return Decimal('0'), Decimal('0')
         return (
-            Decimal(previous.adjustment_amount or 0),
-            Decimal(previous.adjustment_foreign_amount or 0),
+            Decimal(str(prior[-1]['adjustment_amount'] or 0)),
+            Decimal(str(prior[-1]['adjustment_foreign_amount'] or 0)),
         )
 
     def _ensure_single_level_chain(self, contract):
@@ -613,8 +625,12 @@ class StatementSerializer(serializers.ModelSerializer):
         - خالص قابل پرداخت سند = خالص سطح سند + خالص همهٔ بندها.
         """
         instance = self.instance
-        previous = self._previous_cumulative(contract)
-        previous_foreign = self._previous_foreign_cumulative(contract)
+        previous = self._previous_cumulative(
+            contract, attrs.get('number', getattr(instance, 'number', '')),
+        )
+        previous_foreign = self._previous_foreign_cumulative(
+            contract, attrs.get('number', getattr(instance, 'number', '')),
+        )
         try:
             amount = Decimal(str(attrs.get('amount', getattr(instance, 'amount', 0)) or 0))
         except Exception:  # noqa: BLE001
@@ -662,7 +678,10 @@ class StatementSerializer(serializers.ModelSerializer):
         if not isinstance(submitted, (list, tuple)):
             submitted = []
         current_pk = getattr(instance, 'pk', None)
-        cumulative = previous_level_cumulatives(contract, before_pk=current_pk or None)
+        cumulative = previous_level_cumulatives(
+            contract, before_pk=current_pk or None,
+            number=attrs.get('number', getattr(instance, 'number', '')),
+        )
 
         levels = []
         seen = set()
@@ -753,7 +772,9 @@ class StatementSerializer(serializers.ModelSerializer):
         )
         work_total = own_work + level_work_total
         work_foreign_total = own_work_foreign + level_work_foreign_total
-        adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)
+        adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(
+            contract, attrs.get('number', getattr(instance, 'number', '')),
+        )
 
         attrs['levels'] = levels
         attrs['kind'] = Statement.Kind.MULTI
@@ -805,8 +826,9 @@ class StatementSerializer(serializers.ModelSerializer):
         ):
             return attrs
         contract = attrs.get('contract') or getattr(instance, 'contract', None)
-        previous = self._previous_cumulative(contract)
-        previous_foreign = self._previous_foreign_cumulative(contract)
+        period_number = attrs.get('number', getattr(instance, 'number', ''))
+        previous = self._previous_cumulative(contract, period_number)
+        previous_foreign = self._previous_foreign_cumulative(contract, period_number)
         currency = attrs.get('currency') or getattr(instance, 'currency', None)
         currency_code = str(getattr(currency, 'code', '') or '').upper()
         try:
@@ -859,9 +881,11 @@ class StatementSerializer(serializers.ModelSerializer):
                     Decimal('0.0001'), rounding=ROUND_HALF_UP,
                 )
 
-            base_amount = self._previous_cumulative(contract)
-            base_foreign = self._previous_foreign_cumulative(contract)
-            previous_adjustment, previous_adjustment_foreign = self._previous_adjustment_cumulative(contract)
+            base_amount = self._previous_cumulative(contract, period_number)
+            base_foreign = self._previous_foreign_cumulative(contract, period_number)
+            previous_adjustment, previous_adjustment_foreign = self._previous_adjustment_cumulative(
+                contract, period_number,
+            )
 
             def normalize_adjustment_items(items):
                 if not isinstance(items, (list, tuple)):
@@ -931,7 +955,9 @@ class StatementSerializer(serializers.ModelSerializer):
             attrs['net_amount'] = signed_rial + additions_total - deductions_total
             return attrs
 
-        adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)
+        adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(
+            contract, period_number,
+        )
 
         amount_value = attrs.get('amount', getattr(instance, 'amount', 0))
         try:
