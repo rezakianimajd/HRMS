@@ -29,6 +29,8 @@ import DocumentManagementDashboardPage from './pages/contracts/DocumentManagemen
 import DocumentManagementFoldersPage from './pages/contracts/DocumentManagementFoldersPage';
 import DocumentManagementReportsPage from './pages/contracts/DocumentManagementReportsPage';
 import DocumentManagementActivityPage from './pages/contracts/DocumentManagementActivityPage';
+import ChatPage from './pages/chat/ChatPage';
+import PlanningPage from './pages/planning/PlanningPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
 import DataEntryPage from './pages/DataEntryPage';
@@ -431,6 +433,8 @@ const AppRoutes = () => {
       <Route path="/projects/cost" element={<ProtectedLayout><CostDashboardPage /></ProtectedLayout>} />
       <Route path="/projects/reports" element={<ProtectedLayout><AnalyticsPage /></ProtectedLayout>} />
       <Route path="/management-analytics" element={<Navigate to="/dashboard?tab=people" replace />} />
+      <Route path="/chat" element={<ProtectedLayout><ChatPage /></ProtectedLayout>} />
+      <Route path="/planning" element={<ProtectedLayout><PlanningPage /></ProtectedLayout>} />
       <Route path="/bale-messaging" element={<ProtectedLayout><BaleMessagingPage /></ProtectedLayout>} />
       <Route path="/recruitment" element={<ProtectedLayout><RecruitmentPage /></ProtectedLayout>} />
       <Route path="/appraisal" element={<ProtectedLayout><AppraisalPage /></ProtectedLayout>} />

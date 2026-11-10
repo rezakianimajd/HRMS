@@ -72,6 +72,8 @@ TENANT_APPS = [
     'procurement',                     # Procurement / Purchase-to-Pay (مدیریت خریدها)
     'treasury',                        # Treasury / Cash & payment management (خزانه‌داری)
     'datamapping',                     # Data mapping / import (نگاشت و ایمپورت داده)
+    'communication',                   # گفتگوی سازمانی (Chat) — لایهٔ ارتباطی روی داده‌ها
+    'planning',                        # برنامه‌ریزی شخصی (یادداشت‌ها و وظایف)
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]

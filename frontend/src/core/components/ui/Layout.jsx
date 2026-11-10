@@ -64,6 +64,8 @@ import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
@@ -187,6 +189,8 @@ const groupIcon = (id) => GROUP_ICONS[id] || <FolderOutlinedIcon />;
 // رنگ یک‌دست آیکون‌های سایدبار (خاکستری تیره در تم روشن و خاکستری روشن در تم تاریک)
 const ICON_COLOR = 'text.secondary';
 const WORKDESK_ACCENT = '#0f766e';
+const CHAT_ACCENT = '#0ea5e9';
+const PLANNING_ACCENT = '#6366f1';
 
 /**
  * چیدمان اصلی برنامه با سایدبار دوستونهٔ سفید:
@@ -222,6 +226,17 @@ const Layout = ({ children }) => {
   const dmsFolders = Array.isArray(dmsFoldersQuery.data)
     ? dmsFoldersQuery.data
     : dmsFoldersQuery.data?.results || [];
+
+  // نشان‌های فضای کاری شخصی: پیام‌های خوانده‌نشدهٔ چت و وظایف سررسیدشده.
+  const workspaceQuery = useQuery({
+    queryKey: ['chat-unread'],
+    queryFn: () => axiosInstance.get('/chat/unread/').then((response) => response.data),
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+  const workspaceBadges = workspaceQuery.data || {};
+  const chatBadge = Number(workspaceBadges.chat) || 0;
+  const planningBadge = Number(workspaceBadges.planning) || 0;
   const menu = getMenuForApp(currentApp?.slug, {
     folders: dmsFolders,
     permissions: user?.fine_permissions,
@@ -645,6 +660,77 @@ const Layout = ({ children }) => {
           </IconButton>
         </Tooltip>
         <NotificationBell compact iconColor={ICON_COLOR} />
+        {/* فضای کاری شخصی: گفتگوی سازمانی و برنامه‌ریزی */}
+        <Tooltip
+          title={chatBadge ? `گفتگوی سازمانی — ${toPersianDigits(chatBadge)} پیام خوانده‌نشده` : 'گفتگوی سازمانی'}
+          placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={() => navigateTo('/chat')}
+            aria-label={chatBadge ? `گفتگوی سازمانی (${chatBadge} خوانده‌نشده)` : 'گفتگوی سازمانی'}
+            aria-current={location.pathname.startsWith('/chat') ? 'page' : undefined}
+            sx={{
+              mt: 0.35,
+              color: location.pathname.startsWith('/chat') ? CHAT_ACCENT : ICON_COLOR,
+              bgcolor: location.pathname.startsWith('/chat') ? alpha(CHAT_ACCENT, 0.12) : 'transparent',
+              border: '1px solid',
+              borderColor: location.pathname.startsWith('/chat') ? alpha(CHAT_ACCENT, 0.35) : 'transparent',
+              '&:hover': { bgcolor: alpha(CHAT_ACCENT, 0.08), color: CHAT_ACCENT },
+            }}
+          >
+            <Badge
+              color="error"
+              badgeContent={chatBadge ? toPersianDigits(chatBadge) : ''}
+              max={99}
+              invisible={!chatBadge}
+              sx={{
+                '& .MuiBadge-badge': {
+                  fontSize: 9, height: 15, minWidth: 15, px: 0.4, fontWeight: 900,
+                  border: '2px solid', borderColor: 'var(--hrms-region-sidebar-bg, #ffffff)',
+                },
+              }}
+            >
+              <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />
+            </Badge>
+          </IconButton>
+        </Tooltip>
+        <Tooltip
+          title={planningBadge
+            ? `برنامه‌ریزی شخصی — ${toPersianDigits(planningBadge)} وظیفهٔ سررسیدشده`
+            : 'برنامه‌ریزی شخصی (یادداشت‌ها و وظایف)'}
+          placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={() => navigateTo('/planning')}
+            aria-label={planningBadge ? `برنامه‌ریزی شخصی (${planningBadge} وظیفه)` : 'برنامه‌ریزی شخصی'}
+            aria-current={location.pathname.startsWith('/planning') ? 'page' : undefined}
+            sx={{
+              mt: 0.35,
+              color: location.pathname.startsWith('/planning') ? PLANNING_ACCENT : ICON_COLOR,
+              bgcolor: location.pathname.startsWith('/planning')
+                ? alpha(PLANNING_ACCENT, 0.12) : 'transparent',
+              border: '1px solid',
+              borderColor: location.pathname.startsWith('/planning')
+                ? alpha(PLANNING_ACCENT, 0.35) : 'transparent',
+              '&:hover': { bgcolor: alpha(PLANNING_ACCENT, 0.08), color: PLANNING_ACCENT },
+            }}
+          >
+            <Badge
+              color="warning"
+              badgeContent={planningBadge ? toPersianDigits(planningBadge) : ''}
+              max={99}
+              invisible={!planningBadge}
+              sx={{
+                '& .MuiBadge-badge': {
+                  fontSize: 9, height: 15, minWidth: 15, px: 0.4, fontWeight: 900,
+                  border: '2px solid', borderColor: 'var(--hrms-region-sidebar-bg, #ffffff)',
+                },
+              }}
+            >
+              <TaskAltOutlinedIcon sx={{ fontSize: 20 }} />
+            </Badge>
+          </IconButton>
+        </Tooltip>
         <Tooltip title="تنظیمات" placement="left" arrow>
           <IconButton
             size="small"

@@ -576,7 +576,45 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
-- **Last commit:** `fix(documents): paginate and filter the document library on the server`
+- **Last commit:** `feat(communication): add the organizational chat and personal planning modules`
+- **Live:** frontend `main.488a56cc.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (ماژول‌های `communication` + `planning` و مایگریشن‌های آن‌ها روی همهٔ schemaها + موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033`، `correspondences.0021/0022` + همگام‌سازی «شماره ثبت» وارده + اصلاح شمارندهٔ شماره‌گذاری + پیش‌نمایش پیوست‌ها + فیلتر سروری کتابخانهٔ اسناد)، gunicorn/celery/nginx active.
+- **ماژول‌های تازه: «گفتگوی سازمانی» و «برنامه‌ریزی شخصی» (۲۰۲۶-۱۱-۱۰):** دو اپ مستقل در TENANT_APPS —
+  `communication` (چت) و `planning` (یادداشت/وظیفه) — با معماری «چت لایهٔ ارتباطی است، نه مالک داده».
+  - **مدل‌ها (communication):** `Conversation` (نوع `direct|group|channel|system`، `related_module/object_*`،
+    `post_policy`, `is_public`, `direct_key` یکتا برای گفتگوی خصوصی)، `ConversationMember` (نقش،
+    `last_read_message`, `notify`, `is_pinned`, `is_archived`)، `Message` (بدنهٔ **رمزنگاری‌شده** +
+    `search_tokens` به‌عنوان blind index، `reply_to`, `thread_root`, `edited_at`, `deleted_at`)،
+    `MessageAttachment` (با `document` FK اختیاری به DMS ⇒ بدون کپی فایل)، `MessageEntityRef`
+    (ارجاع قرارداد/پروژه/خرید/حسابداری/مکاتبه/DMS)، `MessageMention`، `MessageReceipt`، `ChatAuditLog`،
+    `ChatEvent` (outbox رویداد).
+  - **مدل‌ها (planning):** `Note` (متن رمزنگاری‌شده، رنگ/برچسب/چک‌لیست/سنجاق)، `Task` (وضعیت/اولویت/سررسید/
+    یادآور/`source_message` برای «تبدیل پیام به وظیفه»)، `PlanningShare` (اشتراک با `view|edit`).
+  - **امنیت:** `communication/crypto.py` — Fernet (`core.engines.encryption_engine`) برای متن پیام/یادداشت و
+    HMAC-SHA256 (کلید مشتق از `SECRET_KEY`) به‌عنوان ایندکس کور جست‌وجو (متن در DB قابل بازسازی نیست).
+    دسترسی: `communication/permissions.py` — عضویت، کانال عمومی، `post_policy` کانال، و `can_read_module`
+    برای ارجاع‌ها (اگر کاربر مجوز ماژول مقصد را ندارد، برچسب ارجاع «دسترسی ندارد» می‌شود).
+  - **API:** `/api/chat/conversations/` (+`messages/`, `members/`, `read/`, `preferences/`, `audit/`, `pinned/`,
+    `join/`)، `/api/chat/messages/{id}/` (PATCH/DELETE)، `/api/chat/attachments/{id}/download/`،
+    `/api/chat/events/?since=`, `/api/chat/unread/`, `/api/chat/directory/`, `/api/chat/search/`؛
+    `/api/planning/notes/`, `/api/planning/tasks/` (+`share/`, `unshare/`, `toggle/`), `/api/planning/summary/`.
+  - **Real-time (بدون بازنویسی آینده):** `communication/realtime.py` با `Publisher` و پیاده‌سازی پیش‌فرض
+    `DatabaseEventPublisher` (جدول `ChatEvent`، Polling سمت فرانت). با نصب `channels`+`channels_redis`
+    همان `publish()` به `ChannelsPublisher` سوییچ می‌کند و سرویس‌ها/API تغییر نمی‌کنند.
+  - **اعلان‌ها:** دسته‌های تازه در `notifications.Notification` (`chat_message`, `chat_mention`,
+    `chat_member_added`, `planning_share`, `planning_due`) با `entity_type='chat_conversation'|'planning_*'`؛
+    `NotificationBell` به `/chat?conversation=<id>` و `/planning` مسیر می‌دهد.
+  - **فرانت:** `/chat` (`pages/chat/ChatPage.jsx`) — چیدمان تلگرام‌گونه (فهرست گفتگوها + رشتهٔ پیام + نوار
+    نوشتن با پیوست/منشن/ارجاع)، حباب‌های ما/دیگری، پاسخ، ویرایش/حذف، رسید «x از y خواندند»، جست‌وجو،
+    ساخت گروه/کانال، اعضا. `/planning` (`pages/planning/PlanningPage.jsx`) — تب یادداشت‌ها (کارت‌های رنگی)
+    و وظایف (چک‌لیست، سررسید شمسی با `JalaliMaskedDateInput`، اولویت)، اشتراک‌گذاری با کاربران.
+    ریل سایدبار: دو دکمهٔ همیشگی «گفتگوی سازمانی» و «برنامه‌ریزی شخصی» با نشان خوانده‌نشده/سررسید
+    (`/api/chat/unread/` هر ۳۰ ثانیه).
+  - **تست:** `communication/tests.py` (۱۴) + `planning/tests.py` (۷) DB-free؛ فرانت `chatSmoke` (۲) و
+    `planningSmoke` (۲). **تأیید زندهٔ `kpsmi`:** جدول‌ها ساخته شد؛ بدنهٔ پیام در DB `gAAAAA…` (رمز)،
+    `search_tokens` تولید شد، جست‌وجوی کور نتیجه داد، اعلان برای عضو ساخته شد، ویرایش در `ChatAuditLog`
+    ثبت شد، حذف نرم کار کرد، یادداشت رمزنگاری و اشتراک آن با کاربر دوم دیده شد (و همهٔ دادهٔ تست پاک شد).
+  - **باقی‌مانده (فاز ۲):** کانال‌های پیش‌فرض per-company، Thread/Reaction، تولید سند از پیام، Presence،
+    `channels` روی سرور، و «تبدیل پیام به وظیفه» در UI (مدل/فیلد `source_message` آماده است).
 - **Live:** frontend `main.00f52485.js` (HTTP 200، سرو از `/assets/static/js`) · backend deployed (موتور چاپ `core/print_engine/` + `core.urls` چاپ + مایگریشن `procurement.0004` + `GET /api/procurement/dashboard/` + `GET /api/procurement/suppliers/{id}/profile/` + `GET /api/external-contracts/completeness/` + مایگریشن‌های `accounting.0033` (سازمان‌ها و اشخاص)، `correspondences.0021` (گروه‌های شماره‌گذاری) و `correspondences.0022` (تاریخ نامهٔ اختیاری) + همگام‌سازی «شماره ثبت» وارده از اندیکاتور + اصلاح شمارندهٔ شماره‌گذاری پیشنهادی + پیش‌نمایش درون‌برنامه‌ای پیوست‌ها + فیلتر/صفحه‌بندی سروری کتابخانهٔ اسناد + کاتالوگ مجوز ۲۷۰ منو/۱۱۲۱ کد)، gunicorn/celery/nginx active.
 - **مدیریت اسناد: کتابخانه حالا سروری صفحه‌بندی/فیلتر می‌شود (۲۰۲۶-۱۱-۱۰):** علت «مدارک قرارداد/پرسنلی/
   سازمانی در کتابخانه دیده نمی‌شوند» داده نبود؛ فرانت **فقط ۵۰۰ سند آخر** را یک‌جا می‌گرفت

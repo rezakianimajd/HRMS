@@ -23,6 +23,11 @@ class Notification(BaseModel):
         DOCUMENT_EXPIRY = 'document_expiry', _('انقضای مدرک')
         LEAVE_BALANCE = 'leave_balance', _('پایان مانده مرخصی')
         PETTY_CASH = 'petty_cash', _('تنخواه')
+        CHAT_MESSAGE = 'chat_message', _('پیام چت')
+        CHAT_MENTION = 'chat_mention', _('منشن در چت')
+        CHAT_MEMBER_ADDED = 'chat_member_added', _('افزودن به گفتگو')
+        PLANNING_SHARE = 'planning_share', _('اشتراک‌گذاری برنامه‌ریزی')
+        PLANNING_DUE = 'planning_due', _('سررسید وظیفه')
 
     class Priority(models.TextChoices):
         LOW = 'low', _('کم')

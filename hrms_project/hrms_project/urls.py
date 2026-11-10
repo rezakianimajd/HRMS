@@ -45,6 +45,8 @@ urlpatterns = [
     path('api/datamapping/', include('datamapping.urls')),
     path('api/procurement/', include('procurement.urls')),
     path('api/treasury/', include('treasury.urls')),
+    path('api/chat/', include('communication.urls')),
+    path('api/planning/', include('planning.urls')),
 ]
 
 if settings.DEBUG:

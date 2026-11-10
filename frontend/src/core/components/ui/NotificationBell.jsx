@@ -22,6 +22,11 @@ const CATEGORY_LABELS = {
   contract_expiry: 'پایان قرارداد',
   document_expiry: 'انقضای مدرک',
   leave_balance: 'مانده مرخصی',
+  chat_message: 'پیام چت',
+  chat_mention: 'منشن در چت',
+  chat_member_added: 'افزودن به گفتگو',
+  planning_share: 'اشتراک‌گذاری',
+  planning_due: 'سررسید وظیفه',
 };
 
 const CATEGORY_COLORS = {
@@ -30,6 +35,11 @@ const CATEGORY_COLORS = {
   contract_expiry: '#ef4444',
   document_expiry: '#3b82f6',
   leave_balance: '#10b981',
+  chat_message: '#0ea5e9',
+  chat_mention: '#8b5cf6',
+  chat_member_added: '#14b8a6',
+  planning_share: '#6366f1',
+  planning_due: '#f97316',
 };
 
 const glassOrb = {
@@ -74,6 +84,12 @@ const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
       navigate('/requests');
     } else if (n.entity_type === 'document') {
       navigate('/documents');
+    } else if (n.entity_type === 'chat_conversation' && n.entity_id) {
+      navigate(`/chat?conversation=${n.entity_id}`);
+    } else if (n.entity_type === 'planning_note') {
+      navigate('/planning');
+    } else if (n.entity_type === 'planning_task') {
+      navigate('/planning');
     }
     if (!n.is_read) {
       markRead.mutate(n.id);
