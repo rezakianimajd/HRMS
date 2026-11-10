@@ -593,6 +593,20 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **نوار جست‌وجوی «پروندهٔ پرسنل» استاندارد شد (۲۰۲۶-۱۱-۱۰):** `pages/EmployeeListPage.jsx` روی کیت مشترک
+  تم بازنویسی شد (`useModuleTheme` + `ModuleToolbar` + `ModuleTable` + `ModulePager` + `useRowHeight`)؛
+  نوار شیشه‌ای/هاردکد قبلی حذف و شعاع/سایه/ارتفاع/چیدمان از استودیو تم می‌آید.
+  - **فیلترها همان‌های قبلی‌اند:** دپارتمان، عنوان شغلی، محل استقرار، لیست بیمه، وضعیت و حالا **جنسیت**
+    (که در state بود ولی کنترل نداشت) + چیپ‌های «فیلتر فعال» با حذف تک‌تک و «حذف فیلترها».
+  - **ترتیب:** پیش‌فرض همان `-created_at` (جدیدترین) و گزینه‌های افزوده: نام خانوادگی (الف↔ی، با
+    `last_name,first_name`)، نام، کد پرسنلی، دپارتمان، عنوان شغلی، محل استقرار، تاریخ استخدام و وضعیت.
+    بک‌اند `EmployeeViewSet.ordering_fields` با `department__name`/`job_title__name`/
+    `work_location__name`/`insurance_list__name` گسترش یافت.
+  - جست‌وجو ۳۵۰ms debounce روی `?search=` (نام، نام خانوادگی، کد ملی، کد پرسنلی، موبایل، ایمیل)،
+    صفحه‌بندی سروری با `page_size` از تم (`tables.rowsPerPage`), خروجی اکسل با همان فیلتر/ترتیب.
+  - تست: `__tests__/employeesListSmoke.test.js` (۳ تست: پارامترهای پیش‌فرض، ترتیب نام خانوادگی،
+    پنل فیلترها). تأیید زندهٔ `kpsmi`: `?ordering=last_name,first_name` = ۲۰۰ و فهرست الفبایی بر اساس
+    نام خانوادگی (۵۱ پرسنل). باندل زندهٔ فرانت: **`main.6091e142.js`**.
 - **حریم خصوصی چت: بدون عضویت، هیچ‌کس (حتی سوپریوزر) گفتگو را نمی‌بیند (۲۰۲۶-۱۱-۱۰):** کاربرِ مدیر
   سیستم گفتگوی خصوصی دو همکار را در فهرست چت می‌دید، چون `communication/permissions.py` برای
   `is_superuser` استثنا داشت (`can_view`/`visible_conversations`/`can_post`/`is_privileged` همه True).
