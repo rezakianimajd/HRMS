@@ -28,7 +28,7 @@ import { PartyPicker, PersonnelPicker, partyValue, personValue } from './corresp
 import { alpha } from '@mui/material/styles';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import axiosInstance from '../../core/api/axiosConfig';
-import { CONTACTS_KEY, LETTERS_KEY, STATS_KEY } from './correspondenceQueryKeys';
+import { CONTACTS_KEY, LETTERS_KEY, META_KEY, STATS_KEY } from './correspondenceQueryKeys';
 
 
 const EMPTY_LETTER = {
@@ -273,6 +273,9 @@ const LetterFormDialog = ({
     onSuccess: (letter) => {
       qc.invalidateQueries({ queryKey: LETTERS_KEY });
       qc.invalidateQueries({ queryKey: STATS_KEY });
+      // شمارندهٔ گروه شماره‌گذاری جلو رفته؛ پیشنهاد بعدی باید تازه خوانده شود
+      qc.invalidateQueries({ queryKey: ['letter-series-preview'] });
+      qc.invalidateQueries({ queryKey: META_KEY });
       if (onSaved) onSaved(letter);
       if (letter?.uploadWarning) {
         setError(letter.uploadWarning);
@@ -304,7 +307,8 @@ const LetterFormDialog = ({
       params: form.letter_date ? { letter_date: form.letter_date } : {},
     }).then((response) => response.data),
     enabled: open && Boolean(form.series),
-    staleTime: 10_000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
   const suggestion = seriesPreview.data || null;
 

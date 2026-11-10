@@ -127,6 +127,13 @@ class ExtractSequenceTests(SimpleTestCase):
     def test_seq_first_template(self):
         self.assertEqual(extract_sequence('007/1405', '{seq}/{year}'), 7)
 
+    def test_canonical_seq_prefix_year_template(self):
+        """قالب فعلی مؤسسه: {seq}/{prefix}/{yy} با پیشوند دارای فاصله."""
+        self.assertEqual(extract_sequence('5802/ص م/05', '{seq}/{prefix}/{yy}'), 5802)
+
+    def test_leading_sequence_without_template(self):
+        self.assertEqual(extract_sequence('5802/ص م/05'), 5802)
+
     def test_falls_back_to_last_digit_group(self):
         self.assertEqual(extract_sequence('نامه 1405/457'), 457)
 

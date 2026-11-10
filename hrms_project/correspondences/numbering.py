@@ -195,7 +195,11 @@ def allocate_number(series, letter_date=None):
 
 
 def _sequence_regex(template):
-    """ساخت regex از قالب برای استخراج شمارهٔ سری از یک شمارهٔ ثبت‌شده."""
+    """ساخت regex از قالب برای استخراج شمارهٔ سری از یک شمارهٔ ثبت‌شده.
+
+    سایر توکن‌ها (پیشوند/سال) به «هر چیزی جز اسلش» تبدیل می‌شوند تا پیشوندهای
+    دارای فاصله (مثل «ص م») هم تطبیق پیدا کنند.
+    """
     pattern = ''
     for part in re.split(r'(\{\w+\})', template or ''):
         if not part:
@@ -203,16 +207,18 @@ def _sequence_regex(template):
         if part == '{seq}':
             pattern += r'(?P<seq>\d+)'
         elif re.fullmatch(r'\{\w+\}', part):
-            pattern += r'[^/\-\.\s]+'
+            pattern += r'[^/]+'
         else:
             pattern += re.escape(part)
     return re.compile(f'^{pattern}$')
 
 
 def extract_sequence(number, template=''):
-    """شمارهٔ سری موجود در یک شماره (مثلاً «ص م/1405/012» → 12).
+    """شمارهٔ سری موجود در یک شماره (مثلاً «5802/ص م/05» → 5802).
 
-    اگر شماره با قالب گروه تطبیق نداشته باشد، آخرین گروه رقمی برگردانده می‌شود.
+    ابتدا بر اساس جای ``{seq}`` در قالب تلاش می‌کند؛ اگر نشد و شماره با عدد
+    آغاز شود (قالب استاندارد ``SEQ/PREFIX/YY``) همان عدد ابتدایی را می‌گیرد و
+    در نهایت آخرین گروه رقمی را برمی‌گرداند.
     """
     text = str(number or '').strip()
     if not text:
@@ -227,6 +233,9 @@ def extract_sequence(number, template=''):
                 return int(match.group('seq'))
             except (TypeError, ValueError):
                 return None
+    leading = re.match(r'^(\d+)\s*/', text)
+    if leading:
+        return int(leading.group(1))
     groups = re.findall(r'\d+', text)
     return int(groups[-1]) if groups else None
 

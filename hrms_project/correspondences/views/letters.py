@@ -344,14 +344,15 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             drafter=serializer.validated_data.get('drafter')
             or (user if getattr(user, 'is_authenticated', False) else None),
         )
-        # شماره‌گذاری خودکار: ثبت صریح، یا انتخاب گروه شماره‌گذاری بدون شماره (به‌جز پیش‌نویس)
-        auto_from_series = bool(
-            self.request.data.get('series') and not letter.number and letter.status != 'draft'
+        # گروه شماره‌گذاری انتخاب شده؟ (شمارهٔ پیشنهادی پذیرفته یا خالی)
+        series_id = self.request.data.get('series') or letter.series_id
+        wants_number = bool(
+            self._payload_register_flag()
+            or (series_id and letter.status != 'draft')
+            or (self.request.data.get('number') and not letter.number)
         )
-        if self._payload_register_flag() or auto_from_series or (
-            self.request.data.get('number') and not letter.number
-        ):
-            self._assign_number(letter, user)
+        if wants_number:
+            self._assign_number(letter, user, series_id=series_id)
         _log_event(letter, 'created', user, note=f'ثبت نامه: {letter.subject}')
         if letter.number:
             _log_event(letter, 'registered', user, note=f'شماره نامه: {letter.number}')
