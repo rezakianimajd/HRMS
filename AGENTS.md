@@ -593,6 +593,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    خطای «SetConsoleWindowTitle / No process is on the other end of the pipe» می‌میرد و بیلد نیمه‌کاره
    می‌ماند. راه مطمئن: `node node_modules/react-scripts/bin/react-scripts.js build` با
    `PUBLIC_URL='/assets'` (و به‌صورت detached، چون ابزار اجرای دستور پس از ۳۰ ثانیه قطع می‌شود).
+24. **متن فارسی با نیم‌فاصله را پیش از تطبیق الگو نرمال کنید:** «می‌تونی» با ZWNJ در نرمال‌سازی به
+   «می تونی» تبدیل می‌شود و الگوی «میتونی» دیگر مطابقت نمی‌کند؛ فهرست واژه‌ها/پیشوندها را هم با همان
+   تابع نرمال‌سازی بسازید (نمونه: `communication/task_suggest.py` → `_POLITE_NORMALIZED`).
 
 
 
@@ -600,6 +603,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **تسک‌سازی از چت (۲۰۲۶-۱۱-۱۰):** پیام‌های «کاری» در چت شناسایی می‌شوند و با یک کلیک به
+  وظیفهٔ ماژول برنامه‌ریزی تبدیل می‌شوند.
+  - **تشخیص خالص:** `communication/task_suggest.py` قواعد بررسی/پیگیری/ارسال/ثبت/آماده‌سازی/
+    هماهنگی/یادآوری + تشخیص فوریت را روی متن (بدون DB) اجرا می‌کند و عنوان (جملهٔ اول، بدون
+    «لطفاً/میتونی…») و توضیح «از چت — گفتگو/فرستنده» می‌سازد.
+  - **API:** `MessageSerializer.task_suggestion` (پیشنهاد) و `linked_task` (وظیفهٔ ساخته‌شده از
+    همان پیام، با نقشهٔ یک‌کوئری در ویو)؛ `POST /api/chat/messages/{id}/make-task/` تسک را با
+    `title/description/priority/due_date` و مسئول اختیاری (افراد یا گروه) می‌سازد
+    (`source_message`, `related_module='chat'`, تگ `chat` و `planning.services.assign_task`).
+  - **UI:** دکمهٔ «تسک‌سازی» در نوار اقدام حباب (`data-testid="chat-make-task"`)، چیپ
+    «پیشنهاد ساخت وظیفه · بررسی» (`chat-task-suggestion`) زیر پیام‌های کاری، چیپ
+    «وظیفه: …» (`chat-linked-task`) برای پیام‌های دارای وظیفه (کلیک → `/planning?task=<id>`)
+    و دیالوگ `chat/ChatTaskDialog.jsx` (عنوان/توضیح/اولویت/سررسید شمسی/مسئول: خودم|افراد|گروه).
+  - **تأیید زندهٔ `kpsmi` (تراکنش و rollback):** پیام «لطفاً قرارداد C-KPSMI-05-073 را بررسی کن
+    و صورت‌وضعیتش را بزن» → پیشنهاد `{reason:'بررسی', matched:['بررسی','بزن']}`؛ `make-task` =
+    **۲۰۱** با تسک (priority high، due 2026-11-20)، `source_message` درست، توضیح با
+    «از چت — فرستنده…»، و فهرست پیام‌ها `linked_task` را برگرداند؛ سپس rollback.
+  - تست: بک‌اند `communication` (**۴۴**؛ `TaskSuggestionTests` و `LinkedTaskMapTests`)، فرانت
+    `chatSmoke` (۵؛ شامل ساخت وظیفه از پیام). باندل زندهٔ فرانت: **`main.bb5295b7.js`**.
 - **چت: حریم مجوزها، آواتار پرسنلی و ظاهر آبی «پنل کاربران» (۲۰۲۶-۱۱-۱۰):**
   - **اعلان‌ها خودکار خوانده می‌شوند:** اکشن `read` حالا اعلان‌های همان گفتگو را هم می‌بندد
     (`_mark_conversation_notifications_read` → `notifications_read` در پاسخ) و فرانت پس از
