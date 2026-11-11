@@ -90,18 +90,37 @@ export const adjustmentForeignCumulativeFor = (
 export const contractHasMultiLevels = (rows) => (Array.isArray(rows) ? rows : [])
   .some((row) => isMultiKind(row));
 
+/**
+ * دو تیک مستقل هر سطح: «شامل اضافات» و «شامل کسورات».
+ *
+ * اسناد قدیمی فقط `includes_charges` دارند؛ وقتی کلید جدیدی نباشد همان تیک
+ * قدیمی برای هر دو در نظر گرفته می‌شود (دادهٔ قبلی خراب نشود).
+ */
+export const levelChargeFlags = (level) => {
+  const legacy = Boolean(level?.includes_charges);
+  const additions = level?.includes_additions;
+  const deductions = level?.includes_deductions;
+  return {
+    additions: additions == null ? legacy : Boolean(additions),
+    deductions: deductions == null ? legacy : Boolean(deductions),
+  };
+};
+
 /** سطوح آخرین سند چند سطحی «دورهٔ قبل» را برای انتقال به سند جدید آماده می‌کند. */
 export const seedLevelsFrom = (rows, number = null) => {
   const chain = (Array.isArray(rows) ? rows : []).filter((row) => !isAdjustmentKind(row));
   const prior = previousPeriodRows(chain, { number }).filter((row) => isMultiKind(row));
   const last = prior[prior.length - 1];
   if (!last) return [];
-  return (Array.isArray(last.levels) ? last.levels : []).map((level) => ({
-    title: level.title || '',
-    amount: Number(level.amount) || 0,
-    amount_foreign: Number(level.amount_foreign) || 0,
-    includes_charges: Boolean(
-      level.includes_charges ?? level.includes_additions ?? level.includes_deductions,
-    ),
-  }));
+  return (Array.isArray(last.levels) ? last.levels : []).map((level) => {
+    const flags = levelChargeFlags(level);
+    return {
+      title: level.title || '',
+      amount: Number(level.amount) || 0,
+      amount_foreign: Number(level.amount_foreign) || 0,
+      includes_additions: flags.additions,
+      includes_deductions: flags.deductions,
+      includes_charges: flags.additions && flags.deductions,
+    };
+  });
 };

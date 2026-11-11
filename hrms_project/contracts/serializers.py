@@ -15,6 +15,7 @@ from contracts.models import (
 from contracts.accounting_mapping import account_brief, mapping_payload, missing_fields
 from contracts.numbering import normalize_statement_number
 from contracts.statement_chain import previous_rows
+from contracts.statement_levels import level_charge_flags, level_payload
 
 
 # ---------------------------------------------------------------------------
@@ -687,7 +688,8 @@ class StatementSerializer(serializers.ModelSerializer):
         seen = set()
         level_work_total = Decimal('0')
         level_work_foreign_total = Decimal('0')
-        included_work_total = Decimal('0')
+        included_additions_work = Decimal('0')
+        included_deductions_work = Decimal('0')
 
         for item in submitted:
             if not isinstance(item, dict):
@@ -727,16 +729,14 @@ class StatementSerializer(serializers.ModelSerializer):
                 })
             level_work = level_rial - previous_rial
             level_work_foreign = max(Decimal('0'), level_foreign - previous_foreign)
-            # تیک «شامل اضافات و کسورات» فقط کارکرد این سطح را به مبنای
-            # اضافات/کسورات خودِ سند اضافه می‌کند (محاسبهٔ جدا ندارد).
-            includes_charges = bool(
-                item.get('includes_charges')
-                or item.get('includes_additions')
-                or item.get('includes_deductions')
-            )
+            # دو تیک مستقل: کارکرد سطح در مبنای اضافات و/یا کسورات شمرده می‌شود.
+            includes_additions, includes_deductions = level_charge_flags(item)
             levels.append({
-                'title': title,
-                'includes_charges': includes_charges,
+                **level_payload(
+                    title,
+                    includes_additions=includes_additions,
+                    includes_deductions=includes_deductions,
+                ),
                 'previous_amount': float(previous_rial),
                 'amount': float(level_rial),
                 'previous_foreign': float(previous_foreign),
@@ -747,22 +747,25 @@ class StatementSerializer(serializers.ModelSerializer):
             cumulative[key] = (level_rial, level_foreign)
             level_work_total += level_work
             level_work_foreign_total += level_work_foreign
-            if includes_charges:
-                included_work_total += level_work
+            if includes_additions:
+                included_additions_work += level_work
+            if includes_deductions:
+                included_deductions_work += level_work
         if not levels:
             raise serializers.ValidationError({
                 'levels': 'برای صورت‌وضعیت چند سطحی، حداقل یک سطح با عنوان و مبلغ لازم است.',
             })
 
-        # مبنای درصدی اضافات/کسورات = کارکرد سطح اصلی + کارکرد سطوح تیک‌خورده
-        charges_base = own_work + included_work_total
+        # مبنای درصدی جدا برای اضافات و کسورات = کارکرد سطح اصلی + سطوح تیک‌خورده.
+        additions_base = own_work + included_additions_work
+        deductions_base = own_work + included_deductions_work
         own_additions = normalize_percent_items(
             attrs['additions'] if 'additions' in attrs else getattr(instance, 'additions', []) or [],
-            charges_base,
+            additions_base,
         )
         own_deductions = normalize_percent_items(
             attrs['deductions'] if 'deductions' in attrs else getattr(instance, 'deductions', []) or [],
-            charges_base,
+            deductions_base,
         )
         additions_total = sum(
             (Decimal(str(item.get('amount') or 0)) for item in own_additions), Decimal('0'),

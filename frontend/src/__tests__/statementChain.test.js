@@ -8,6 +8,7 @@ import {
   adjustmentCumulativeFor,
   contractHasMultiLevels,
   foreignCumulativeFor,
+  levelChargeFlags,
   previousCumulativeFor,
   previousPeriodRows,
   seedLevelsFrom,
@@ -92,4 +93,49 @@ test('seedLevels and multi detection follow the contract documents', () => {
   expect(contractHasMultiLevels(rows)).toBe(true);
   expect(contractHasMultiLevels([row(1, '01', 100)])).toBe(false);
   expect(seedLevelsFrom(rows, '15')[0]).toMatchObject({ title: 'حق الزحمه', amount: 500 });
+});
+
+describe('levelChargeFlags — تفکیک «شامل اضافات» و «شامل کسورات»', () => {
+  it('تیک قدیمی «شامل اضافات و کسورات» هر دو را فعال می‌کند', () => {
+    expect(levelChargeFlags({ includes_charges: true }))
+      .toEqual({ additions: true, deductions: true });
+    expect(levelChargeFlags({ includes_charges: false }))
+      .toEqual({ additions: false, deductions: false });
+    expect(levelChargeFlags({})).toEqual({ additions: false, deductions: false });
+  });
+
+  it('تیک‌های جدید بر تیک قدیمی اولویت دارند', () => {
+    expect(levelChargeFlags({
+      includes_charges: true, includes_additions: false, includes_deductions: true,
+    })).toEqual({ additions: false, deductions: true });
+  });
+
+  it('فقط کسورات یا فقط اضافات', () => {
+    expect(levelChargeFlags({ includes_additions: true, includes_deductions: false }))
+      .toEqual({ additions: true, deductions: false });
+    expect(levelChargeFlags({ includes_additions: false, includes_deductions: true }))
+      .toEqual({ additions: false, deductions: true });
+  });
+
+  it('دادهٔ قدیمی در seedLevelsFrom هم به دو تیک تبدیل می‌شود', () => {
+    const rows = [row(700, '02', 1000, {
+      kind: 'multi',
+      levels: [{ title: 'خرید', amount: 900, includes_charges: true }],
+    })];
+    expect(seedLevelsFrom(rows, '03')[0]).toMatchObject({
+      title: 'خرید',
+      includes_additions: true,
+      includes_deductions: true,
+      includes_charges: true,
+    });
+    const split = [row(701, '02', 1000, {
+      kind: 'multi',
+      levels: [{ title: 'خرید', amount: 900, includes_additions: false, includes_deductions: true }],
+    })];
+    expect(seedLevelsFrom(split, '03')[0]).toMatchObject({
+      includes_additions: false,
+      includes_deductions: true,
+      includes_charges: false,
+    });
+  });
 });

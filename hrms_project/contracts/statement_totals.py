@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from contracts.models import Statement
 from contracts.statement_chain import order_statements
+from contracts.statement_levels import level_charge_flags, level_payload
 
 
 def _decimal(value):
@@ -125,7 +126,8 @@ def recalculate_contract_statements(contract):
                 levels = []
                 level_work_total = Decimal('0')
                 level_work_foreign_total = Decimal('0')
-                included_work_total = Decimal('0')
+                included_additions_work = Decimal('0')
+                included_deductions_work = Decimal('0')
                 for level in submitted_levels:
                     if not isinstance(level, dict):
                         continue
@@ -140,15 +142,14 @@ def recalculate_contract_statements(contract):
                     level_foreign = max(previous_foreign, _decimal(level.get('amount_foreign')))
                     level_work = level_rial - previous_rial
                     level_work_foreign = level_foreign - previous_foreign
-                    # تیک «شامل اضافات و کسورات» فقط مبنا را بزرگ‌تر می‌کند.
-                    includes_charges = bool(
-                        level.get('includes_charges')
-                        or level.get('includes_additions')
-                        or level.get('includes_deductions')
-                    )
+                    # دو تیک مستقل: مبنای اضافات و مبنای کسورات جدا محاسبه می‌شوند.
+                    includes_additions, includes_deductions = level_charge_flags(level)
                     levels.append({
-                        'title': title,
-                        'includes_charges': includes_charges,
+                        **level_payload(
+                            title,
+                            includes_additions=includes_additions,
+                            includes_deductions=includes_deductions,
+                        ),
                         'previous_amount': float(previous_rial),
                         'amount': float(level_rial),
                         'previous_foreign': float(previous_foreign),
@@ -159,14 +160,17 @@ def recalculate_contract_statements(contract):
                     level_prior[key] = (level_rial, level_foreign)
                     level_work_total += level_work
                     level_work_foreign_total += level_work_foreign
-                    if includes_charges:
-                        included_work_total += level_work
+                    if includes_additions:
+                        included_additions_work += level_work
+                    if includes_deductions:
+                        included_deductions_work += level_work
 
                 # اضافات/کسورات یک‌بار در سطح سند و بر مبنای کارکرد سطح اصلی
-                # + کارکرد سطوح تیک‌خورده محاسبه می‌شوند.
-                charges_base = own_work + included_work_total
-                own_additions = _normalize_items(row.additions, charges_base)
-                own_deductions = _normalize_items(row.deductions, charges_base)
+                # + کارکرد سطوح تیک‌خورده (هر کدام با مبنای خودش) محاسبه می‌شوند.
+                additions_base = own_work + included_additions_work
+                deductions_base = own_work + included_deductions_work
+                own_additions = _normalize_items(row.additions, additions_base)
+                own_deductions = _normalize_items(row.deductions, deductions_base)
                 additions_total = sum(
                     (_decimal(item.get('amount')) for item in own_additions), Decimal('0'),
                 ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)

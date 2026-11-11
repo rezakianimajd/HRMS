@@ -902,6 +902,67 @@ class StatementCalculationTests(TestCase):
         # خالص = سطح اصلی (۰) + سطوح (۱٬۰۰۰٬۰۰۰) + اضافات (۶۰٬۰۰۰)
         self.assertEqual(second_row.net_amount, Decimal('1060000'))
 
+    def test_multi_level_splits_additions_and_deductions_bases(self):
+        """تیک‌های «شامل اضافات» و «شامل کسورات» مستقل‌اند و مبنای هر کدام جداست."""
+        serializer = StatementSerializer(data=self._payload(
+            amount=0, number='01', kind='multi',
+            additions=[{
+                'code': 'vat', 'description': 'ارزش افزوده',
+                'percent': 10, 'amount': 0, 'mode': 'percent',
+            }],
+            deductions=[{
+                'title': 'حسن انجام کار', 'percent': 5, 'amount': 0, 'mode': 'percent',
+            }],
+            levels=[
+                {'title': 'خرید', 'amount': 2_000_000,
+                 'includes_additions': True, 'includes_deductions': False},
+                {'title': 'بند الف', 'amount': 1_000_000,
+                 'includes_additions': False, 'includes_deductions': True},
+                {'title': 'بند ب', 'amount': 500_000},
+            ],
+        ))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        row = serializer.save(company=self.company)
+
+        levels = {level['title']: level for level in row.levels}
+        self.assertTrue(levels['خرید']['includes_additions'])
+        self.assertFalse(levels['خرید']['includes_deductions'])
+        self.assertFalse(levels['خرید']['includes_charges'])
+        self.assertFalse(levels['بند الف']['includes_additions'])
+        self.assertTrue(levels['بند الف']['includes_deductions'])
+        self.assertFalse(levels['بند ب']['includes_additions'])
+        self.assertFalse(levels['بند ب']['includes_deductions'])
+
+        # مبنای اضافات = سطح اصلی (۰) + «خرید» (۲٬۰۰۰٬۰۰۰) ⇒ ۱۰٪ = ۲۰۰٬۰۰۰
+        self.assertEqual(row.additions_total, Decimal('200000'))
+        # مبنای کسورات = سطح اصلی (۰) + «بند الف» (۱٬۰۰۰٬۰۰۰) ⇒ ۵٪ = ۵۰٬۰۰۰
+        self.assertEqual(row.deductions_total, Decimal('50000'))
+        # خالص = کارکرد کل سطوح (۳٬۵۰۰٬۰۰۰) + اضافات − کسورات
+        self.assertEqual(row.net_amount, Decimal('3650000'))
+
+    def test_legacy_includes_charges_keeps_both_bases(self):
+        """اسناد قدیمی با یک تیک «شامل اضافات و کسورات» هر دو مبنا را شامل می‌شوند."""
+        serializer = StatementSerializer(data=self._payload(
+            amount=0, number='01', kind='multi',
+            additions=[{
+                'code': 'vat', 'description': 'ارزش افزوده',
+                'percent': 10, 'amount': 0, 'mode': 'percent',
+            }],
+            deductions=[{
+                'title': 'حسن انجام کار', 'percent': 5, 'amount': 0, 'mode': 'percent',
+            }],
+            levels=[{'title': 'خرید', 'amount': 2_000_000, 'includes_charges': True}],
+        ))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        row = serializer.save(company=self.company)
+        level = row.levels[0]
+        self.assertTrue(level['includes_additions'])
+        self.assertTrue(level['includes_deductions'])
+        self.assertTrue(level['includes_charges'])
+        self.assertEqual(row.additions_total, Decimal('200000'))
+        self.assertEqual(row.deductions_total, Decimal('100000'))
+        self.assertEqual(row.net_amount, Decimal('2100000'))
+
     def test_multi_level_adds_own_work_to_level_work(self):
         """کارکرد دورهٔ سند مستقل از سطوح است؛ جمع آن‌ها در مبلغ پرداختی می‌آید."""
         serializer = StatementSerializer(data=self._payload(

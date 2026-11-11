@@ -68,7 +68,7 @@ import {
 } from './contractPaymentsSummary';
 import {
   adjustmentCumulativeFor, adjustmentForeignCumulativeFor, contractHasMultiLevels,
-  foreignCumulativeFor, previousCumulativeFor, previousPeriodRows, seedLevelsFrom,
+  foreignCumulativeFor, levelChargeFlags, previousCumulativeFor, previousPeriodRows, seedLevelsFrom,
 } from './statementChain';
 
 const COLOR = '#6366f1';
@@ -154,7 +154,8 @@ const printStatement = async () => {
 const StatementPreview = ({
   form, contract, company, currencies, rate: rateProp,
   isMultiForm = false, levels = [], levelPreviousMap = {}, levelTotals = null,
-  totalWork = 0, totalWorkForeign = 0, chargesBase = 0, chargesBaseForeign = 0,
+  totalWork = 0, totalWorkForeign = 0,
+  additionsBase = 0, additionsBaseForeign = 0, deductionsBase = 0, deductionsBaseForeign = 0,
   netAmount: netAmountProp = null, netAmountForeign: netAmountForeignProp = null,
 }) => {
   const rate = num(rateProp) || 1;
@@ -216,9 +217,11 @@ const StatementPreview = ({
       ? (level?.amount_foreign != null ? num(level.amount_foreign) : fx(amountRial))
       : null;
     const previousForeign = rate > 1 ? num(previous.amount_foreign) : null;
+    const flags = levelChargeFlags(level);
     return {
       title: level?.title || '—',
-      includesCharges: Boolean(level?.includes_charges),
+      includesAdditions: flags.additions,
+      includesDeductions: flags.deductions,
       amountRial,
       previousRial,
       workRial: Math.max(0, amountRial - previousRial),
@@ -233,8 +236,10 @@ const StatementPreview = ({
   const levelsWorkTotalForeign = rate > 1 && isMultiForm ? num(levelTotals?.workForeign) : null;
   const grandWorkTotal = isMultiForm ? num(totalWork) : 0;
   const grandWorkTotalForeign = rate > 1 && isMultiForm ? num(totalWorkForeign) : null;
-  const chargesBaseValue = isMultiForm ? num(chargesBase) : workDone;
-  const chargesBaseForeignValue = rate > 1 && isMultiForm ? num(chargesBaseForeign) : workDoneForeign;
+  const chargesBaseValue = isMultiForm ? num(additionsBase) : workDone;
+  const chargesBaseForeignValue = rate > 1 && isMultiForm ? num(additionsBaseForeign) : workDoneForeign;
+  const deductionsBaseValue = isMultiForm ? num(deductionsBase) : workDone;
+  const deductionsBaseForeignValue = rate > 1 && isMultiForm ? num(deductionsBaseForeign) : workDoneForeign;
   const netForeignDisplay = isMultiForm && netAmountForeignProp != null
     ? num(netAmountForeignProp)
     : fx(netAmount);
@@ -336,12 +341,21 @@ const StatementPreview = ({
               }}>
                 <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
                   <Typography variant="caption" noWrap sx={{ fontWeight: 800, fontSize: 11.5 }}>{row.title}</Typography>
-                  <Chip size="small" label={row.includesCharges ? 'در مبنا' : 'مستقل'}
-                    sx={{
-                      height: 16, fontSize: 9.5,
-                      bgcolor: row.includesCharges ? `${kind.color}18` : '#f1f5f9',
-                      color: row.includesCharges ? kind.color : '#64748b',
-                    }} />
+                  {row.includesAdditions || row.includesDeductions ? (
+                    <>
+                      {row.includesAdditions ? (
+                        <Chip size="small" label="اضافات"
+                          sx={{ height: 16, fontSize: 9.5, bgcolor: `${kind.color}18`, color: kind.color }} />
+                      ) : null}
+                      {row.includesDeductions ? (
+                        <Chip size="small" label="کسورات"
+                          sx={{ height: 16, fontSize: 9.5, bgcolor: '#f59e0b18', color: '#b45309' }} />
+                      ) : null}
+                    </>
+                  ) : (
+                    <Chip size="small" label="مستقل"
+                      sx={{ height: 16, fontSize: 9.5, bgcolor: '#f1f5f9', color: '#64748b' }} />
+                  )}
                 </Stack>
                 <Box sx={{ minWidth: 0 }}>
                   <Typography variant="caption" sx={{ fontSize: 11 }}>{formatPersianNumber(row.amountRial)}</Typography>
@@ -375,8 +389,10 @@ const StatementPreview = ({
               <Row label="جمع کارکرد سطوح" value={levelsWorkTotal} foreign={levelsWorkTotalForeign} foreignSymbol={currencyLabel} />
               <Row label="کارکرد کل (سطح اصلی + سطوح)" value={grandWorkTotal} strong
                 foreign={grandWorkTotalForeign} foreignSymbol={currencyLabel} />
-              <Row label="مبنای اضافات و کسورات (سطح اصلی + سطوح «در مبنا»)"
+              <Row label="مبنای اضافات (سطح اصلی + سطوح «شامل اضافات»)"
                 value={chargesBaseValue} foreign={chargesBaseForeignValue} foreignSymbol={currencyLabel} />
+              <Row label="مبنای کسورات (سطح اصلی + سطوح «شامل کسورات»)"
+                value={deductionsBaseValue} foreign={deductionsBaseForeignValue} foreignSymbol={currencyLabel} />
             </Box>
           </Box>
         </Box>
@@ -780,14 +796,19 @@ const StatementEditorPage = () => {
     }
     if (isMultiKind(kind)) {
       // سطح سند مثل صورت‌وضعیت عادی است؛ هر سطح فقط کارکرد و تجمعی خودش را
-      // دارد و با تیک «شامل اضافات و کسورات» به مبنای درصد سند اضافه می‌شود.
+      // دارد و با تیک‌های «شامل اضافات»/«شامل کسورات» به مبنای درصد سند اضافه می‌شود.
       const cleanLevels = (Array.isArray(payload.levels) ? payload.levels : [])
-        .map((level) => ({
-          title: String(level.title || '').trim(),
-          amount: Math.max(0, Math.round(Number(level.amount) || 0)),
-          amount_foreign: Math.max(0, Number(level.amount_foreign) || 0),
-          includes_charges: Boolean(level.includes_charges),
-        }))
+        .map((level) => {
+          const flags = levelChargeFlags(level);
+          return {
+            title: String(level.title || '').trim(),
+            amount: Math.max(0, Math.round(Number(level.amount) || 0)),
+            amount_foreign: Math.max(0, Number(level.amount_foreign) || 0),
+            includes_additions: flags.additions,
+            includes_deductions: flags.deductions,
+            includes_charges: flags.additions && flags.deductions,
+          };
+        })
         .filter((level) => level.title);
       const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
       const previous = Math.max(0, Math.round(Number(payload.cumulative_previous_amount) || 0));
@@ -1032,7 +1053,7 @@ const StatementEditorPage = () => {
     const amountForeign = num(level.amount_foreign);
     const work = Math.max(0, amount - num(previous.amount));
     const workForeign = Math.max(0, amountForeign - num(previous.amount_foreign));
-    const included = Boolean(level.includes_charges);
+    const flags = levelChargeFlags(level);
     return {
       amount: totals.amount + amount,
       foreign: totals.foreign + amountForeign,
@@ -1040,8 +1061,10 @@ const StatementEditorPage = () => {
       previousForeign: totals.previousForeign + num(previous.amount_foreign),
       work: totals.work + work,
       workForeign: totals.workForeign + workForeign,
-      includedWork: totals.includedWork + (included ? work : 0),
-      includedWorkForeign: totals.includedWorkForeign + (included ? workForeign : 0),
+      additionsWork: totals.additionsWork + (flags.additions ? work : 0),
+      additionsWorkForeign: totals.additionsWorkForeign + (flags.additions ? workForeign : 0),
+      deductionsWork: totals.deductionsWork + (flags.deductions ? work : 0),
+      deductionsWorkForeign: totals.deductionsWorkForeign + (flags.deductions ? workForeign : 0),
     };
   }, {
     amount: 0,
@@ -1050,8 +1073,10 @@ const StatementEditorPage = () => {
     previousForeign: 0,
     work: 0,
     workForeign: 0,
-    includedWork: 0,
-    includedWorkForeign: 0,
+    additionsWork: 0,
+    additionsWorkForeign: 0,
+    deductionsWork: 0,
+    deductionsWorkForeign: 0,
   });
   const cumulativePrev = num(form.cumulative_previous_amount);
   const cumulativeThis = num(form.amount);
@@ -1088,15 +1113,15 @@ const StatementEditorPage = () => {
     ? adjustmentWorkRial
     : Math.max(0, cumulativeThis - cumulativePrev);
   // در سند چند سطحی: کارکرد کل = سطح اصلی + همهٔ سطوح، اما مبنای درصد
-  // اضافات/کسورات فقط سطح اصلی + سطوحی است که تیک «شامل» دارند.
+  // اضافات و کسورات (هر یک جدا) فقط سطح اصلی + سطوح تیک‌خوردهٔ خودش است.
   const levelWorkRial = isMultiForm ? levelsTotals.work : 0;
   const levelWorkForeign = isMultiForm ? levelsTotals.workForeign : 0;
-  const levelIncludedWork = isMultiForm ? levelsTotals.includedWork : 0;
-  const levelIncludedWorkForeign = isMultiForm ? levelsTotals.includedWorkForeign : 0;
   const totalWork = workDone + levelWorkRial;
   const totalWorkForeign = workDoneForeign + levelWorkForeign;
-  const chargesBase = workDone + levelIncludedWork;
-  const chargesBaseForeign = workDoneForeign + levelIncludedWorkForeign;
+  const additionsBase = workDone + (isMultiForm ? levelsTotals.additionsWork : 0);
+  const additionsBaseForeign = workDoneForeign + (isMultiForm ? levelsTotals.additionsWorkForeign : 0);
+  const deductionsBase = workDone + (isMultiForm ? levelsTotals.deductionsWork : 0);
+  const deductionsBaseForeign = workDoneForeign + (isMultiForm ? levelsTotals.deductionsWorkForeign : 0);
   const netAmount = isAdjustmentForm
     ? adjustmentWorkRial + additionsTotal - deductionsTotal
     : totalWork + additionsTotal - deductionsTotal;
@@ -1274,6 +1299,8 @@ const StatementEditorPage = () => {
     title,
     amount,
     amount_foreign: amountForeign,
+    includes_additions: false,
+    includes_deductions: false,
     includes_charges: false,
   });
   const addLevel = () => setField('levels', [...levels, emptyLevel()]);
@@ -1305,9 +1332,15 @@ const StatementEditorPage = () => {
       Number(previous.amount_foreign) || 0,
     )]);
   };
-  const toggleLevelOption = (index, key, value) => setField('levels', levels.map((level, current) => (
-    current === index ? { ...level, [key]: value } : level
-  )));
+  const toggleLevelOption = (index, key, value) => setField('levels', levels.map((level, current) => {
+    if (current !== index) return level;
+    const next = { ...level, [key]: value };
+    if (key === 'includes_additions' || key === 'includes_deductions') {
+      // کلید قدیمی فقط وقتی هر دو تیک فعال باشند معنا دارد.
+      next.includes_charges = Boolean(next.includes_additions) && Boolean(next.includes_deductions);
+    }
+    return next;
+  }));
 
   const changeCurrency = (currencyId) => {
     const nextCurrency = currencyList.find((currency) => String(currency.id) === String(currencyId));
@@ -1329,19 +1362,20 @@ const StatementEditorPage = () => {
   useEffect(() => {
     setForm((previous) => {
       if (!previous || !Object.keys(previous).length) return previous;
-      const percentBase = Math.abs(chargesBase);
-      const recalc = (items) => (Array.isArray(items) ? items : []).map((item) => {
+      const additionsPercentBase = Math.abs(additionsBase);
+      const deductionsPercentBase = Math.abs(deductionsBase);
+      const recalc = (items, percentBase) => (Array.isArray(items) ? items : []).map((item) => {
         if (item?.mode !== 'percent') return item;
         const itemRial = Math.round((percentBase * Number(item.percent || 0)) / 100);
         return { ...item, amount: itemRial, amount_foreign: fromRial(itemRial, displayRate) };
       });
-      const additionsNext = recalc(previous.additions);
-      const deductionsNext = recalc(previous.deductions);
+      const additionsNext = recalc(previous.additions, additionsPercentBase);
+      const deductionsNext = recalc(previous.deductions, deductionsPercentBase);
       const taxNext = previous.value_added_tax_mode === 'percent'
-        ? Math.round((percentBase * Number(previous.value_added_tax_percent || 0)) / 100)
+        ? Math.round((additionsPercentBase * Number(previous.value_added_tax_percent || 0)) / 100)
         : previous.value_added_tax;
       const otherNext = previous.other_additions_mode === 'percent'
-        ? Math.round((percentBase * Number(previous.other_additions_percent || 0)) / 100)
+        ? Math.round((additionsPercentBase * Number(previous.other_additions_percent || 0)) / 100)
         : previous.other_additions;
       const taxForeignNext = previous.value_added_tax_mode === 'percent'
         ? fromRial(taxNext, displayRate)
@@ -1369,7 +1403,7 @@ const StatementEditorPage = () => {
         other_additions_foreign: otherForeignNext,
       };
     });
-  }, [chargesBase, displayRate, setForm]);
+  }, [additionsBase, deductionsBase, displayRate, setForm]);
 
   const openNew = () => {
     const newDate = todayIso();
@@ -1497,16 +1531,19 @@ const StatementEditorPage = () => {
       other_additions_mode: 'amount',
       additions: [...withForeignAmount(row.additions), ...legacyAdditions],
       deductions: withForeignAmount(row.deductions),
-      levels: (Array.isArray(row.levels) ? row.levels : []).map((level) => ({
-        title: level.title || '',
-        amount: Number(level.amount) || 0,
-        amount_foreign: level.amount_foreign != null
-          ? Number(level.amount_foreign) || 0
-          : fromRial(Number(level.amount) || 0, editRate),
-        includes_charges: Boolean(
-          level.includes_charges ?? level.includes_additions ?? level.includes_deductions,
-        ),
-      })),
+      levels: (Array.isArray(row.levels) ? row.levels : []).map((level) => {
+        const flags = levelChargeFlags(level);
+        return {
+          title: level.title || '',
+          amount: Number(level.amount) || 0,
+          amount_foreign: level.amount_foreign != null
+            ? Number(level.amount_foreign) || 0
+            : fromRial(Number(level.amount) || 0, editRate),
+          includes_additions: flags.additions,
+          includes_deductions: flags.deductions,
+          includes_charges: flags.additions && flags.deductions,
+        };
+      }),
       documents: Array.isArray(row.documents) ? row.documents : [],
       pendingFiles: [],
       is_approved: Boolean(row.is_approved),
@@ -1565,7 +1602,7 @@ const StatementEditorPage = () => {
   const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, amount_foreign: 0, percent: 0, mode: 'amount' }]);
   const removeDeduction = (index) => setField('deductions', deductions.filter((_, current) => current !== index));
   const updateDeduction = (index, key, value) => {
-    const percentBase = Math.abs(chargesBase);
+    const percentBase = Math.abs(deductionsBase);
     setField('deductions', deductions.map((item, current) => {
       if (current !== index) return item;
       if (key === 'percent') {
@@ -1586,7 +1623,7 @@ const StatementEditorPage = () => {
   };
   const chooseDeduction = (definition) => {
     const percent = Number(definition.default_percent || 0);
-    const percentBase = Math.abs(chargesBase);
+    const percentBase = Math.abs(deductionsBase);
     const amount = Math.round((percentBase * percent) / 100);
     setField('deductions', [...deductions, {
       title: definition.description || definition.code,
@@ -1600,7 +1637,7 @@ const StatementEditorPage = () => {
   const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' }]);
   const removeAddition = (index) => setField('additions', additions.filter((_, current) => current !== index));
   const updateAddition = (index, key, value) => {
-    const percentBase = Math.abs(chargesBase);
+    const percentBase = Math.abs(additionsBase);
     setField('additions', additions.map((item, current) => {
       if (current !== index) return item;
       if (key === 'percent') {
@@ -1621,7 +1658,7 @@ const StatementEditorPage = () => {
   };
   const chooseAddition = (definition) => {
     const percent = Number(definition.default_percent || 0);
-    const percentBase = Math.abs(chargesBase);
+    const percentBase = Math.abs(additionsBase);
     const amount = Math.round((percentBase * percent) / 100);
     setField('additions', [...additions, {
       code: definition.code,
@@ -1738,8 +1775,10 @@ const StatementEditorPage = () => {
         lockSimpleKind={contractHasMulti}
         totalWork={totalWork}
         totalWorkForeign={totalWorkForeign}
-        chargesBase={chargesBase}
-        chargesBaseForeign={chargesBaseForeign}
+        additionsBase={additionsBase}
+        additionsBaseForeign={additionsBaseForeign}
+        deductionsBase={deductionsBase}
+        deductionsBaseForeign={deductionsBaseForeign}
         levelTotals={levelsTotals}
         levelEditor={{
           levels,
@@ -2166,7 +2205,8 @@ const StatementEditorView = ({
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
   formKind, isAdjustmentForm, isMultiForm = false, levelEditor = null,
   lockSimpleKind = false,
-  totalWork = 0, totalWorkForeign = 0, chargesBase = 0, chargesBaseForeign = 0,
+  totalWork = 0, totalWorkForeign = 0,
+  additionsBase = 0, additionsBaseForeign = 0, deductionsBase = 0, deductionsBaseForeign = 0,
   levelTotals = null,
   adjustmentPrevious, adjustmentPreviousForeign,
   adjustmentCumulative, adjustmentCumulativeForeign,
@@ -2343,8 +2383,11 @@ const StatementEditorView = ({
                         label={`جمع کارکرد همهٔ سطوح: ${formatPersianNumber(isRial ? (levelTotals?.work || 0) : (levelTotals?.workForeign || 0))} ${formCurrencyLabel}`}
                         sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
                       <Chip size="small"
-                        label={`مبنای اضافات/کسورات: ${formatPersianNumber(isRial ? chargesBase : chargesBaseForeign)} ${formCurrencyLabel}`}
+                        label={`مبنای اضافات: ${formatPersianNumber(isRial ? additionsBase : additionsBaseForeign)} ${formCurrencyLabel}`}
                         sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
+                      <Chip size="small"
+                        label={`مبنای کسورات: ${formatPersianNumber(isRial ? deductionsBase : deductionsBaseForeign)} ${formCurrencyLabel}`}
+                        sx={{ height: 20, fontSize: 10.5, bgcolor: alpha('#b45309', 0.1), color: '#b45309' }} />
                     </Stack>
                     {(levelEditor?.levels || []).length ? (levelEditor.levels).map((level, index) => {
                       const levelKey = String(level.title || '')
@@ -2405,17 +2448,31 @@ const StatementEditorView = ({
 
                           <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 0.4 }}>
                             <FormControlLabel sx={{ m: 0 }}
-                              control={<Switch size="small" checked={Boolean(level.includes_charges)} onChange={(event) => levelEditor?.onToggle(index, 'includes_charges', event.target.checked)} />}
-                              label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: formKind.color }}>شامل اضافات و کسورات</Typography>} />
+                              control={<Switch size="small" checked={levelChargeFlags(level).additions}
+                                onChange={(event) => levelEditor?.onToggle(index, 'includes_additions', event.target.checked)} />}
+                              label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: formKind.color }}>شامل اضافات</Typography>} />
+                            <FormControlLabel sx={{ m: 0 }}
+                              control={<Switch size="small" checked={levelChargeFlags(level).deductions}
+                                onChange={(event) => levelEditor?.onToggle(index, 'includes_deductions', event.target.checked)} />}
+                              label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: '#b45309' }}>شامل کسورات</Typography>} />
                             <Chip size="small"
-                              label={level.includes_charges
-                                ? `کارکرد این سطح در مبنای اضافات/کسورات: ${formatPersianNumber(workRial)} ریال`
-                                : `کارکرد این سطح: ${formatPersianNumber(workRial)} ریال`}
+                              label={(() => {
+                                const flags = levelChargeFlags(level);
+                                const bases = [flags.additions ? 'اضافات' : '', flags.deductions ? 'کسورات' : '']
+                                  .filter(Boolean).join(' و ');
+                                return bases
+                                  ? `کارکرد این سطح در مبنای ${bases}: ${formatPersianNumber(workRial)} ریال`
+                                  : `کارکرد این سطح: ${formatPersianNumber(workRial)} ریال`;
+                              })()}
                               sx={{
                                 height: 20,
                                 fontSize: 10.5,
-                                bgcolor: level.includes_charges ? alpha(formKind.color, 0.12) : SOFT_BG,
-                                color: level.includes_charges ? formKind.color : MUTED,
+                                bgcolor: (levelChargeFlags(level).additions || levelChargeFlags(level).deductions)
+                                  ? alpha(formKind.color, 0.12)
+                                  : SOFT_BG,
+                                color: (levelChargeFlags(level).additions || levelChargeFlags(level).deductions)
+                                  ? formKind.color
+                                  : MUTED,
                               }} />
                           </Stack>
                         </Box>
@@ -2624,8 +2681,10 @@ const StatementEditorView = ({
                   levelTotals={levelTotals}
                   totalWork={totalWork}
                   totalWorkForeign={totalWorkForeign}
-                  chargesBase={chargesBase}
-                  chargesBaseForeign={chargesBaseForeign}
+                  additionsBase={additionsBase}
+                  additionsBaseForeign={additionsBaseForeign}
+                  deductionsBase={deductionsBase}
+                  deductionsBaseForeign={deductionsBaseForeign}
                   netAmount={netAmount}
                   netAmountForeign={netAmountForeign} />
               </SurfaceCard>

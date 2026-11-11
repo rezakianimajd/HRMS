@@ -608,6 +608,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **تفکیک «شامل اضافات» و «شامل کسورات» در سطوح صورت‌وضعیت چندسطحی (۲۰۲۶-۱۱-۱۱):** تیک واحد
+  «شامل اضافات و کسورات» نمی‌توانست سطحی را فقط در مبنای کسورات (یا فقط اضافات) بیاورد.
+  - **قاعدهٔ مشترک:** `contracts/statement_levels.py` → `level_charge_flags(level)` (سازگاری با
+    `includes_charges` قدیمی: هر دو) + `level_payload(...)` (کلید قدیمی فقط وقتی هر دو تیک فعال
+    باشند `True` می‌شود). serializer و `statement_totals` هر دو از همین استفاده می‌کنند.
+  - **مبناها:** `additions_base = own_work + Σwork(includes_additions)` و
+    `deductions_base = own_work + Σwork(includes_deductions)`؛ درصدهای اضافات/مالیات/سایر اضافات با
+    مبنای اضافات و درصدهای کسورات با مبنای کسورات محاسبه می‌شوند (سریالایزر + بازمحاسبهٔ زنجیره + پیش‌نمایش).
+  - **مایگریشن داده:** `contracts/migrations/0046_split_level_charges.py` برای همهٔ سطوح موجود،
+    `includes_additions`/`includes_deductions` را از `includes_charges` پر می‌کند (فعال ⇒ هر دو فعال).
+  - **فرانت:** `statementChain.levelChargeFlags()` + دو سوئیچ «شامل اضافات»/«شامل کسورات» در ادیتور،
+    چیپ‌های «اضافات/کسورات» در پیش‌نمایش و دو چیپ «مبنای اضافات»/«مبنای کسورات»؛ payload هر سطح هر دو
+    کلید را می‌فرستد.
+  - **تست:** `contracts/tests_statement_levels.py` (۹ تست DB-free)، دو تست دیتابیسی در
+    `contracts/tests.py` (مبناهای جدا + سازگاری `includes_charges`)، `statementChain.test.js`
+    (+۴ تست) و `contractStatementsSmoke` (۵). تأیید زنده (rollback روی قرارداد موقت): سطوح
+    «خرید (فقط اضافات) / بند الف (فقط کسورات) / بند ب (مستقل)» ⇒ اضافات ۲۰۰٬۰۰۰ (۱۰٪ از ۲٬۰۰۰٬۰۰۰)
+    و کسورات ۵۰٬۰۰۰ (۵٪ از ۱٬۰۰۰٬۰۰۰)؛ سند قدیمی با `includes_charges` هر دو مبنا را می‌گیرد.
+    ۲۸ سند دارای سطح در `kpsmi` بدون کلید جدید نماند.
 - **رفع «صورت‌وضعیت ذخیره‌شده در فهرست دیده نمی‌شود» (۲۰۲۶-۱۱-۱۱):** صورت‌وضعیت ۰۳ قرارداد
   `C-KPSMI-05-073` با `POST 201` ذخیره شده بود (در ادمین و پروندهٔ قرارداد دیده می‌شد) ولی صفحهٔ
   `/contracts-statements?contract=92` فقط ۲ دوره نشان می‌داد.

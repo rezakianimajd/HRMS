@@ -318,8 +318,10 @@ test('multi-level statement sends level rows with their own cumulative amounts',
   await pickKindOption(container, 'چند سطحی');
   expect(container.textContent).toContain('عنوان سطح');
   expect(container.textContent).toContain('افزودن سطح');
-  expect(container.textContent).toContain('شامل اضافات و کسورات');
-  expect(container.textContent).toContain('مبنای اضافات/کسورات');
+  expect(container.textContent).toContain('شامل اضافات');
+  expect(container.textContent).toContain('شامل کسورات');
+  expect(container.textContent).toContain('مبنای اضافات');
+  expect(container.textContent).toContain('مبنای کسورات');
   expect(container.textContent).toContain('معادل ریالی مبلغ تجمعی');
   // فیلدهای ثابت قدیمی حذف شده‌اند و فقط چیپ‌های تعریف‌شده باقی مانده‌اند.
   expect(container.textContent).not.toContain('سایر اضافات (');
@@ -343,7 +345,8 @@ test('multi-level statement sends level rows with their own cumulative amounts',
 
   // پیش‌نمایش باید سطوح و محاسبات چند سطحی را نشان دهد.
   expect(container.textContent).toContain('کارکرد کل (سطح اصلی + سطوح)');
-  expect(container.textContent).toContain('مبنای اضافات و کسورات (سطح اصلی + سطوح «در مبنا»)');
+  expect(container.textContent).toContain('مبنای اضافات (سطح اصلی + سطوح «شامل اضافات»)');
+  expect(container.textContent).toContain('مبنای کسورات (سطح اصلی + سطوح «شامل کسورات»)');
   expect(container.textContent).toContain('جمع کارکرد سطوح');
 
   const saveButton = buttonByText(container, 'ذخیره صورت‌وضعیت چند سطحی');
@@ -358,6 +361,8 @@ test('multi-level statement sends level rows with their own cumulative amounts',
   expect(payload.levels[0].title).toBe('خرید');
   expect(payload.levels[0].amount).toBe(5000000);
   expect(payload.levels[0].includes_charges).toBe(false);
+  expect(payload.levels[0].includes_additions).toBe(false);
+  expect(payload.levels[0].includes_deductions).toBe(false);
   // مبلغ تجمعی سطح سند همان زنجیرهٔ صورت‌وضعیت عادی است (نه جمع بندها).
   expect(payload.cumulative_previous_amount).toBe(500000000);
 
