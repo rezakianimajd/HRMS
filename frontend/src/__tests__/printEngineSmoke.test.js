@@ -18,6 +18,28 @@ jest.mock('../core/api/axiosConfig', () => ({
 const theme = createTheme();
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+beforeEach(() => {
+  axiosInstance.get.mockImplementation((url) => {
+    if (url === '/settings/appearance/') {
+      return Promise.resolve({
+        data: {
+          print: {
+            paper: 'A4', orientation: 'portrait', font_size: 9.5,
+            margin: '10mm 9mm 12mm 9mm',
+            header: { enabled: true, show_logo: true, company_font_size: 13, title_font_size: 13 },
+            footer: { enabled: true, text: 'سامانهٔ کیان', show_page_number: true, signatures: true },
+            columns: { 'letter-list': ['number', 'subject'] },
+          },
+        },
+      });
+    }
+    if (url === '/company/branding/') {
+      return Promise.resolve({ data: { legal_name: 'شرکت نمونه', logo_url: 'http://x/logo.png' } });
+    }
+    return Promise.resolve({ data: {} });
+  });
+});
+
 const renderNode = (element) => {
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -41,14 +63,35 @@ test('buildElementDocument wraps the area with unified print css', () => {
   expect(html).toContain('ردیف');
 });
 
-test('printElement and printHtml create a single hidden print frame', () => {
+test('printElement applies the configured header/footer chrome', async () => {
   const element = document.createElement('div');
-  element.textContent = 'گزارش';
+  element.innerHTML = '<table><tr><td>گزارش</td></tr></table>';
+  await printElement(element, { title: 'گزارش' });
+  const frame = document.querySelector('#hrms-print-frame');
+  expect(frame).toBeTruthy();
+  expect(frame.getAttribute('aria-hidden')).toBe('true');
+  const html = frame.srcdoc || frame.getAttribute('srcdoc') || '';
+  expect(html).toContain('pe-doc-header');
+  expect(html).toContain('pe-doc-footer');
+  expect(html).toContain('شرکت نمونه');
+  expect(html).toContain('گزارش');
+  expect(html).toContain('سامانهٔ کیان');
+  expect(html).not.toContain('تاریخ چاپ');
+});
+
+test('printElement can skip chrome for documents with their own header', async () => {
+  const element = document.createElement('div');
+  element.textContent = 'صورت‌وضعیت';
+  await printElement(element, { title: 'صورت‌وضعیت', skipChrome: true });
+  const frame = document.querySelector('#hrms-print-frame');
+  const html = frame.srcdoc || '';
+  expect(html).not.toContain('pe-doc-header');
+  expect(html).toContain('صورت‌وضعیت');
+});
+
+test('printHtml still prints a fully prepared document', () => {
   printHtml('<html><body>x</body></html>');
-  printElement(element, { title: 'گزارش' });
-  const frames = document.querySelectorAll('#hrms-print-frame');
-  expect(frames.length).toBe(1);
-  expect(frames[0].getAttribute('aria-hidden')).toBe('true');
+  expect(document.querySelectorAll('#hrms-print-frame').length).toBe(1);
 });
 
 test('PrintButton renders and does not throw without a target', () => {

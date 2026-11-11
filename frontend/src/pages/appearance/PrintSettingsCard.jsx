@@ -124,7 +124,38 @@ const PrintSettingsCard = () => {
   const noEdit = !canEdit;
 
   return (
-    <Grid container spacing={1.75}>
+    <Box>
+      <Box sx={{
+        mb: 1.75, p: 1.5, borderRadius: '14px', border: '1px solid', borderColor: 'divider',
+        background: `linear-gradient(135deg, ${alpha(ACCENT, 0.14)}, transparent 65%)`,
+      }}>
+        <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap flexWrap="wrap">
+          <Box sx={{
+            width: 40, height: 40, borderRadius: '12px', display: 'grid', placeItems: 'center',
+            bgcolor: alpha(ACCENT, 0.18), color: ACCENT,
+          }}>
+            <PrintOutlinedIcon />
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 200 }}>
+            <Typography sx={{ fontSize: 14.5, fontWeight: 900 }}>استودیوی چاپ</Typography>
+            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+              سربرگ، پاورقی، اندازه‌ها و ستون‌ها برای همهٔ چاپ‌های برنامه اعمال می‌شود
+              (به‌جز چاپ صورت‌وضعیت).
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+            <Chip size="small" label={`${printSettings.paper} · ${printSettings.orientation === 'landscape' ? 'افقی' : 'عمودی'}`}
+              sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+            <Chip size="small" label={`فونت ${printSettings.font_size}pt`}
+              sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+            <Chip size="small" color={canEdit ? 'success' : 'default'} variant="outlined"
+              label={canEdit ? 'قابل ویرایش' : 'فقط مدیر ارشد'}
+              sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+          </Stack>
+        </Stack>
+      </Box>
+
+      <Grid container spacing={1.75}>
       <Grid item xs={12} lg={7}>
         <Stack spacing={1.5}>
           <PanelSection icon={<PrintOutlinedIcon />} title="پیش‌فرض‌های کاغذ"
@@ -266,8 +297,8 @@ const PrintSettingsCard = () => {
           </PanelSection>
 
 
-          <PanelSection icon={<VerticalSplitOutlinedIcon />} title="پاورقی چاپ (فوتر)"
-            subtitle="متن ثابت، تاریخ چاپ و شمارهٔ صفحه." color="#14b8a6">
+          <PanelSection icon={<VerticalSplitOutlinedIcon />} title="پاورقی ثابت (پایین هر صفحه)"
+            subtitle="متن ثابت، شمارهٔ صفحه و امضاها؛ همیشه به لبهٔ پایین صفحه می‌چسبد." color="#14b8a6">
             <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mb: 1.25 }}>
               <FormControlLabel control={<Switch size="small" checked={printSettings.footer.enabled}
                 disabled={noEdit}
@@ -278,11 +309,6 @@ const PrintSettingsCard = () => {
                   disabled={noEdit}
                   onChange={(event) => patchFooter('show_page_number', event.target.checked)} />}
                 label={<Typography sx={{ fontSize: 12 }}>شمارهٔ صفحه</Typography>} />
-              <FormControlLabel
-                control={<Switch size="small" checked={printSettings.footer.show_printed_at}
-                  disabled={noEdit}
-                  onChange={(event) => patchFooter('show_printed_at', event.target.checked)} />}
-                label={<Typography sx={{ fontSize: 12 }}>تاریخ چاپ</Typography>} />
               <FormControlLabel control={<Switch size="small" checked={printSettings.footer.show_border}
                 disabled={noEdit}
                 onChange={(event) => patchFooter('show_border', event.target.checked)} />}
@@ -333,6 +359,28 @@ const PrintSettingsCard = () => {
           <PanelSection icon={<VerticalSplitOutlinedIcon />} title="قالب ستون‌های چاپ"
             subtitle="ستون‌هایی که در چاپ «فهرست مکاتبات» نمایش داده می‌شوند؛ این انتخاب ذخیره و در چاپ‌های بعدی هم اعمال می‌شود."
             color="#0ea5e9">
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
+              <Button size="small" variant="outlined" disabled={noEdit}
+                onClick={() => setPrintSettings((previous) => ({
+                  ...previous,
+                  columns: {
+                    ...previous.columns,
+                    'letter-list': LETTER_LIST_COLUMNS.map((column) => column.key),
+                  },
+                }))}>
+                انتخاب همه ({LETTER_LIST_COLUMNS.length})
+              </Button>
+              <Button size="small" color="inherit" disabled={noEdit}
+                onClick={() => setPrintSettings((previous) => ({
+                  ...previous,
+                  columns: { ...previous.columns, 'letter-list': [...DEFAULT_PRINT_SETTINGS.columns['letter-list']] },
+                }))}>
+                بازگشت به پیش‌فرض
+              </Button>
+              <Chip size="small"
+                label={`${(printSettings.columns?.['letter-list'] || []).length} ستون انتخاب‌شده`}
+                sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+            </Stack>
             <Grid container spacing={0.5}>
               {LETTER_LIST_COLUMNS.map((column) => {
                 const selected = (printSettings.columns?.['letter-list'] || []).includes(column.key);
@@ -385,24 +433,29 @@ const PrintSettingsCard = () => {
           </Stack>
           <Box sx={{
             position: 'relative', borderRadius: '12px', overflow: 'hidden',
-            border: '1px solid', borderColor: 'divider',
+            border: '1px solid', borderColor: 'divider', bgcolor: '#e2e8f0', p: 1.25,
           }}>
-            {preview.loading ? (
-              <Stack alignItems="center" justifyContent="center" sx={{ height: 420 }}>
-                <CircularProgress size={26} />
-              </Stack>
-            ) : preview.error ? (
-              <Box sx={{ p: 2 }}>
-                <Typography sx={{ fontSize: 12, color: 'error.main' }}>{preview.error}</Typography>
-              </Box>
-            ) : (
-              <Box
-                component="iframe"
-                title="پیش‌نمایش چاپ"
-                srcDoc={preview.html}
-                sx={{ width: '100%', height: 420, border: 0, bgcolor: '#fff' }}
-              />
-            )}
+            <Box sx={{
+              borderRadius: '8px', overflow: 'hidden', bgcolor: '#fff',
+              boxShadow: '0 10px 24px rgba(15, 23, 42, 0.18)',
+            }}>
+              {preview.loading ? (
+                <Stack alignItems="center" justifyContent="center" sx={{ height: 420 }}>
+                  <CircularProgress size={26} />
+                </Stack>
+              ) : preview.error ? (
+                <Box sx={{ p: 2 }}>
+                  <Typography sx={{ fontSize: 12, color: 'error.main' }}>{preview.error}</Typography>
+                </Box>
+              ) : (
+                <Box
+                  component="iframe"
+                  title="پیش‌نمایش چاپ"
+                  srcDoc={preview.html}
+                  sx={{ width: '100%', height: 420, border: 0, bgcolor: '#fff' }}
+                />
+              )}
+            </Box>
           </Box>
           <Typography sx={{ mt: 1, fontSize: 10.5, color: 'text.secondary' }}>
             این تنظیمات برای همهٔ اسناد چاپی (نامه، فهرست مکاتبات، گزارش‌ها، فیش و سند خزانه)
@@ -410,7 +463,8 @@ const PrintSettingsCard = () => {
           </Typography>
         </Paper>
       </Grid>
-    </Grid>
+      </Grid>
+    </Box>
   );
 };
 

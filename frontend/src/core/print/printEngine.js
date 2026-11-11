@@ -9,6 +9,8 @@
  * در همهٔ ماژول‌ها یکدست باشد (بدون چاپ سایدبار/دکمه‌ها).
  */
 
+import { buildChromeDocument, loadPrintChrome } from './printChrome';
+
 const PRINT_FRAME_ID = 'hrms-print-frame';
 
 /** CSS پایهٔ چاپ برای ناحیه‌ای که از دامنهٔ فعلی گرفته می‌شود. */
@@ -101,18 +103,60 @@ const resolveElement = (target) => {
   return target.current ?? target;
 };
 
+/** استخراج استایل و محتوای بدنه از سند ساخته‌شده. */
+const documentParts = (html) => {
+  const styles = (html.match(/<style>([\s\S]*?)<\/style>/g) || [])
+    .map((block) => block.replace(/^<style>|<\/style>$/g, ''))
+    .join('\n');
+  const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/);
+  const body = bodyMatch ? bodyMatch[1] : '';
+  // سرصفحهٔ عنوانی که buildElementDocument اضافه می‌کند با سربرگ تنظیمات تکراری است
+  return {
+    styles,
+    content: body.replace(/<div class="pe-print-title">[\s\S]*?<\/div>/, ''),
+  };
+};
+
 /**
  * چاپ یک ناحیه از صفحه.
  *
  * ``target`` می‌تواند سلکتور CSS (پیش‌فرض ``main``)، ref یا عنصر DOM باشد.
- * اگر ``title`` داده نشود، سرصفحهٔ اضافه‌ای چاپ نمی‌شود (عنوان صفحه معمولاً
- * داخل همان ناحیه هست).
+ * سربرگ/پاورقی از تنظیمات «ظاهر → چاپ» اعمال می‌شود (لوگو، نام شرکت، عنوان،
+ * سایزها و فاصله‌ها)؛ برای سندی که خودش سربرگ دارد ``skipChrome: true`` بدهید.
  */
-export const printElement = (target = 'main', options = {}) => {
+export const printElement = async (target = 'main', options = {}) => {
   const element = resolveElement(target);
   if (!element) return;
   const resolved = { ...options, title: options.title || '' };
-  printHtml(buildElementDocument(element, resolved), { title: resolved.title || document.title });
+  const base = buildElementDocument(element, resolved);
+  const title = resolved.title || document.title;
+  if (resolved.skipChrome) {
+    printHtml(base, { title });
+    return;
+  }
+  let chrome = null;
+  try {
+    chrome = await loadPrintChrome();
+  } catch (error) {
+    chrome = null;
+  }
+  if (!chrome?.settings) {
+    printHtml(base, { title });
+    return;
+  }
+  const { styles, content } = documentParts(base);
+  const html = buildChromeDocument({
+    contentHtml: content,
+    styles,
+    title: resolved.title,
+    paper: resolved.paper || chrome.settings.paper || 'A4',
+    orientation: resolved.orientation
+      || chrome.settings.orientation
+      || 'portrait',
+    settings: chrome.settings,
+    branding: chrome.branding,
+  });
+  printHtml(html, { title });
 };
 
 export default { buildElementDocument, printElement, printHtml };

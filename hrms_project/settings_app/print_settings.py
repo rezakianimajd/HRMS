@@ -51,12 +51,11 @@ DEFAULT_PRINT_SETTINGS = {
         'text': '',
         'extra': '',
         'show_page_number': True,
-        'show_printed_at': True,
         'signatures': True,
         'align': 'center',
         'show_border': True,
         'font_size': 7.5,
-        'space_bottom': 2,
+        'space_bottom': 0,
     },
     'columns': {
         'letter-list': list(DEFAULT_COLUMNS['letter-list']),
@@ -194,9 +193,6 @@ def sanitize_print(raw):
             'extra': _text(footer_raw.get('extra'), _TEXT_LIMITS['extra']),
             'show_page_number': _flag(
                 footer_raw.get('show_page_number'), footer_default['show_page_number'],
-            ),
-            'show_printed_at': _flag(
-                footer_raw.get('show_printed_at'), footer_default['show_printed_at'],
             ),
             'signatures': _flag(footer_raw.get('signatures'), footer_default['signatures']),
             'align': _enum(footer_raw.get('align'), ALIGNMENTS, footer_default['align']),

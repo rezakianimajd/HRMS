@@ -110,10 +110,10 @@ class LayoutTests(SimpleTestCase):
         self.assertIn('<img class="pe-print-logo"', html)
         self.assertNotIn('<div class="pe-logo">', html)
 
-    def test_footer_has_page_number_and_print_date(self):
+    def test_footer_has_page_number_and_no_print_date(self):
         html = layout.render_document(self._document(), {})
         self.assertIn('pe-page-number', html)
-        self.assertIn('تاریخ چاپ', html)
+        self.assertNotIn('تاریخ چاپ', html)
 
     def test_watermark_note_and_barcode(self):
         html = layout.render_document(

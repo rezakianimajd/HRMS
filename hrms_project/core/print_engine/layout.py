@@ -1,5 +1,5 @@
 """قالب یکپارچهٔ سند چاپی (A4/A5، افقی/عمودی، RTL) با CSS چاپ حرفه‌ای."""
-from core.print_engine.components import esc, fa_digits, jalali, watermark
+from core.print_engine.components import esc, fa_digits, watermark
 
 PAPERS = {
     'A4': {'width': '210mm', 'height': '297mm'},
@@ -90,7 +90,7 @@ body {
 .pe-barcode svg { max-height: 13mm; }
 .pe-footer {
   position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
-  padding: 2mm 0 1mm; z-index: 5;
+  padding: 0; margin: 0; z-index: 5;
 }
 .pe-footer .pe-sign-row { margin-top: 0; gap: 8px; }
 .pe-footer .pe-sign { min-height: 13mm; padding: 2px 6px; border-radius: 6px; }
@@ -112,13 +112,14 @@ body {
   .pe-sheet {
     width: %(paper_width)s; min-height: %(paper_height)s; margin: 16px auto;
     background: #fff; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
-    padding: 12mm 10mm;
+    padding: 12mm 10mm 16mm; position: relative;
   }
+  .pe-footer { position: absolute; bottom: 0; }
 }
 @media print {
   .pe-screen-toolbar { display: none !important; }
   .pe-sheet { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none; }
-  .pe-footer { position: fixed; }
+  .pe-footer { position: fixed; bottom: 0; }
 }
 """
 
@@ -140,7 +141,7 @@ def _page_margin(options):
     footer = options.get('footer') or {}
     if footer.get('enabled') is False:
         return margin
-    bottom = '26mm' if footer.get('signatures', True) else '16mm'
+    bottom = '22mm' if footer.get('signatures', True) else '10mm'
     parts = margin.split()
     if len(parts) >= 4:
         parts[2] = bottom
@@ -231,12 +232,6 @@ def _footer(document, options):
         if signatures and show_signatures else ''
     )
     bits = [esc(config.get('text') or ''), esc(document.get('footer_note', '')), esc(config.get('extra') or '')]
-    printed_at = jalali(document.get('printed_on'))
-    show_printed_at = config.get('show_printed_at')
-    if show_printed_at is None:
-        show_printed_at = options.get('show_printed_at', True)
-    if printed_at and show_printed_at:
-        bits.append(f'تاریخ چاپ: {printed_at}')
     show_page = config.get('show_page_number')
     if show_page is None:
         show_page = options.get('show_page_number', True)

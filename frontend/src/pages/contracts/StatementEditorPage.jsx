@@ -87,7 +87,7 @@ const num = (v) => Math.max(0, Number(v) || 0);
 const printStatement = async () => {
   const node = document.getElementById('statement-print-area');
   if (!node) {
-    printElement('main', { title: 'صورت‌وضعیت' });
+    printElement('main', { title: 'صورت‌وضعیت', skipChrome: true });
     return;
   }
 
@@ -140,7 +140,7 @@ const printStatement = async () => {
       { title: 'صورت‌وضعیت' },
     );
   } catch (error) {
-    printElement('main', { title: 'صورت‌وضعیت' });
+    printElement('main', { title: 'صورت‌وضعیت', skipChrome: true });
   } finally {
     node.style.boxShadow = prev.boxShadow;
     node.style.border = prev.border;

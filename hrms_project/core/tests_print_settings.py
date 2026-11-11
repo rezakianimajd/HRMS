@@ -22,7 +22,8 @@ SETTINGS = {
     'footer': {
         'enabled': True, 'text': 'این سند از سامانهٔ کیان ERP صادر شده است',
         'extra': 'نسخهٔ کنترل‌شده', 'show_page_number': True,
-        'show_printed_at': False, 'align': 'center', 'show_border': True,
+        'signatures': True, 'align': 'center', 'show_border': True,
+        'font_size': 7.5, 'space_bottom': 0,
     },
 }
 
@@ -177,11 +178,16 @@ class HeaderFooterLayoutTests(SimpleTestCase):
 
     def test_page_margin_reserves_space_for_footer(self):
         html = layout.render_document(DOCUMENT, SETTINGS)
-        self.assertIn('margin: 10mm 9mm 26mm 9mm', html)
+        self.assertIn('margin: 10mm 9mm 22mm 9mm', html)
         plain = layout.render_document(
             DOCUMENT, {**SETTINGS, 'footer': {**SETTINGS['footer'], 'enabled': False}},
         )
         self.assertIn('margin: 10mm 9mm 12mm 9mm', plain)
+
+    def test_footer_has_no_print_date(self):
+        html = layout.render_document(DOCUMENT, SETTINGS)
+        self.assertNotIn('تاریخ چاپ', html)
+        self.assertIn('pe-page-number', html)
 
     def test_disabled_header_and_footer_are_hidden(self):
         settings = {

@@ -89,12 +89,11 @@ export const DEFAULT_PRINT_SETTINGS = {
     text: '',
     extra: '',
     show_page_number: true,
-    show_printed_at: true,
     signatures: true,
     align: 'center',
     show_border: true,
     font_size: 7.5,
-    space_bottom: 2,
+    space_bottom: 0,
   },
   columns: {
     'letter-list': [...DEFAULT_LETTER_LIST_COLUMNS],
@@ -149,7 +148,6 @@ export const normalizePrintSettings = (raw) => {
       text: text(footer.text, 200),
       extra: text(footer.extra, 240),
       show_page_number: footer.show_page_number ?? base.footer.show_page_number,
-      show_printed_at: footer.show_printed_at ?? base.footer.show_printed_at,
       signatures: footer.signatures ?? base.footer.signatures,
       align: ['right', 'center', 'left', 'space-between'].includes(footer.align)
         ? footer.align
