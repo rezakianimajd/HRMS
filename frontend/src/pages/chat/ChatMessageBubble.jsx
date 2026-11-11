@@ -196,7 +196,9 @@ const ChatMessageBubble = ({
       data-message-id={message.id}
       sx={{
         display: 'flex',
-        flexDirection: mine ? 'row-reverse' : 'row',
+        // در RTL، flex-start سمت راست است؛ پیام من راست و پیام دیگران چپ می‌نشیند.
+        flexDirection: 'row',
+        justifyContent: mine ? 'flex-start' : 'flex-end',
         alignItems: 'flex-end',
         gap: 0.75,
         mt: compact ? 0.2 : 0.85,
@@ -205,13 +207,8 @@ const ChatMessageBubble = ({
         },
       }}
     >
-      <Box sx={{ width: 30, flexShrink: 0 }}>
-        {!mine && showAvatar ? (
-          <ChatAvatar name={message.sender_name} photo={avatar} size={30} accent={look.accent} />
-        ) : null}
-      </Box>
-
       <Box sx={{
+        order: 0,
         maxWidth: '76%', minWidth: 0, position: 'relative',
         display: 'flex', flexDirection: 'column',
         alignItems: mine ? 'flex-end' : 'flex-start',
@@ -363,6 +360,14 @@ const ChatMessageBubble = ({
           </Stack>
         </Box>
       </Box>
+
+      {!mine ? (
+        <Box sx={{ order: 1, width: 30, flexShrink: 0 }}>
+          {showAvatar ? (
+            <ChatAvatar name={message.sender_name} photo={avatar} size={30} accent={look.accent} />
+          ) : null}
+        </Box>
+      ) : null}
     </Box>
   );
 };

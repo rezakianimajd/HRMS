@@ -526,7 +526,7 @@ const ChatPanel = ({
       display: 'flex', flexDirection: 'column',
     }}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 1.25, md: 1.75 }}
-        alignItems="stretch" sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
+        useFlexGap alignItems="stretch" sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
         {/* ---------------- فهرست گفتگوها ---------------- */}
         <ChatConversationRail
           conversations={conversations}
