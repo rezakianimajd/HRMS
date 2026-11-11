@@ -39,6 +39,7 @@ DEFAULT_PRINT_SETTINGS = {
         'extra': '',
         'show_page_number': True,
         'show_printed_at': True,
+        'signatures': True,
         'align': 'center',
         'show_border': True,
     },
@@ -128,6 +129,7 @@ def sanitize_print(raw):
             'show_printed_at': _flag(
                 footer_raw.get('show_printed_at'), footer_default['show_printed_at'],
             ),
+            'signatures': _flag(footer_raw.get('signatures'), footer_default['signatures']),
             'align': _enum(footer_raw.get('align'), ALIGNMENTS, footer_default['align']),
             'show_border': _flag(footer_raw.get('show_border'), footer_default['show_border']),
         },

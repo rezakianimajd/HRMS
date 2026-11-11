@@ -45,14 +45,53 @@ def can_print(user, module):
     return not _module_codes(user, module)
 
 
+def _logo_data_uri(logo):
+    """لوگوی شرکت به‌صورت data-URI برای چاپ (بدون نیاز به شبکه/مسیر نسبی)."""
+    if not logo:
+        return ''
+    try:
+        import base64
+        import os
+
+        path = logo.path
+        if not path or not os.path.exists(path):
+            return ''
+        if os.path.getsize(path) > 2 * 1024 * 1024:
+            return ''
+        extension = (os.path.splitext(path)[1] or '').lower().lstrip('.')
+        mime = {
+            'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+            'webp': 'image/webp', 'gif': 'image/gif', 'svg': 'image/svg+xml',
+        }.get(extension, 'image/png')
+        with open(path, 'rb') as handle:
+            encoded = base64.b64encode(handle.read()).decode('ascii')
+        return f'data:{mime};base64,{encoded}'
+    except Exception:  # noqa: BLE001 — نبود/خرابی لوگو نباید چاپ را بشکند
+        return ''
+
+
 def _company_info(company):
     if not company:
         return {}
-    name = getattr(company, 'name', '') or ''
+    name = ''
+    logo = None
+    try:
+        from settings_app.models import CompanyProfile
+
+        profile = CompanyProfile.objects.filter(company=company).first()
+        if profile:
+            name = (profile.legal_name or '').strip()
+            logo = profile.logo or None
+    except Exception:  # noqa: BLE001 — اسکیمای بدون پروفایل هم باید چاپ شود
+        pass
+    if not name:
+        name = getattr(company, 'name', '') or ''
+    if logo is None:
+        logo = getattr(company, 'logo', None)
     return {
         'name': name,
         'subtitle': getattr(company, 'code', '') or '',
-        'logo_text': name[:2],
+        'logo': _logo_data_uri(logo),
     }
 
 
@@ -281,6 +320,12 @@ def build_letter_list(payload, options, request=None):
 
     queryset = queryset.order_by('-id')[:300]
     rows = []
+    direction = payload.get('direction') or ''
+    direction_titles = {
+        'incoming': 'فهرست نامه‌های وارده',
+        'outgoing': 'فهرست نامه‌های صادره',
+        'internal': 'فهرست نامه‌های داخلی',
+    }
     for letter in queryset:
         rows.append({
             'number': letter.number or letter.unit_reg_no or '—',
@@ -303,7 +348,7 @@ def build_letter_list(payload, options, request=None):
     ]
     subtitle = payload.get('subtitle') or ' · '.join(filters_note)
     return {
-        'title': payload.get('title') or 'فهرست مکاتبات اداری',
+        'title': payload.get('title') or direction_titles.get(direction) or 'فهرست مکاتبات اداری',
         'subtitle': subtitle,
         'badge': payload.get('badge') or '',
         'company': _company_info(company),

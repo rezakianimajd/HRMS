@@ -320,11 +320,18 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
 
   const printSelected = () => {
     if (!selectedIdList.length) return;
+    const titles = {
+      incoming: 'فهرست نامه‌های وارده',
+      outgoing: 'فهرست نامه‌های صادره',
+      internal: 'فهرست نامه‌های داخلی',
+    };
     print.openDocument({
       document: 'letter-list',
       payload: {
         ids: selectedIdList,
-        title: 'فهرست مکاتبات انتخاب‌شده',
+        title: titles[mode] || 'فهرست مکاتبات اداری',
+        direction: mode === 'all' ? '' : mode,
+        filters_note: `${formatPersianNumber(selectedIdList.length)} نامهٔ انتخاب‌شده`,
       },
       options: { orientation: 'landscape' },
     });

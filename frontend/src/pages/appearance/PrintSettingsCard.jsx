@@ -168,7 +168,7 @@ const PrintSettingsCard = () => {
 
 
           <PanelSection icon={<DescriptionOutlinedIcon />} title="سربرگ چاپ (هدر)"
-            subtitle="برای همهٔ اسناد چاپی اعمال می‌شود؛ فیلد خالی یعنی نمایش پیش‌فرض همان سند."
+            subtitle="لوگو از «مشخصات شرکت» خوانده می‌شود؛ زیر آن نام شرکت و عنوان سند چاپ می‌شود."
             color={SOFT?.violet || '#7c3aed'}>
             <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mb: 1.25 }}>
               <FormControlLabel control={<Switch size="small" checked={printSettings.header.enabled}
@@ -190,8 +190,9 @@ const PrintSettingsCard = () => {
             </Stack>
             <Grid container spacing={1.25}>
               <Grid item xs={12} sm={6}>
-                <TextField size="small" fullWidth disabled={noEdit} label="عنوان سربرگ" sx={fieldSx}
-                  placeholder="مثلاً: مؤسسه مدیریت راهبردی خاتم پاسارگاد"
+                <TextField size="small" fullWidth disabled={noEdit} label="عنوان جایگزین چاپ (اختیاری)"
+                  sx={fieldSx}
+                  placeholder="پیش‌فرض: عنوان همان سند (مثلاً فهرست نامه‌های وارده)"
                   value={printSettings.header.title}
                   onChange={(event) => patchHeader('title', event.target.value)} />
               </Grid>
@@ -262,6 +263,10 @@ const PrintSettingsCard = () => {
                 disabled={noEdit}
                 onChange={(event) => patchFooter('show_border', event.target.checked)} />}
                 label={<Typography sx={{ fontSize: 12 }}>خط جداکننده</Typography>} />
+              <FormControlLabel control={<Switch size="small" checked={printSettings.footer.signatures}
+                disabled={noEdit}
+                onChange={(event) => patchFooter('signatures', event.target.checked)} />}
+                label={<Typography sx={{ fontSize: 12 }}>امضاها (ثابت پایین صفحه)</Typography>} />
             </Stack>
             <Grid container spacing={1.25}>
               <Grid item xs={12} sm={8}>

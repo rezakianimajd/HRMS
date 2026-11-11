@@ -611,9 +611,22 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 - **چاپ قابل تنظیم + انتخاب ردیف در مکاتبات (۲۰۲۶-۱۱-۱۱):** سربرگ/پاورقی چاپ از «ظاهر و پوسته
   → تب چاپ» قابل تنظیم شد، جهت/کاغذ در هر چاپ انتخاب می‌شود و ردیف‌های فهرست مکاتبات قابل تیک‌خوردن
   (چاپ/اکسل) هستند.
+  - **سربرگ با لوگوی شرکت (۲۰۲۶-۱۱-۱۱):** `registry._company_info` نام حقوقی
+    (`CompanyProfile.legal_name`) و لوگوی شرکت (`CompanyProfile.logo` با fallback `Company.logo`) را
+    به‌صورت **data-URI** می‌دهد (بدون درخواست شبکه در iframe چاپ)؛ جعبهٔ متنی لوگو (حروف اول نام مثل
+    «kpsmi») حذف شد. `layout._header` اکنون **وسط‌چین** است: لوگو → نام شرکت → عنوان سند
+    (`config.title` فقط fallback) → **خط زیر سربرگ**؛ نشانی/تلفن/ایمیل/وبگاه و متن تکمیلی بعد از خط
+    می‌آیند.
+  - **پاورقی ثابت:** `layout._footer` با `position: fixed; bottom: 0` پایین **هر صفحه** می‌ماند و
+    امضاها (`تهیه‌کننده/تأییدکننده/مهر و امضا`) داخل آن رندر می‌شوند (`pe-footer-sign`) و از جریان
+    متن حذف شده‌اند؛ `_page_margin` حاشیهٔ پایین را برای پاورقی به **۲۶mm** باز می‌کند (اگر footer
+    خاموش باشد همان حاشیهٔ قبلی می‌ماند). کلید `footer.signatures` (پیش‌فرض روشن) در تنظیمات چاپ
+    قابل خاموش‌کردن است.
+  - **عنوان‌های چاپ:** `letter-list` بر اساس جهت، «فهرست نامه‌های وارده/صادره/داخلی» می‌سازد و
+    فرانت عنوان را از `mode` می‌فرستد (نامهٔ تک: «نامهٔ وارده/صادره»).
   - **تنظیمات:** کلید `print` در همان payload `/settings/appearance/` (`settings_app/print_settings.py`):
-    paper/orientation/font_size/margin + سربرگ (عنوان، زیرعنوان، نشانی/تلفن/ایمیل/وبگاه، متن تکمیلی،
-    لوگو/متادیتا/خط، تراز) + پاورقی (متن، تکمیلی، شمارهٔ صفحه، تاریخ چاپ، تراز، خط).
+    paper/orientation/font_size/margin + سربرگ (عنوان جایگزین، زیرعنوان، نشانی/تلفن/ایمیل/وبگاه،
+    متن تکمیلی، لوگو/متادیتا/خط) + پاورقی (متن، تکمیلی، شمارهٔ صفحه، تاریخ چاپ، امضاها، تراز، خط).
   - **موتور چاپ:** `registry._render_options` تنظیمات شرکت را با `options` هر چاپ merge می‌کند
     (گزینهٔ صریح برنده است) و `layout._header/_footer` از همان config می‌خوانند؛ پیش‌فرض‌های قدیمی
     حفظ شده‌اند. سند جدید **`letter-list`** (با `ids` یا فیلتر) و `available_documents` به‌روز شد.
@@ -624,12 +637,13 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `PrintPreviewDialog` با انتخاب عمودی/افقی و کاغذ (و `usePrintDocument.updateOptions/refresh`).
   - **فهرست مکاتبات:** ستون چک‌باکس (انتخاب همهٔ صفحه)، نوار «چاپ انتخاب‌شده‌ها / خروجی اکسل
     انتخاب‌شده‌ها / لغو انتخاب»؛ `ModuleTable` حالا `renderHeader` برای ستون‌ها دارد.
-  - **تست:** `core/tests_print_settings.py` (۹) + `tests_print_engine` به‌روزرسانی‌شده (۴۳ تست چاپ
-    سبز)؛ `correspondenceSmoke` (۱۸، شامل انتخاب→چاپ/اکسل)، `printEngineSmoke` (۵)،
-    `appearanceTabsSmoke` (۳)، `contractStatementsSmoke` (۵).
-  - **تأیید زندهٔ `kpsmi`:** PUT تنظیمات چاپ → HTML پیش‌نمایش حاوی سربرگ/پاورقی سفارشی و
-    `landscape`؛ `letter-list` با دو شناسه ۲۰۰؛ اکسل انتخاب‌ها ۲۰۰ (۶KB)؛ تنظیمات نمایشی به
-    پیش‌فرض برگشت.
+  - **تست:** `core/tests_print_settings.py` (**۱۷** تست: سربرگ/لوگو/امضا/حاشیه/merge) +
+    `tests_print_engine` (۴۳ تست چاپ سبز)؛ `correspondenceSmoke` (۱۸، شامل انتخاب→چاپ/اکسل)،
+    `printEngineSmoke` (۵)، `appearanceTabsSmoke` (۳)، `contractStatementsSmoke` (۵).
+  - **تأیید زندهٔ `kpsmi`:** پیش‌نمایش `letter-list` ۲۰۰ با **لوگوی data-URI** شرکت
+    («موسسه مدیریت راهبردی خاتم پاسارگاد»)، سربرگ وسط‌چین (لوگو → نام → «فهرست نامه‌های وارده» →
+    خط)، پاورقی `position: fixed` با امضاها (یک‌بار)، `margin … 26mm …` و `landscape`؛ اکسل
+    انتخاب‌ها ۲۰۰ (۶KB)؛ تنظیمات نمایشی به پیش‌فرض برگشت.
 - **تفکیک «شامل اضافات» و «شامل کسورات» در سطوح صورت‌وضعیت چندسطحی (۲۰۲۶-۱۱-۱۱):** تیک واحد
   «شامل اضافات و کسورات» نمی‌توانست سطحی را فقط در مبنای کسورات (یا فقط اضافات) بیاورد.
   - **قاعدهٔ مشترک:** `contracts/statement_levels.py` → `level_charge_flags(level)` (سازگاری با

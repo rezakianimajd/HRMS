@@ -24,27 +24,23 @@ body {
   transform: rotate(-28deg); pointer-events: none; z-index: 0;
 }
 .pe-header {
-  display: flex; align-items: flex-start; gap: 10px;
-  border-bottom: 2px solid #0f172a; padding-bottom: 6px; margin-bottom: 10px;
+  text-align: center; padding-bottom: 6px; margin-bottom: 10px;
 }
-.pe-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.pe-logo {
-  width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center;
-  background: #0f172a; color: #fff; font-size: 15pt; font-weight: 900; flex: 0 0 auto;
+.pe-header-center { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pe-print-logo {
+  max-height: 20mm; max-width: 62mm; object-fit: contain; display: block; margin: 0 auto 2px;
 }
-.pe-brand-name { font-size: 12.5pt; font-weight: 900; }
-.pe-brand-sub { font-size: 8.5pt; color: #475569; }
-.pe-title-block { flex: 1; text-align: center; }
-.pe-title { font-size: 14pt; font-weight: 900; }
-.pe-subtitle { font-size: 9.5pt; color: #475569; margin-top: 2px; }
+.pe-brand-name { font-size: 13pt; font-weight: 900; }
+.pe-title { font-size: 13pt; font-weight: 900; margin-top: 4px; }
+.pe-subtitle { font-size: 9.5pt; color: #475569; margin-top: 1px; }
 .pe-badge {
   display: inline-block; border: 1px solid #0f172a; border-radius: 999px;
   padding: 1px 10px; font-size: 8.5pt; font-weight: 800; margin-top: 4px;
 }
-.pe-meta { display: flex; gap: 14px; font-size: 8.5pt; color: #334155; white-space: nowrap; }
+.pe-meta { display: flex; gap: 14px; font-size: 8.5pt; color: #334155; justify-content: center; }
 .pe-header-contact {
-  font-size: 8pt; color: #475569; text-align: center; margin: -6px 0 8px;
-  padding-bottom: 4px; word-break: break-word;
+  font-size: 8pt; color: #475569; text-align: center; margin: 4px 0 2px;
+  word-break: break-word;
 }
 .pe-header-extra {
   font-size: 8.5pt; color: #0f172a; font-weight: 700; text-align: center;
@@ -93,10 +89,14 @@ body {
 .pe-barcode { text-align: center; margin-top: 8px; }
 .pe-barcode svg { max-height: 13mm; }
 .pe-footer {
-  position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 10px;
-  justify-content: space-between; font-size: 7.5pt; color: #64748b;
-  border-top: 1px solid #cbd5e1; padding-top: 3px;
+  position: fixed; bottom: 0; left: 0; right: 0; background: #fff;
+  padding: 2mm 0 1mm; z-index: 5;
 }
+.pe-footer .pe-sign-row { margin-top: 0; gap: 8px; }
+.pe-footer .pe-sign { min-height: 13mm; padding: 2px 6px; border-radius: 6px; }
+.pe-footer .pe-sign-title { font-size: 7.5pt; }
+.pe-footer .pe-sign-name { margin-top: 6px; font-size: 8pt; }
+.pe-footer-meta { display: flex; gap: 10px; font-size: 7.5pt; color: #64748b; margin-top: 1mm; }
 .pe-page-number::after { content: counter(page); }
 .pe-screen-toolbar {
   position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 20;
@@ -123,6 +123,26 @@ body {
 """
 
 
+def _page_margin(options):
+    """حاشیهٔ صفحه؛ پایین صفحه برای پاورقی ثابت (امضاها) باز نگه داشته می‌شود."""
+    margin = str(options.get('margin') or '10mm 9mm 12mm 9mm').strip()
+    footer = options.get('footer') or {}
+    if footer.get('enabled') is False:
+        return margin
+    bottom = '26mm' if footer.get('signatures', True) else '16mm'
+    parts = margin.split()
+    if len(parts) >= 4:
+        parts[2] = bottom
+        return ' '.join(parts[:4])
+    if len(parts) == 3:
+        return f'{parts[0]} {parts[1]} {bottom} {parts[1]}'
+    if len(parts) == 2:
+        return f'{parts[0]} {parts[1]} {bottom} {parts[1]}'
+    if len(parts) == 1:
+        return f'{parts[0]} {parts[0]} {bottom} {parts[0]}'
+    return f'10mm 9mm {bottom} 9mm'
+
+
 def _css(options):
     """CSS نهایی با اندازهٔ کاغذ/حاشیه/فونت انتخابی."""
     paper = options.get('paper', 'A4')
@@ -134,7 +154,7 @@ def _css(options):
     return BASE_CSS % {
         'paper': paper,
         'orientation': 'landscape' if landscape else 'portrait',
-        'margin': options.get('margin', '10mm 9mm 12mm 9mm'),
+        'margin': _page_margin(options),
         'font_size': options.get('font_size', 9.5),
         'paper_width': width,
         'paper_height': height,
@@ -142,17 +162,17 @@ def _css(options):
 
 
 def _header(document, options):
+    """سربرگ: لوگوی شرکت (وسط) → نام شرکت → عنوان چاپ → خط جداکننده."""
     config = options.get('header') or {}
     if options.get('show_header') is False or config.get('enabled') is False:
         return ''
     company = document.get('company') or {}
     brand_name = company.get('name') or options.get('brand_name', '')
-    brand_sub = config.get('subtitle') or company.get('subtitle') or options.get('brand_subtitle', '')
-    logo_text = (company.get('logo_text') or brand_name[:2] or 'K').strip()
-    align = config.get('align') or 'center'
+    logo_src = company.get('logo') or ''
+    show_logo = config.get('show_logo', True) and bool(logo_src)
+    title_text = document.get('title') or config.get('title') or 'سند'
+    subtitle_text = document.get('subtitle') or config.get('subtitle') or ''
     border = 'border-bottom:2px solid #0f172a;' if config.get('show_border', True) else 'border-bottom:0;'
-    title_text = config.get('title') or document.get('title', 'سند')
-    subtitle_text = config.get('subtitle') or document.get('subtitle', '')
     meta_bits = ''
     if config.get('show_meta', True):
         meta_bits = ''.join(
@@ -161,47 +181,42 @@ def _header(document, options):
             if value
         )
     badge = f'<div class="pe-badge">{esc(document["badge"])}</div>' if document.get('badge') else ''
-    brand = ''
-    if brand_name:
-        logo = (
-            f'<div class="pe-logo">{esc(logo_text)}</div>'
-            if config.get('show_logo', True) else ''
-        )
-        brand = (
-            '<div class="pe-brand">'
-            f'{logo}'
-            '<div><div class="pe-brand-name">'
-            f'{esc(brand_name)}</div>'
-            f'<div class="pe-brand-sub">{esc(company.get("subtitle", ""))}</div></div>'
-            '</div>'
-        )
+    logo_html = (
+        f'<img class="pe-print-logo" src="{logo_src}" alt="{esc(brand_name)}" />'
+        if show_logo else ''
+    )
+    name_html = f'<div class="pe-brand-name">{esc(brand_name)}</div>' if brand_name else ''
+    subtitle_html = f'<div class="pe-subtitle">{esc(subtitle_text)}</div>' if subtitle_text else ''
+    meta_html = f'<div class="pe-meta">{meta_bits}</div>' if meta_bits else ''
     contacts = [
         ('نشانی', config.get('address')), ('تلفن', config.get('phone')),
         ('ایمیل', config.get('email')), ('وبگاه', config.get('website')),
     ]
-    contact_html = ''
     contact_text = ' · '.join(f'{label}: {value}' for label, value in contacts if value)
-    if contact_text:
-        contact_html = f'<div class="pe-header-contact">{esc(contact_text)}</div>'
-    extra_html = ''
-    if config.get('extra'):
-        extra_html = f'<div class="pe-header-extra">{esc(config["extra"])}</div>'
+    contact_html = f'<div class="pe-header-contact">{esc(contact_text)}</div>' if contact_text else ''
+    extra_html = f'<div class="pe-header-extra">{esc(config["extra"])}</div>' if config.get('extra') else ''
     return (
         f'<header class="pe-header" style="{border}">'
-        f'{brand}<div class="pe-title-block" style="text-align:{align}">'
+        '<div class="pe-header-center">'
+        f'{logo_html}{name_html}'
         f'<div class="pe-title">{esc(title_text)}</div>'
-        f'<div class="pe-subtitle">{esc(subtitle_text)}</div>'
-        f'{badge}</div>'
-        f'<div class="pe-meta">{meta_bits}</div>'
-        '</header>'
+        f'{subtitle_html}{badge}{meta_html}'
+        '</div></header>'
         f'{contact_html}{extra_html}'
     )
 
 
 def _footer(document, options):
+    """پاورقی ثابت پایین صفحه: امضاها + متن/تاریخ/شمارهٔ صفحه."""
     config = options.get('footer') or {}
     if options.get('show_footer') is False or config.get('enabled') is False:
         return ''
+    signatures = document.get('signatures') or ''
+    show_signatures = config.get('signatures', True)
+    signature_html = (
+        f'<div class="pe-footer-sign">{signatures}</div>'
+        if signatures and show_signatures else ''
+    )
     bits = [esc(config.get('text') or ''), esc(document.get('footer_note', '')), esc(config.get('extra') or '')]
     printed_at = jalali(document.get('printed_on'))
     show_printed_at = config.get('show_printed_at')
@@ -223,9 +238,11 @@ def _footer(document, options):
     }.get(align, 'center')
     border = 'border-top:1px solid #cbd5e1;' if config.get('show_border', True) else 'border-top:0;'
     return (
-        f'<footer class="pe-footer" style="justify-content:{justify};{border}">'
+        f'<footer class="pe-footer" style="{border}">'
+        f'{signature_html}'
+        f'<div class="pe-footer-meta" style="justify-content:{justify}">'
         + ''.join(f'<div>{bit}</div>' for bit in bits if bit)
-        + '</footer>'
+        + '</div></footer>'
     )
 
 
@@ -259,6 +276,12 @@ def render_document(document, options=None):
     if document.get('barcode'):
         barcode_html = f'<div class="pe-barcode">{document["barcode"]}</div>'
 
+    footer_html = _footer(document, options)
+    footer_config = options.get('footer') or {}
+    # امضاها داخل پاورقی ثابت رندر می‌شوند؛ تکرار در جریان متن لازم نیست.
+    signatures_in_footer = bool(footer_html) and footer_config.get('signatures', True)
+    signatures_html = '' if signatures_in_footer else (document.get('signatures') or '')
+
     return (
         '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="utf-8">'
         f'<title>{esc(document.get("title", "چاپ"))}</title>'
@@ -267,8 +290,8 @@ def render_document(document, options=None):
         '<div class="pe-sheet">'
         f'{_header(document, options)}'
         f'{amount_html}{body_sections}{note_html}{barcode_html}'
-        f'{document.get("signatures") or ""}'
-        f'{_footer(document, options)}'
+        f'{signatures_html}'
+        f'{footer_html}'
         '</div></body></html>'
     )
 

@@ -29,9 +29,10 @@ SETTINGS = {
 DOCUMENT = {
     'title': 'گزارش نمونه',
     'subtitle': 'زیرعنوان سند',
-    'company': {'name': 'شرکت نمونه', 'subtitle': 'کد ۱', 'logo_text': 'ش‌ن'},
+    'company': {'name': 'شرکت نمونه', 'subtitle': 'کد ۱'},
     'meta': [('تاریخ', '۱۴۰۵/۰۱/۰۱')],
     'sections': [{'html': '<table><tr><td>۱</td></tr></table>'}],
+    'signatures': '<div class="pe-sign-row"><div class="pe-sign">مهر و امضا</div></div>',
 }
 
 
@@ -70,13 +71,46 @@ class SanitizePrintTests(SimpleTestCase):
 class HeaderFooterLayoutTests(SimpleTestCase):
     def test_custom_header_and_footer_are_rendered(self):
         html = layout.render_document(DOCUMENT, SETTINGS)
-        self.assertIn('مؤسسه خاتم پاسارگاد', html)
-        self.assertIn('دبیرخانه مرکزی', html)
+        # سربرگ: نام شرکت → عنوان سند (عنوان config فقط fallback است) → خط
+        self.assertIn('شرکت نمونه', html)
+        self.assertIn('گزارش نمونه', html)
         self.assertIn('02112345678', html)
         self.assertIn('کلیه مکاتبات با ذکر شمارهٔ اندیکاتور', html)
         self.assertIn('این سند از سامانهٔ کیان ERP صادر شده است', html)
         self.assertIn('pe-page-number', html)
         self.assertNotIn('۱۴۰۵/۰۱/۰۱</strong>', html)  # show_meta=False
+
+    def test_signatures_live_in_fixed_footer(self):
+        html = layout.render_document(DOCUMENT, SETTINGS)
+        footer = html.split('<footer class="pe-footer"', 1)[1]
+        self.assertIn('pe-footer-sign', footer)
+        self.assertIn('مهر و امضا', footer)
+        # امضاها فقط یک بار و داخل پاورقی
+        self.assertEqual(html.count('مهر و امضا'), 1)
+        self.assertIn('pe-footer', html)
+
+    def test_signatures_fall_back_to_body_when_footer_disabled(self):
+        html = layout.render_document(
+            DOCUMENT, {**SETTINGS, 'footer': {**SETTINGS['footer'], 'enabled': False}},
+        )
+        self.assertNotIn('<footer class="pe-footer"', html)
+        self.assertIn('مهر و امضا', html)
+
+    def test_signature_toggle_keeps_them_out_of_footer(self):
+        html = layout.render_document(
+            DOCUMENT, {**SETTINGS, 'footer': {**SETTINGS['footer'], 'signatures': False}},
+        )
+        footer = html.split('<footer class="pe-footer"', 1)[1]
+        self.assertNotIn('مهر و امضا', footer)
+        self.assertIn('مهر و امضا', html)
+
+    def test_page_margin_reserves_space_for_footer(self):
+        html = layout.render_document(DOCUMENT, SETTINGS)
+        self.assertIn('margin: 10mm 9mm 26mm 9mm', html)
+        plain = layout.render_document(
+            DOCUMENT, {**SETTINGS, 'footer': {**SETTINGS['footer'], 'enabled': False}},
+        )
+        self.assertIn('margin: 10mm 9mm 12mm 9mm', plain)
 
     def test_disabled_header_and_footer_are_hidden(self):
         settings = {
@@ -93,6 +127,56 @@ class HeaderFooterLayoutTests(SimpleTestCase):
         html = layout.render_document(DOCUMENT, {**SETTINGS, 'paper': 'A4', 'orientation': 'landscape'})
         self.assertIn('size: A4 landscape', html)
         self.assertIn('297mm', html)  # عرض افقی A4
+
+
+class LogoAndHeaderOrderTests(SimpleTestCase):
+    def test_company_logo_is_rendered_as_centered_image(self):
+        document = {
+            **DOCUMENT,
+            'company': {'name': 'شرکت نمونه', 'logo': 'data:image/png;base64,AAAA'},
+        }
+        html = layout.render_document(document, SETTINGS)
+        self.assertIn('<img class="pe-print-logo"', html)
+        self.assertIn('pe-header-center', html)
+        # جعبهٔ متنی لوگو (حروف اول نام) دیگر نباید ساخته شود
+        self.assertNotIn('<div class="pe-logo">', html)
+
+    def test_header_order_is_logo_company_title_line(self):
+        document = {
+            **DOCUMENT,
+            'company': {'name': 'شرکت نمونه', 'logo': 'data:image/png;base64,AAAA'},
+        }
+        html = layout.render_document(document, SETTINGS)
+        logo_at = html.index('pe-print-logo')
+        name_at = html.index('pe-brand-name')
+        title_at = html.index('pe-title')
+        header_end = html.index('</header>')
+        self.assertLess(logo_at, name_at)
+        self.assertLess(name_at, title_at)
+        self.assertLess(title_at, header_end)
+        self.assertIn('border-bottom:2px solid #0f172a', html)
+
+    def test_header_title_prefers_document_title(self):
+        html = layout.render_document({**DOCUMENT, 'title': 'فهرست نامه‌های وارده'}, SETTINGS)
+        self.assertIn('فهرست نامه‌های وارده', html)
+        self.assertNotIn('مؤسسه خاتم پاسارگاد', html)
+
+    def test_logo_file_becomes_data_uri(self):
+        import os
+        import tempfile
+
+        class FakeImage:
+            pass
+
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'logo.png')
+            with open(path, 'wb') as handle:
+                handle.write(b'\x89PNG\r\n\x1a\n')
+            image = FakeImage()
+            image.path = path
+            uri = registry._logo_data_uri(image)
+        self.assertTrue(uri.startswith('data:image/png;base64,'))
+        self.assertEqual(registry._logo_data_uri(None), '')
 
 
 class RenderOptionsTests(SimpleTestCase):
