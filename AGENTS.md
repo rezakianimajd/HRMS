@@ -578,6 +578,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    شمارهٔ عددی یکتا ⇒ مرتب‌سازی/مقایسه با شماره، در غیر این صورت شناسه (رفتار قبلی). بازمحاسبهٔ زنجیره
    (`statement_totals.recalculate_contract_statements`) هم باید با همان تابع مرتب شود، وگرنه سند تازه با
    کارکرد صفر بازنویسی می‌شود. اعتبارسنجی «قبل از ذخیره» در فرانت هم باید عدد را از `form.number` بگیرد.
+22. **در RTL، چیدمان و فاصله را با ویژگی‌های منطقی/`gap` بچینید، نه margin فیزیکی:** `Stack` مولفه
+   `spacing` را با `margin-left` (برای `direction="row"`) اعمال می‌کند و در صفحهٔ `dir="rtl"` می‌تواند
+   فاصله را به سمت اشتباه ببرد؛ برای فاصلهٔ بین کارت‌ها از `useFlexGap` (یا `sx={{ gap }}`) استفاده
+   کنید. همچنین برای حباب پیام، `flexDirection: 'row'` + `justifyContent: mine ? 'flex-start' :
+   'flex-end'` درست است (در RTL، start=راست)؛ `row-reverse` جهت پیام‌ها را برعکس می‌کند و پیام
+   دیگران را هم به سمت راست می‌برد. آواتار فرستنده با `order` بعد از حباب قرار می‌گیرد.
 22. **حریم خصوصی چت مقدم بر نقش مدیریتی است:** استثنای `is_superuser` در «دیدن گفتگو» یعنی مدیر سیستم
    می‌تواند گفتگوی خصوصی دو همکار را بخواند؛ در `communication/permissions.py` هیچ‌کدام از
    `can_view`/`visible_conversations`/`can_post`/`is_privileged` نباید شاخهٔ سوپریوزر داشته باشد
