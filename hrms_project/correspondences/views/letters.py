@@ -889,7 +889,14 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
         from correspondences.excel_export import build_letters_workbook
 
-        queryset = self.filter_queryset(self.get_queryset())[:5000]
+        queryset = self.filter_queryset(self.get_queryset())
+        # ردیف‌های انتخاب‌شده در فهرست (چک‌باکس) — بدون اعمال فیلتر صفحه.
+        raw_ids = (request.query_params.get('ids') or '').replace('،', ',')
+        if raw_ids.strip():
+            ids = [int(value) for value in raw_ids.split(',') if value.strip().isdigit()]
+            queryset = queryset.filter(pk__in=ids[:1000])
+        # prefetchهای فهرست با نسخهٔ سبک اکسل تعارض دارند؛ قبل از ساخت Workbook پاک می‌شوند.
+        queryset = queryset.prefetch_related(None)[:5000]
         workbook = build_letters_workbook(queryset)
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

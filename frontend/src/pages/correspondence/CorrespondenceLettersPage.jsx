@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
-  Alert, Box, Button, Chip, CircularProgress, IconButton, Menu, MenuItem,
+  Alert, Box, Button, Checkbox, Chip, CircularProgress, IconButton, Menu, MenuItem,
   Paper, Stack,
   Tooltip, Typography,
 } from '@mui/material';
@@ -24,6 +24,7 @@ import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import ReplyIcon from '@mui/icons-material/Reply';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
@@ -287,6 +288,60 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   }, {}), [letters]);
 
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, rows.length);
+
+  /* ── انتخاب ردیف‌ها: چاپ و خروجی اکسل فقط برای ردیف‌های تیک‌خورده ── */
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const selectedKey = `${preset.key || mode}:${page}:${search}:${sortBy}:${statusFilter}`;
+  useEffect(() => {
+    // با تغییر فهرست/فیلتر/صفحه، انتخاب‌های قبلی معنایی ندارند
+    setSelectedIds(new Set());
+  }, [selectedKey]);
+
+  const toggleSelect = (id) => setSelectedIds((previous) => {
+    const next = new Set(previous);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+  const toggleSelectAll = () => setSelectedIds((previous) => {
+    const pageIds = rows.map((row) => row.letter.id);
+    const allSelected = pageIds.length > 0 && pageIds.every((id) => previous.has(id));
+    if (allSelected) {
+      const next = new Set(previous);
+      pageIds.forEach((id) => next.delete(id));
+      return next;
+    }
+    return new Set([...previous, ...pageIds]);
+  });
+  const clearSelection = () => setSelectedIds(new Set());
+  const selectedIdList = useMemo(() => [...selectedIds], [selectedIds]);
+  const allPageSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.letter.id));
+  const somePageSelected = rows.some((row) => selectedIds.has(row.letter.id));
+
+  const printSelected = () => {
+    if (!selectedIdList.length) return;
+    print.openDocument({
+      document: 'letter-list',
+      payload: {
+        ids: selectedIdList,
+        title: 'فهرست مکاتبات انتخاب‌شده',
+      },
+      options: { orientation: 'landscape' },
+    });
+  };
+
+  const exportSelected = async () => {
+    if (!selectedIdList.length) return;
+    const response = await axiosInstance.get('/letters/export-excel/', {
+      params: { ids: selectedIdList.join(',') }, responseType: 'blob',
+    });
+    const url = URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `correspondence-selected-${selectedIdList.length}.xlsx`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   const totals = stats?.totals || {};
   const myReferralCount = totals.my_referrals ?? asList(myReferrals).length;
@@ -678,6 +733,40 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           border: '1px solid', borderColor: moduleTheme.cardBorderColor,
           bgcolor: 'background.paper', boxShadow: 'none',
         }}>
+        {selectedIdList.length ? (
+          <Stack
+            data-testid="letters-selection-bar"
+            direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center"
+            sx={{
+              mb: 1, px: 1, py: 0.75, borderRadius: '12px',
+              border: '1px solid', borderColor: alpha(ACCENT, 0.24),
+              bgcolor: alpha(ACCENT, 0.06),
+            }}
+          >
+            <Chip
+              size="small"
+              label={`${formatPersianNumber(selectedIdList.length)} نامه انتخاب شده`}
+              sx={chipSx(ACCENT)}
+            />
+            <Button
+              size="small" variant="contained" startIcon={<PrintOutlinedIcon />}
+              onClick={printSelected}
+              sx={{ fontSize: 12 }}
+            >
+              چاپ انتخاب‌شده‌ها
+            </Button>
+            <Button
+              size="small" variant="outlined" startIcon={<DownloadIcon />}
+              onClick={exportSelected} disabled={!canExport}
+              sx={{ fontSize: 12 }}
+            >
+              خروجی اکسل انتخاب‌شده‌ها
+            </Button>
+            <Button size="small" color="inherit" onClick={clearSelection} sx={{ fontSize: 12 }}>
+              لغو انتخاب
+            </Button>
+          </Stack>
+        ) : null}
         <ModuleTable
           tableTheme={moduleTheme.tableTheme}
           ariaLabel="فهرست مکاتبات اداری"
@@ -695,10 +784,39 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
           })}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
-          minWidth={mode === 'incoming' ? 1180 : (mode === 'outgoing' ? 1130 : 1040)}
+          minWidth={(mode === 'incoming' ? 1180 : (mode === 'outgoing' ? 1130 : 1040)) + 40}
           tableLayout="fixed"
           columns={[
-            /* ── شمارهٔ ثبت ورود به واحد (ستون اول دفتر وارده) ── */
+            /* ── انتخاب ردیف (چاپ/اکسل فقط برای همین ردیف‌ها) ── */
+            {
+              key: 'select', label: '', width: '40px', align: 'center',
+              renderHeader: () => (
+                <Checkbox
+                  size="small"
+                  checked={allPageSelected}
+                  indeterminate={!allPageSelected && somePageSelected}
+                  onChange={toggleSelectAll}
+                  inputProps={{
+                    'aria-label': 'انتخاب همهٔ ردیف‌های این صفحه',
+                    'data-testid': 'letters-select-all',
+                  }}
+                  sx={{ p: 0.25 }}
+                />
+              ),
+              render: (row) => (
+                <Checkbox
+                  size="small"
+                  checked={selectedIds.has(row.letter.id)}
+                  onChange={() => toggleSelect(row.letter.id)}
+                  onClick={(event) => event.stopPropagation()}
+                  inputProps={{
+                    'aria-label': `انتخاب نامه ${row.letter.number || row.letter.id}`,
+                    'data-testid': `letter-select-${row.letter.id}`,
+                  }}
+                  sx={{ p: 0.25 }}
+                />
+              ),
+            },
             ...(mode === 'incoming' ? [
               {
                 key: 'unit_reg_no', label: 'شماره ثبت', width: '10%', align: 'center',
@@ -1206,6 +1324,9 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         html={print.html}
         loading={print.loading}
         error={print.error}
+        options={print.options}
+        onChangeOptions={print.updateOptions}
+        onRefresh={print.refresh}
         onClose={print.close}
       />
 

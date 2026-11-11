@@ -10,6 +10,7 @@ from settings_app.models import SystemSetting, CompanyProfile
 from settings_app.serializers import SystemSettingSerializer, CompanyProfileSerializer
 from settings_app.engines.settings_engine import SettingsEngine
 from settings_app.appearance_schema import sanitize_design, typography_from_design
+from settings_app.print_settings import sanitize_print
 from core.models.user import UserProfile, ROLE_PERMISSIONS
 
 
@@ -103,7 +104,12 @@ def _sanitize_appearance(payload):
         raw_typography if isinstance(raw_typography, dict) else None,
     )
     typography = typography_from_design(design)
-    return {'palettes': palettes, 'typography': typography, 'design': design}
+    return {
+        'palettes': palettes,
+        'typography': typography,
+        'design': design,
+        'print': sanitize_print(data.get('print')),
+    }
 
 
 def _read_appearance(company):

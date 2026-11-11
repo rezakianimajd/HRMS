@@ -395,7 +395,7 @@ test('letters table shows the standard incoming column set', async () => {
 
   const headers = [...container.querySelectorAll('thead th')].map((cell) => cell.textContent.trim());
   expect(headers).toEqual([
-    'شماره ثبت', 'تاریخ ورود', 'شماره نامه', 'طرف حساب', 'موضوع نامه', 'تاریخ نامه', 'ارجاع', 'عملیات',
+    '', 'شماره ثبت', 'تاریخ ورود', 'شماره نامه', 'طرف حساب', 'موضوع نامه', 'تاریخ نامه', 'ارجاع', 'عملیات',
   ]);
 
   // ستون «شماره ثبت» مقدار unit_reg_no همان ردیف را (با ارقام فارسی) نشان می‌دهد
@@ -597,4 +597,53 @@ test('workdesk page renders cartable counters, referrals and actions', async () 
   container.remove();
 });
 
+
+
+test('selected letter rows drive print and excel of the selection', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage />);
+
+  const selectAll = container.querySelector('input[data-testid="letters-select-all"]');
+  expect(selectAll).toBeTruthy();
+  await act(async () => { selectAll.click(); await wait(220); });
+
+  const bar = container.querySelector('[data-testid="letters-selection-bar"]');
+  expect(bar).toBeTruthy();
+  expect(bar.textContent).toContain('نامه انتخاب شده');
+  expect(bar.textContent).toContain('چاپ انتخاب‌شده‌ها');
+  expect(bar.textContent).toContain('خروجی اکسل انتخاب‌شده‌ها');
+
+  // چاپ انتخاب‌شده‌ها → سند سروری «فهرست مکاتبات» با شناسه‌های انتخابی
+  axiosInstance.post.mockResolvedValueOnce({
+    data: { html: '<html><body>preview</body></html>', title: 'فهرست مکاتبات انتخاب‌شده' },
+  });
+  const printButton = Array.from(bar.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('چاپ انتخاب‌شده‌ها'));
+  await act(async () => { printButton.click(); await wait(260); });
+
+  const printCall = axiosInstance.post.mock.calls
+    .find(([url, body]) => url === '/print/preview/' && body?.document === 'letter-list');
+  expect(printCall).toBeTruthy();
+  expect(printCall[1].payload.ids.length).toBeGreaterThan(0);
+  expect(printCall[1].payload.ids).toContain(1);
+  expect(printCall[1].options.orientation).toBe('landscape');
+  // پیش‌نمایش چاپ با انتخاب جهت کاغذ باز می‌شود
+  expect(document.body.textContent).toContain('افقی');
+
+  // خروجی اکسل انتخاب‌شده‌ها → همان شناسه‌ها به‌عنوان پارامتر
+  global.URL.createObjectURL = jest.fn(() => 'blob:selected');
+  global.URL.revokeObjectURL = jest.fn();
+  axiosInstance.get.mockResolvedValueOnce({ data: new Blob(['x']) });
+  const excelButton = Array.from(bar.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('اکسل'));
+  await act(async () => { excelButton.click(); await wait(220); });
+
+  const excelCall = axiosInstance.get.mock.calls
+    .find(([url, config]) => url === '/letters/export-excel/' && config?.params?.ids);
+  expect(excelCall).toBeTruthy();
+  expect(excelCall[1].params.ids).toContain('1');
+  expect(excelCall[1].responseType).toBe('blob');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
 

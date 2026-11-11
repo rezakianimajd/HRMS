@@ -42,6 +42,16 @@ body {
   padding: 1px 10px; font-size: 8.5pt; font-weight: 800; margin-top: 4px;
 }
 .pe-meta { display: flex; gap: 14px; font-size: 8.5pt; color: #334155; white-space: nowrap; }
+.pe-header-contact {
+  font-size: 8pt; color: #475569; text-align: center; margin: -6px 0 8px;
+  padding-bottom: 4px; word-break: break-word;
+}
+.pe-header-extra {
+  font-size: 8.5pt; color: #0f172a; font-weight: 700; text-align: center;
+  border: 1px dashed #cbd5e1; border-radius: 6px; padding: 2px 8px; margin-bottom: 8px;
+}
+.pe-print-title { font-size: 13pt; font-weight: 900; margin-bottom: 4px; }
+.pe-print-sub { font-size: 9pt; color: #475569; margin-bottom: 10px; }
 .pe-meta div { display: flex; gap: 4px; }
 .pe-section { margin: 9px 0; page-break-inside: avoid; }
 .pe-section-title {
@@ -132,50 +142,88 @@ def _css(options):
 
 
 def _header(document, options):
-    if options.get('show_header') is False:
+    config = options.get('header') or {}
+    if options.get('show_header') is False or config.get('enabled') is False:
         return ''
     company = document.get('company') or {}
     brand_name = company.get('name') or options.get('brand_name', '')
-    brand_sub = company.get('subtitle') or options.get('brand_subtitle', '')
+    brand_sub = config.get('subtitle') or company.get('subtitle') or options.get('brand_subtitle', '')
     logo_text = (company.get('logo_text') or brand_name[:2] or 'K').strip()
-    meta_bits = ''.join(
-        f'<div><span>{esc(label)}:</span><strong>{esc(value)}</strong></div>'
-        for label, value in (document.get('meta') or [])
-        if value
-    )
+    align = config.get('align') or 'center'
+    border = 'border-bottom:2px solid #0f172a;' if config.get('show_border', True) else 'border-bottom:0;'
+    title_text = config.get('title') or document.get('title', 'سند')
+    subtitle_text = config.get('subtitle') or document.get('subtitle', '')
+    meta_bits = ''
+    if config.get('show_meta', True):
+        meta_bits = ''.join(
+            f'<div><span>{esc(label)}:</span><strong>{esc(value)}</strong></div>'
+            for label, value in (document.get('meta') or [])
+            if value
+        )
     badge = f'<div class="pe-badge">{esc(document["badge"])}</div>' if document.get('badge') else ''
     brand = ''
     if brand_name:
+        logo = (
+            f'<div class="pe-logo">{esc(logo_text)}</div>'
+            if config.get('show_logo', True) else ''
+        )
         brand = (
             '<div class="pe-brand">'
-            f'<div class="pe-logo">{esc(logo_text)}</div>'
+            f'{logo}'
             '<div><div class="pe-brand-name">'
             f'{esc(brand_name)}</div>'
-            f'<div class="pe-brand-sub">{esc(brand_sub)}</div></div>'
+            f'<div class="pe-brand-sub">{esc(company.get("subtitle", ""))}</div></div>'
             '</div>'
         )
+    contacts = [
+        ('نشانی', config.get('address')), ('تلفن', config.get('phone')),
+        ('ایمیل', config.get('email')), ('وبگاه', config.get('website')),
+    ]
+    contact_html = ''
+    contact_text = ' · '.join(f'{label}: {value}' for label, value in contacts if value)
+    if contact_text:
+        contact_html = f'<div class="pe-header-contact">{esc(contact_text)}</div>'
+    extra_html = ''
+    if config.get('extra'):
+        extra_html = f'<div class="pe-header-extra">{esc(config["extra"])}</div>'
     return (
-        '<header class="pe-header">'
-        f'{brand}<div class="pe-title-block">'
-        f'<div class="pe-title">{esc(document.get("title", "سند"))}</div>'
-        f'<div class="pe-subtitle">{esc(document.get("subtitle", ""))}</div>'
+        f'<header class="pe-header" style="{border}">'
+        f'{brand}<div class="pe-title-block" style="text-align:{align}">'
+        f'<div class="pe-title">{esc(title_text)}</div>'
+        f'<div class="pe-subtitle">{esc(subtitle_text)}</div>'
         f'{badge}</div>'
         f'<div class="pe-meta">{meta_bits}</div>'
         '</header>'
+        f'{contact_html}{extra_html}'
     )
 
 
 def _footer(document, options):
-    if options.get('show_footer') is False:
+    config = options.get('footer') or {}
+    if options.get('show_footer') is False or config.get('enabled') is False:
         return ''
-    bits = [esc(document.get('footer_note', ''))]
+    bits = [esc(config.get('text') or ''), esc(document.get('footer_note', '')), esc(config.get('extra') or '')]
     printed_at = jalali(document.get('printed_on'))
-    if printed_at and options.get('show_printed_at', True):
+    show_printed_at = config.get('show_printed_at')
+    if show_printed_at is None:
+        show_printed_at = options.get('show_printed_at', True)
+    if printed_at and show_printed_at:
         bits.append(f'تاریخ چاپ: {printed_at}')
-    if options.get('show_page_number', True):
+    show_page = config.get('show_page_number')
+    if show_page is None:
+        show_page = options.get('show_page_number', True)
+    if show_page:
         bits.append('صفحهٔ <span class="pe-page-number"></span>')
+    align = config.get('align') or 'center'
+    justify = {
+        'right': 'flex-start',
+        'center': 'center',
+        'left': 'flex-end',
+        'space-between': 'space-between',
+    }.get(align, 'center')
+    border = 'border-top:1px solid #cbd5e1;' if config.get('show_border', True) else 'border-top:0;'
     return (
-        '<footer class="pe-footer">'
+        f'<footer class="pe-footer" style="justify-content:{justify};{border}">'
         + ''.join(f'<div>{bit}</div>' for bit in bits if bit)
         + '</footer>'
     )

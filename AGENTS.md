@@ -608,6 +608,28 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **چاپ قابل تنظیم + انتخاب ردیف در مکاتبات (۲۰۲۶-۱۱-۱۱):** سربرگ/پاورقی چاپ از «ظاهر و پوسته
+  → تب چاپ» قابل تنظیم شد، جهت/کاغذ در هر چاپ انتخاب می‌شود و ردیف‌های فهرست مکاتبات قابل تیک‌خوردن
+  (چاپ/اکسل) هستند.
+  - **تنظیمات:** کلید `print` در همان payload `/settings/appearance/` (`settings_app/print_settings.py`):
+    paper/orientation/font_size/margin + سربرگ (عنوان، زیرعنوان، نشانی/تلفن/ایمیل/وبگاه، متن تکمیلی،
+    لوگو/متادیتا/خط، تراز) + پاورقی (متن، تکمیلی، شمارهٔ صفحه، تاریخ چاپ، تراز، خط).
+  - **موتور چاپ:** `registry._render_options` تنظیمات شرکت را با `options` هر چاپ merge می‌کند
+    (گزینهٔ صریح برنده است) و `layout._header/_footer` از همان config می‌خوانند؛ پیش‌فرض‌های قدیمی
+    حفظ شده‌اند. سند جدید **`letter-list`** (با `ids` یا فیلتر) و `available_documents` به‌روز شد.
+  - **API:** `GET /api/letters/export-excel/?ids=1,2,3`؛ قبل از ساخت Workbook
+    `prefetch_related(None)` تا تعارض prefetch فهرست و اکسل رفع شود.
+  - **فرانت:** `core/theme/printSettings.js` (آینهٔ بک‌اند)، `pages/appearance/PrintSettingsCard.jsx`
+    (فرم + پیش‌نمایش زندهٔ `/print/preview/`)، تب «چاپ» در `AppearancePage`،
+    `PrintPreviewDialog` با انتخاب عمودی/افقی و کاغذ (و `usePrintDocument.updateOptions/refresh`).
+  - **فهرست مکاتبات:** ستون چک‌باکس (انتخاب همهٔ صفحه)، نوار «چاپ انتخاب‌شده‌ها / خروجی اکسل
+    انتخاب‌شده‌ها / لغو انتخاب»؛ `ModuleTable` حالا `renderHeader` برای ستون‌ها دارد.
+  - **تست:** `core/tests_print_settings.py` (۹) + `tests_print_engine` به‌روزرسانی‌شده (۴۳ تست چاپ
+    سبز)؛ `correspondenceSmoke` (۱۸، شامل انتخاب→چاپ/اکسل)، `printEngineSmoke` (۵)،
+    `appearanceTabsSmoke` (۳)، `contractStatementsSmoke` (۵).
+  - **تأیید زندهٔ `kpsmi`:** PUT تنظیمات چاپ → HTML پیش‌نمایش حاوی سربرگ/پاورقی سفارشی و
+    `landscape`؛ `letter-list` با دو شناسه ۲۰۰؛ اکسل انتخاب‌ها ۲۰۰ (۶KB)؛ تنظیمات نمایشی به
+    پیش‌فرض برگشت.
 - **تفکیک «شامل اضافات» و «شامل کسورات» در سطوح صورت‌وضعیت چندسطحی (۲۰۲۶-۱۱-۱۱):** تیک واحد
   «شامل اضافات و کسورات» نمی‌توانست سطحی را فقط در مبنای کسورات (یا فقط اضافات) بیاورد.
   - **قاعدهٔ مشترک:** `contracts/statement_levels.py` → `level_charge_flags(level)` (سازگاری با

@@ -5,6 +5,7 @@ import axiosInstance from '../api/axiosConfig';
 import useAuth from '../hooks/useAuth';
 import useCompany from '../hooks/useCompany';
 import { DEFAULT_TYPOGRAPHY, MIN_TYPOGRAPHY_SIZES } from '../theme/appearanceDefaults';
+import { DEFAULT_PRINT_SETTINGS, normalizePrintSettings } from '../theme/printSettings';
 import {
   DEFAULT_DESIGN_TOKENS,
   legacyTypographyFromDesign,
@@ -35,6 +36,7 @@ const AppearanceContext = createContext({
   palettes: {},
   typography: DEFAULT_TYPOGRAPHY,
   designTokens: DEFAULT_DESIGN_TOKENS,
+  printSettings: DEFAULT_PRINT_SETTINGS,
   canEdit: false,
   loading: false,
   saving: false,
@@ -49,6 +51,8 @@ const AppearanceContext = createContext({
   resetTypography: () => {},
   setDesignTokens: () => {},
   resetDesign: () => {},
+  setPrintSettings: () => {},
+  resetPrintSettings: () => {},
 });
 
 const normalizeTypography = (raw) => {
@@ -81,6 +85,7 @@ export const ModulePaletteProvider = ({ children }) => {
   const [palettes, setPalettes] = useState({});
   const [typography, setTypographyState] = useState(DEFAULT_TYPOGRAPHY);
   const [designTokens, setDesignTokensState] = useState(DEFAULT_DESIGN_TOKENS);
+  const [printSettings, setPrintSettingsState] = useState(DEFAULT_PRINT_SETTINGS);
   const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,6 +109,7 @@ export const ModulePaletteProvider = ({ children }) => {
         setPalettes(normalizePalettes(data?.palettes));
         setTypographyState(nextTypography);
         setDesignTokensState(syncDesignWithLegacyTypography(data?.design, nextTypography));
+        setPrintSettingsState(normalizePrintSettings(data?.print));
         setCanEdit(Boolean(data?.can_edit));
         setError('');
         dirtyRef.current = false;
@@ -120,7 +126,7 @@ export const ModulePaletteProvider = ({ children }) => {
   useEffect(() => {
     if (!canEdit || !dirtyRef.current) return undefined;
     clearTimeout(saveTimer.current);
-    const payload = { palettes, typography, design: designTokens };
+    const payload = { palettes, typography, design: designTokens, print: printSettings };
     saveTimer.current = setTimeout(() => {
       setSaving(true);
       axiosInstance.put('/settings/appearance/', payload)
@@ -132,6 +138,7 @@ export const ModulePaletteProvider = ({ children }) => {
           if (data?.typography) setTypographyState(normalizeTypography(data.typography));
           if (data?.palettes) setPalettes(normalizePalettes(data.palettes));
           if (data?.design) setDesignTokensState(normalizeDesignTokens(data.design));
+          if (data?.print) setPrintSettingsState(normalizePrintSettings(data.print));
           setTimeout(() => setSavedTick(false), 1800);
         })
         .catch((err) => {
@@ -140,7 +147,7 @@ export const ModulePaletteProvider = ({ children }) => {
         });
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [palettes, typography, designTokens, canEdit]);
+  }, [palettes, typography, designTokens, printSettings, canEdit]);
 
   const getPalette = useCallback((slug) => {
     if (!slug) return null;
@@ -190,6 +197,7 @@ export const ModulePaletteProvider = ({ children }) => {
     setPalettes({});
     setTypographyState(DEFAULT_TYPOGRAPHY);
     setDesignTokensState(DEFAULT_DESIGN_TOKENS);
+    setPrintSettingsState(DEFAULT_PRINT_SETTINGS);
     dirtyRef.current = true;
   }, [canEdit]);
 
@@ -226,12 +234,27 @@ export const ModulePaletteProvider = ({ children }) => {
     dirtyRef.current = true;
   }, [canEdit]);
 
+  const setPrintSettings = useCallback((patch) => {
+    if (!canEdit) return;
+    setPrintSettingsState((previous) => normalizePrintSettings(
+      typeof patch === 'function' ? patch(previous) : { ...previous, ...patch },
+    ));
+    dirtyRef.current = true;
+  }, [canEdit]);
+
+  const resetPrintSettings = useCallback(() => {
+    if (!canEdit) return;
+    setPrintSettingsState(DEFAULT_PRINT_SETTINGS);
+    dirtyRef.current = true;
+  }, [canEdit]);
+
   return (
     <AppearanceContext.Provider
       value={{
         palettes,
         typography,
         designTokens,
+        printSettings,
         canEdit,
         loading,
         saving,
@@ -246,6 +269,8 @@ export const ModulePaletteProvider = ({ children }) => {
         resetTypography,
         setDesignTokens,
         resetDesign,
+        setPrintSettings,
+        resetPrintSettings,
       }}
     >
       {children}

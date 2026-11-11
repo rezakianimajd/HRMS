@@ -226,6 +226,103 @@ def build_custom(payload, options, request=None):
 DOCUMENTS.update({'letter': build_letter, 'table': build_table, 'custom': build_custom})
 
 
+def build_letter_list(payload, options, request=None):
+    """فهرست مکاتبات برای چاپ — ردیف‌های انتخاب‌شده یا یک فهرست فیلترشده."""
+    from django.db.models import Count, Q
+
+    from correspondences.models import Letter
+
+    if not can_print(getattr(request, 'user', None), 'correspondence'):
+        raise PrintError('برای چاپ مکاتبات مجوز لازم را ندارید.', 403)
+    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+    queryset = Letter.objects.select_related(
+        'category', 'series', 'party_account', 'correspondent',
+        'sender_party', 'sender_organization', 'sender_employee', 'receiver_employee',
+    ).annotate(attachment_count=Count('attachments', distinct=True))
+    if company:
+        queryset = queryset.filter(company=company)
+    queryset = queryset.filter(is_active=True)
+
+    ids = payload.get('ids') or []
+    if isinstance(ids, (str, int)):
+        ids = str(ids).replace('،', ',').split(',')
+    clean_ids = []
+    for value in ids:
+        try:
+            number = int(str(value).strip())
+        except (TypeError, ValueError):
+            continue
+        if number and number not in clean_ids:
+            clean_ids.append(number)
+    clean_ids = clean_ids[:300]
+
+    filters_note = []
+    if clean_ids:
+        queryset = queryset.filter(pk__in=clean_ids)
+        filters_note.append(f'ردیف‌های انتخاب‌شده ({pe.fa_digits(len(clean_ids))})')
+    else:
+        direction = payload.get('direction') or ''
+        if direction in dict(Letter.DIRECTION_CHOICES):
+            queryset = queryset.filter(direction=direction)
+            filters_note.append(f'جهت: {dict(Letter.DIRECTION_CHOICES).get(direction, direction)}')
+        status = payload.get('status') or ''
+        if status in dict(Letter.STATUS_CHOICES):
+            queryset = queryset.filter(status=status)
+            filters_note.append(f'وضعیت: {dict(Letter.STATUS_CHOICES).get(status, status)}')
+        search = (payload.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(subject__icontains=search) | Q(number__icontains=search)
+                | Q(party_name__icontains=search) | Q(description__icontains=search),
+            )
+            filters_note.append(f'جست‌وجو: {search}')
+    if payload.get('filters_note'):
+        filters_note.append(str(payload['filters_note']))
+
+    queryset = queryset.order_by('-id')[:300]
+    rows = []
+    for letter in queryset:
+        rows.append({
+            'number': letter.number or letter.unit_reg_no or '—',
+            'date': pe.jalali(letter.letter_date or letter.received_date or letter.sent_date),
+            'direction': letter.get_direction_display(),
+            'subject': letter.subject or '—',
+            'party': letter.party_display or '—',
+            'status': letter.get_status_display(),
+            'attachments': pe.fa_digits(getattr(letter, 'attachment_count', 0) or 0),
+        })
+
+    columns = [
+        {'key': 'number', 'label': 'شماره', 'width': '10%', 'align': 'center'},
+        {'key': 'date', 'label': 'تاریخ', 'width': '11%', 'align': 'center'},
+        {'key': 'direction', 'label': 'جهت', 'width': '9%', 'align': 'center'},
+        {'key': 'subject', 'label': 'موضوع', 'width': '30%'},
+        {'key': 'party', 'label': 'طرف مکاتبه', 'width': '22%'},
+        {'key': 'status', 'label': 'وضعیت', 'width': '11%', 'align': 'center'},
+        {'key': 'attachments', 'label': 'پیوست', 'width': '7%', 'align': 'center'},
+    ]
+    subtitle = payload.get('subtitle') or ' · '.join(filters_note)
+    return {
+        'title': payload.get('title') or 'فهرست مکاتبات اداری',
+        'subtitle': subtitle,
+        'badge': payload.get('badge') or '',
+        'company': _company_info(company),
+        'meta': [('تعداد ردیف', pe.fa_digits(len(rows)))],
+        'sections': [{
+            'title': payload.get('section_title') or '',
+            'html': pe.data_table(columns, rows, {'zebra': True}),
+        }],
+        'note': payload.get('note') or '',
+        'signatures': pe.signatures([
+            {'title': 'تهیه‌کننده'}, {'title': 'تأییدکننده'}, {'title': 'مهر و امضا'},
+        ]) if payload.get('show_signatures', True) else '',
+        'printed_on': payload.get('printed_on'),
+    }
+
+
+DOCUMENTS.update({'letter-list': build_letter_list})
+
+
 def build_payslip(payload, options, request=None):
     """فیش حقوقی (سند سروری با سرصفحهٔ برند، مبلغ به حروف و بارکد)."""
     from core.print_engine.builders.payslip import load_payslip
@@ -243,17 +340,42 @@ def build_voucher(payload, options, request=None):
 DOCUMENTS.update({'payslip': build_payslip, 'voucher': build_voucher})
 
 
+def _render_options(options, request):
+    """تنظیمات چاپ شرکت (سربرگ/پاورقی/کاغذ) + گزینه‌های صریح همان چاپ."""
+    from settings_app.print_settings import print_settings_for
+
+    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+    base = print_settings_for(company)
+    explicit = options if isinstance(options, dict) else {}
+    merged = dict(base)
+    for key, value in explicit.items():
+        if key in ('header', 'footer'):
+            continue
+        if value is not None:
+            merged[key] = value
+    for key in ('header', 'footer'):
+        if isinstance(explicit.get(key), dict):
+            merged[key] = {**base.get(key, {}), **explicit[key]}
+    return merged
+
+
 def render(document_key, payload, options=None, request=None):
     """سند کامل HTML برای یک نوع سند."""
     builder = DOCUMENTS.get(document_key)
     if not builder:
         raise PrintError(f'نوع سند «{document_key}» پشتیبانی نمی‌شود.', 400)
-    return render_document(builder(payload or {}, options or {}, request=request), options or {})
+    from datetime import date as date_cls
+
+    merged = _render_options(options, request)
+    clean_payload = dict(payload or {})
+    clean_payload.setdefault('printed_on', date_cls.today().isoformat())
+    return render_document(builder(clean_payload, merged, request=request), merged)
 
 
 def available_documents():
     return [
         {'key': 'letter', 'label': 'نامهٔ اداری'},
+        {'key': 'letter-list', 'label': 'فهرست مکاتبات'},
         {'key': 'table', 'label': 'گزارش جدولی'},
         {'key': 'payslip', 'label': 'فیش حقوقی'},
         {'key': 'voucher', 'label': 'سند خزانه‌داری'},

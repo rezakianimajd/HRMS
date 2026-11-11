@@ -9,6 +9,7 @@ import ColorLensOutlinedIcon from '@mui/icons-material/ColorLensOutlined';
 import FontDownloadOutlinedIcon from '@mui/icons-material/FontDownloadOutlined';
 import TuneIcon from '@mui/icons-material/Tune';
 import LoginIcon from '@mui/icons-material/Login';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CloseIcon from '@mui/icons-material/Close';
@@ -25,6 +26,7 @@ import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils'
 import { resolveTableTheme } from '../core/theme/tableStyles';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 import LoginBrandingPanel from './appearance/LoginBrandingPanel';
+import PrintSettingsCard from './appearance/PrintSettingsCard';
 
 /* تب‌های صفحهٔ «ظاهر و پوسته» — کلید هر تب در آدرس (?tab=…) ذخیره می‌شود. */
 const APPEARANCE_TABS = [
@@ -32,6 +34,7 @@ const APPEARANCE_TABS = [
   { key: 'palettes', label: 'پالت‌های رنگی', icon: <ColorLensOutlinedIcon fontSize="small" /> },
   { key: 'studio', label: 'استودیو تم', icon: <TuneIcon fontSize="small" /> },
   { key: 'login', label: 'ورود', icon: <LoginIcon fontSize="small" /> },
+  { key: 'print', label: 'چاپ', icon: <PrintOutlinedIcon fontSize="small" /> },
   { key: 'typography', label: 'فونت و اندازه‌ها', icon: <FontDownloadOutlinedIcon fontSize="small" /> },
 ];
 
@@ -1709,6 +1712,8 @@ const AppearancePage = () => {
       )}
 
       {tabKey === 'login' && <LoginBrandingPanel />}
+
+      {tabKey === 'print' && <PrintSettingsCard />}
 
       {tabKey === 'typography' && (
         <TypographyCard

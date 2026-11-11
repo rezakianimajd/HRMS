@@ -269,7 +269,7 @@ export const ModuleTable = ({
                 className={column.align === 'center' ? 'hrms-cell-center' : undefined}
                 sx={{ width: column.width }}
               >
-                {column.label}
+                {column.renderHeader ? column.renderHeader() : column.label}
               </TableCell>
             ))}
           </TableRow>
