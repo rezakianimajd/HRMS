@@ -12,13 +12,14 @@ import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import DoneIcon from '@mui/icons-material/Done';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import ReplyIcon from '@mui/icons-material/Reply';
 import TagIcon from '@mui/icons-material/Tag';
 import { ENTITY_MODULE_META } from './EntityPickerDialog';
 import { emojiOnlyFontSize } from './chatMessageText';
-import { QUICK_REACTIONS, receiptLabel, timeLabel } from './chatUi';
+import { ChatAvatar, QUICK_REACTIONS, receiptLabel, timeLabel } from './chatUi';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 
 const iconButtonSx = {
@@ -136,7 +137,7 @@ const EntityRefCard = ({ entityRef, mine, look }) => {
 };
 
 const ChatMessageBubble = ({
-  message, look, compact = false, highlight = false,
+  message, look, compact = false, highlight = false, avatar = '', showAvatar = false,
   onReply, onEdit, onDelete, onPin, onReact, onJumpTo,
 }) => {
   const [reactionAnchor, setReactionAnchor] = useState(null);
@@ -144,19 +145,24 @@ const ChatMessageBubble = ({
   const deleted = Boolean(message.deleted_at);
   const emojiSize = deleted ? null : emojiOnlyFontSize(message.body);
   const textColor = mine ? '#ffffff' : look.ink;
+  const read = Number(message.read_count) || 0;
+  const delivered = Number(message.delivered_count) || 0;
+
   const bubbleSx = {
-    px: 1.4, py: compact ? 0.7 : 0.95,
-    borderRadius: 16,
-    borderTopRightRadius: mine ? 6 : 16,
-    borderTopLeftRadius: mine ? 16 : 6,
+    position: 'relative',
+    px: 1.35, py: compact ? 0.55 : 0.8,
+    borderRadius: '14px',
+    borderTopRightRadius: mine ? 4 : 14,
+    borderTopLeftRadius: mine ? 14 : 4,
     background: mine ? look.bubbleMine : look.bubbleOther,
     color: textColor,
     border: '1px solid',
-    borderColor: mine ? alpha('#ffffff', 0.22) : look.divider,
+    borderColor: mine ? alpha('#ffffff', 0.18) : look.divider,
     boxShadow: look.shadowSoft,
     outline: highlight ? `2px solid ${alpha(look.accent, 0.65)}` : 'none',
     outlineOffset: 2,
     transition: 'outline .2s ease',
+    maxWidth: '100%',
   };
 
   const copyBody = () => {
@@ -167,26 +173,55 @@ const ChatMessageBubble = ({
     }
   };
 
+  const receipt = mine ? (
+    <Tooltip title={receiptLabel(message)}>
+      <Box
+        component="span"
+        data-testid="chat-message-receipt"
+        data-read={read ? 'true' : 'false'}
+        sx={{ display: 'inline-flex', alignItems: 'center' }}
+      >
+        {delivered || read ? (
+          <DoneAllIcon sx={{ fontSize: 14, color: read ? '#e6f2ff' : 'rgba(255,255,255,0.7)' }} />
+        ) : (
+          <DoneIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.7)' }} />
+        )}
+      </Box>
+    </Tooltip>
+  ) : null;
+
   return (
     <Box
       data-testid="chat-message"
       data-message-id={message.id}
       sx={{
         display: 'flex',
-        justifyContent: mine ? 'flex-start' : 'flex-end',
-        mt: compact ? 0.25 : 0.9,
+        flexDirection: mine ? 'row-reverse' : 'row',
+        alignItems: 'flex-end',
+        gap: 0.75,
+        mt: compact ? 0.2 : 0.85,
         '&:hover .chat-actions, &:focus-within .chat-actions': {
           opacity: 1, pointerEvents: 'auto',
         },
       }}
     >
-      <Box sx={{ maxWidth: '78%', position: 'relative' }}>
+      <Box sx={{ width: 30, flexShrink: 0 }}>
+        {!mine && showAvatar ? (
+          <ChatAvatar name={message.sender_name} photo={avatar} size={30} accent={look.accent} />
+        ) : null}
+      </Box>
+
+      <Box sx={{
+        maxWidth: '76%', minWidth: 0, position: 'relative',
+        display: 'flex', flexDirection: 'column',
+        alignItems: mine ? 'flex-end' : 'flex-start',
+      }}>
         {!deleted ? (
           <Stack
             direction="row" spacing={0.1} data-testid="chat-message-actions"
             className="chat-actions"
             sx={{
-              position: 'absolute', top: -15, insetInlineStart: 8, zIndex: 3,
+              position: 'absolute', top: -16, [mine ? 'left' : 'right']: 4, zIndex: 3,
               bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
               borderRadius: '10px', boxShadow: look.shadowCard,
               px: 0.3, py: 0.15, opacity: 0, pointerEvents: 'none',
@@ -263,7 +298,7 @@ const ChatMessageBubble = ({
               role={onJumpTo ? 'button' : undefined}
               onClick={() => onJumpTo?.(message.reply_to)}
               sx={{
-                mb: 0.55, px: 0.9, py: 0.4, borderRadius: '8px',
+                mb: 0.5, px: 0.9, py: 0.4, borderRadius: '8px',
                 borderInlineStart: `3px solid ${mine ? 'rgba(255,255,255,0.7)' : look.accent}`,
                 bgcolor: mine ? 'rgba(255,255,255,0.14)' : alpha(look.accent, 0.07),
                 cursor: onJumpTo ? 'pointer' : 'default',
@@ -288,7 +323,7 @@ const ChatMessageBubble = ({
               data-emoji-only={emojiSize ? 'true' : 'false'}
               sx={{
                 fontSize: emojiSize || 12.5,
-                lineHeight: emojiSize ? 1.2 : 1.65,
+                lineHeight: emojiSize ? 1.2 : 1.6,
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 ...(emojiSize ? { letterSpacing: 0.5, py: 0.2, display: 'inline-block' } : {}),
@@ -306,39 +341,32 @@ const ChatMessageBubble = ({
             <EntityRefCard key={entityRef.id} entityRef={entityRef} mine={mine} look={look} />
           ))}
 
-          <ReactionsRow
-            reactions={message.reactions || []}
-            look={look}
-            onReact={(emoji) => onReact?.(message, emoji)}
-          />
+          <Stack direction="row" alignItems="flex-end" spacing={0.5} sx={{ mt: 0.35 }}>
+            <ReactionsRow
+              reactions={message.reactions || []}
+              look={look}
+              onReact={(emoji) => onReact?.(message, emoji)}
+            />
+            <Box sx={{ flex: 1 }} />
+            <Stack direction="row" alignItems="center" spacing={0.4}
+              sx={{ color: mine ? 'rgba(255,255,255,0.82)' : look.muted, flexShrink: 0 }}>
+              {message.is_pinned ? (
+                <Tooltip title="سنجاق‌شده">
+                  <PushPinOutlinedIcon sx={{ fontSize: 11 }} />
+                </Tooltip>
+              ) : null}
+              <Typography sx={{ fontSize: 9 }}>
+                {timeLabel(message.created_at)}{message.edited_at ? ' · ویرایش‌شده' : ''}
+              </Typography>
+              {receipt}
+            </Stack>
+          </Stack>
         </Box>
-
-        <Stack direction="row" alignItems="center" spacing={0.6}
-          sx={{
-            mt: 0.3, px: 0.4, opacity: 0.85, color: look.muted,
-            justifyContent: mine ? 'flex-end' : 'flex-start',
-          }}>
-          {message.is_pinned ? (
-            <Tooltip title="سنجاق‌شده">
-              <PushPinOutlinedIcon sx={{ fontSize: 12 }} />
-            </Tooltip>
-          ) : null}
-          <Typography sx={{ fontSize: 9.5 }}>
-            {timeLabel(message.created_at)}{message.edited_at ? ' · ویرایش‌شده' : ''}
-          </Typography>
-          {mine ? (
-            <Tooltip title={receiptLabel(message)}>
-              <DoneAllIcon sx={{
-                fontSize: 12,
-                color: (message.read_count || 0) ? look.accent : 'inherit',
-              }} />
-            </Tooltip>
-          ) : null}
-        </Stack>
       </Box>
     </Box>
   );
 };
+
 
 export default ChatMessageBubble;
 

@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import {
-  Avatar, Box, Button, Chip, Divider, FormControlLabel, IconButton, Stack,
+  Box, Button, Chip, Divider, FormControlLabel, IconButton, Stack,
   Switch, Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
-import { initialsOf, kindMetaOf, timeLabel } from './chatUi';
+import { ChatAvatar, kindMetaOf, timeLabel } from './chatUi';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 
 const SectionTitle = ({ children, look }) => (
@@ -27,7 +27,6 @@ const ChatInfoPanel = ({
 }) => {
   if (!conversation) return null;
   const meta = kindMetaOf(conversation);
-  const Icon = meta.icon;
   const membership = conversation.membership || {};
   const switchSx = { '& .MuiSwitch-switchBase.Mui-checked': { color: look.accent } };
 
@@ -59,12 +58,13 @@ const ChatInfoPanel = ({
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 1.4, py: 1.2 }}>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-          <Avatar sx={{
-            width: 44, height: 44, fontSize: 14, fontWeight: 800,
-            bgcolor: alpha(meta.color, 0.16), color: meta.color,
-          }}>
-            {conversation.kind === 'channel' ? <Icon sx={{ fontSize: 22 }} /> : initialsOf(conversation)}
-          </Avatar>
+          <ChatAvatar
+            name={conversation.title}
+            photo={conversation.avatar_url}
+            kind={conversation.kind}
+            size={44}
+            accent={meta.color || look.accent}
+          />
           <Box sx={{ minWidth: 0 }}>
             <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 900, color: 'text.primary' }}>
               {conversation.title || 'گفتگوی خصوصی'}
@@ -139,9 +139,12 @@ const ChatInfoPanel = ({
         {members.length ? members.map((member) => (
           <Stack key={member.id || member.user} direction="row" spacing={0.75}
             alignItems="center" sx={{ py: 0.35 }}>
-            <Avatar sx={{ width: 26, height: 26, fontSize: 10.5, fontWeight: 800 }}>
-              {String(member.user_name || 'ک').slice(0, 2)}
-            </Avatar>
+            <ChatAvatar
+              name={member.user_name || `کاربر #${member.user}`}
+              photo={member.photo_url}
+              size={26}
+              accent={look.accent}
+            />
             <Typography noWrap sx={{ fontSize: 11, flex: 1, color: 'text.primary' }}>
               {member.user_name || `کاربر #${member.user}`}
             </Typography>

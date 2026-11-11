@@ -4,18 +4,18 @@
  */
 import React, { useMemo } from 'react';
 import {
-  Avatar, Badge, Box, Button, Chip, CircularProgress, IconButton, InputAdornment,
+  Badge, Box, Button, Chip, CircularProgress, IconButton, InputAdornment,
   Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import AlternateEmailOutlinedIcon from '@mui/icons-material/AlternateEmailOutlined';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import NotificationsOffOutlinedIcon from '@mui/icons-material/NotificationsOffOutlined';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import SearchIcon from '@mui/icons-material/Search';
-import { CHAT_KIND_META, initialsOf, kindMetaOf, timeLabel } from './chatUi';
+import { ChatAvatar, CHAT_KIND_META, kindMetaOf, timeLabel } from './chatUi';
+import { TabsCard } from '../../core/components/settings/settingsUi';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 
 export const RAIL_TABS = [
@@ -69,12 +69,14 @@ const ConversationRow = ({ row, active, accent, onSelect }) => {
         color="error" badgeContent={unread ? toPersianDigits(unread) : 0} max={99}
         sx={{ '& .MuiBadge-badge': { fontSize: 9, height: 16, minWidth: 16 } }}
       >
-        <Avatar sx={{
-          width: 40, height: 40, fontSize: 12.5, fontWeight: 800,
-          bgcolor: alpha(row.color || meta.color, 0.16), color: row.color || meta.color,
-        }}>
-          {row.kind === 'channel' ? <Icon sx={{ fontSize: 19 }} /> : initialsOf(row)}
-        </Avatar>
+        <ChatAvatar
+          name={row.title}
+          photo={row.avatar_url}
+          kind={row.kind}
+          size={40}
+          accent={row.color || meta.color || accent}
+          sx={{ border: '1px solid', borderColor: alpha(accent, 0.25) }}
+        />
       </Badge>
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Stack direction="row" alignItems="center" spacing={0.5}>
@@ -118,7 +120,7 @@ const ConversationRow = ({ row, active, accent, onSelect }) => {
 };
 
 const ChatConversationRail = ({
-  conversations = [], activeId, accent, loading = false, unread = 0, mentions = 0,
+  conversations = [], activeId, accent, loading = false, unread = 0,
   search = '', onSearch, tab = 'all', onTab, kindFilter = 'all', onKindFilter,
   onSelect, onNewDirect, onNewChat,
 }) => {
@@ -126,18 +128,12 @@ const ChatConversationRail = ({
     () => filterConversations(conversations, { tab, kind: kindFilter }),
     [conversations, tab, kindFilter],
   );
-  const chipSx = (active) => ({
-    height: 22, fontSize: 10, fontWeight: 800,
-    bgcolor: active ? alpha(accent, 0.16) : 'transparent',
-    color: active ? accent : 'text.secondary',
-    border: `1px solid ${active ? alpha(accent, 0.35) : 'transparent'}`,
-  });
 
   return (
     <Box sx={{
       width: { xs: '100%', sm: 300, md: 320, xl: 356 }, flexShrink: 0,
       display: 'flex', flexDirection: 'column', minHeight: 0,
-      border: '1px solid', borderColor: 'divider',
+      border: '1px solid', borderColor: alpha(accent, 0.22),
       borderRadius: 'var(--hrms-radius-large, 18px)',
       bgcolor: 'background.paper', overflow: 'hidden',
     }}>
@@ -147,12 +143,6 @@ const ChatConversationRail = ({
           <Typography sx={{ fontSize: 13, fontWeight: 900, color: 'text.primary', flex: 1 }}>
             گفتگوی سازمانی
           </Typography>
-          {unread ? (
-            <Chip size="small" label={`${toPersianDigits(unread)} نخوانده`} sx={{
-              height: 18, fontSize: 9.5, fontWeight: 800,
-              bgcolor: alpha(accent, 0.12), color: accent,
-            }} />
-          ) : null}
           <Tooltip title="گفتگوی خصوصی با یک همکار">
             <IconButton size="small" aria-label="گفتگوی خصوصی" onClick={onNewDirect}
               sx={{ color: accent }}>
@@ -182,32 +172,35 @@ const ChatConversationRail = ({
             '& .MuiInputBase-input': { fontSize: 11.5 } }}
         />
 
-        <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.8 }}
-          data-testid="chat-rail-tabs">
-          {RAIL_TABS.map((item) => (
-            <Chip
-              key={item.key} size="small" clickable label={item.label}
-              onClick={() => onTab?.(item.key)}
-              sx={chipSx(tab === item.key)}
-            />
-          ))}
-        </Stack>
-        <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}
-          data-testid="chat-kind-filter">
-          {KIND_FILTERS.map((item) => {
-            const meta = CHAT_KIND_META[item.key] || {};
-            const Icon = meta.icon;
-            const active = kindFilter === item.key;
-            return (
-              <Chip
-                key={item.key} size="small" clickable label={item.label}
-                icon={Icon ? <Icon sx={{ fontSize: 12 }} /> : undefined}
-                onClick={() => onKindFilter?.(item.key)}
-                sx={{ ...chipSx(active), height: 20, fontSize: 9.5 }}
-              />
-            );
-          })}
-        </Stack>
+        <TabsCard
+          dense
+          sx={{ mb: 0, mt: 1, borderRadius: '10px' }}
+          activeColor={accent}
+          tabs={RAIL_TABS.map((item) => ({
+            key: item.key,
+            label: item.label,
+            badge: item.key === 'unread' && unread ? toPersianDigits(unread) : undefined,
+          }))}
+          value={Math.max(0, RAIL_TABS.findIndex((item) => item.key === tab))}
+          onChange={(index) => onTab?.(RAIL_TABS[index]?.key || 'all')}
+        />
+
+        <TabsCard
+          dense
+          sx={{ mb: 0, mt: 0.5, borderRadius: '10px', bgcolor: 'transparent', border: 0 }}
+          activeColor={accent}
+          tabs={KIND_FILTERS.map((item) => ({
+            key: item.key,
+            label: item.label,
+            icon: (CHAT_KIND_META[item.key] || {}).icon
+              ? React.createElement(CHAT_KIND_META[item.key].icon)
+              : undefined,
+          }))}
+          value={Math.max(0, KIND_FILTERS.findIndex((item) => item.key === kindFilter))}
+          onChange={(index) => onKindFilter?.(KIND_FILTERS[index]?.key || 'all')}
+        />
+        <Box data-testid="chat-rail-tabs" sx={{ display: 'none' }} />
+        <Box data-testid="chat-kind-filter" sx={{ display: 'none' }} />
       </Box>
 
       <Box sx={{
@@ -242,18 +235,6 @@ const ChatConversationRail = ({
             ) : null}
           </Box>
         )}
-      </Box>
-
-      <Box sx={{ px: 1.25, py: 0.85, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Stack direction="row" spacing={0.75} alignItems="center">
-          <Badge color="error" badgeContent={toPersianDigits(mentions || 0)}
-            max={99} invisible={!mentions}>
-            <AlternateEmailOutlinedIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-          </Badge>
-          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-            منشن‌های خوانده‌نشده
-          </Typography>
-        </Stack>
       </Box>
     </Box>
   );

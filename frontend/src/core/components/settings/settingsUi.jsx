@@ -48,39 +48,42 @@ export const StatGrid = ({ stats = [] }) => (
   </Grid>
 );
 
-export const TabsCard = ({ tabs = [], value, onChange, activeColor = SOFT.indigo }) => (
-  <Paper elevation={0} sx={{ ...CARD_SX, mb: 2, overflow: 'hidden' }}>
+export const TabsCard = ({
+  tabs = [], value, onChange, activeColor = SOFT.indigo, sx, dense = false,
+}) => (
+  <Paper elevation={0} sx={{ ...CARD_SX, mb: 2, overflow: 'hidden', ...(sx || {}) }}>
     <Tabs
       value={value}
       onChange={(e, v) => onChange(v)}
       variant="scrollable"
       scrollButtons="auto"
       sx={{
-        px: 1,
-        minHeight: 54,
+        px: dense ? 0.25 : 1,
+        minHeight: dense ? 40 : 54,
         '& .MuiTabs-indicator': { height: 3, borderRadius: 2, bgcolor: activeColor },
         '& .MuiTab-root': {
-          minHeight: 54, minWidth: 0, px: 1.75,
-          textTransform: 'none', fontWeight: 400, fontSize: 'var(--hrms-font-button-size, 13px)',
-          color: 'text.secondary', gap: 0.75,
+          minHeight: dense ? 40 : 54, minWidth: 0, px: dense ? 1 : 1.75,
+          textTransform: 'none', fontWeight: 400,
+          fontSize: dense ? 11.5 : 'var(--hrms-font-button-size, 13px)',
+          color: 'text.secondary', gap: dense ? 0.4 : 0.75,
         },
-        '& .MuiTab-root.Mui-selected': { color: activeColor, fontWeight: 500 },
+        '& .MuiTab-root.Mui-selected': { color: activeColor, fontWeight: 600 },
       }}
     >
       {tabs.map((tab, index) => (
         <Tab
           key={tab.key}
           value={index}
-          icon={React.cloneElement(tab.icon, { sx: { fontSize: 17 } })}
+          icon={tab.icon ? React.cloneElement(tab.icon, { sx: { fontSize: dense ? 15 : 17 } }) : undefined}
           iconPosition="start"
           label={(
-            <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap>
+            <Stack direction="row" spacing={dense ? 0.4 : 0.75} alignItems="center" useFlexGap>
               <span>{tab.label}</span>
               {tab.badge != null && tab.badge !== '' ? (
                 <Chip
                   size="small" label={tab.badge}
                   sx={{
-                    height: 17, fontSize: 12, fontWeight: 800,
+                    height: 17, fontSize: dense ? 10 : 12, fontWeight: 800,
                     bgcolor: alpha(activeColor, 0.12), color: activeColor,
                     '& .MuiChip-label': { px: 0.6 },
                   }}

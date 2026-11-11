@@ -130,6 +130,18 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   );
   expect(textBubble).toBeTruthy();
 
+  // تیک رسید برای پیام خودم + شمارهٔ خوانده‌شدن روی داده است.
+  const receipt = container.querySelector('[data-testid="chat-message-receipt"]');
+  expect(receipt).toBeTruthy();
+  expect(['true', 'false']).toContain(receipt.getAttribute('data-read'));
+
+  // تب‌های استاندارد (استودیو تم) برای وضعیت و نوع گفتگو.
+  expect(container.textContent).toContain('همهٔ انواع');
+  expect(container.textContent).toContain('سنجاق‌شده');
+  // توضیحات اضافی حذف شده‌اند.
+  expect(container.textContent).not.toContain('منشن‌های خوانده‌نشده');
+  expect(container.textContent).not.toContain('نویسه');
+
   // گفتگوی خصوصی از همان صفحه قابل شروع است (نه فقط گروه/کانال)
   const directButton = container.querySelector('button[aria-label="گفتگوی خصوصی"]');
   expect(directButton).toBeTruthy();
@@ -142,8 +154,8 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   if (closeDialog) await act(async () => { closeDialog.click(); await wait(150); });
 
   // «الصاق رکورد» جست‌وجوی داخل ماژول‌ها را باز می‌کند
-  const entityButton = Array.from(container.querySelectorAll('button'))
-    .find((button) => button.textContent.includes('الصاق رکورد'));
+  // «الصاق رکورد» حالا یک آیکن در نوار نوشتن است (نه دکمهٔ متنی).
+  const entityButton = container.querySelector('button[aria-label="الصاق رکورد"]');
   expect(entityButton).toBeTruthy();
   await act(async () => { entityButton.click(); await wait(250); });
   expect(document.body.textContent).toContain('الصاق رکورد از ماژول‌ها');

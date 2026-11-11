@@ -28,7 +28,7 @@ import ChatInfoPanel from './ChatInfoPanel';
 import ChatMessageBubble from './ChatMessageBubble';
 import EntityPickerDialog, { ENTITY_MODULE_META } from './EntityPickerDialog';
 import {
-  CHAT_KIND_META, MUTED, dateLabel, initialsOf, kindMetaOf, useChatLook,
+  ChatAvatar, CHAT_KIND_META, MUTED, dateLabel, kindMetaOf, useChatLook,
 } from './chatUi';
 
 export { CHAT_KIND_META, canEditMessage, receiptLabel } from './chatUi';
@@ -243,6 +243,14 @@ const ChatPanel = ({
     () => (Array.isArray(directoryQuery.data) ? directoryQuery.data : []),
     [directoryQuery.data],
   );
+  /** نقشهٔ عکس پرسنلی کاربران برای آواتار پیام‌ها (از همان فهرست کاربران چت). */
+  const photoByUser = useMemo(() => {
+    const map = new Map();
+    directory.forEach((person) => {
+      if (person?.id && person.photo_url) map.set(String(person.id), person.photo_url);
+    });
+    return map;
+  }, [directory]);
 
   const membersQuery = useQuery({
     queryKey: ['chat-members', activeId],
@@ -315,6 +323,8 @@ const ChatPanel = ({
         await axiosInstance.post(`/chat/conversations/${activeId}/read/`, {});
         qc.invalidateQueries({ queryKey: ['chat-unread'] });
         qc.invalidateQueries({ queryKey: ['chat-conversations'] });
+        // اعلان‌های همین گفتگو در سرور خوانده می‌شوند؛ زنگوله هم فوراً صفر می‌شود.
+        qc.invalidateQueries({ queryKey: ['notifications'] });
       } catch (error) {
         setToast('ثبت «خوانده شد» انجام نشد');
       }
@@ -515,8 +525,8 @@ const ChatPanel = ({
       width: '100%', minWidth: 0,
       display: 'flex', flexDirection: 'column',
     }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems="stretch"
-        sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 1.25, md: 1.75 }}
+        alignItems="stretch" sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
         {/* ---------------- فهرست گفتگوها ---------------- */}
         <ChatConversationRail
           conversations={conversations}
@@ -524,7 +534,6 @@ const ChatPanel = ({
           accent={accent}
           loading={conversationsQuery.isLoading}
           unread={unreadQuery.data?.chat || 0}
-          mentions={unreadQuery.data?.mentions || 0}
           search={search}
           onSearch={setSearch}
           tab={railTab}
@@ -542,29 +551,25 @@ const ChatPanel = ({
         {/* ---------------- رشتهٔ پیام‌ها ---------------- */}
         <Box sx={{
           flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
-          border: '1px solid', borderColor: 'divider',
+          border: '1px solid', borderColor: alpha(accent, 0.22),
           borderRadius: 'var(--hrms-radius-large, 18px)',
-          bgcolor: look.dark ? alpha('#ffffff', 0.02) : alpha('#f8fafc', 0.9),
+          bgcolor: look.wash,
           overflow: 'hidden',
         }}>
           {activeConversation ? (
             <>
               <Box sx={{
                 px: 1.4, py: 1, borderBottom: '1px solid', borderColor: 'divider',
-                bgcolor: 'background.paper',
+                bgcolor: look.tint,
               }}>
                 <Stack direction="row" alignItems="center" spacing={1}>
-                  <Avatar sx={{
-                    width: 36, height: 36, fontSize: 12.5, fontWeight: 800,
-                    bgcolor: alpha(accent, 0.14), color: accent,
-                  }}>
-                    {activeConversation.kind === 'channel'
-                      ? (() => {
-                        const KindIcon = kindMetaOf(activeConversation).icon;
-                        return <KindIcon sx={{ fontSize: 18 }} />;
-                      })()
-                      : initialsOf(activeConversation)}
-                  </Avatar>
+                  <ChatAvatar
+                    name={activeConversation.title}
+                    photo={activeConversation.avatar_url}
+                    kind={activeConversation.kind}
+                    size={36}
+                    accent={accent}
+                  />
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 900, color: 'text.primary' }}>
                       {activeConversation.title || 'گفتگوی خصوصی'}
@@ -663,6 +668,8 @@ const ChatPanel = ({
                             message={message}
                             look={look}
                             compact={compact}
+                            showAvatar={!message.is_mine && !compact}
+                            avatar={photoByUser.get(String(message.sender)) || ''}
                             highlight={String(highlightId || '') === String(message.id)}
                             onReply={setReplyTo}
                             onEdit={(row) => { setEditMessage(row); setEditValue(row.body || ''); }}
@@ -780,39 +787,24 @@ const ChatPanel = ({
                       <AlternateEmailOutlinedIcon sx={{ fontSize: 18 }} />
                     </IconButton>
                   </Tooltip>
+                  <Tooltip title="الصاق رکورد از ماژول‌ها">
+                    <IconButton size="small" aria-label="الصاق رکورد"
+                      onClick={() => setEntityPickerOpen(true)}
+                      sx={{ color: accent }}>
+                      <TagIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
                   <Button
                     variant="contained" size="small" onClick={submit}
                     disabled={sendMessage.isPending || (!draft.trim() && !pickedFiles.length)}
                     startIcon={<SendIcon sx={{ fontSize: 16 }} />}
                     sx={{
-                      bgcolor: accent, '&:hover': { bgcolor: accent },
+                      bgcolor: accent, '&:hover': { bgcolor: look.deep },
                       minWidth: 80, fontSize: 11.5, borderRadius: '11px',
                     }}
                   >
                     ارسال
                   </Button>
-                </Stack>
-
-
-                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mt: 0.55 }}>
-                  <Tooltip title="الصاق رکورد از ماژول‌ها (قرارداد، پروژه، سند، نامه…)">
-                    <Button
-                      size="small" variant="outlined" startIcon={<TagIcon sx={{ fontSize: 15 }} />}
-                      onClick={() => setEntityPickerOpen(true)}
-                      sx={{
-                        fontSize: 10.5, height: 26,
-                        borderColor: alpha(accent, 0.35), color: accent,
-                      }}
-                    >
-                      الصاق رکورد
-                    </Button>
-                  </Tooltip>
-                  <Typography sx={{ fontSize: 9.5, color: 'text.secondary', flex: 1 }}>
-                    داده کپی نمی‌شود؛ فقط ارجاع به رکورد اصلی الصاق می‌شود.
-                  </Typography>
-                  <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }}>
-                    {toPersianDigits((draft || '').length)} نویسه
-                  </Typography>
                 </Stack>
               </Box>
             </>
