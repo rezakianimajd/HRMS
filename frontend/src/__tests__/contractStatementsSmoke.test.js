@@ -364,3 +364,30 @@ test('multi-level statement sends level rows with their own cumulative amounts',
   root.unmount();
   container.remove();
 });
+
+test('statements list is fetched for every page (no silent truncation at 500 rows)', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/contracts-statements?contract=1']}>
+          <StatementEditorPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(600);
+  });
+
+  const call = axiosInstance.get.mock.calls.find(([url]) => url === '/contract-statements/');
+  expect(call).toBeTruthy();
+  expect(call[1].params.page_size).toBe(1000);
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+  client.clear();
+});
+

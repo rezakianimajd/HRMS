@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
+import fetchAllPages from '../../core/api/fetchAllPages';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog,
   DialogActions, DialogContent, DialogTitle, Divider, FormControl,
@@ -535,7 +536,8 @@ const StatementEditorPage = () => {
 
   const { data: statementsData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['contract-statements'],
-    queryFn: () => axiosInstance.get('/contract-statements/', { params: { page_size: 500 } }).then((response) => response.data),
+    // همهٔ صفحه‌ها خوانده می‌شود؛ یک صفحهٔ ۵۰۰تایی، صورت‌وضعیت‌های تازه را جا می‌گذاشت.
+    queryFn: () => fetchAllPages('/contract-statements/', { page_size: 1000 }),
   });
   const allStatements = asArray(statementsData);
 

@@ -558,6 +558,12 @@ class InvoiceViewSet(BaseContractViewSet):
 class StatementViewSet(BaseContractViewSet):
     serializer_class = StatementSerializer
     queryset = Statement.objects.select_related('contract', 'currency').prefetch_related('documents', 'payment_allocations__payment')
+    # ترتیب ثابت برای صفحه‌بندی: بدون ORDER BY، پستگرس در هر صفحه ردیف‌های
+    # دلخواه برمی‌گرداند و صورت‌وضعیت‌های تازه ممکن است در صفحهٔ ۵۰۰تایی نیایند.
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['number', 'description', 'contract__number', 'contract__subject']
+    ordering_fields = ['id', 'number', 'date', 'created_at', 'amount']
+    ordering = ['-id']
     _recalc_fields = {
         'amount', 'date', 'contract', 'additions', 'deductions', 'kind',
         'value_added_tax', 'other_additions', 'cumulative_previous_amount', 'work_done',

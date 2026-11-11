@@ -593,6 +593,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    خطای «SetConsoleWindowTitle / No process is on the other end of the pipe» می‌میرد و بیلد نیمه‌کاره
    می‌ماند. راه مطمئن: `node node_modules/react-scripts/bin/react-scripts.js build` با
    `PUBLIC_URL='/assets'` (و به‌صورت detached، چون ابزار اجرای دستور پس از ۳۰ ثانیه قطع می‌شود).
+25. **صفحه‌بندی DRF بدون `ORDER BY` ردیف گم می‌کند:** فهرست صورت‌وضعیت‌ها با `page_size=500`
+    و ۵۱۴ رکورد، صورت‌وضعیت تازه (شمارهٔ ۰۳) را برنمی‌گرداند — پستگرس بدون ترتیب، هر ۵۰۰ ردیف
+    دلخواه می‌دهد (DRF هم `UnorderedObjectListWarning` می‌دهد). همیشه `ordering` ثابت
+    (`['-id']`) روی ویوست بگذارید و در فرانت از `core/api/fetchAllPages` استفاده کنید، نه یک
+    صفحهٔ ثابت؛ وگرنه رکورد «توی ادمین هست ولی در فهرست نیست».
 24. **متن فارسی با نیم‌فاصله را پیش از تطبیق الگو نرمال کنید:** «می‌تونی» با ZWNJ در نرمال‌سازی به
    «می تونی» تبدیل می‌شود و الگوی «میتونی» دیگر مطابقت نمی‌کند؛ فهرست واژه‌ها/پیشوندها را هم با همان
    تابع نرمال‌سازی بسازید (نمونه: `communication/task_suggest.py` → `_POLITE_NORMALIZED`).
@@ -603,6 +608,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **رفع «صورت‌وضعیت ذخیره‌شده در فهرست دیده نمی‌شود» (۲۰۲۶-۱۱-۱۱):** صورت‌وضعیت ۰۳ قرارداد
+  `C-KPSMI-05-073` با `POST 201` ذخیره شده بود (در ادمین و پروندهٔ قرارداد دیده می‌شد) ولی صفحهٔ
+  `/contracts-statements?contract=92` فقط ۲ دوره نشان می‌داد.
+  - **علت دقیق:** `StatementEditorPage` فهرست را با **یک** درخواست `?page_size=500` می‌گرفت و
+    نتیجه را سمت کلاینت فیلتر می‌کرد؛ تعداد صورت‌وضعیت‌ها **۵۱۴** بود و `StatementViewSet` هیچ
+    `ORDER BY` نداشت → پستگرس ۵۰۰ ردیف دلخواه داد و ردیف تازه (id=552) بیرون ماند
+    (`UnorderedObjectListWarning` هم در تست دیده می‌شد). تلاش دوبارهٔ کاربر هم `400` (شمارهٔ تکراری)
+    گرفت و شبیه «خطا در ذخیره» شد.
+  - **بک‌اند:** روی `StatementViewSet` → `filter_backends=[SearchFilter, OrderingFilter]`،
+    `ordering_fields=['id','number','date','created_at','amount']` و **`ordering=['-id']`** تا
+    صفحه‌بندی قطعی و بدون تکرار/افتادگی باشد.
+  - **فرانت:** `StatementEditorPage` از `fetchAllPages('/contract-statements/', {page_size:1000})`
+    استفاده می‌کند (همهٔ صفحه‌ها) و `ContractSubEntityPage` (تب‌های صورت‌وضعیت/فاکتور/پرداخت)
+    `page_size: 1000` می‌فرستد.
+  - **تأیید زندهٔ `kpsmi`:** کل ۵۱۴ ردیف = صفحهٔ ۱ (۵۰۰) + صفحهٔ ۲ (۱۴)، هم‌پوشانی ۰، ردیف `552`
+    اول صفحهٔ ۱؛ `?contract=92&page_size=1000` → `['03','02','01']`.
+  - تست: `contracts/tests_statement_list.py` (۴ تست ساختاری) و تست جدید
+    `contractStatementsSmoke` (page_size=1000) — `contractStatementsSmoke` ۵ تست، سوئیت صورت‌وضعیت
+    ۱۶ تست بک‌اند سبز.
 - **عکس پرسنلی با کیفیت نمایشی (۲۰۲۶-۱۱-۱۱):** عکس‌های آپلودی در آواتارها تار/پیکسلی دیده
   می‌شدند (منبع: اسکن‌های بزرگ ولی کم‌جزئیات + تحویل فایل چند صد کیلوبایتی برای آواتار ۳۰px).
   - **بک‌اند:** `employees/photo_service.py` (خالص/قابل تست) — `clamp_size` (۳۲…۱۰۲۴)، `render_photo`

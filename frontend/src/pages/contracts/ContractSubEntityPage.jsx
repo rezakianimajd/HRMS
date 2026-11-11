@@ -69,13 +69,16 @@ const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
 
   const { data: contracts } = useQuery({
     queryKey: ['contracts-sub', config.endpoint],
-    queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data),
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 1000 } }).then(r => r.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
   const { data, isLoading } = useQuery({
     queryKey: [config.queryKey, contractId],
-    queryFn: () => axiosInstance.get(config.endpoint, { params: { contract: contractId } }).then(r => r.data),
+    // صفحه‌بندی سروری تا سقف مجاز؛ ردیف‌های یک قرارداد هرگز نباید با سقف پیش‌فرض ۱۰۰ جا بیفتند.
+    queryFn: () => axiosInstance.get(config.endpoint, {
+      params: { contract: contractId, page_size: 1000 },
+    }).then(r => r.data),
     enabled: !!contractId,
   });
   const list = Array.isArray(data) ? data : data?.results || [];
