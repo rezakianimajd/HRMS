@@ -131,7 +131,7 @@ const ChatConversationRail = ({
 
   return (
     <Box sx={{
-      width: { xs: '100%', sm: 300, md: 320, xl: 356 }, flexShrink: 0,
+      width: '100%', minWidth: 0, flexShrink: 0,
       display: 'flex', flexDirection: 'column', minHeight: 0,
       border: '1px solid', borderColor: alpha(accent, 0.22),
       borderRadius: 'var(--hrms-radius-large, 18px)',

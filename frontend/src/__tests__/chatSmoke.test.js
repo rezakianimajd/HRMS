@@ -135,6 +135,11 @@ test('chat page lists conversations and shows the encrypted-thread notice', asyn
   expect(receipt).toBeTruthy();
   expect(['true', 'false']).toContain(receipt.getAttribute('data-read'));
 
+  // چیدمان سه‌ستونه با gap واقعی (grid) تا کارت‌ها در RTL به هم نچسبند.
+  const layout = container.querySelector('[data-testid="chat-layout"]');
+  expect(layout).toBeTruthy();
+  expect(layout.children.length).toBeGreaterThanOrEqual(2);
+
   // تب‌های استاندارد (استودیو تم) برای وضعیت و نوع گفتگو.
   expect(container.textContent).toContain('همهٔ انواع');
   expect(container.textContent).toContain('سنجاق‌شده');

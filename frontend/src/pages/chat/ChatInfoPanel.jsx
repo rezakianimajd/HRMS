@@ -34,7 +34,7 @@ const ChatInfoPanel = ({
     <Box
       data-testid="chat-info-panel"
       sx={{
-        width: { xs: '100%', md: 290 }, flexShrink: 0, minHeight: 0,
+        width: '100%', minWidth: 0, flexShrink: 0, minHeight: 0,
         display: 'flex', flexDirection: 'column',
         border: '1px solid', borderColor: 'divider',
         borderRadius: 'var(--hrms-radius-large, 18px)',

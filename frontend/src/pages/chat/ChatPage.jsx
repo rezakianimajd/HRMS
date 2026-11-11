@@ -518,6 +518,7 @@ const ChatPanel = ({
     height: 20, fontSize: 10, fontWeight: 800,
     bgcolor: alpha(accent, 0.1), color: accent,
   };
+  const showInfo = Boolean(infoOpen && activeConversation);
 
   return (
     <Box sx={{
@@ -525,8 +526,23 @@ const ChatPanel = ({
       width: '100%', minWidth: 0,
       display: 'flex', flexDirection: 'column',
     }}>
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={{ xs: 1.25, md: 1.75 }}
-        useFlexGap alignItems="stretch" sx={{ height, minHeight: 0, minWidth: 0, width: '100%' }}>
+      {/* چیدمان گرید (RTL-safe): فهرست | رشتهٔ پیام | پنل اطلاعات با `gap` واقعی */}
+      <Box data-testid="chat-layout" sx={{
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: 'minmax(0, 1fr)',
+          md: showInfo ? '320px minmax(0, 1fr) 290px' : '320px minmax(0, 1fr)',
+          xl: showInfo ? '356px minmax(0, 1fr) 300px' : '356px minmax(0, 1fr)',
+        },
+        gridTemplateRows: {
+          xs: 'minmax(180px, 40%) minmax(0, 1fr) auto',
+          md: 'minmax(0, 1fr)',
+        },
+        gridAutoRows: 'minmax(0, 1fr)',
+        gap: { xs: 1.5, md: 2.25 },
+        alignItems: 'stretch',
+        height, minHeight: 0, minWidth: 0, width: '100%',
+      }}>
         {/* ---------------- فهرست گفتگوها ---------------- */}
         <ChatConversationRail
           conversations={conversations}
@@ -550,7 +566,7 @@ const ChatPanel = ({
 
         {/* ---------------- رشتهٔ پیام‌ها ---------------- */}
         <Box sx={{
-          flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
+          minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column',
           border: '1px solid', borderColor: alpha(accent, 0.22),
           borderRadius: 'var(--hrms-radius-large, 18px)',
           bgcolor: look.wash,
@@ -823,7 +839,7 @@ const ChatPanel = ({
           )}
         </Box>
 
-        {infoOpen && activeConversation ? (
+        {showInfo ? (
           <ChatInfoPanel
             look={look}
             conversation={activeConversation}
@@ -837,9 +853,7 @@ const ChatPanel = ({
             onJumpTo={scrollToMessage}
           />
         ) : null}
-
-
-      </Stack>
+      </Box>
 
       {toast ? (
         <Alert severity="info" onClose={() => setToast('')} sx={{ mt: 1 }}>{toast}</Alert>
