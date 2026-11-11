@@ -614,6 +614,22 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **اتصال نامه به پروندهٔ طرف حساب/قرارداد (۲۰۲۶-۱۱-۱۱):** نامه‌هایی که «طرف حساب»شان فقط با نام
+  (متن آزاد) ثبت می‌شد در پروندهٔ قرارداد آن طرف دیده نمی‌شدند.
+  - **ذخیره:** `correspondences/party_link.py` (`normalize_party_name`/`match_party`/`link_letter_parties`)
+    در `LetterViewSet.perform_create/perform_update` صدا زده می‌شود؛ اگر `party_account` خالی و
+    `party_name` با نام یک `ContractParty` فعالِ همان شرکت یکسان باشد، FK پر می‌شود (همین برای
+    `sender_party` وقتی `sender_kind='party'`).
+  - **فرانت:** `PartyPicker` اگر نام تایپ‌شده با یکی از طرف‌حساب‌های موجود یکسان باشد همان را انتخاب
+    می‌کند (نه متن آزاد) و helper آن `normalizePartyName` است.
+  - **بازپرکنی داده‌های قبلی:** `manage.py link_letter_parties --schema kpsmi [--apply] [--limit]`
+    (پیش‌فرض dry-run). روی `kpsmi` ۶۹ نامه وصل شد (party_account ۴۳ → ۱۱۲).
+  - **پروندهٔ قرارداد:** تب مکاتبات `party` و `contract` را با هم می‌فرستد و بک‌اند با OR
+    (`party_account` | `sender_party` | `contract_id`) فیلتر می‌کند تا نامه‌های «قرارداد مرتبط»
+    هم حتی بدون طرف حساب دیده شوند.
+  - تست: `correspondences/tests_party_link.py` (۶ تست DB-free)، `contractProfileSmoke` (۱)،
+    `correspondenceSmoke` (۱۸) سبز.
+
 - **چاپ قابل تنظیم + انتخاب ردیف در مکاتبات (۲۰۲۶-۱۱-۱۱):** سربرگ/پاورقی چاپ از «ظاهر و پوسته
   → تب چاپ» قابل تنظیم شد، جهت/کاغذ در هر چاپ انتخاب می‌شود و ردیف‌های فهرست مکاتبات قابل تیک‌خوردن
   (چاپ/اکسل) هستند.

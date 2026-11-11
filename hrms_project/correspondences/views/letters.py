@@ -26,6 +26,7 @@ from correspondences.views.base import (  # noqa: F401 — واردات مشتر
     _user_employee, _user_name, _user_of_employee,
 )
 from correspondences.views.ordering import LetterOrderingFilter  # noqa: F401
+from correspondences.party_link import link_letter_parties
 
 
 class LetterCategoryViewSet(DefinitionPermissionMixin, BaseLetterViewSet):
@@ -264,12 +265,21 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         if entry_method:
             qs = qs.filter(entry_method=entry_method)
 
-        # همهٔ نامه‌های یک طرف حساب (طرف حساب نامه یا ارسال‌کننده) — برای پروندهٔ قرارداد
+        # همهٔ نامه‌های یک طرف حساب (طرف حساب نامه یا ارسال‌کننده) + نامه‌های
+        # مرتبط با قرارداد همان طرف — برای پروندهٔ قرارداد/طرف حساب.
         party_id = params.get('party')
-        if party_id:
+        contract_id = params.get('contract')
+        if party_id and contract_id:
+            qs = qs.filter(
+                Q(party_account_id=party_id) | Q(sender_party_id=party_id)
+                | Q(contract_id=contract_id),
+            )
+        elif party_id:
             qs = qs.filter(
                 Q(party_account_id=party_id) | Q(sender_party_id=party_id),
             )
+        elif contract_id:
+            qs = qs.filter(contract_id=contract_id)
 
         status_param = params.get('status')
         if status_param:
@@ -353,9 +363,16 @@ class LetterViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         )
         if wants_number:
             self._assign_number(letter, user, series_id=series_id)
+        link_letter_parties(letter, company)
         _log_event(letter, 'created', user, note=f'ثبت نامه: {letter.subject}')
         if letter.number:
             _log_event(letter, 'registered', user, note=f'شماره نامه: {letter.number}')
+
+    def perform_update(self, serializer):
+        company = _get_company(self.request)
+        letter = serializer.save()
+        # اگر «طرف حساب» فقط با نام (متن آزاد) ثبت شده بود، به پروندهٔ قرارداد وصل شود
+        link_letter_parties(letter, company)
 
     def _assign_number(self, letter, user=None, series_id=None):
         """تخصیص شماره از گروه شماره‌گذاری (اگر شماره خالی باشد) و هم‌گام‌سازی شمارنده."""

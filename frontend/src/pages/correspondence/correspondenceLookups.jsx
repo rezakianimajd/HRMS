@@ -205,6 +205,13 @@ export const MultiPersonnelPicker = ({
  *  (و بعداً از «نگاشت نام‌ها» به طرف حساب مدیریت قراردادها وصل/تعمیم داده می‌شود).
  *  با ``createInContracts`` روشن، نام جدید مستقیماً در مدیریت قراردادها ساخته می‌شود.
  */
+/** نرمال‌سازی نام برای تطبیق (نیم‌فاصله/فاصله‌های تکراری/حروف کوچک). */
+export const normalizePartyName = (value) => String(value || '')
+  .replace(/\u200c/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
+
 export const PartyPicker = ({
   value = null, onChange, label = 'طرف حساب', size = 'small', variant = 'outlined',
   allowCreate = true, createInContracts = false, disabled = false, helperText = '',
@@ -218,6 +225,14 @@ export const PartyPicker = ({
     if (typeof option === 'string') {
       const name = option.trim();
       if (!name) return;
+      // نام تایپ‌شده اگر با یک طرف حساب موجود یکسان باشد، همان انتخاب می‌شود
+      // (تا نامه در پروندهٔ قرارداد آن طرف دیده شود) — نه ثبت متن آزاد.
+      const exact = merged.find((row) => row?.id
+        && normalizePartyName(row.name || row.label) === normalizePartyName(name));
+      if (exact) {
+        onChange?.(exact, { matched: true });
+        return;
+      }
       if (!allowCreate) {
         onChange?.(null, { error: 'طرف حساب انتخاب‌شده در مدیریت قراردادها یافت نشد.' });
         return;

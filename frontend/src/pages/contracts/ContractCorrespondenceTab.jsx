@@ -32,11 +32,15 @@ const ContractCorrespondenceTab = ({ ctx }) => {
   const [selected, setSelected] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['contract-correspondence', partyId],
-    enabled: Boolean(partyId),
+    queryKey: ['contract-correspondence', partyId, contract.id],
+    enabled: Boolean(partyId || contract.id),
     queryFn: async () => {
       const response = await axiosInstance.get('/letters/', {
-        params: { party: partyId, page_size: 200 },
+        params: {
+          party: partyId || undefined,
+          contract: contract.id || undefined,
+          page_size: 200,
+        },
       });
       return response?.data ?? {};
     },
@@ -57,7 +61,7 @@ const ContractCorrespondenceTab = ({ ctx }) => {
       .includes(row.status)).length,
   }), [rows]);
 
-  if (!partyId) {
+  if (!partyId && !contract.id) {
     return (
       <Alert severity="info" sx={{ fontSize: 11.5 }}>
         برای این قرارداد طرف حسابی ثبت نشده است؛ ابتدا طرف قرارداد را در مشخصات قرارداد انتخاب کنید.
