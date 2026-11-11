@@ -2,6 +2,7 @@ import React from 'react';
 import { Avatar } from '@mui/material';
 import MaleIcon from '@mui/icons-material/Male';
 import FemaleIcon from '@mui/icons-material/Female';
+import { employeePhotoSrc, employeePhotoSrcSet } from '../../utils/photoUrl';
 
 /**
  * Employee avatar:
@@ -36,7 +37,9 @@ const hashColor = (name) => {
 
 const EmployeeAvatar = ({ employee, size = 40, fontSize, name, gender, sx = {} }) => {
   const fullName = name || employee?.full_name || `${employee?.first_name || ''} ${employee?.last_name || ''}`.trim();
-  const photo = employee?.photo_url || employee?.photo || null;
+  const rawPhoto = employee?.photo_url || employee?.photo || null;
+  const photo = employeePhotoSrc(rawPhoto, size);
+  const srcSet = employeePhotoSrcSet(rawPhoto, size);
   const initials = fullName ? `${fullName.charAt(0) || ''}${(fullName.split(' ')[1] || '').charAt(0) || ''}`.toUpperCase() : '؟';
 
   const genderValue = gender || employee?.gender || '';
@@ -55,6 +58,8 @@ const EmployeeAvatar = ({ employee, size = 40, fontSize, name, gender, sx = {} }
   return (
     <Avatar
       src={photo || undefined}
+      srcSet={srcSet}
+      imgProps={{ loading: 'lazy', decoding: 'async' }}
       alt={fullName || (isMale ? 'پرسنل مرد' : isFemale ? 'پرسنل زن' : 'پرسنل')}
       sx={{
         width: size,

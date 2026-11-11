@@ -88,8 +88,10 @@ def employee_link_payload(profile, request=None):
     photo = None
     if getattr(employee, 'photo', None):
         try:
-            photo = request.build_absolute_uri(employee.photo.url) if request else employee.photo.url
-        except (ValueError, AttributeError):
+            from employees import photo_service
+
+            photo = photo_service.photo_url(employee, request) or None
+        except Exception:  # noqa: BLE001
             photo = None
 
     full_name = getattr(employee, 'full_name', '') or ' '.join(
@@ -137,16 +139,15 @@ def employee_photo_map(user_ids, request=None):
             return {}
         from employees.models import Employee
 
+        from employees import photo_service
+
         photos = {}
         for employee in Employee.objects.filter(id__in=employee_ids).only('id', 'photo'):
             if not getattr(employee, 'photo', None):
                 continue
-            try:
-                photos[employee.id] = (
-                    request.build_absolute_uri(employee.photo.url) if request else employee.photo.url
-                )
-            except (ValueError, AttributeError):
-                continue
+            url = photo_service.photo_url(employee, request)
+            if url:
+                photos[employee.id] = url
         return {
             profile.user_id: photos[profile.employee_id]
             for profile in profiles

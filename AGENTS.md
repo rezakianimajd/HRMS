@@ -603,6 +603,26 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **عکس پرسنلی با کیفیت نمایشی (۲۰۲۶-۱۱-۱۱):** عکس‌های آپلودی در آواتارها تار/پیکسلی دیده
+  می‌شدند (منبع: اسکن‌های بزرگ ولی کم‌جزئیات + تحویل فایل چند صد کیلوبایتی برای آواتار ۳۰px).
+  - **بک‌اند:** `employees/photo_service.py` (خالص/قابل تست) — `clamp_size` (۳۲…۱۰۲۴)، `render_photo`
+    با `ImageOps.exif_transpose` + `thumbnail(LANCZOS)` + `UnsharpMask` و خروجی **WebP q=90**،
+    `photo_thumbnail` با کش روی `MEDIA_ROOT/thumbnails/employees/<id>/<hash>_<size>.webp` و
+    `photo_url` (نسخهٔ امضاشده با fallback به فایل اصلی).
+  - **اندپوینت:** `GET /api/employees/{id}/photo/?size=…&v=…&t=…` (`EmployeeViewSet.photo`،
+    `AllowAny` + بدون JWT چون `<img>` هدر نمی‌فرستد؛ اعتبار با **توکن امضاشدهٔ ۷ روزه**
+    `employees/photo_tokens.py`؛ بدون توکن/شناسهٔ ناموجود = ۴۰۴؛ `Cache-Control: private, max-age=604800`).
+    پاسخ در دادهٔ زنده: `size=96` حدود ۲–۳KB و `size=320` حدود ۱۲–۲۴KB (WebP).
+    شارپنِس (میانگین لبهٔ تصویر) از ۱۲٫۱ به ۱۵٫۱ رسید (+۲۴٪).
+  - **یکدست‌سازی URLها:** `Employee.photo_url`، `EmployeeFamilyMember.employee_photo_url`،
+    `SupplementaryInsurance.employee_photo_url`، `phonebook`، `core.employee_link` (پروفایل کاربر و
+    `employee_photo_map` چت) همه از `photo_service.photo_url` استفاده می‌کنند؛ `photo` (فایل) دست‌نخورده.
+  - **فرانت:** `core/utils/photoUrl.js` (`employeePhotoSrc`/`employeePhotoSrcSet` — اندازهٔ ۲× رتینا،
+    بازهٔ ۴۸…۱۰۲۴، حفظ `v`/`t`) در `EmployeeAvatar`، `UserAvatar` و `ChatAvatar` (به‌همراه
+    `srcSet` و `loading="lazy"`). هیچ کامپوننت دیگری آواتار را مستقیم رندر نمی‌کند.
+  - تست: `employees/tests_photo.py` (۱۱ تست DB-free) و `__tests__/photoUrl.test.js` (۵)؛
+    `employees` + `communication` = **۷۲ تست سبز**، `chatSmoke`/`chatRail`/`employeesListSmoke`/
+    `usersAccessSmoke` سبز.
 - **تسک‌سازی از چت (۲۰۲۶-۱۱-۱۰):** پیام‌های «کاری» در چت شناسایی می‌شوند و با یک کلیک به
   وظیفهٔ ماژول برنامه‌ریزی تبدیل می‌شوند.
   - **تشخیص خالص:** `communication/task_suggest.py` قواعد بررسی/پیگیری/ارسال/ثبت/آماده‌سازی/

@@ -4,9 +4,11 @@ Views for the Employees module.
 import logging
 
 from django.db import IntegrityError
+from django.http import Http404, HttpResponse
 from rest_framework import viewsets, status, filters, parsers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
@@ -26,6 +28,8 @@ from employees.serializers import (
 from employees.family_sync import sync_employee_family_from_insurance
 from employees.filters import EmployeeFilter
 from employees.engines.employee_engine import EmployeeEngine
+from employees import photo_service
+from employees.photo_tokens import verify_employee_token
 
 # لاگ ماژول پرسنل — خطاهای ذخیره/ویرایش برای پیگیری سریع در لاگ سرور ثبت می‌شوند
 # (journalctl -u gunicorn  یا  /var/log/hrms/gunicorn-error.log)
@@ -132,6 +136,41 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save()
+
+    @action(
+        detail=True,
+        methods=['get'],
+        url_path='photo',
+        permission_classes=[AllowAny],
+        authentication_classes=[],
+    )
+    def photo(self, request, pk=None):
+        """عکس پرسنلی با کیفیت نمایشی (WebP + شارپ) برای آواتارها.
+
+        تگ <img> هدر JWT نمی‌فرستد، پس دسترسی با توکن امضاشدهٔ کوتاه‌مدت
+        (``?t=...&size=...``) کنترل می‌شود؛ بدون توکن معتبر پاسخ ۴۰۴ است.
+        """
+        company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+        employees_qs = Employee.objects.filter(pk=pk)
+        if company:
+            employees_qs = employees_qs.filter(company=company)
+        employee = employees_qs.first()
+        if employee is None:
+            raise Http404
+        if not verify_employee_token(request.query_params.get('t'), employee.pk):
+            raise Http404
+        if not photo_service.photo_exists(employee):
+            raise Http404
+        size = photo_service.clamp_size(request.query_params.get('size'))
+        try:
+            data = photo_service.photo_thumbnail(employee, size)
+        except Exception as exc:  # noqa: BLE001 — فایل خراب نباید آواتار را ۵۰۰ کند
+            logger.warning('employees: ساخت عکس نمایشی ناموفق employee=%s: %s', employee.pk, exc)
+            raise Http404
+        response = HttpResponse(data, content_type='image/webp')
+        response['Cache-Control'] = 'private, max-age=604800'
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response
 
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):

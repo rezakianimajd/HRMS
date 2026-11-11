@@ -55,7 +55,9 @@ class PhonebookViewSet(viewsets.ReadOnlyModelViewSet):
         request = self.request
         photo_url = None
         if emp.photo:
-            photo_url = request.build_absolute_uri(emp.photo.url) if request else emp.photo.url
+            from employees import photo_service
+
+            photo_url = photo_service.photo_url(emp, request) or None
         return {
             'id': emp.id,
             'employee_id': emp.employee_id,

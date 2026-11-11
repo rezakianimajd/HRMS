@@ -16,6 +16,7 @@ import { useDesignTokens } from '../../core/context/DesignTokenContext';
 import { useModulePalette } from '../../core/context/ModulePaletteContext';
 import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
+import { employeePhotoSrc, employeePhotoSrcSet } from '../../core/utils/photoUrl';
 
 export const ACCENT_FALLBACK = '#4a86c8';
 export const INK = '#0f172a';
@@ -114,7 +115,9 @@ export const ChatAvatar = ({
   }
   return (
     <Avatar
-      src={photo || undefined}
+      src={employeePhotoSrc(photo, size) || undefined}
+      srcSet={employeePhotoSrcSet(photo, size)}
+      imgProps={{ loading: 'lazy', decoding: 'async' }}
       alt={name || 'کاربر'}
       sx={{
         width: size, height: size, fontSize: Math.max(12, Math.round(size * 0.42)),

@@ -8,6 +8,7 @@ from employees.models import (
     EmploymentChange, ContractVersion, WorkExperience,
     SupplementaryInsurance, SupplementaryInsuranceDependent, EmployeeFamilyMember,
 )
+from employees import photo_service
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -83,12 +84,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'full_name', 'created_at', 'birth_date']
 
     def get_photo_url(self, obj):
-        if obj.photo:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.photo.url)
-            return obj.photo.url
-        return None
+        return photo_service.photo_url(obj, self.context.get('request')) or None
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -161,12 +157,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'full_name', 'created_at', 'updated_at']
 
     def get_photo_url(self, obj):
-        if obj.photo:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.photo.url)
-            return obj.photo.url
-        return None
+        return photo_service.photo_url(obj, self.context.get('request')) or None
 
     def get_supplementary_insurances(self, obj):
         return SupplementaryInsuranceSerializer(
@@ -442,9 +433,8 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
 
     def get_employee_photo_url(self, obj):
         employee = getattr(obj, 'employee', None)
-        if employee and employee.photo:
-            request = self.context.get('request')
-            return request.build_absolute_uri(employee.photo.url) if request else employee.photo.url
+        if employee is not None:
+            return photo_service.photo_url(employee, self.context.get('request')) or ''
         return ''
 
     def _preferred(self, obj):
@@ -521,11 +511,8 @@ class SupplementaryInsuranceSerializer(serializers.ModelSerializer):
 
     def get_employee_photo_url(self, obj):
         employee = getattr(obj, 'employee', None)
-        if employee and employee.photo:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(employee.photo.url)
-            return employee.photo.url
+        if employee is not None:
+            return photo_service.photo_url(employee, self.context.get('request')) or ''
         return ''
 
     def get_dependents_count(self, obj):
