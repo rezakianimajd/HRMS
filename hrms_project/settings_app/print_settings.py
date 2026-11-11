@@ -13,6 +13,11 @@ ORIENTATIONS = ('portrait', 'landscape')
 ALIGNMENTS = ('right', 'center', 'left')
 MARGIN_PATTERN = re.compile(r'^[\d.]+(?:mm|cm|in|pt)(?:\s+[\d.]+(?:mm|cm|in|pt)){0,3}$')
 DEFAULT_MARGIN = '10mm 9mm 12mm 9mm'
+DEFAULT_COLUMNS = {
+    'letter-list': [
+        'number', 'letter_date', 'direction', 'subject', 'party', 'status', 'attachments',
+    ],
+}
 
 DEFAULT_PRINT_SETTINGS = {
     'paper': 'A4',
@@ -54,9 +59,7 @@ DEFAULT_PRINT_SETTINGS = {
         'space_bottom': 2,
     },
     'columns': {
-        'letter-list': [
-            'number', 'date', 'direction', 'subject', 'party', 'status', 'attachments',
-        ],
+        'letter-list': list(DEFAULT_COLUMNS['letter-list']),
     },
 }
 
@@ -66,7 +69,16 @@ _TEXT_LIMITS = {
 }
 
 COLUMNS_BY_DOCUMENT = {
-    'letter-list': ('number', 'date', 'direction', 'subject', 'party', 'status', 'attachments'),
+    'letter-list': (
+        'number', 'unit_reg_no', 'company_reg_no', 'external_number', 'indicator_no',
+        'transmittal_no', 'direction', 'letter_date', 'received_date', 'sent_date',
+        'due_date', 'unit_reg_date', 'category', 'series', 'subject', 'summary', 'body',
+        'party', 'sender', 'receiver', 'organization', 'correspondent', 'sender_title',
+        'delivery_type', 'delivered_by', 'entered_by', 'drafter', 'priority',
+        'confidentiality', 'status', 'amount', 'currency', 'archive_ref',
+        'contract_number', 'tags', 'attachments', 'referrals', 'entry_method',
+        'entry_time', 'created_at',
+    ),
 }
 
 
@@ -113,14 +125,14 @@ def _sanitize_columns(raw):
     for document, allowed in COLUMNS_BY_DOCUMENT.items():
         requested = data.get(document)
         if not isinstance(requested, (list, tuple)):
-            clean[document] = list(allowed)
+            clean[document] = list(DEFAULT_COLUMNS.get(document, allowed))
             continue
         selected = []
         for key in requested:
             candidate = str(key or '').strip()
             if candidate in allowed and candidate not in selected:
                 selected.append(candidate)
-        clean[document] = selected or list(allowed)
+        clean[document] = selected or list(DEFAULT_COLUMNS.get(document, allowed))
     return clean
 
 

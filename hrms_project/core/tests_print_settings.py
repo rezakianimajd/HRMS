@@ -83,14 +83,28 @@ class SanitizePrintTests(SimpleTestCase):
         clean = sanitize_print({})
         self.assertEqual(
             clean['columns']['letter-list'],
-            ['number', 'date', 'direction', 'subject', 'party', 'status', 'attachments'],
+            ['number', 'letter_date', 'direction', 'subject', 'party', 'status', 'attachments'],
         )
         custom = sanitize_print({
-            'columns': {'letter-list': ['subject', 'bogus', 'subject', 'date']},
+            'columns': {'letter-list': ['subject', 'bogus', 'subject', 'unit_reg_no']},
         })
-        self.assertEqual(custom['columns']['letter-list'], ['subject', 'date'])
+        self.assertEqual(custom['columns']['letter-list'], ['subject', 'unit_reg_no'])
         empty = sanitize_print({'columns': {'letter-list': []}})
         self.assertEqual(len(empty['columns']['letter-list']), 7)
+
+    def test_all_letter_form_columns_are_accepted(self):
+        keys = [
+            'number', 'unit_reg_no', 'company_reg_no', 'external_number', 'indicator_no',
+            'transmittal_no', 'direction', 'letter_date', 'received_date', 'sent_date',
+            'due_date', 'unit_reg_date', 'category', 'series', 'subject', 'summary', 'body',
+            'party', 'sender', 'receiver', 'organization', 'correspondent', 'sender_title',
+            'delivery_type', 'delivered_by', 'entered_by', 'drafter', 'priority',
+            'confidentiality', 'status', 'amount', 'currency', 'archive_ref',
+            'contract_number', 'tags', 'attachments', 'referrals', 'entry_method',
+            'entry_time', 'created_at',
+        ]
+        clean = sanitize_print({'columns': {'letter-list': keys}})
+        self.assertEqual(clean['columns']['letter-list'], keys)
 
 
 class HeaderFooterLayoutTests(SimpleTestCase):
@@ -236,6 +250,32 @@ class LogoAndHeaderOrderTests(SimpleTestCase):
         self.assertEqual(registry._logo_data_uri(None), '')
 
 
+class LetterListColumnSelectionTests(SimpleTestCase):
+    def test_options_columns_as_list_are_supported(self):
+        columns = registry._letter_columns({}, {'columns': ['number', 'subject']})
+        self.assertEqual([column['key'] for column in columns], ['number', 'subject'])
+        self.assertTrue(all(column['width'].endswith('%') for column in columns))
+
+    def test_payload_columns_win_over_settings(self):
+        columns = registry._letter_columns(
+            {'columns': ['unit_reg_no']}, {'columns': ['number']},
+        )
+        self.assertEqual([column['key'] for column in columns], ['unit_reg_no'])
+
+    def test_invalid_columns_fall_back_to_defaults(self):
+        columns = registry._letter_columns({}, {'columns': ['bogus']})
+        self.assertEqual(
+            [column['key'] for column in columns], registry.DEFAULT_LETTER_LIST_COLUMNS,
+        )
+
+    def test_catalog_covers_all_form_fields(self):
+        keys = {column['key'] for column in registry.column_catalog()['letter-list']}
+        self.assertGreaterEqual(len(keys), 35)
+        for key in ('body', 'summary', 'sender', 'receiver', 'drafter', 'amount',
+                    'entry_method', 'created_at'):
+            self.assertIn(key, keys)
+
+
 class RenderOptionsTests(SimpleTestCase):
     def test_company_print_settings_are_merged(self):
         with patch('settings_app.print_settings.print_settings_for', return_value=SETTINGS):
@@ -261,6 +301,7 @@ class RenderOptionsTests(SimpleTestCase):
     def test_column_catalog_lists_letter_list_columns(self):
         catalog = registry.column_catalog()
         keys = [column['key'] for column in catalog['letter-list']]
-        self.assertEqual(
-            keys, ['number', 'date', 'direction', 'subject', 'party', 'status', 'attachments'],
-        )
+        self.assertGreaterEqual(len(keys), 35)
+        self.assertEqual(keys[0], 'number')
+        for key in ('subject', 'party', 'status', 'attachments', 'body', 'sender', 'receiver'):
+            self.assertIn(key, keys)

@@ -266,13 +266,50 @@ DOCUMENTS.update({'letter': build_letter, 'table': build_table, 'custom': build_
 
 
 LETTER_LIST_COLUMNS = [
-    {'key': 'number', 'label': 'شماره', 'width': '10%', 'align': 'center'},
-    {'key': 'date', 'label': 'تاریخ', 'width': '11%', 'align': 'center'},
-    {'key': 'direction', 'label': 'جهت', 'width': '9%', 'align': 'center'},
-    {'key': 'subject', 'label': 'موضوع', 'width': '30%'},
-    {'key': 'party', 'label': 'طرف مکاتبه', 'width': '22%'},
-    {'key': 'status', 'label': 'وضعیت', 'width': '11%', 'align': 'center'},
-    {'key': 'attachments', 'label': 'پیوست', 'width': '7%', 'align': 'center'},
+    {'key': 'number', 'label': 'شماره نامه', 'weight': 10, 'align': 'center'},
+    {'key': 'unit_reg_no', 'label': 'شماره ثبت', 'weight': 8, 'align': 'center'},
+    {'key': 'company_reg_no', 'label': 'شماره ثبت شرکت', 'weight': 8, 'align': 'center'},
+    {'key': 'external_number', 'label': 'شماره طرف مقابل', 'weight': 9, 'align': 'center'},
+    {'key': 'indicator_no', 'label': 'شماره اندیکاتور', 'weight': 9, 'align': 'center'},
+    {'key': 'transmittal_no', 'label': 'ترنسمیتال', 'weight': 8, 'align': 'center'},
+    {'key': 'direction', 'label': 'جهت', 'weight': 7, 'align': 'center'},
+    {'key': 'letter_date', 'label': 'تاریخ نامه', 'weight': 9, 'align': 'center'},
+    {'key': 'received_date', 'label': 'تاریخ ورود', 'weight': 9, 'align': 'center'},
+    {'key': 'sent_date', 'label': 'تاریخ ارسال', 'weight': 9, 'align': 'center'},
+    {'key': 'due_date', 'label': 'مهلت پاسخ', 'weight': 9, 'align': 'center'},
+    {'key': 'unit_reg_date', 'label': 'تاریخ ثبت (واحد)', 'weight': 9, 'align': 'center'},
+    {'key': 'category', 'label': 'نوع مکاتبه', 'weight': 9},
+    {'key': 'series', 'label': 'سری شماره‌گذاری', 'weight': 9},
+    {'key': 'subject', 'label': 'موضوع', 'weight': 22},
+    {'key': 'summary', 'label': 'خلاصه / چکیده', 'weight': 20},
+    {'key': 'body', 'label': 'متن نامه', 'weight': 26},
+    {'key': 'party', 'label': 'طرف مکاتبه', 'weight': 16},
+    {'key': 'sender', 'label': 'فرستنده', 'weight': 14},
+    {'key': 'receiver', 'label': 'گیرنده', 'weight': 14},
+    {'key': 'organization', 'label': 'سازمان', 'weight': 14},
+    {'key': 'correspondent', 'label': 'مخاطب', 'weight': 13},
+    {'key': 'sender_title', 'label': 'سمت ارسال‌کننده', 'weight': 12},
+    {'key': 'delivery_type', 'label': 'نوع تحویل', 'weight': 10, 'align': 'center'},
+    {'key': 'delivered_by', 'label': 'تحویل‌دهنده / ثبت‌کننده', 'weight': 14},
+    {'key': 'entered_by', 'label': 'ثبت‌کنندهٔ ورود', 'weight': 13},
+    {'key': 'drafter', 'label': 'تنظیم‌کننده', 'weight': 13},
+    {'key': 'priority', 'label': 'اولویت', 'weight': 8, 'align': 'center'},
+    {'key': 'confidentiality', 'label': 'محرمانگی', 'weight': 9, 'align': 'center'},
+    {'key': 'status', 'label': 'وضعیت', 'weight': 9, 'align': 'center'},
+    {'key': 'amount', 'label': 'مبلغ', 'weight': 12, 'align': 'center'},
+    {'key': 'currency', 'label': 'ارز', 'weight': 7, 'align': 'center'},
+    {'key': 'archive_ref', 'label': 'شماره بایگانی', 'weight': 9, 'align': 'center'},
+    {'key': 'contract_number', 'label': 'شماره قرارداد', 'weight': 10, 'align': 'center'},
+    {'key': 'tags', 'label': 'برچسب‌ها', 'weight': 12},
+    {'key': 'attachments', 'label': 'تعداد پیوست', 'weight': 7, 'align': 'center'},
+    {'key': 'referrals', 'label': 'تعداد ارجاع', 'weight': 7, 'align': 'center'},
+    {'key': 'entry_method', 'label': 'نحوهٔ ثبت', 'weight': 9, 'align': 'center'},
+    {'key': 'entry_time', 'label': 'ساعت ورود', 'weight': 7, 'align': 'center'},
+    {'key': 'created_at', 'label': 'تاریخ ثبت رکورد', 'weight': 10, 'align': 'center'},
+]
+
+DEFAULT_LETTER_LIST_COLUMNS = [
+    'number', 'letter_date', 'direction', 'subject', 'party', 'status', 'attachments',
 ]
 
 
@@ -281,6 +318,117 @@ def column_catalog():
     return {
         'letter-list': [{'key': col['key'], 'label': col['label']} for col in LETTER_LIST_COLUMNS],
     }
+
+
+def _clip(value, limit=180):
+    text = ' '.join(str(value or '').replace('\u200c', ' ').split())
+    if not text:
+        return '—'
+    return text if len(text) <= limit else f'{text[:limit]}…'
+
+
+def _person_name(user):
+    if not user:
+        return ''
+    try:
+        return (user.get_full_name() or '').strip() or user.get_username()
+    except Exception:  # noqa: BLE001
+        return ''
+
+
+def _letter_row(letter):
+    """همهٔ مقادیر قابل چاپِ یک نامه (کلیدها همان LETTER_LIST_COLUMNS)."""
+    def display(field, getter):
+        return getter() if getattr(letter, field, '') else '—'
+
+    delivered = letter.delivered_by_name or _person_name(getattr(letter, 'delivered_by', None))
+    return {
+        'number': letter.number or letter.unit_reg_no or '—',
+        'unit_reg_no': letter.unit_reg_no or '—',
+        'company_reg_no': letter.company_reg_no or '—',
+        'external_number': letter.external_number or '—',
+        'indicator_no': letter.indicator_no or '—',
+        'transmittal_no': letter.transmittal_no or '—',
+        'direction': letter.get_direction_display(),
+        'letter_date': pe.jalali(letter.letter_date),
+        'received_date': pe.jalali(letter.received_date),
+        'sent_date': pe.jalali(letter.sent_date),
+        'due_date': pe.jalali(letter.due_date),
+        'unit_reg_date': pe.jalali(letter.unit_reg_date),
+        'category': getattr(letter.category, 'name', '') or '—',
+        'series': getattr(letter.series, 'title', '') or '—',
+        'subject': letter.subject or '—',
+        'summary': _clip(letter.summary, 220),
+        'body': _clip(letter.body, 260),
+        'party': letter.party_display or '—',
+        'sender': _sender_label(letter),
+        'receiver': _receiver_label(letter),
+        'organization': getattr(letter.organization, 'name', '') or '—',
+        'correspondent': getattr(letter.correspondent, 'name', '') or '—',
+        'sender_title': letter.sender_title or '—',
+        'delivery_type': display('delivery_type', letter.get_delivery_type_display),
+        'delivered_by': delivered or '—',
+        'entered_by': letter.entered_by_name or _person_name(getattr(letter, 'entered_by', None)) or '—',
+        'drafter': letter.drafter_name or _person_name(getattr(letter, 'drafter', None)) or '—',
+        'priority': display('priority', letter.get_priority_display),
+        'confidentiality': display('confidentiality', letter.get_confidentiality_display),
+        'status': letter.get_status_display(),
+        'amount': pe.money(letter.amount) if letter.amount else '—',
+        'currency': letter.currency or '—',
+        'archive_ref': letter.archive_ref or '—',
+        'contract_number': letter.contract_number or '—',
+        'tags': '، '.join(str(tag) for tag in (letter.tags or [])) or '—',
+        'attachments': pe.fa_digits(getattr(letter, 'attachment_count', 0) or 0),
+        'referrals': pe.fa_digits(getattr(letter, 'referral_count', 0) or 0),
+        'entry_method': display('entry_method', letter.get_entry_method_display),
+        'entry_time': letter.entry_time.strftime('%H:%M') if letter.entry_time else '—',
+        'created_at': pe.jalali(letter.created_at.date()) if letter.created_at else '—',
+    }
+
+
+def _sender_label(letter):
+    try:
+        return letter.sender_display(include_employee=False) or '—'
+    except Exception:  # noqa: BLE001
+        try:
+            return letter.sender_display() or '—'
+        except Exception:  # noqa: BLE001
+            return letter.sender_name or '—'
+
+
+def _receiver_label(letter):
+    try:
+        return letter.receiver_display() or '—'
+    except Exception:  # noqa: BLE001
+        return letter.receiver_name or '—'
+
+
+def _letter_columns(payload, options):
+    """ستون‌های انتخابی (payload یا تنظیمات) با عرض متناسب."""
+    selected = payload.get('columns')
+    if not isinstance(selected, (list, tuple)) or not selected:
+        raw = (options or {}).get('columns')
+        if isinstance(raw, (list, tuple)):
+            selected = raw
+        elif isinstance(raw, dict):
+            selected = raw.get('letter-list')
+    by_key = {column['key']: column for column in LETTER_LIST_COLUMNS}
+    if not isinstance(selected, (list, tuple)) or not selected:
+        keys = list(DEFAULT_LETTER_LIST_COLUMNS)
+    else:
+        keys = [str(key) for key in selected if str(key) in by_key]
+        keys = keys or list(DEFAULT_LETTER_LIST_COLUMNS)
+    chosen = [by_key[key] for key in keys]
+    total = sum(column.get('weight', 10) for column in chosen) or 1
+    return [
+        {
+            'key': column['key'],
+            'label': column['label'],
+            'align': column.get('align', 'right'),
+            'width': f'{100 * column.get("weight", 10) / total:.1f}%',
+        }
+        for column in chosen
+    ]
 
 
 def build_letter_list(payload, options, request=None):
@@ -293,8 +441,9 @@ def build_letter_list(payload, options, request=None):
         raise PrintError('برای چاپ مکاتبات مجوز لازم را ندارید.', 403)
     company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
     queryset = Letter.objects.select_related(
-        'category', 'series', 'party_account', 'correspondent',
+        'category', 'series', 'party_account', 'correspondent', 'organization',
         'sender_party', 'sender_organization', 'sender_employee', 'receiver_employee',
+        'entered_by', 'drafter', 'delivered_by',
     ).annotate(attachment_count=Count('attachments', distinct=True))
     if company:
         queryset = queryset.filter(company=company)
@@ -336,6 +485,7 @@ def build_letter_list(payload, options, request=None):
     if payload.get('filters_note'):
         filters_note.append(str(payload['filters_note']))
 
+    queryset = queryset.annotate(referral_count=Count('referrals', distinct=True))
     queryset = queryset.order_by('-id')[:300]
     rows = []
     direction = payload.get('direction') or ''
@@ -345,24 +495,9 @@ def build_letter_list(payload, options, request=None):
         'internal': 'فهرست نامه‌های داخلی',
     }
     for letter in queryset:
-        rows.append({
-            'number': letter.number or letter.unit_reg_no or '—',
-            'date': pe.jalali(letter.letter_date or letter.received_date or letter.sent_date),
-            'direction': letter.get_direction_display(),
-            'subject': letter.subject or '—',
-            'party': letter.party_display or '—',
-            'status': letter.get_status_display(),
-            'attachments': pe.fa_digits(getattr(letter, 'attachment_count', 0) or 0),
-        })
+        rows.append(_letter_row(letter))
 
-    columns = [dict(col) for col in LETTER_LIST_COLUMNS]
-    selected = payload.get('columns')
-    if not isinstance(selected, (list, tuple)) or not selected:
-        selected = (options.get('columns') or {}).get('letter-list')
-    if isinstance(selected, (list, tuple)) and selected:
-        wanted = [str(key) for key in selected]
-        filtered = [col for col in columns if col['key'] in wanted]
-        columns = filtered or columns
+    columns = _letter_columns(payload, options)
     return {
         'title': payload.get('title') or direction_titles.get(direction) or 'فهرست مکاتبات اداری',
         # زیرعنوان و متادیتا (تعداد ردیف/فیلترها) عمداً در سربرگ چاپ نمی‌آید.

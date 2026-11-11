@@ -93,7 +93,8 @@ const PrintPreviewDialog = ({
               <Typography sx={{ fontSize: 12.5, fontWeight: 800, mb: 0.75 }}>
                 ساخت قالب چاپ — ستون‌های این چاپ
               </Typography>
-              <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center">
+              <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center"
+                sx={{ maxHeight: 190, overflowY: 'auto', pr: 0.5 }}>
                 {(columnsCatalog || []).map((column) => (
                   <FormControlLabel
                     key={column.key}

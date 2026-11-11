@@ -6,13 +6,50 @@
  */
 export const PRINT_PAPERS = ['A4', 'A5', 'A3', 'Letter'];
 export const LETTER_LIST_COLUMNS = [
-  { key: 'number', label: 'شماره' },
-  { key: 'date', label: 'تاریخ' },
+  { key: 'number', label: 'شماره نامه' },
+  { key: 'unit_reg_no', label: 'شماره ثبت' },
+  { key: 'company_reg_no', label: 'شماره ثبت شرکت' },
+  { key: 'external_number', label: 'شماره طرف مقابل' },
+  { key: 'indicator_no', label: 'شماره اندیکاتور' },
+  { key: 'transmittal_no', label: 'ترنسمیتال' },
   { key: 'direction', label: 'جهت' },
+  { key: 'letter_date', label: 'تاریخ نامه' },
+  { key: 'received_date', label: 'تاریخ ورود' },
+  { key: 'sent_date', label: 'تاریخ ارسال' },
+  { key: 'due_date', label: 'مهلت پاسخ' },
+  { key: 'unit_reg_date', label: 'تاریخ ثبت (واحد)' },
+  { key: 'category', label: 'نوع مکاتبه' },
+  { key: 'series', label: 'سری شماره‌گذاری' },
   { key: 'subject', label: 'موضوع' },
+  { key: 'summary', label: 'خلاصه / چکیده' },
+  { key: 'body', label: 'متن نامه' },
   { key: 'party', label: 'طرف مکاتبه' },
+  { key: 'sender', label: 'فرستنده' },
+  { key: 'receiver', label: 'گیرنده' },
+  { key: 'organization', label: 'سازمان' },
+  { key: 'correspondent', label: 'مخاطب' },
+  { key: 'sender_title', label: 'سمت ارسال‌کننده' },
+  { key: 'delivery_type', label: 'نوع تحویل' },
+  { key: 'delivered_by', label: 'تحویل‌دهنده / ثبت‌کننده' },
+  { key: 'entered_by', label: 'ثبت‌کنندهٔ ورود' },
+  { key: 'drafter', label: 'تنظیم‌کننده' },
+  { key: 'priority', label: 'اولویت' },
+  { key: 'confidentiality', label: 'محرمانگی' },
   { key: 'status', label: 'وضعیت' },
-  { key: 'attachments', label: 'پیوست' },
+  { key: 'amount', label: 'مبلغ' },
+  { key: 'currency', label: 'ارز' },
+  { key: 'archive_ref', label: 'شماره بایگانی' },
+  { key: 'contract_number', label: 'شماره قرارداد' },
+  { key: 'tags', label: 'برچسب‌ها' },
+  { key: 'attachments', label: 'تعداد پیوست' },
+  { key: 'referrals', label: 'تعداد ارجاع' },
+  { key: 'entry_method', label: 'نحوهٔ ثبت' },
+  { key: 'entry_time', label: 'ساعت ورود' },
+  { key: 'created_at', label: 'تاریخ ثبت رکورد' },
+];
+
+export const DEFAULT_LETTER_LIST_COLUMNS = [
+  'number', 'letter_date', 'direction', 'subject', 'party', 'status', 'attachments',
 ];
 export const PRINT_ALIGNMENTS = [
   { value: 'right', label: 'راست' },
@@ -60,9 +97,7 @@ export const DEFAULT_PRINT_SETTINGS = {
     space_bottom: 2,
   },
   columns: {
-    'letter-list': [
-      'number', 'date', 'direction', 'subject', 'party', 'status', 'attachments',
-    ],
+    'letter-list': [...DEFAULT_LETTER_LIST_COLUMNS],
   },
 };
 

@@ -126,7 +126,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const print = usePrintDocument();
   const paletteCtx = useModulePalette();
   const printSettings = paletteCtx?.printSettings || {};
-  const savedPrintColumns = printSettings?.columns?.['letter-list'] || [];
+  const savedPrintColumns = (printSettings?.columns?.['letter-list'] || [])
+    .filter((key) => LETTER_LIST_COLUMNS.some((column) => column.key === key));
   const canSavePrintSettings = Boolean(paletteCtx?.canEdit && paletteCtx?.setPrintSettings);
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
