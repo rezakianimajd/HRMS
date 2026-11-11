@@ -67,6 +67,31 @@ class SanitizePrintTests(SimpleTestCase):
         self.assertFalse(clean['header']['enabled'])
         self.assertTrue(clean['footer']['enabled'])
 
+    def test_header_sizes_are_clamped(self):
+        clean = sanitize_print({
+            'header': {'logo_width': 500, 'logo_height': 1, 'company_font_size': 99,
+                       'title_font_size': 1, 'space_top': -5, 'space_bottom': 100},
+        })
+        self.assertEqual(clean['header']['logo_width'], 90)
+        self.assertEqual(clean['header']['logo_height'], 6)
+        self.assertEqual(clean['header']['company_font_size'], 24)
+        self.assertEqual(clean['header']['title_font_size'], 8)
+        self.assertEqual(clean['header']['space_top'], 0)
+        self.assertEqual(clean['header']['space_bottom'], 40)
+
+    def test_columns_default_and_filtering(self):
+        clean = sanitize_print({})
+        self.assertEqual(
+            clean['columns']['letter-list'],
+            ['number', 'date', 'direction', 'subject', 'party', 'status', 'attachments'],
+        )
+        custom = sanitize_print({
+            'columns': {'letter-list': ['subject', 'bogus', 'subject', 'date']},
+        })
+        self.assertEqual(custom['columns']['letter-list'], ['subject', 'date'])
+        empty = sanitize_print({'columns': {'letter-list': []}})
+        self.assertEqual(len(empty['columns']['letter-list']), 7)
+
 
 class HeaderFooterLayoutTests(SimpleTestCase):
     def test_custom_header_and_footer_are_rendered(self):
@@ -78,7 +103,39 @@ class HeaderFooterLayoutTests(SimpleTestCase):
         self.assertIn('کلیه مکاتبات با ذکر شمارهٔ اندیکاتور', html)
         self.assertIn('این سند از سامانهٔ کیان ERP صادر شده است', html)
         self.assertIn('pe-page-number', html)
-        self.assertNotIn('۱۴۰۵/۰۱/۰۱</strong>', html)  # show_meta=False
+        # زیرعنوان و متادیتا زیر عنوان چاپ چاپ نمی‌شوند
+        self.assertNotIn('زیرعنوان سند', html)
+        self.assertNotIn('۱۴۰۵/۰۱/۰۱', html)
+
+    def test_header_sizes_and_spacing_are_applied(self):
+        settings = {
+            **SETTINGS,
+            'header': {
+                **SETTINGS['header'],
+                'logo_width': 42, 'logo_height': 22,
+                'company_font_size': 16, 'title_font_size': 15,
+                'space_top': 4, 'space_bottom': 9, 'space_side': 3,
+            },
+        }
+        document = {
+            **DOCUMENT,
+            'company': {'name': 'شرکت نمونه', 'logo': 'data:image/png;base64,AAAA'},
+        }
+        html = layout.render_document(document, settings)
+        self.assertIn('width:42mm', html)
+        self.assertIn('height:22mm', html)
+        self.assertIn('font-size:16pt', html)
+        self.assertIn('font-size:15pt', html)
+        self.assertIn('padding:4mm 3mm 9mm', html)
+
+    def test_footer_font_size_is_applied(self):
+        settings = {
+            **SETTINGS,
+            'footer': {**SETTINGS['footer'], 'font_size': 9, 'space_bottom': 4},
+        }
+        html = layout.render_document(DOCUMENT, settings)
+        self.assertIn('font-size:9pt', html)
+        self.assertIn('padding-bottom:4mm', html)
 
     def test_signatures_live_in_fixed_footer(self):
         html = layout.render_document(DOCUMENT, SETTINGS)
@@ -199,4 +256,11 @@ class RenderOptionsTests(SimpleTestCase):
         self.assertIn('letter-list', registry.DOCUMENTS)
         self.assertIn(
             'letter-list', {item['key'] for item in registry.available_documents()},
+        )
+
+    def test_column_catalog_lists_letter_list_columns(self):
+        catalog = registry.column_catalog()
+        keys = [column['key'] for column in catalog['letter-list']]
+        self.assertEqual(
+            keys, ['number', 'date', 'direction', 'subject', 'party', 'status', 'attachments'],
         )

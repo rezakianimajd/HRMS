@@ -44,4 +44,5 @@ def options_view(request):
             {'key': 'portrait', 'label': 'عمودی'},
             {'key': 'landscape', 'label': 'افقی'},
         ],
+        'columns': registry.column_catalog(),
     })

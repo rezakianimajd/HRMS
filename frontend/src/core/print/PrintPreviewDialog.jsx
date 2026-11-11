@@ -3,12 +3,13 @@
  */
 import React from 'react';
 import {
-  Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  FormControl, IconButton, InputLabel, MenuItem, Select, Stack, ToggleButton, ToggleButtonGroup,
-  Typography,
+  Alert, Box, Button, Checkbox, CircularProgress, Collapse, Dialog, DialogActions,
+  DialogContent, DialogTitle, Divider, FormControlLabel, FormControl, IconButton, InputLabel,
+  MenuItem, Select, Stack, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PrintIcon from '@mui/icons-material/Print';
+import TuneIcon from '@mui/icons-material/Tune';
 import CropPortraitIcon from '@mui/icons-material/CropPortrait';
 import CropLandscapeIcon from '@mui/icons-material/CropLandscape';
 import { printHtml } from './printEngine';
@@ -19,11 +20,27 @@ const PrintPreviewDialog = ({
   open, title = 'پیش‌نمایش چاپ', html = '', loading = false, error = '',
   onClose, printLabel = 'چاپ', maxWidth = 'md',
   options = null, onChangeOptions = null, onRefresh = null,
+  columnsCatalog = null, onSaveColumns = null,
 }) => {
   const paper = options?.paper || 'A4';
   const orientation = options?.orientation === 'landscape' ? 'landscape' : 'portrait';
   const showControls = Boolean(onChangeOptions && options);
   const change = (patch) => onChangeOptions?.({ ...options, ...patch });
+  const savedColumns = Array.isArray(options?.columns)
+    ? options.columns
+    : (columnsCatalog || []).map((column) => column.key);
+  const [columnsOpen, setColumnsOpen] = React.useState(false);
+  const [columns, setColumns] = React.useState(savedColumns);
+  React.useEffect(() => { setColumns(savedColumns); }, [JSON.stringify(savedColumns)]);
+  const toggleColumn = (key) => {
+    const next = columns.includes(key)
+      ? columns.filter((item) => item !== key)
+      : [...columns, key];
+    const safe = next.length ? next : [key];
+    setColumns(safe);
+    change({ columns: safe });
+  };
+  const showColumnPicker = Boolean(columnsCatalog?.length && onChangeOptions);
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth={maxWidth} PaperProps={{ sx: { height: '92vh' } }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, pb: 1, flexWrap: 'wrap' }}>
@@ -55,6 +72,14 @@ const PrintPreviewDialog = ({
             {onRefresh ? (
               <Button size="small" onClick={onRefresh} disabled={loading}>به‌روزرسانی</Button>
             ) : null}
+            {showColumnPicker ? (
+              <Button
+                size="small" startIcon={<TuneIcon />} onClick={() => setColumnsOpen((value) => !value)}
+                aria-expanded={columnsOpen}
+              >
+                قالب چاپ
+              </Button>
+            ) : null}
           </Stack>
         ) : null}
         <IconButton size="small" onClick={onClose} aria-label="بستن پیش‌نمایش چاپ">
@@ -62,6 +87,41 @@ const PrintPreviewDialog = ({
         </IconButton>
       </DialogTitle>
       <DialogContent dividers sx={{ p: 0, bgcolor: 'grey.100', position: 'relative' }}>
+        {showColumnPicker ? (
+          <Collapse in={columnsOpen}>
+            <Box sx={{ bgcolor: 'background.paper', px: 2, py: 1.25 }}>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 800, mb: 0.75 }}>
+                ساخت قالب چاپ — ستون‌های این چاپ
+              </Typography>
+              <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center">
+                {(columnsCatalog || []).map((column) => (
+                  <FormControlLabel
+                    key={column.key}
+                    sx={{ m: 0 }}
+                    control={(
+                      <Checkbox
+                        size="small"
+                        checked={columns.includes(column.key)}
+                        onChange={() => toggleColumn(column.key)}
+                      />
+                    )}
+                    label={<Typography sx={{ fontSize: 12 }}>{column.label}</Typography>}
+                  />
+                ))}
+                {onSaveColumns ? (
+                  <Button
+                    size="small" variant="outlined"
+                    onClick={() => onSaveColumns(columns)}
+                    disabled={!columns.length}
+                  >
+                    ذخیره به‌عنوان قالب
+                  </Button>
+                ) : null}
+              </Stack>
+              <Divider sx={{ mt: 1 }} />
+            </Box>
+          </Collapse>
+        ) : null}
         {loading && (
           <Stack alignItems="center" justifyContent="center" sx={{ height: '100%' }}>
             <CircularProgress size={28} />

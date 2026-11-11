@@ -7,8 +7,8 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Box, Button, Chip, CircularProgress, FormControlLabel, Grid, MenuItem, Paper, Stack,
-  Switch, TextField, ToggleButton, ToggleButtonGroup, Typography, alpha,
+  Box, Button, Checkbox, Chip, CircularProgress, FormControlLabel, Grid, MenuItem, Paper,
+  Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Typography, alpha,
 } from '@mui/material';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
@@ -20,7 +20,7 @@ import axiosInstance from '../../core/api/axiosConfig';
 import { SURFACE, SOFT } from '../../core/components/settings/settingsUi';
 import { useModulePalette } from '../../core/context/ModulePaletteContext';
 import {
-  DEFAULT_PRINT_SETTINGS, PRINT_ALIGNMENTS, PRINT_PAPERS,
+  DEFAULT_PRINT_SETTINGS, LETTER_LIST_COLUMNS, PRINT_ALIGNMENTS, PRINT_PAPERS,
 } from '../../core/theme/printSettings';
 
 const ACCENT = '#0ea5e9';
@@ -83,6 +83,7 @@ const PrintSettingsCard = () => {
       margin: printSettings.margin,
       header: printSettings.header,
       footer: printSettings.footer,
+      columns: printSettings.columns,
     },
   }), [printSettings]);
 
@@ -179,10 +180,6 @@ const PrintSettingsCard = () => {
                 disabled={noEdit}
                 onChange={(event) => patchHeader('show_logo', event.target.checked)} />}
                 label={<Typography sx={{ fontSize: 12 }}>نمایش لوگو</Typography>} />
-              <FormControlLabel control={<Switch size="small" checked={printSettings.header.show_meta}
-                disabled={noEdit}
-                onChange={(event) => patchHeader('show_meta', event.target.checked)} />}
-                label={<Typography sx={{ fontSize: 12 }}>نمایش متادیتا</Typography>} />
               <FormControlLabel control={<Switch size="small" checked={printSettings.header.show_border}
                 disabled={noEdit}
                 onChange={(event) => patchHeader('show_border', event.target.checked)} />}
@@ -196,40 +193,67 @@ const PrintSettingsCard = () => {
                   value={printSettings.header.title}
                   onChange={(event) => patchHeader('title', event.target.value)} />
               </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number" label="عرض لوگو (mm)"
+                  sx={fieldSx} inputProps={{ min: 8, max: 90, step: 1 }}
+                  value={printSettings.header.logo_width}
+                  onChange={(event) => patchHeader('logo_width', event.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number" label="ارتفاع لوگو (mm)"
+                  sx={fieldSx} inputProps={{ min: 6, max: 60, step: 1 }}
+                  value={printSettings.header.logo_height}
+                  onChange={(event) => patchHeader('logo_height', event.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number" label="فونت نام شرکت (pt)"
+                  sx={fieldSx} inputProps={{ min: 8, max: 24, step: 0.5 }}
+                  value={printSettings.header.company_font_size}
+                  onChange={(event) => patchHeader('company_font_size', event.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number" label="فونت عنوان چاپ (pt)"
+                  sx={fieldSx} inputProps={{ min: 8, max: 24, step: 0.5 }}
+                  value={printSettings.header.title_font_size}
+                  onChange={(event) => patchHeader('title_font_size', event.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number"
+                  label="فاصله از بالا (mm)" sx={fieldSx} inputProps={{ min: 0, max: 40, step: 1 }}
+                  value={printSettings.header.space_top}
+                  onChange={(event) => patchHeader('space_top', event.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number"
+                  label="فاصله از پایین (mm)" sx={fieldSx} inputProps={{ min: 0, max: 40, step: 1 }}
+                  value={printSettings.header.space_bottom}
+                  onChange={(event) => patchHeader('space_bottom', event.target.value)} />
+              </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField size="small" fullWidth disabled={noEdit} label="زیرعنوان" sx={fieldSx}
-                  placeholder="مثلاً: مکاتبات اداری"
-                  value={printSettings.header.subtitle}
-                  onChange={(event) => patchHeader('subtitle', event.target.value)} />
+                <TextField size="small" fullWidth disabled={noEdit} type="number"
+                  label="فاصله از کناره‌ها (mm)" sx={fieldSx} inputProps={{ min: 0, max: 30, step: 1 }}
+                  value={printSettings.header.space_side}
+                  onChange={(event) => patchHeader('space_side', event.target.value)} />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField size="small" fullWidth disabled={noEdit} label="نشانی" sx={fieldSx}
                   value={printSettings.header.address}
                   onChange={(event) => patchHeader('address', event.target.value)} />
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid item xs={6} sm={2}>
                 <TextField size="small" fullWidth disabled={noEdit} label="تلفن" sx={fieldSx}
                   value={printSettings.header.phone}
                   onChange={(event) => patchHeader('phone', event.target.value)} />
               </Grid>
-              <Grid item xs={6} sm={3}>
+              <Grid item xs={6} sm={2}>
                 <TextField size="small" fullWidth disabled={noEdit} label="وبگاه" sx={fieldSx}
                   value={printSettings.header.website}
                   onChange={(event) => patchHeader('website', event.target.value)} />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={2}>
                 <TextField size="small" fullWidth disabled={noEdit} label="ایمیل" sx={fieldSx}
                   value={printSettings.header.email}
                   onChange={(event) => patchHeader('email', event.target.value)} />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <TextField select size="small" fullWidth disabled={noEdit} label="تراز عنوان" sx={fieldSx}
-                  value={printSettings.header.align}
-                  onChange={(event) => patchHeader('align', event.target.value)}>
-                  {PRINT_ALIGNMENTS.map((item) => (
-                    <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
-                  ))}
-                </TextField>
               </Grid>
               <Grid item xs={12}>
                 <TextField size="small" fullWidth disabled={noEdit} label="متن تکمیلی زیر سربرگ"
@@ -285,12 +309,62 @@ const PrintSettingsCard = () => {
                   ))}
                 </TextField>
               </Grid>
+              <Grid item xs={6} sm={2}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number" label="فونت پاورقی (pt)"
+                  sx={fieldSx} inputProps={{ min: 5, max: 14, step: 0.5 }}
+                  value={printSettings.footer.font_size}
+                  onChange={(event) => patchFooter('font_size', event.target.value)} />
+              </Grid>
+              <Grid item xs={6} sm={2}>
+                <TextField size="small" fullWidth disabled={noEdit} type="number"
+                  label="فاصله از پایین (mm)" sx={fieldSx} inputProps={{ min: 0, max: 20, step: 1 }}
+                  value={printSettings.footer.space_bottom}
+                  onChange={(event) => patchFooter('space_bottom', event.target.value)} />
+              </Grid>
               <Grid item xs={12}>
                 <TextField size="small" fullWidth disabled={noEdit} label="متن تکمیلی پاورقی"
                   sx={fieldSx}
                   value={printSettings.footer.extra}
                   onChange={(event) => patchFooter('extra', event.target.value)} />
               </Grid>
+            </Grid>
+          </PanelSection>
+
+          <PanelSection icon={<VerticalSplitOutlinedIcon />} title="قالب ستون‌های چاپ"
+            subtitle="ستون‌هایی که در چاپ «فهرست مکاتبات» نمایش داده می‌شوند؛ این انتخاب ذخیره و در چاپ‌های بعدی هم اعمال می‌شود."
+            color="#0ea5e9">
+            <Grid container spacing={0.5}>
+              {LETTER_LIST_COLUMNS.map((column) => {
+                const selected = (printSettings.columns?.['letter-list'] || []).includes(column.key);
+                return (
+                  <Grid item xs={6} sm={4} md={3} key={column.key}>
+                    <FormControlLabel
+                      sx={{ m: 0 }}
+                      control={(
+                        <Checkbox
+                          size="small"
+                          checked={selected}
+                          disabled={noEdit}
+                          onChange={(event) => {
+                            const current = printSettings.columns?.['letter-list'] || [];
+                            const nextKeys = event.target.checked
+                              ? [...current, column.key]
+                              : current.filter((key) => key !== column.key);
+                            setPrintSettings((previous) => ({
+                              ...previous,
+                              columns: {
+                                ...previous.columns,
+                                'letter-list': nextKeys.length ? nextKeys : [column.key],
+                              },
+                            }));
+                          }}
+                        />
+                      )}
+                      label={<Typography sx={{ fontSize: 12 }}>{column.label}</Typography>}
+                    />
+                  </Grid>
+                );
+              })}
             </Grid>
           </PanelSection>
         </Stack>

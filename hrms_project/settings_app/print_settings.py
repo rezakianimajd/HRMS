@@ -31,7 +31,15 @@ DEFAULT_PRINT_SETTINGS = {
         'extra': '',
         'align': 'center',
         'show_border': True,
-        'show_meta': True,
+        'show_meta': False,
+        'logo_width': 28,
+        'logo_height': 18,
+        'company_font_size': 13,
+        'title_font_size': 13,
+        'subtitle_font_size': 9.5,
+        'space_top': 0,
+        'space_bottom': 6,
+        'space_side': 0,
     },
     'footer': {
         'enabled': True,
@@ -42,12 +50,23 @@ DEFAULT_PRINT_SETTINGS = {
         'signatures': True,
         'align': 'center',
         'show_border': True,
+        'font_size': 7.5,
+        'space_bottom': 2,
+    },
+    'columns': {
+        'letter-list': [
+            'number', 'date', 'direction', 'subject', 'party', 'status', 'attachments',
+        ],
     },
 }
 
 _TEXT_LIMITS = {
     'title': 120, 'subtitle': 160, 'address': 200, 'phone': 60,
     'email': 120, 'website': 120, 'extra': 240, 'text': 200,
+}
+
+COLUMNS_BY_DOCUMENT = {
+    'letter-list': ('number', 'date', 'direction', 'subject', 'party', 'status', 'attachments'),
 }
 
 
@@ -87,6 +106,24 @@ def _number(value, low, high, fallback):
     return max(low, min(high, round(number, 2)))
 
 
+def _sanitize_columns(raw):
+    """ستون‌های انتخابی هر سند چاپی (کلید سند → فهرست کلید ستون‌ها)."""
+    data = raw if isinstance(raw, dict) else {}
+    clean = {}
+    for document, allowed in COLUMNS_BY_DOCUMENT.items():
+        requested = data.get(document)
+        if not isinstance(requested, (list, tuple)):
+            clean[document] = list(allowed)
+            continue
+        selected = []
+        for key in requested:
+            candidate = str(key or '').strip()
+            if candidate in allowed and candidate not in selected:
+                selected.append(candidate)
+        clean[document] = selected or list(allowed)
+    return clean
+
+
 def sanitize_print(raw):
     """اعتبارسنجی و کامل‌کردن تنظیمات چاپ (merge با پیش‌فرض‌ها)."""
     data = raw if isinstance(raw, dict) else {}
@@ -118,6 +155,26 @@ def sanitize_print(raw):
             'align': _enum(header_raw.get('align'), ALIGNMENTS, header_default['align']),
             'show_border': _flag(header_raw.get('show_border'), header_default['show_border']),
             'show_meta': _flag(header_raw.get('show_meta'), header_default['show_meta']),
+            'logo_width': _number(
+                header_raw.get('logo_width'), 8, 90, header_default['logo_width'],
+            ),
+            'logo_height': _number(
+                header_raw.get('logo_height'), 6, 60, header_default['logo_height'],
+            ),
+            'company_font_size': _number(
+                header_raw.get('company_font_size'), 8, 24, header_default['company_font_size'],
+            ),
+            'title_font_size': _number(
+                header_raw.get('title_font_size'), 8, 24, header_default['title_font_size'],
+            ),
+            'subtitle_font_size': _number(
+                header_raw.get('subtitle_font_size'), 6, 20, header_default['subtitle_font_size'],
+            ),
+            'space_top': _number(header_raw.get('space_top'), 0, 40, header_default['space_top']),
+            'space_bottom': _number(
+                header_raw.get('space_bottom'), 0, 40, header_default['space_bottom'],
+            ),
+            'space_side': _number(header_raw.get('space_side'), 0, 30, header_default['space_side']),
         },
         'footer': {
             'enabled': _flag(footer_raw.get('enabled'), footer_default['enabled']),
@@ -132,7 +189,14 @@ def sanitize_print(raw):
             'signatures': _flag(footer_raw.get('signatures'), footer_default['signatures']),
             'align': _enum(footer_raw.get('align'), ALIGNMENTS, footer_default['align']),
             'show_border': _flag(footer_raw.get('show_border'), footer_default['show_border']),
+            'font_size': _number(
+                footer_raw.get('font_size'), 5, 14, footer_default['font_size'],
+            ),
+            'space_bottom': _number(
+                footer_raw.get('space_bottom'), 0, 20, footer_default['space_bottom'],
+            ),
         },
+        'columns': _sanitize_columns(data.get('columns')),
     }
 
 

@@ -59,6 +59,8 @@ import { CONTACTS_KEY, META_KEY, REFERRALS_KEY, STATS_KEY } from './corresponden
 import useLetterListState, { defaultSortFor } from './useLetterListState';
 import usePrintDocument from '../../core/print/usePrintDocument';
 import PrintPreviewDialog from '../../core/print/PrintPreviewDialog';
+import { LETTER_LIST_COLUMNS } from '../../core/theme/printSettings';
+import { useModulePalette } from '../../core/context/ModulePaletteContext';
 import { CompleteReferralDialog, ReferDialog } from './correspondenceReferDialogs';
 import LetterDetailsDialog from './correspondenceLetterDetails';
 import useLetterMutations from './useLetterMutations';
@@ -122,6 +124,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const { user } = useAuth();
   const preset = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
   const print = usePrintDocument();
+  const paletteCtx = useModulePalette();
+  const printSettings = paletteCtx?.printSettings || {};
+  const savedPrintColumns = printSettings?.columns?.['letter-list'] || [];
+  const canSavePrintSettings = Boolean(paletteCtx?.canEdit && paletteCtx?.setPrintSettings);
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const [drawerLetter, setDrawerLetter] = useState(null);
@@ -291,11 +297,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
 
   /* ── انتخاب ردیف‌ها: چاپ و خروجی اکسل فقط برای ردیف‌های تیک‌خورده ── */
   const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const selectedKey = `${preset.key || mode}:${page}:${search}:${sortBy}:${statusFilter}`;
-  useEffect(() => {
-    // با تغییر فهرست/فیلتر/صفحه، انتخاب‌های قبلی معنایی ندارند
-    setSelectedIds(new Set());
-  }, [selectedKey]);
 
   const toggleSelect = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
@@ -333,7 +334,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         direction: mode === 'all' ? '' : mode,
         filters_note: `${formatPersianNumber(selectedIdList.length)} نامهٔ انتخاب‌شده`,
       },
-      options: { orientation: 'landscape' },
+      options: {
+        orientation: 'landscape',
+        columns: savedPrintColumns.length ? savedPrintColumns : undefined,
+      },
     });
   };
 
@@ -1334,6 +1338,14 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         options={print.options}
         onChangeOptions={print.updateOptions}
         onRefresh={print.refresh}
+        columnsCatalog={LETTER_LIST_COLUMNS}
+        onSaveColumns={canSavePrintSettings ? (columns) => {
+          paletteCtx.setPrintSettings((previous) => ({
+            ...previous,
+            columns: { ...previous.columns, 'letter-list': columns },
+          }));
+          setToast('قالب ستون‌های چاپ ذخیره شد');
+        } : null}
         onClose={print.close}
       />
 

@@ -123,6 +123,17 @@ body {
 """
 
 
+def _num_text(value, fallback=0):
+    """نمایش تمیز عدد (بدون .0) برای استایل‌های inline."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = float(fallback)
+    if number == int(number):
+        return str(int(number))
+    return f'{number:.2f}'.rstrip('0').rstrip('.')
+
+
 def _page_margin(options):
     """حاشیهٔ صفحه؛ پایین صفحه برای پاورقی ثابت (امضاها) باز نگه داشته می‌شود."""
     margin = str(options.get('margin') or '10mm 9mm 12mm 9mm').strip()
@@ -171,23 +182,25 @@ def _header(document, options):
     logo_src = company.get('logo') or ''
     show_logo = config.get('show_logo', True) and bool(logo_src)
     title_text = document.get('title') or config.get('title') or 'سند'
-    subtitle_text = document.get('subtitle') or config.get('subtitle') or ''
     border = 'border-bottom:2px solid #0f172a;' if config.get('show_border', True) else 'border-bottom:0;'
-    meta_bits = ''
-    if config.get('show_meta', True):
-        meta_bits = ''.join(
-            f'<div><span>{esc(label)}:</span><strong>{esc(value)}</strong></div>'
-            for label, value in (document.get('meta') or [])
-            if value
-        )
-    badge = f'<div class="pe-badge">{esc(document["badge"])}</div>' if document.get('badge') else ''
+    logo_width = config.get('logo_width', 28)
+    logo_height = config.get('logo_height', 18)
+    company_size = config.get('company_font_size', 13)
+    title_size = config.get('title_font_size', 13)
+    space_top = config.get('space_top', 0)
+    space_bottom = config.get('space_bottom', 6)
+    space_side = config.get('space_side', 0)
     logo_html = (
-        f'<img class="pe-print-logo" src="{logo_src}" alt="{esc(brand_name)}" />'
+        f'<img class="pe-print-logo" src="{logo_src}" alt="{esc(brand_name)}" '
+        f'style="width:{_num_text(logo_width)}mm;height:{_num_text(logo_height)}mm;'
+        'max-width:100%;object-fit:contain;" />'
         if show_logo else ''
     )
-    name_html = f'<div class="pe-brand-name">{esc(brand_name)}</div>' if brand_name else ''
-    subtitle_html = f'<div class="pe-subtitle">{esc(subtitle_text)}</div>' if subtitle_text else ''
-    meta_html = f'<div class="pe-meta">{meta_bits}</div>' if meta_bits else ''
+    name_html = (
+        f'<div class="pe-brand-name" style="font-size:{_num_text(company_size)}pt;">'
+        f'{esc(brand_name)}</div>'
+        if brand_name else ''
+    )
     contacts = [
         ('نشانی', config.get('address')), ('تلفن', config.get('phone')),
         ('ایمیل', config.get('email')), ('وبگاه', config.get('website')),
@@ -195,12 +208,12 @@ def _header(document, options):
     contact_text = ' · '.join(f'{label}: {value}' for label, value in contacts if value)
     contact_html = f'<div class="pe-header-contact">{esc(contact_text)}</div>' if contact_text else ''
     extra_html = f'<div class="pe-header-extra">{esc(config["extra"])}</div>' if config.get('extra') else ''
+    padding = f'{_num_text(space_top)}mm {_num_text(space_side)}mm {_num_text(space_bottom)}mm'
     return (
-        f'<header class="pe-header" style="{border}">'
+        f'<header class="pe-header" style="{border}padding:{padding};">'
         '<div class="pe-header-center">'
         f'{logo_html}{name_html}'
-        f'<div class="pe-title">{esc(title_text)}</div>'
-        f'{subtitle_html}{badge}{meta_html}'
+        f'<div class="pe-title" style="font-size:{_num_text(title_size)}pt;">{esc(title_text)}</div>'
         '</div></header>'
         f'{contact_html}{extra_html}'
     )
@@ -237,10 +250,12 @@ def _footer(document, options):
         'space-between': 'space-between',
     }.get(align, 'center')
     border = 'border-top:1px solid #cbd5e1;' if config.get('show_border', True) else 'border-top:0;'
+    footer_font = config.get('font_size', 7.5)
+    space_bottom = config.get('space_bottom', 2)
     return (
-        f'<footer class="pe-footer" style="{border}">'
+        f'<footer class="pe-footer" style="{border}padding-bottom:{_num_text(space_bottom)}mm;">'
         f'{signature_html}'
-        f'<div class="pe-footer-meta" style="justify-content:{justify}">'
+        f'<div class="pe-footer-meta" style="justify-content:{justify};font-size:{_num_text(footer_font)}pt;">'
         + ''.join(f'<div>{bit}</div>' for bit in bits if bit)
         + '</div></footer>'
     )

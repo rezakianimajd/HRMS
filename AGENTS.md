@@ -637,8 +637,22 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `PrintPreviewDialog` با انتخاب عمودی/افقی و کاغذ (و `usePrintDocument.updateOptions/refresh`).
   - **فهرست مکاتبات:** ستون چک‌باکس (انتخاب همهٔ صفحه)، نوار «چاپ انتخاب‌شده‌ها / خروجی اکسل
     انتخاب‌شده‌ها / لغو انتخاب»؛ `ModuleTable` حالا `renderHeader` برای ستون‌ها دارد.
-  - **تست:** `core/tests_print_settings.py` (**۱۷** تست: سربرگ/لوگو/امضا/حاشیه/merge) +
-    `tests_print_engine` (۴۳ تست چاپ سبز)؛ `correspondenceSmoke` (۱۸، شامل انتخاب→چاپ/اکسل)،
+    **انتخاب بین صفحه‌ها حفظ می‌شود** (با تغییر صفحه/فیلتر پاک نمی‌شود؛ فقط با «لغو انتخاب») و
+    شمارندهٔ نوار، مجموع انتخاب‌شده‌ها را نشان می‌دهد.
+  - **اندازه/فاصلهٔ حرفه‌ای سربرگ و پاورقی (۲۰۲۶-۱۱-۱۱):** `print.header` حالا
+    `logo_width`/`logo_height` (mm)، `company_font_size`/`title_font_size` (pt) و
+    `space_top`/`space_bottom`/`space_side` (mm) دارد؛ پاورقی `font_size` و `space_bottom`.
+    این مقادیر در `layout._header/_footer` به‌صورت inline style اعمال می‌شوند (`_num_text` اعداد را
+    بدون `.0` چاپ می‌کند) و در تب «چاپ» با فیلدهای عددی قابل تنظیم‌اند.
+  - **زیرعنوان/متادیتای چاپ حذف شد:** `layout._header` فقط لوگو → نام شرکت → عنوان سند → خط را
+    می‌سازد؛ `letter-list` هم `subtitle`/`meta` (مثل «ردیف‌های انتخاب‌شده» یا «تعداد ردیف») نمی‌فرستد.
+  - **قالب ستون‌های چاپ:** `print.columns` (کلید سند → فهرست کلید ستون‌ها) در تنظیمات ذخیره می‌شود؛
+    `registry.build_letter_list` فقط ستون‌های انتخاب‌شده را می‌آورد (payload `columns` بر تنظیمات
+    اولویت دارد) و `GET /api/print/options/` کاتالوگ ستون‌ها را در کلید `columns` می‌دهد.
+    در `PrintPreviewDialog` دکمهٔ **«قالب چاپ»** یک پنل چک‌باکس باز می‌کند (پیش‌نمایش فوری) و
+    «ذخیره به‌عنوان قالب» ستون‌ها را در تنظیمات شرکت ذخیره می‌کند؛ همان چک‌باکس‌ها در تب «چاپ» هم هست.
+  - **تست:** `core/tests_print_settings.py` (**۲۲** تست: لوگو/اندازه/فاصله/امضا/حاشیه/ستون‌ها/merge)
+    + `tests_print_engine` (۵۷ تست چاپ سبز)؛ `correspondenceSmoke` (۱۸، شامل انتخاب→چاپ/اکسل)،
     `printEngineSmoke` (۵)، `appearanceTabsSmoke` (۳)، `contractStatementsSmoke` (۵).
   - **تأیید زندهٔ `kpsmi`:** پیش‌نمایش `letter-list` ۲۰۰ با **لوگوی data-URI** شرکت
     («موسسه مدیریت راهبردی خاتم پاسارگاد»)، سربرگ وسط‌چین (لوگو → نام → «فهرست نامه‌های وارده» →

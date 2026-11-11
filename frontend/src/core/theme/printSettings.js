@@ -5,6 +5,15 @@
  * می‌شوند و موتور چاپ سرور هنگام رندر هر سند از آن‌ها استفاده می‌کند.
  */
 export const PRINT_PAPERS = ['A4', 'A5', 'A3', 'Letter'];
+export const LETTER_LIST_COLUMNS = [
+  { key: 'number', label: 'شماره' },
+  { key: 'date', label: 'تاریخ' },
+  { key: 'direction', label: 'جهت' },
+  { key: 'subject', label: 'موضوع' },
+  { key: 'party', label: 'طرف مکاتبه' },
+  { key: 'status', label: 'وضعیت' },
+  { key: 'attachments', label: 'پیوست' },
+];
 export const PRINT_ALIGNMENTS = [
   { value: 'right', label: 'راست' },
   { value: 'center', label: 'وسط' },
@@ -28,7 +37,15 @@ export const DEFAULT_PRINT_SETTINGS = {
     extra: '',
     align: 'center',
     show_border: true,
-    show_meta: true,
+    show_meta: false,
+    logo_width: 28,
+    logo_height: 18,
+    company_font_size: 13,
+    title_font_size: 13,
+    subtitle_font_size: 9.5,
+    space_top: 0,
+    space_bottom: 6,
+    space_side: 0,
   },
   footer: {
     enabled: true,
@@ -39,6 +56,13 @@ export const DEFAULT_PRINT_SETTINGS = {
     signatures: true,
     align: 'center',
     show_border: true,
+    font_size: 7.5,
+    space_bottom: 2,
+  },
+  columns: {
+    'letter-list': [
+      'number', 'date', 'direction', 'subject', 'party', 'status', 'attachments',
+    ],
   },
 };
 
@@ -72,6 +96,18 @@ export const normalizePrintSettings = (raw) => {
       align: ['right', 'center', 'left'].includes(header.align) ? header.align : base.header.align,
       show_border: header.show_border ?? base.header.show_border,
       show_meta: header.show_meta ?? base.header.show_meta,
+      logo_width: clamp(header.logo_width, 8, 90, base.header.logo_width),
+      logo_height: clamp(header.logo_height, 6, 60, base.header.logo_height),
+      company_font_size: clamp(
+        header.company_font_size, 8, 24, base.header.company_font_size,
+      ),
+      title_font_size: clamp(header.title_font_size, 8, 24, base.header.title_font_size),
+      subtitle_font_size: clamp(
+        header.subtitle_font_size, 6, 20, base.header.subtitle_font_size,
+      ),
+      space_top: clamp(header.space_top, 0, 40, base.header.space_top),
+      space_bottom: clamp(header.space_bottom, 0, 40, base.header.space_bottom),
+      space_side: clamp(header.space_side, 0, 30, base.header.space_side),
     },
     footer: {
       enabled: footer.enabled ?? base.footer.enabled,
@@ -84,6 +120,14 @@ export const normalizePrintSettings = (raw) => {
         ? footer.align
         : base.footer.align,
       show_border: footer.show_border ?? base.footer.show_border,
+      font_size: clamp(footer.font_size, 5, 14, base.footer.font_size),
+      space_bottom: clamp(footer.space_bottom, 0, 20, base.footer.space_bottom),
+    },
+    columns: {
+      'letter-list': Array.isArray(data?.columns?.['letter-list'])
+        && data.columns['letter-list'].length
+        ? data.columns['letter-list']
+        : base.columns['letter-list'],
     },
   };
 };

@@ -265,6 +265,24 @@ def build_custom(payload, options, request=None):
 DOCUMENTS.update({'letter': build_letter, 'table': build_table, 'custom': build_custom})
 
 
+LETTER_LIST_COLUMNS = [
+    {'key': 'number', 'label': 'شماره', 'width': '10%', 'align': 'center'},
+    {'key': 'date', 'label': 'تاریخ', 'width': '11%', 'align': 'center'},
+    {'key': 'direction', 'label': 'جهت', 'width': '9%', 'align': 'center'},
+    {'key': 'subject', 'label': 'موضوع', 'width': '30%'},
+    {'key': 'party', 'label': 'طرف مکاتبه', 'width': '22%'},
+    {'key': 'status', 'label': 'وضعیت', 'width': '11%', 'align': 'center'},
+    {'key': 'attachments', 'label': 'پیوست', 'width': '7%', 'align': 'center'},
+]
+
+
+def column_catalog():
+    """فهرست ستون‌های قابل انتخاب برای قالب چاپ هر سند."""
+    return {
+        'letter-list': [{'key': col['key'], 'label': col['label']} for col in LETTER_LIST_COLUMNS],
+    }
+
+
 def build_letter_list(payload, options, request=None):
     """فهرست مکاتبات برای چاپ — ردیف‌های انتخاب‌شده یا یک فهرست فیلترشده."""
     from django.db.models import Count, Q
@@ -337,22 +355,21 @@ def build_letter_list(payload, options, request=None):
             'attachments': pe.fa_digits(getattr(letter, 'attachment_count', 0) or 0),
         })
 
-    columns = [
-        {'key': 'number', 'label': 'شماره', 'width': '10%', 'align': 'center'},
-        {'key': 'date', 'label': 'تاریخ', 'width': '11%', 'align': 'center'},
-        {'key': 'direction', 'label': 'جهت', 'width': '9%', 'align': 'center'},
-        {'key': 'subject', 'label': 'موضوع', 'width': '30%'},
-        {'key': 'party', 'label': 'طرف مکاتبه', 'width': '22%'},
-        {'key': 'status', 'label': 'وضعیت', 'width': '11%', 'align': 'center'},
-        {'key': 'attachments', 'label': 'پیوست', 'width': '7%', 'align': 'center'},
-    ]
-    subtitle = payload.get('subtitle') or ' · '.join(filters_note)
+    columns = [dict(col) for col in LETTER_LIST_COLUMNS]
+    selected = payload.get('columns')
+    if not isinstance(selected, (list, tuple)) or not selected:
+        selected = (options.get('columns') or {}).get('letter-list')
+    if isinstance(selected, (list, tuple)) and selected:
+        wanted = [str(key) for key in selected]
+        filtered = [col for col in columns if col['key'] in wanted]
+        columns = filtered or columns
     return {
         'title': payload.get('title') or direction_titles.get(direction) or 'فهرست مکاتبات اداری',
-        'subtitle': subtitle,
+        # زیرعنوان و متادیتا (تعداد ردیف/فیلترها) عمداً در سربرگ چاپ نمی‌آید.
+        'subtitle': '',
         'badge': payload.get('badge') or '',
         'company': _company_info(company),
-        'meta': [('تعداد ردیف', pe.fa_digits(len(rows)))],
+        'meta': [],
         'sections': [{
             'title': payload.get('section_title') or '',
             'html': pe.data_table(columns, rows, {'zebra': True}),

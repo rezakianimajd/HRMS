@@ -95,8 +95,20 @@ class LayoutTests(SimpleTestCase):
     def test_brand_header_and_meta(self):
         html = layout.render_document(self._document(), {})
         self.assertIn('شرکت نمونه', html)
-        self.assertIn('شعبه', html)
+        self.assertIn('pe-header-center', html)
+        # زیرعنوان/متادیتا در سربرگ چاپ نمی‌آیند (فقط نام شرکت و عنوان سند)
+        self.assertNotIn('شعبه', html)
         self.assertNotIn('خالی', html)
+
+    def test_logo_uses_company_brand_block(self):
+        document = self._document()
+        document['company'] = {
+            **document.get('company', {}),
+            'logo': 'data:image/png;base64,AAAA',
+        }
+        html = layout.render_document(document, {})
+        self.assertIn('<img class="pe-print-logo"', html)
+        self.assertNotIn('<div class="pe-logo">', html)
 
     def test_footer_has_page_number_and_print_date(self):
         html = layout.render_document(self._document(), {})
