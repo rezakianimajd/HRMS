@@ -109,6 +109,53 @@ def employee_link_payload(profile, request=None):
     return payload
 
 
+def employee_photo_map(user_ids, request=None):
+    """نقشهٔ user_id → آدرس عکس پرسنلی (برای آواتار چت/کاربران).
+
+    فقط دو کوئری برای کل فهرست (UserProfile + Employee) اجرا می‌شود؛ اگر کاربری
+    به پروندهٔ پرسنلی وصل نباشد یا عکس نداشته باشد در نقشه نمی‌آید تا فرانت
+    حرف اول نام را نشان دهد.
+    """
+    ids = []
+    for value in user_ids or []:
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            continue
+        if number and number not in ids:
+            ids.append(number)
+    if not ids:
+        return {}
+    try:
+        from core.models import UserProfile
+
+        profiles = list(
+            UserProfile.objects.filter(user_id__in=ids).only('user_id', 'employee_id')
+        )
+        employee_ids = [profile.employee_id for profile in profiles if profile.employee_id]
+        if not employee_ids:
+            return {}
+        from employees.models import Employee
+
+        photos = {}
+        for employee in Employee.objects.filter(id__in=employee_ids).only('id', 'photo'):
+            if not getattr(employee, 'photo', None):
+                continue
+            try:
+                photos[employee.id] = (
+                    request.build_absolute_uri(employee.photo.url) if request else employee.photo.url
+                )
+            except (ValueError, AttributeError):
+                continue
+        return {
+            profile.user_id: photos[profile.employee_id]
+            for profile in profiles
+            if photos.get(profile.employee_id)
+        }
+    except Exception:  # noqa: BLE001 — نبود جدول/اسکیما نباید فهرست را بشکند
+        return {}
+
+
 def _employee_position(employee):
     """عنوان شغلی پرسنل (برای نمایش به‌عنوان نقش سازمانی)."""
     job_title = getattr(employee, 'job_title', None)

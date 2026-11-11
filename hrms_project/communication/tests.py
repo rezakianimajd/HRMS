@@ -95,18 +95,23 @@ class ChatPermissionTests(SimpleTestCase):
 
     def test_can_read_module_respects_granted_codes(self):
         user = SimpleNamespace(is_superuser=False, is_authenticated=True, pk=2)
-        with patch('core.engines.permission_engine.fine_permissions_for',
-                   return_value={'contracts.contracts.view': True}):
+        with patch('core.engines.permission_engine.module_action_granted',
+                   return_value=True) as gate:
             self.assertTrue(chat_permissions.can_read_module(user, 'contracts'))
-        with patch('core.engines.permission_engine.fine_permissions_for',
-                   return_value={'correspondence.letters.view': True}):
-            self.assertFalse(chat_permissions.can_read_module(user, 'contracts'))
+        self.assertEqual(gate.call_args[0][1], 'contracts')
 
-    def test_can_read_module_defaults_to_true_without_fine_permissions(self):
+    def test_can_read_module_is_closed_without_permission(self):
+        """چت نباید راه دور زدن مجوز ماژول‌ها باشد (کاربر بدون مجوز = بسته)."""
         user = SimpleNamespace(is_superuser=False, is_authenticated=True, pk=3)
-        with patch('core.engines.permission_engine.fine_permissions_for',
-                   return_value={}):
-            self.assertTrue(chat_permissions.can_read_module(user, 'projects'))
+        with patch('core.engines.permission_engine.module_action_granted',
+                   return_value=False):
+            self.assertFalse(chat_permissions.can_read_module(user, 'documents'))
+            self.assertFalse(chat_permissions.can_read_module(user, 'hr'))
+            self.assertFalse(chat_permissions.can_read_module(user, 'projects'))
+
+    def test_can_read_module_rejects_unknown_module(self):
+        user = SimpleNamespace(is_superuser=False, is_authenticated=True, pk=4)
+        self.assertFalse(chat_permissions.can_read_module(user, 'unknown-module'))
 
     def test_publisher_defaults_to_database_outbox(self):
         self.assertIsInstance(_publisher(), DatabaseEventPublisher)
@@ -247,6 +252,71 @@ class ReactionRulesTests(SimpleTestCase):
         ]
         summary = reactions.summarize_reactions(rows, user_id=1)
         self.assertEqual([row['emoji'] for row in summary], ['✅', '🔥'])
+
+
+class EntityRefPrivacyTests(SimpleTestCase):
+    """ارجاع به رکوردِ ماژول بدون مجوز، عنوان و لینک را هم افشا نمی‌کند."""
+
+    @staticmethod
+    def _ref():
+        return SimpleNamespace(
+            module='documents', label='مدارک پرسنل مریم', url='/documents/5/',
+        )
+
+    def _serializer(self):
+        from communication.serializers import MessageEntityRefSerializer
+
+        request = SimpleNamespace(user=SimpleNamespace(pk=9, is_authenticated=True))
+        return MessageEntityRefSerializer(context={'request': request})
+
+    def test_without_permission_label_and_url_are_masked(self):
+        serializer = self._serializer()
+        with patch('communication.permissions.can_read_module', return_value=False):
+            self.assertFalse(serializer.get_is_accessible(self._ref()))
+            self.assertEqual(
+                serializer.get_label(self._ref()), 'دسترسی به این رکورد را ندارید',
+            )
+            self.assertEqual(serializer.get_url(self._ref()), '')
+
+    def test_with_permission_label_and_url_are_kept(self):
+        serializer = self._serializer()
+        with patch('communication.permissions.can_read_module', return_value=True):
+            self.assertTrue(serializer.get_is_accessible(self._ref()))
+            self.assertEqual(serializer.get_label(self._ref()), 'مدارک پرسنل مریم')
+            self.assertEqual(serializer.get_url(self._ref()), '/documents/5/')
+
+
+class ChatNotificationTests(SimpleTestCase):
+    """باز کردن/خواندن گفتگو، اعلان‌های همان گفتگو را خودکار خوانده می‌کند."""
+
+    def test_mark_conversation_notifications_read(self):
+        from communication import views
+
+        user = SimpleNamespace(pk=5, is_authenticated=True)
+        request = SimpleNamespace(user=user, tenant=None, company=None)
+        conversation = SimpleNamespace(pk=7)
+        queryset = MagicMock()
+        queryset.update.return_value = 3
+        with patch('notifications.models.Notification.objects') as manager:
+            manager.filter.return_value = queryset
+            count = views._mark_conversation_notifications_read(request, conversation)
+
+        self.assertEqual(count, 3)
+        kwargs = manager.filter.call_args.kwargs
+        self.assertEqual(kwargs['user_id'], user.pk)
+        self.assertEqual(kwargs['entity_type'], 'chat_conversation')
+        self.assertEqual(kwargs['entity_id'], 7)
+        self.assertIn('chat_message', kwargs['category__in'])
+        queryset.update.assert_called_once()
+        self.assertTrue(queryset.update.call_args.kwargs['is_read'])
+
+    def test_anonymous_request_is_ignored(self):
+        from communication import views
+
+        request = SimpleNamespace(user=SimpleNamespace(pk=None), tenant=None, company=None)
+        self.assertEqual(
+            views._mark_conversation_notifications_read(request, SimpleNamespace(pk=7)), 0,
+        )
 
 
 class EntitySearchTests(SimpleTestCase):

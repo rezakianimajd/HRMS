@@ -31,6 +31,45 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
+CHAT_NOTIFICATION_CATEGORIES = ('chat_message', 'chat_mention', 'chat_member_added')
+
+
+def _photo_map(request, conversation_ids):
+    """نقشهٔ user_id → عکس پرسنلی برای آواتار گفتگو/اعضا (۲ کوئری)."""
+    from core.employee_link import employee_photo_map
+
+    ids = [value for value in conversation_ids or [] if value]
+    if not ids:
+        return {}
+    user_ids = ConversationMember.objects.filter(
+        conversation_id__in=list(ids),
+    ).values_list('user_id', flat=True)
+    return employee_photo_map(user_ids, request)
+
+
+def _mark_conversation_notifications_read(request, conversation):
+    """اعلان‌های خوانده‌نشدهٔ همین گفتگو برای کاربر جاری را خوانده می‌کند.
+
+    بدون این کار زنگولهٔ اعلان‌ها پس از باز کردن و خواندن چت همچنان نشان
+    «خوانده‌نشده» می‌داد و کاربر باید دستی آن را می‌بست.
+    """
+    from notifications.models import Notification
+
+    if not getattr(request.user, 'pk', None):
+        return 0
+    qs = Notification.objects.filter(
+        user_id=request.user.pk,
+        is_read=False,
+        category__in=CHAT_NOTIFICATION_CATEGORIES,
+        entity_type='chat_conversation',
+        entity_id=conversation.pk,
+    )
+    company = _company(request)
+    if company is not None:
+        qs = qs.filter(company=company)
+    return qs.update(is_read=True, read_at=timezone.now())
+
+
 def _json_list(value):
     """پارس فهرست JSON یا رشتهٔ کاماشده (فرم‌های multipart)."""
     if value in (None, '', 'null'):
@@ -55,6 +94,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description', 'related_label']
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['photo_map'] = self._photo_map()
+        return context
+
+    def _photo_map(self):
+        """عکس پرسنلی اعضای گفتگوهای همین صفحه (بدون N+1)."""
+        if not hasattr(self, '_photo_map_cache'):
+            ids = list(self.get_queryset().values_list('id', flat=True)[:200])
+            self._photo_map_cache = _photo_map(self.request, ids)
+        return self._photo_map_cache
 
     def get_queryset(self):
         user = self.request.user
@@ -256,9 +307,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
         if message_id and str(message_id).isdigit():
             message = Message.objects.filter(pk=int(message_id), conversation=conversation).first()
         member = services.mark_read(conversation, request.user, message)
+        # اعلان‌های همین گفتگو هم خودکار «خوانده‌شده» می‌شوند (زنگوله نباید عقب بماند).
+        notifications_read = _mark_conversation_notifications_read(request, conversation)
         return Response({
             'last_read_message': getattr(member, 'last_read_message_id', None),
             'unread': services.unread_count(conversation, member),
+            'notifications_read': notifications_read,
         })
 
     @action(detail=True, methods=['post'], url_path='preferences')
@@ -517,11 +571,16 @@ class DirectoryAPIView(ChatUtilityAPIView):
                 | DbQ(username__icontains=query),
             )
         rows = []
-        for user in users.order_by('first_name', 'last_name')[:50]:
+        page = list(users.order_by('first_name', 'last_name')[:50])
+        from core.employee_link import employee_photo_map
+
+        photos = employee_photo_map([user.pk for user in page], request)
+        for user in page:
             rows.append({
                 'id': user.pk,
                 'name': (user.get_full_name() or '').strip() or user.get_username(),
                 'username': user.get_username(),
+                'photo_url': photos.get(user.pk, ''),
             })
         return Response(rows)
 

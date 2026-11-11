@@ -101,30 +101,24 @@ def visible_conversations(user):
 
 
 def can_read_module(user, module: str) -> bool:
-    """آیا کاربر اصلاً به ماژول ارجاع‌شده دسترسی «خواندن» دارد؟
+    """آیا کاربر مجاز به دیدن رکوردهای این ماژول است؟ (همان قاعدهٔ منوها)
 
-    سوپریوزر همیشه؛ در غیر این صورت اگر هیچ کد ریزی برای آن ماژول ثبت نشده باشد
-    (کاربر قدیمی/نقش‌محور) محافظه‌کارانه اجازه می‌دهیم تا چیزی قفل نشود.
+    چت هیچ راه میان‌بُری نیست: اگر کاربر در «مجوزهای کاربران» برای آن ماژول
+    حق «مشاهده/فهرست/خروجی/چاپ» نداشته باشد، ارجاع‌های همان ماژول در چت هم
+    قفل می‌شوند (عنوان رکورد هم نمایش داده نمی‌شود). سوپریوزر مستثنی است.
     """
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
     if getattr(user, 'is_superuser', False):
         return True
     prefixes = MODULE_PERMISSION_PREFIX.get(module)
     if not prefixes:
-        return True
+        return False
     try:
-        from core.engines.permission_engine import fine_permissions_for
-
-        granted = fine_permissions_for(user) or {}
-    except Exception:  # noqa: BLE001
-        return True
-    if not granted:
-        return True
-    for code, allowed in granted.items():
-        if not allowed:
-            continue
-        if not any(str(code).startswith(f'{prefix}.') for prefix in prefixes):
-            continue
-        action = str(code).rsplit('.', 1)[-1]
-        if action in READ_ACTIONS:
+        from core.engines.permission_engine import module_action_granted
+    except Exception:  # noqa: BLE001 — در نبود موتور مجوز، محافظه‌کارانه بسته است
+        return False
+    for prefix in prefixes:
+        if module_action_granted(user, prefix, READ_ACTIONS):
             return True
     return False

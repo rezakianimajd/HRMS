@@ -20,19 +20,28 @@ def _user_name(user):
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     notify_display = serializers.CharField(source='get_notify_display', read_only=True)
 
     class Meta:
         model = ConversationMember
         fields = [
-            'id', 'user', 'user_name', 'role', 'role_display', 'notify', 'notify_display',
-            'joined_at', 'last_read_message', 'last_read_at', 'is_pinned', 'is_archived',
+            'id', 'user', 'user_name', 'photo_url', 'role', 'role_display', 'notify',
+            'notify_display', 'joined_at', 'last_read_message', 'last_read_at',
+            'is_pinned', 'is_archived',
         ]
-        read_only_fields = ['id', 'joined_at', 'user_name', 'role_display', 'notify_display']
+        read_only_fields = [
+            'id', 'joined_at', 'user_name', 'photo_url', 'role_display', 'notify_display',
+        ]
 
     def get_user_name(self, obj):
         return _user_name(obj.user)
+
+    def get_photo_url(self, obj):
+        """عکس پرسنلی کاربر (اگر پروندهٔ پرسنلی عکس داشته باشد) — بدون کوئری اضافه."""
+        photo_map = self.context.get('photo_map') or {}
+        return photo_map.get(obj.user_id) or ''
 
 
 class MessageAttachmentSerializer(serializers.ModelSerializer):
@@ -69,6 +78,8 @@ class MessageAttachmentSerializer(serializers.ModelSerializer):
 
 class MessageEntityRefSerializer(serializers.ModelSerializer):
     is_accessible = serializers.SerializerMethodField()
+    label = serializers.SerializerMethodField()
+    url = serializers.SerializerMethodField()
 
     class Meta:
         model = MessageEntityRef
@@ -79,6 +90,17 @@ class MessageEntityRefSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         return permissions.can_read_module(user, obj.module)
+
+    def get_label(self, obj):
+        """بدون مجوز ماژول، عنوان رکورد هم افشا نمی‌شود."""
+        if not self.get_is_accessible(obj):
+            return 'دسترسی به این رکورد را ندارید'
+        return obj.label
+
+    def get_url(self, obj):
+        if not self.get_is_accessible(obj):
+            return ''
+        return obj.url
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -228,6 +250,16 @@ class ConversationSerializer(serializers.ModelSerializer):
         if not (data.get('title') or '').strip():
             data['title'] = '، '.join(names) or 'گفتگوی خصوصی'
         data['peer_names'] = names
+        peer_ids = [
+            member.get('user') for member in (data.get('members') or [])
+            if current_id is None or str(member.get('user')) != str(current_id)
+        ]
+        data['peer_user'] = peer_ids[0] if peer_ids else None
+        data['avatar_url'] = (data.get('members') and next(
+            (member.get('photo_url') for member in data['members']
+             if str(member.get('user')) == str(data['peer_user'])),
+            '',
+        )) or ''
         return data
 
 
