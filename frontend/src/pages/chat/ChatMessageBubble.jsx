@@ -16,6 +16,7 @@ import DoneIcon from '@mui/icons-material/Done';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import ReplyIcon from '@mui/icons-material/Reply';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import TagIcon from '@mui/icons-material/Tag';
 import { ENTITY_MODULE_META } from './EntityPickerDialog';
 import { emojiOnlyFontSize } from './chatMessageText';
@@ -138,7 +139,7 @@ const EntityRefCard = ({ entityRef, mine, look }) => {
 
 const ChatMessageBubble = ({
   message, look, compact = false, highlight = false, avatar = '', showAvatar = false,
-  onReply, onEdit, onDelete, onPin, onReact, onJumpTo,
+  onReply, onEdit, onDelete, onPin, onReact, onJumpTo, onMakeTask, onOpenTask,
 }) => {
   const [reactionAnchor, setReactionAnchor] = useState(null);
   const mine = Boolean(message.is_mine);
@@ -239,6 +240,15 @@ const ChatMessageBubble = ({
               <ContentCopyIcon />
             </ActionButton>
             <ActionButton
+              title={message.linked_task ? 'وظیفهٔ ساخته‌شده' : 'ساخت وظیفه از این پیام'}
+              testid="chat-make-task"
+              onClick={() => onMakeTask?.(message)}
+            >
+              <TaskAltOutlinedIcon sx={{
+                color: message.task_suggestion?.is_actionable ? look.accent : 'inherit',
+              }} />
+            </ActionButton>
+            <ActionButton
               title={message.is_pinned ? 'برداشتن سنجاق' : 'سنجاق به گفتگو'}
               testid="chat-pin-button"
               onClick={() => onPin?.(message)}
@@ -337,6 +347,44 @@ const ChatMessageBubble = ({
           {(message.entity_refs || []).map((entityRef) => (
             <EntityRefCard key={entityRef.id} entityRef={entityRef} mine={mine} look={look} />
           ))}
+
+          {message.linked_task ? (
+            <Box
+              component="button" type="button"
+              data-testid="chat-linked-task"
+              onClick={() => onOpenTask?.(message.linked_task)}
+              sx={{
+                mt: 0.5, display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                px: 0.8, py: 0.35, borderRadius: '9px', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 10, fontWeight: 800,
+                border: '1px solid',
+                borderColor: mine ? 'rgba(255,255,255,0.35)' : alpha(look.accent, 0.35),
+                bgcolor: mine ? 'rgba(255,255,255,0.16)' : alpha(look.accent, 0.1),
+                color: mine ? '#fff' : look.accent,
+              }}
+            >
+              <TaskAltOutlinedIcon sx={{ fontSize: 13 }} />
+              وظیفه: {message.linked_task.title}
+            </Box>
+          ) : message.task_suggestion?.is_actionable ? (
+            <Box
+              component="button" type="button"
+              data-testid="chat-task-suggestion"
+              onClick={() => onMakeTask?.(message)}
+              sx={{
+                mt: 0.5, display: 'inline-flex', alignItems: 'center', gap: 0.5,
+                px: 0.8, py: 0.3, borderRadius: '9px', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 9.5, fontWeight: 800,
+                border: '1px dashed',
+                borderColor: mine ? 'rgba(255,255,255,0.5)' : alpha(look.accent, 0.45),
+                bgcolor: mine ? 'rgba(255,255,255,0.1)' : alpha(look.accent, 0.06),
+                color: mine ? '#fff' : look.accent,
+              }}
+            >
+              <TaskAltOutlinedIcon sx={{ fontSize: 12 }} />
+              پیشنهاد ساخت وظیفه · {message.task_suggestion.reason}
+            </Box>
+          ) : null}
 
           <Stack direction="row" alignItems="flex-end" spacing={0.5} sx={{ mt: 0.35 }}>
             <ReactionsRow

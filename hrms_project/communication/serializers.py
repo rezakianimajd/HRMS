@@ -2,7 +2,7 @@
 from django.db.models import Count, OuterRef, Subquery
 from rest_framework import serializers
 
-from communication import crypto, permissions, reactions
+from communication import crypto, permissions, reactions, task_suggest
 from communication.models import (
     ChatAuditLog, Conversation, ConversationMember, Message, MessageAttachment,
     MessageEntityRef, MessageReceipt,
@@ -117,6 +117,8 @@ class MessageSerializer(serializers.ModelSerializer):
     member_count = serializers.SerializerMethodField()
     read_by = serializers.SerializerMethodField()
     reactions = serializers.SerializerMethodField()
+    task_suggestion = serializers.SerializerMethodField()
+    linked_task = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
@@ -126,7 +128,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'edited_at', 'deleted_at', 'is_pinned', 'metadata',
             'attachments', 'entity_refs', 'mentions', 'is_mine',
             'read_count', 'delivered_count', 'member_count', 'read_by', 'reactions',
-            'created_at',
+            'task_suggestion', 'linked_task', 'created_at',
         ]
         read_only_fields = fields
 
@@ -186,6 +188,17 @@ class MessageSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         return reactions.summarize_reactions(rows, user_id=getattr(user, 'pk', None))
+
+    def get_task_suggestion(self, obj):
+        """آیا این پیام «کار» می‌خواهد؟ (بررسی کن، پیگیری، بزن…) → پیشنهاد وظیفه."""
+        if obj.deleted_at:
+            return None
+        return task_suggest.suggest_task(crypto.decrypt_body(obj.body))
+
+    def get_linked_task(self, obj):
+        """وظیفه‌ای که قبلاً از همین پیام ساخته شده (نقشه از ویو، بدون کوئری اضافه)."""
+        task_map = self.context.get('task_map') or {}
+        return task_map.get(obj.pk)
 
 
 

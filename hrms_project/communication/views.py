@@ -8,6 +8,7 @@ from django.db.models import Count, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -17,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from communication import crypto, permissions as chat_permissions, reactions, realtime, services
+from communication import task_suggest
 from communication.models import (
     ChatAuditLog, ChatEvent, Conversation, ConversationMember, Message,
     MessageAttachment,
@@ -45,6 +47,31 @@ def _photo_map(request, conversation_ids):
         conversation_id__in=list(ids),
     ).values_list('user_id', flat=True)
     return employee_photo_map(user_ids, request)
+
+
+def _linked_task_map(request, messages):
+    """نقشهٔ message_id → وظیفهٔ ساخته‌شده از همان پیام (۱ کوئری برای کل صفحه)."""
+    ids = [row.pk for row in messages or [] if getattr(row, 'pk', None)]
+    user = getattr(request, 'user', None)
+    if not ids or not getattr(user, 'pk', None):
+        return {}
+    try:
+        from planning.models import Task
+
+        rows = Task.objects.filter(
+            source_message__in=ids, owner=user, is_active=True,
+        ).values('id', 'source_message', 'title', 'status', 'due_date')
+        return {
+            row['source_message']: {
+                'id': row['id'],
+                'title': row['title'],
+                'status': row['status'],
+                'due_date': row['due_date'].isoformat() if row['due_date'] else None,
+            }
+            for row in rows
+        }
+    except Exception:  # noqa: BLE001 — نبود ماژول برنامه‌ریزی نباید پیام‌ها را بشکند
+        return {}
 
 
 def _mark_conversation_notifications_read(request, conversation):
@@ -224,9 +251,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(search_tokens__contains=digest)
         rows = list(qs[:limit])
         conversation.member_count = conversation.members.count()
+        task_map = _linked_task_map(request, rows)
         serializer = MessageSerializer(
             rows, many=True,
-            context={**self.get_serializer_context(), 'request': request},
+            context={**self.get_serializer_context(), 'request': request, 'task_map': task_map},
         )
         return Response({
             'results': serializer.data,
@@ -457,6 +485,73 @@ class MessageViewSet(viewsets.GenericViewSet):
         except ValueError as error:
             raise ValidationError({'emoji': str(error)}) from error
         return Response(result)
+
+    @action(detail=True, methods=['post'], url_path='make-task')
+    def make_task(self, request, pk=None):
+        """تبدیل پیام چت به وظیفهٔ برنامه‌ریزی (عنوان/مسئول/سررسید/اولویت)."""
+        message = get_object_or_404(self.get_queryset(), pk=pk)
+        chat_permissions.ensure_view(request.user, message.conversation)
+
+        from planning import services as planning_services
+        from planning.models import Task
+
+        body = crypto.decrypt_body(message.body)
+        suggestion = task_suggest.suggest_task(body) or {}
+        data = request.data
+        sender = ''
+        if message.sender_id:
+            sender = (message.sender.get_full_name() or '').strip() or message.sender.get_username()
+
+        title = str(data.get('title') or suggestion.get('title') or '').strip()
+        if not title:
+            title = crypto.preview_of(body, 120) or 'وظیفه از چت'
+        description = str(data.get('description') or '').strip() or task_suggest.build_description(
+            body,
+            conversation_title=message.conversation.title or '',
+            sender=sender or message.sender_name,
+        )
+        priority = data.get('priority') or suggestion.get('priority') or Task.Priority.NORMAL
+        if priority not in dict(Task.Priority.choices):
+            priority = Task.Priority.NORMAL
+        due_date = None
+        if data.get('due_date'):
+            due_date = parse_date(str(data.get('due_date')))
+
+        company = _company(request)
+        task = Task.objects.create(
+            company=company,
+            owner=request.user,
+            title=title[:220],
+            description=planning_services.encrypt_text(description),
+            priority=priority,
+            due_date=due_date,
+            source_message=message.pk,
+            related_module='chat',
+            related_object_type='chat_conversation',
+            related_object_id=str(message.conversation_id),
+            related_label=(message.conversation.title or '')[:200],
+            tags=['chat'],
+        )
+        user_ids = _json_list(data.get('assignees'))
+        group_ids = _json_list(data.get('groups'))
+        if user_ids or group_ids:
+            planning_services.assign_task(
+                company, task, request.user,
+                user_ids=user_ids, group_ids=group_ids,
+            )
+        return Response({
+            'task': {
+                'id': task.pk,
+                'title': task.title,
+                'status': task.status,
+                'priority': task.priority,
+                'due_date': task.due_date.isoformat() if task.due_date else None,
+                'assignees': len(planning_services.task_assignees(task)),
+                'url': f'/planning?task={task.pk}',
+            },
+            'suggested': suggestion,
+            'message': message.pk,
+        }, status=status.HTTP_201_CREATED)
 
 
 class AttachmentViewSet(viewsets.GenericViewSet):

@@ -26,6 +26,7 @@ import ChatConversationRail from './ChatConversationRail';
 import ChatEmojiPicker from './ChatEmojiPicker';
 import ChatInfoPanel from './ChatInfoPanel';
 import ChatMessageBubble from './ChatMessageBubble';
+import ChatTaskDialog from './ChatTaskDialog';
 import EntityPickerDialog, { ENTITY_MODULE_META } from './EntityPickerDialog';
 import {
   ChatAvatar, CHAT_KIND_META, MUTED, dateLabel, kindMetaOf, useChatLook,
@@ -222,6 +223,7 @@ const ChatPanel = ({
   const [editValue, setEditValue] = useState('');
   const [editMessage, setEditMessage] = useState(null);
   const [emojiAnchor, setEmojiAnchor] = useState(null);
+  const [taskTarget, setTaskTarget] = useState(null);
   const [highlightId, setHighlightId] = useState(null);
   const [unreadAfter, setUnreadAfter] = useState(null);
   const composerRef = useRef(null);
@@ -431,6 +433,16 @@ const ChatPanel = ({
     if (now - typingSentAt.current < TYPING_THROTTLE_MS) return;
     typingSentAt.current = now;
     axiosInstance.post(`/chat/conversations/${activeId}/typing/`, {}).catch(() => {});
+  };
+
+  /** پس از ساخت وظیفه از پیام: تازه‌سازی فهرست پیام‌ها و اعلان موفقیت. */
+  const handleTaskCreated = (data) => {
+    invalidateThread();
+    qc.invalidateQueries({ queryKey: ['planning-tasks'] });
+    qc.invalidateQueries({ queryKey: ['chat-pinned', activeId] });
+    const title = data?.task?.title || '';
+    setToast(title ? `وظیفه «${title}» ساخته شد` : 'وظیفه ساخته شد');
+    setTaskTarget(null);
   };
 
   const createConversation = useMutation({
@@ -693,6 +705,8 @@ const ChatPanel = ({
                             onPin={(row) => togglePin.mutate(row)}
                             onReact={(row, emoji) => toggleReaction.mutate({ message: row, emoji })}
                             onJumpTo={scrollToMessage}
+                            onMakeTask={(row) => setTaskTarget(row)}
+                            onOpenTask={(task) => navigate(`/planning?task=${task.id}`)}
                           />
                         </Box>
                       </React.Fragment>
@@ -886,6 +900,16 @@ const ChatPanel = ({
         accent={accent}
         onClose={() => setEmojiAnchor(null)}
         onPick={insertEmoji}
+      />
+
+      {/* ---------------- ساخت وظیفه از پیام ---------------- */}
+      <ChatTaskDialog
+        open={Boolean(taskTarget)}
+        message={taskTarget}
+        directory={directory}
+        accent={accent}
+        onClose={() => setTaskTarget(null)}
+        onCreated={handleTaskCreated}
       />
 
       {/* ---------------- دیالوگ ساخت گفتگو/کانال ---------------- */}

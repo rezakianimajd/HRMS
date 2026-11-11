@@ -7,7 +7,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from communication import crypto
 from communication import permissions as chat_permissions
-from communication import reactions, services, uploads
+from communication import reactions, services, task_suggest, uploads
 from communication.models import Conversation, ConversationMember
 from communication.realtime import DatabaseEventPublisher, _publisher
 
@@ -317,6 +317,90 @@ class ChatNotificationTests(SimpleTestCase):
         self.assertEqual(
             views._mark_conversation_notifications_read(request, SimpleNamespace(pk=7)), 0,
         )
+
+
+class TaskSuggestionTests(SimpleTestCase):
+    """تشخیص پیام «قابل تبدیل به وظیفه» و ساخت عنوان/توضیح."""
+
+    def test_actionable_messages_are_detected_with_reason(self):
+        cases = {
+            'قرارداد 05-073 رو بررسی کن': 'بررسی',
+            'صورت‌وضعیت شماره ۳ رو بزن': 'ثبت',
+            'فلان نامه چه شد؟': 'پیگیری',
+            'مدارک پرسنل مریم را بفرست': 'ارسال',
+            'جلسه با شرکت الف رو هماهنگ کن': 'هماهنگی',
+        }
+        for text, reason in cases.items():
+            suggestion = task_suggest.suggest_task(text)
+            self.assertIsNotNone(suggestion, text)
+            self.assertTrue(suggestion['is_actionable'])
+            self.assertEqual(suggestion['reason'], reason, text)
+            self.assertTrue(suggestion['title'])
+
+    def test_plain_messages_are_not_suggested(self):
+        for text in ('سلام، خوبی؟', 'ممنون', '👍', 'باشه', ''):
+            self.assertIsNone(task_suggest.suggest_task(text), text)
+
+    def test_urgent_messages_are_high_priority(self):
+        suggestion = task_suggest.suggest_task('این قرارداد رو امروز بررسی کن، فوری')
+        self.assertIsNotNone(suggestion)
+        self.assertEqual(suggestion['priority'], 'high')
+
+    def test_title_uses_the_first_sentence_and_limits_length(self):
+        self.assertEqual(
+            task_suggest.build_title('بررسی قرارداد ۱۲۳. پیگیری بعدی'),
+            'بررسی قرارداد ۱۲۳',
+        )
+        long_text = 'بررسی ' + ('طولانی ' * 40)
+        title = task_suggest.build_title(long_text)
+        self.assertLessEqual(len(title), 140)
+        self.assertTrue(title.endswith('…'))
+
+    def test_title_drops_polite_prefixes(self):
+        self.assertTrue(
+            task_suggest.build_title('لطفاً قرارداد ۱۲۳ را بررسی کن').startswith('قرارداد'),
+        )
+        self.assertTrue(
+            task_suggest.build_title('می‌تونی صورت‌وضعیت را بزنی؟').startswith('صورت وضعیت'),
+        )
+
+    def test_description_mentions_the_chat_source(self):
+        text = task_suggest.build_description(
+            'صورت‌وضعیت رو بزن', conversation_title='گفتگوی قرارداد', sender='مرتضی',
+        )
+        self.assertIn('از چت', text)
+        self.assertIn('گفتگوی قرارداد', text)
+        self.assertIn('صورت وضعیت رو بزن', text)
+
+
+class LinkedTaskMapTests(SimpleTestCase):
+    """نقشهٔ وظیفه‌های ساخته‌شده از پیام‌ها (بدون N+1)."""
+
+    def test_empty_inputs_return_empty_map(self):
+        from communication import views
+
+        request = SimpleNamespace(user=SimpleNamespace(pk=1))
+        self.assertEqual(views._linked_task_map(request, []), {})
+        self.assertEqual(
+            views._linked_task_map(SimpleNamespace(user=None), [SimpleNamespace(pk=5)]), {},
+        )
+
+    def test_map_is_keyed_by_the_source_message(self):
+        from communication import views
+
+        request = SimpleNamespace(user=SimpleNamespace(pk=1))
+        messages = [SimpleNamespace(pk=10), SimpleNamespace(pk=11)]
+        queryset = MagicMock()
+        queryset.values.return_value = [
+            {'id': 3, 'source_message': 10, 'title': 'بررسی قرارداد', 'status': 'todo',
+             'due_date': None},
+        ]
+        with patch('planning.models.Task.objects') as manager:
+            manager.filter.return_value = queryset
+            result = views._linked_task_map(request, messages)
+        self.assertEqual(result[10]['id'], 3)
+        self.assertEqual(result[10]['title'], 'بررسی قرارداد')
+        self.assertNotIn(11, result)
 
 
 class EntitySearchTests(SimpleTestCase):

@@ -36,12 +36,19 @@ const messages = [
     kind: 'text', is_mine: false, read_count: 1, delivered_count: 1, member_count: 3,
     attachments: [], entity_refs: [], created_at: '2026-11-10T08:10:00Z',
     reactions: [{ emoji: '👍', count: 2, mine: false, user_ids: [2, 3] }],
+    task_suggestion: {
+      is_actionable: true, reason: 'بررسی', title: 'بررسی صورت‌وضعیت', priority: 'normal',
+      matched: ['بررسی'],
+    },
+    linked_task: null,
   },
   {
     id: 102, conversation: 7, sender: 1, sender_name: 'مدیر', body: '👍',
     kind: 'text', is_mine: true, read_count: 0, delivered_count: 1, member_count: 3,
     attachments: [], entity_refs: [], created_at: '2026-11-10T08:12:00Z',
     reactions: [],
+    task_suggestion: null,
+    linked_task: { id: 55, title: 'پیگیری نامه', status: 'todo', due_date: null },
   },
 ];
 
@@ -291,6 +298,53 @@ test('rail filters, info panel, reactions and typing are wired to the API', asyn
   expect(infoPanel.textContent).toContain('اطلاعات گفتگو');
   expect(infoPanel.textContent).toContain('مدیر مالی');
   expect(infoPanel.textContent).toContain('پیام‌های سنجاق‌شده');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
+
+test('an actionable message can be turned into a planning task', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  axiosInstance.post.mockClear();
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/chat?conversation=7']}>
+          <ChatPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(400);
+  });
+  await act(async () => { await wait(350); });
+
+  // نشان «پیشنهاد ساخت وظیفه» و نشان وظیفهٔ ساخته‌شده
+  expect(container.querySelector('[data-testid="chat-task-suggestion"]')).toBeTruthy();
+  expect(container.querySelector('[data-testid="chat-linked-task"]')).toBeTruthy();
+
+  // باز کردن دیالوگ از دکمهٔ نوار اقدام
+  const makeTaskButton = container.querySelector('[data-testid="chat-make-task"]');
+  expect(makeTaskButton).toBeTruthy();
+  await act(async () => { makeTaskButton.click(); await wait(300); });
+  expect(document.body.textContent).toContain('ساخت وظیفه از پیام');
+  expect(document.body.textContent).toContain('مسئول انجام');
+
+  const submitButton = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'ساخت وظیفه');
+  expect(submitButton).toBeTruthy();
+  await act(async () => { submitButton.click(); await wait(350); });
+
+  const call = axiosInstance.post.mock.calls
+    .find(([url]) => String(url).includes('/make-task/'));
+  expect(call).toBeTruthy();
+  expect(call[0]).toBe('/chat/messages/101/make-task/');
+  expect(call[1].title).toBe('بررسی صورت‌وضعیت');
+  expect(call[1].priority).toBe('normal');
 
   await act(async () => { root.unmount(); });
   container.remove();
