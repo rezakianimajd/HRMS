@@ -118,8 +118,27 @@ export const LETTER_PAGE_PRESETS = {
 
 
 
+/* جدول دفتر مکاتبات: ارتفاع ثابت ۱۲ ردیف قابل‌مشاهده و صفحه‌بندی ۲۰ ردیفی.
+   رنگ/فونت/ارتفاع ردیف و سایر جزئیات از توکن‌های استودیو تم می‌آید. */
+export const LETTER_TABLE_VISIBLE_ROWS = 12;
+export const LETTER_TABLE_PAGE_SIZE = 20;
+
 const CorrespondenceLettersPage = ({ mode = 'all' }) => {
-  const moduleTheme = useModuleTheme();
+  const studioTheme = useModuleTheme();
+  const moduleTheme = useMemo(() => {
+    const base = studioTheme.tableTheme;
+    const visibleRows = LETTER_TABLE_VISIBLE_ROWS;
+    return {
+      ...studioTheme,
+      tableTheme: {
+        ...base,
+        singleLine: true,
+        visibleRows,
+        rowsPerPage: LETTER_TABLE_PAGE_SIZE,
+        tableHeight: Math.round(base.headerHeight + base.rowHeight * visibleRows),
+      },
+    };
+  }, [studioTheme]);
   const qc = useQueryClient();
   const { user } = useAuth();
   const preset = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
@@ -850,19 +869,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     letter.unit_name ? `واحد: ${letter.unit_name}` : '',
                   );
                   return (
-                    <Box sx={{ minWidth: 0 }} title={meta || undefined}>
-                      <Typography sx={{
-                        fontSize: 11.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums',
-                        color: letter.unit_reg_no ? undefined : MUTED,
-                      }}>
-                        {value}
-                      </Typography>
-                      {companyReg ? (
-                        <Typography noWrap sx={{ fontSize: 9.5, color: MUTED }}>
-                          مؤسسه: {companyReg}
-                        </Typography>
-                      ) : null}
-                    </Box>
+                    <CellText mono weight={800} title={meta || undefined}
+                      color={letter.unit_reg_no ? undefined : MUTED}>
+                      {value}
+                    </CellText>
                   );
                 },
               },

@@ -4,7 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
-import CorrespondenceLettersPage from '../pages/correspondence/CorrespondenceLettersPage';
+import CorrespondenceLettersPage, {
+  LETTER_TABLE_PAGE_SIZE, LETTER_TABLE_VISIBLE_ROWS,
+} from '../pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceDashboardPage from '../pages/correspondence/CorrespondenceDashboardPage';
 import CorrespondenceWorkdeskPage from '../pages/correspondence/CorrespondenceWorkdeskPage';
 import { getModuleLandingPath, MODULE_ICONS } from '../core/constants/moduleIcons';
@@ -414,6 +416,10 @@ test('incoming list is ordered by the unit registration number (last first)', as
   const params = listCalls[listCalls.length - 1][1].params;
   expect(params.direction).toBe('incoming');
   expect(params.ordering).toBe('-reg_no');
+  // صفحه‌بندی ثابت ۲۰ ردیفی و ارتفاع جدول برای ۱۲ ردیف قابل‌مشاهده
+  expect(params.page_size).toBe(LETTER_TABLE_PAGE_SIZE);
+  expect(LETTER_TABLE_PAGE_SIZE).toBe(20);
+  expect(LETTER_TABLE_VISIBLE_ROWS).toBe(12);
 
   root.unmount();
   container.remove();
@@ -514,12 +520,16 @@ test('outgoing page shows its own date column and send-oriented labels', async (
   expect(dialog.textContent).toContain('شماره نامهٔ طرف مقابل');
   expect(dialog.textContent).toContain('نوع ارسال');
   expect(dialog.textContent).not.toContain('شماره ثبت ورود به شرکت');
-  // گروه شماره‌گذاری + پیشنهاد خودکار شمارهٔ بعدی
+  // گروه شماره‌گذاری + پیشنهاد خودکار شمارهٔ بعدی (بدون توضیح زیر فیلد، مستقیم در ورودی)
   expect(dialog.textContent).toContain('گروه شماره‌گذاری');
   expect(dialog.textContent).toContain('صادره اصلی');
   expect(axiosInstance.get).toHaveBeenCalledWith('/letter-series/1/preview/', expect.anything());
-  expect(dialog.textContent).toContain('پیشنهاد خودکار');
-  expect(dialog.textContent).toContain('ص/1404/008');
+  expect(dialog.textContent).not.toContain('پیشنهاد خودکار');
+  const numberInput = [...dialog.querySelectorAll('input')]
+    .find((node) => node.value === 'ص/1404/008');
+  expect(numberInput).toBeTruthy();
+  // هیچ توضیحی زیر فیلدها (helper text) رندر نمی‌شود
+  expect(dialog.querySelectorAll('.MuiFormHelperText-root').length).toBe(0);
 
   root.unmount();
   container.remove();

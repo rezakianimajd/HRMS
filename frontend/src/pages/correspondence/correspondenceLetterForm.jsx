@@ -422,7 +422,7 @@ const LetterFormDialog = ({
             ? 'ثبت و ارسال'
             : form.direction === 'internal' ? 'ثبت مکاتبهٔ داخلی' : 'ثبت و ورود'}
           color={form.direction === 'outgoing' ? OUTGOING : WARN}>
-          <FormTable>
+          <FormTable columns={4}>
             <TextField select size="small" label="جهت نامه" value={form.direction}
               onChange={(event) => {
                 const direction = event.target.value;
@@ -493,20 +493,14 @@ const LetterFormDialog = ({
           icon={EditNoteIcon}
           title={form.direction === 'outgoing' ? 'شماره‌ها و تاریخ ارسال' : 'شماره‌ها و تاریخ ثبت'}
           color={form.direction === 'outgoing' ? OUTGOING : INCOMING}>
-          <FormTable>
+          <FormTable columns={4}>
             {form.direction === 'outgoing' ? (
               <TextField select size="small" label="گروه شماره‌گذاری"
                 value={form.series}
                 onChange={(event) => {
                   setForm((prev) => ({ ...prev, series: event.target.value, number: '' }));
                   suggestionRef.current = '';
-                }}
-                helperText={suggestion?.number
-                  ? `پیشنهاد خودکار: ${suggestion.number}`
-                  : (seriesOptions.length
-                    ? 'گروه را انتخاب کنید تا شمارهٔ بعدی پیشنهاد شود'
-                    : 'در تنظیمات → مکاتبات اداری گروه بسازید')}
-                FormHelperTextProps={{ sx: { fontSize: 10, mx: 0.25 } }}>
+                }}>
                 <MenuItem value="">بدون گروه (شمارهٔ دستی)</MenuItem>
                 {seriesOptions.map((item) => (
                   <MenuItem key={item.id} value={item.id}>
@@ -515,11 +509,7 @@ const LetterFormDialog = ({
                 ))}
               </TextField>
             ) : null}
-            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')}
-              helperText={suggestion?.number && form.number !== suggestion.number
-                ? `شمارهٔ پیشنهادی گروه: ${suggestion.number}`
-                : ''}
-              FormHelperTextProps={{ sx: { fontSize: 10, mx: 0.25 } }} />
+            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')} />
             <JalaliMaskedDateInput variant="outlined" label="تاریخ نامه" value={form.letter_date}
               onChange={(value) => setForm((prev) => ({ ...prev, letter_date: value }))} />
             {form.direction === 'outgoing' ? (
@@ -554,8 +544,7 @@ const LetterFormDialog = ({
 
         <FormSection icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
           <Box sx={{
-            '& .MuiTableCell-root': { py: 0.4 },
-            '& .MuiInputBase-root': { minHeight: 34 },
+            '& .MuiInputBase-root': { minHeight: 38 },
             '& .MuiAutocomplete-inputRoot': { py: 0.25 },
           }}>
             <FormTable columns={2}>
@@ -577,7 +566,6 @@ const LetterFormDialog = ({
               {form.sender_kind === 'party' ? (
                 <PartyPicker
                   label="فرستنده (شرکت / طرف حساب)"
-                  helperText="اگر شرکت در قراردادها نیست، نامش را بنویسید و Enter بزنید."
                   createInContracts={form.party_create_in_contracts}
                   value={form.sender_party
                     ? partyValue(form.sender_party, form.sender_party_name)
@@ -620,9 +608,6 @@ const LetterFormDialog = ({
               </TextField>
               <PartyPicker
                 label="طرف حساب (شرکت / طرف حساب)"
-                helperText={form.party_account
-                  ? 'متصل به طرف حساب مدیریت قراردادها'
-                  : 'شرکت جدید؟ فقط نامش در مکاتبات ثبت می‌شود و بعداً از «نگاشت نام‌ها» به طرف حساب قراردادها وصل می‌شود.'}
                 createInContracts={form.party_create_in_contracts}
                 value={form.party_account
                   ? partyValue(form.party_account, form.party_account_name)
@@ -667,15 +652,11 @@ const LetterFormDialog = ({
                 </Typography>
               )}
             />
-            <Typography sx={{ fontSize: 11.5, color: MUTED, mt: 0.25 }}>
-              خاموش باشد، نام شرکت فقط در مکاتبات اداری ثبت می‌شود (بدون ساخت طرف حساب در قراردادها) و
-              بعداً از صفحهٔ «نگاشت نام‌ها» → کاربرد «طرف حساب» به طرف حساب مدیریت قراردادها تعمیم داده می‌شود.
-            </Typography>
           </Box>
         </FormSection>
 
         <FormSection icon={MailOutlineIcon} title="مشخصات نامه" color={INTERNAL}>
-          <FormTable>
+          <FormTable columns={4}>
             <TextField select size="small" label="نوع مکاتبه" value={form.category} onChange={set('category')}>
               <MenuItem value="">—</MenuItem>
               {categories.map((row) => (
@@ -709,8 +690,7 @@ const LetterFormDialog = ({
               onChange={set('amount')} />
             <TextField size="small" label="قرارداد مرتبط" value={form.contract_title
               || (form.contract_number ? `شماره ${form.contract_number}` : '')}
-              InputProps={{ readOnly: true }}
-              helperText="از بخش «طرفین مکاتبه» انتخاب می‌شود" />
+              InputProps={{ readOnly: true }} />
           </FormTable>
         </FormSection>
 

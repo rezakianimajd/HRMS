@@ -114,37 +114,41 @@ const chunkArray = (items, size) => {
   return rows;
 };
 
-/** جدول ورود اطلاعات (هم‌سبک با ورود اطلاعات جدول معاملات فصلی). */
+/* بچه‌های Fragment را هم باز می‌کند تا هر فیلد یک خانهٔ مستقل در شبکه بگیرد
+   (وگرنه یک Fragment چند فیلد، همه در یک ستون روی هم می‌نشستند). */
+const flattenCells = (children) => React.Children.toArray(children).flatMap((child) => (
+  React.isValidElement(child) && child.type === React.Fragment
+    ? flattenCells(child.props.children)
+    : [child]
+));
+
+/**
+ * شبکهٔ ورود اطلاعات فرم: ستون‌های مساوی و فاصلهٔ یکسان (grid) — در RTL/LTR یکسان است.
+ * توضیحات زیر فیلدها (helper text) نمایش داده نمی‌شود تا ارتفاع خانه‌ها/ردیف‌ها یکدست بماند.
+ */
 const FormTable = ({ children, columns = 3 }) => {
-  const cells = React.Children.toArray(children);
-  const rows = chunkArray(cells, columns);
+  const cells = flattenCells(children);
+  const columnCount = Math.max(1, Number(columns) || 1);
+  const fullColumns = `repeat(${columnCount}, minmax(0, 1fr))`;
+  const twoColumns = `repeat(${Math.min(2, columnCount)}, minmax(0, 1fr))`;
   return (
-    <Table size="small" sx={{
-      tableLayout: 'fixed',
-      '& td': {
-        border: '1px solid',
-        borderColor: 'divider',
-        px: 0.9,
-        py: 0.7,
-        verticalAlign: 'middle',
-        bgcolor: 'background.paper',
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: twoColumns, md: fullColumns },
+      gap: 1,
+      alignItems: 'stretch',
+      '& > *': { minWidth: 0 },
+      '& .MuiFormControl-root, & .MuiTextField-root, & .MuiAutocomplete-root': {
+        width: '100%',
+        m: 0,
       },
-      '& .MuiTextField-root': { width: '100%', m: 0 },
-      '& .MuiFormHelperText-root': { mx: 0.6, my: 0.2 },
+      '& .MuiInputBase-root': { minHeight: 38 },
+      '& .MuiFormHelperText-root': { display: 'none' },
     }}>
-      <TableBody>
-        {rows.map((row, rowIndex) => (
-          <TableRow key={`form-row-${rowIndex}`}>
-            {row.map((node, cellIndex) => (
-              <TableCell key={`form-cell-${rowIndex}-${cellIndex}`}>{node}</TableCell>
-            ))}
-            {Array.from({ length: columns - row.length }).map((_unused, padIndex) => (
-              <TableCell key={`form-pad-${rowIndex}-${padIndex}`} />
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+      {cells.map((node, index) => (
+        <Box key={`form-cell-${index}`} sx={{ minWidth: 0 }}>{node}</Box>
+      ))}
+    </Box>
   );
 };
 
