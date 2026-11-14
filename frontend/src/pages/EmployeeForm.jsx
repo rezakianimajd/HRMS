@@ -431,6 +431,7 @@ const EmployeeForm = () => {
               last_name: form.last_name,
             }}
             size={80}
+            previewable
             fontSize={32}
             sx={{ boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }}
           />

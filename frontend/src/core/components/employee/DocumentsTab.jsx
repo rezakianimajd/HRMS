@@ -212,7 +212,7 @@ const DocumentsTab = ({ employeeId }) => {
     <Box>
       {/* Employee photo upload */}
       <Paper sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <EmployeeAvatar employee={employee} size={72} />
+        <EmployeeAvatar employee={employee} size={72} previewable />
         <Box sx={{ flex: 1 }}>
           <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>عکس پرسنلی</Typography>
           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>

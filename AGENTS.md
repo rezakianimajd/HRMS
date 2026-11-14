@@ -614,6 +614,29 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **کیفیت عکس پرسنلی به «تمام‌کیفیت» ارتقا یافت (۲۰۲۶-۱۱-۱۴):** آواتارها تار/پیکسلی دیده می‌شدند
+  چون نسخهٔ نمایشیِ کوچک (۲۵۶px پیش‌فرض و بدون srcSet متراکم) در نمای بزرگ/پیش‌نمایش استفاده می‌شد.
+  - **بک‌اند (`employees/photo_service.py`):** `DEFAULT_SIZE=512`، `MAX_SIZE=2048`، `RENDER_VERSION='3'`
+    (بخشی از نام کش + پارامتر `cv=` در URL برای باطل‌کردن کش قبلی/مرورگر)، WebP با `quality=95` و
+    `method=6`، حفظ ICC، و شارپ ملایم (`radius=0.8`, `percent=70`) **فقط** وقتی تصویر واقعاً کوچک شده
+    (بدون هاله/پیکسلی‌شدن). `source_media()` نوع واقعی فایل را با Pillow تشخیص می‌دهد (پسوند ذخیره‌شده
+    گاهی اشتباه است، مثلاً PNG با محتوای JPEG) و `photo_full_url()` فایل اصلی را با `?full=1` می‌دهد.
+  - **اندپوینت `/api/employees/{id}/photo/`:** با `full=1` فایل اصلی را با Content-Type واقعی
+    (`image/jpeg`/…) و `Content-Disposition: inline` برمی‌گرداند؛ نسخهٔ نمایشی تا ۲۰۴۸px رندر می‌شود.
+  - **فرانت (`core/utils/photoUrl.js`):** `PHOTO_MAX_PIXELS=2048`, `employeePhotoSrcSet` با کاندیدهای
+    1x/1.5x/2x/3x (برای مانیتورهای ۱۲۵٪/۱۵۰٪ ویندوز)، `employeePhotoPreview(url)` = `size=2048` برای
+    دیالوگ/چاپ و `employeePhotoOriginal(url)` = `full=1` برای دانلود/تب جدید.
+  - **`EmployeeAvatar`:** پراپ `previewable` → کلیک/Enter روی آواتار، دیالوگ عکس تمام‌کیفیت (پس‌زمینهٔ
+    تیره، نام، دریافت فایل اصلی، باز کردن در تب جدید، بستن) با `stopPropagation` تا کلیک ردیف را نشکند.
+    استفاده در پروندهٔ پرسنل (۱۰۴px)، دفترچه تلفن (۶۸)، تب مدارک (۷۲) و فرم پرسنل (۸۰).
+    عکس گروه «عکس پرسنلی» در کتابخانهٔ اسناد پرسنلی (`personnelDocuments.employeePhotoRow`) از
+    `employeePhotoPreview` استفاده می‌کند.
+  - **تأیید زندهٔ employee 1:** `size=512` → WebP 38.9KB (384×512)، `size=2048` → WebP 202KB
+    (1086×1448 = اندازهٔ منبع)، `full=1` → JPEG 108KB با `Content-Type: image/jpeg`.
+  - تست: `employees/tests_photo.py` (**۱۳**، شامل نسخهٔ کش و تشخیص نوع واقعی)، `__tests__/photoUrl.test.js`
+    (**۶**) و سوئیت‌های `phonebook`/`employeesListSmoke`/`chatSmoke`/`familyReportPageSmoke`/
+    `supplementaryInsurancePageSmoke` (**۱۲**) سبز. باندل زندهٔ فرانت: **`main.11e1d68d.js`**.
+
 - **فرم ثبت نامه منظم شد و جدول دفتر مکاتبات کاملاً تم‌محور/تک‌ردیفی شد (۲۰۲۶-۱۱-۱۴):**
   - **فرم نامه:** `FormTable` (در `correspondenceFormUi.jsx`) از جدول HTML به **CSS Grid** تغییر کرد؛
     ستون‌ها مساوی (`xs:1 / sm:2 / md:n`) و هر فیلد یک خانهٔ مستقل است. `flattenCells` بچه‌های

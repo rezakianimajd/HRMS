@@ -149,6 +149,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         تگ <img> هدر JWT نمی‌فرستد، پس دسترسی با توکن امضاشدهٔ کوتاه‌مدت
         (``?t=...&size=...``) کنترل می‌شود؛ بدون توکن معتبر پاسخ ۴۰۴ است.
+        با ``full=1`` همان فایل اصلی (کیفیت کامل) برای نمایش تمام‌صفحه/دانلود برگردانده می‌شود.
         """
         company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
         employees_qs = Employee.objects.filter(pk=pk)
@@ -161,6 +162,20 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             raise Http404
         if not photo_service.photo_exists(employee):
             raise Http404
+
+        if str(request.query_params.get('full') or '').lower() in ('1', 'true', 'yes'):
+            from django.http import FileResponse
+
+            path = employee.photo.path
+            content_type, extension = photo_service.source_media(employee)
+            response = FileResponse(
+                open(path, 'rb'), content_type=content_type, as_attachment=False,
+                filename=f'employee-{employee.pk}{extension}',
+            )
+            response['Cache-Control'] = 'private, max-age=604800'
+            response['X-Content-Type-Options'] = 'nosniff'
+            return response
+
         size = photo_service.clamp_size(request.query_params.get('size'))
         try:
             data = photo_service.photo_thumbnail(employee, size)

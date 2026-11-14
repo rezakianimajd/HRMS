@@ -1,4 +1,8 @@
 import {
+  PHOTO_MAX_PIXELS,
+  PHOTO_PREVIEW_PIXELS,
+  employeePhotoOriginal,
+  employeePhotoPreview,
   employeePhotoSrc,
   employeePhotoSrcSet,
   photoPixelSize,
@@ -22,8 +26,9 @@ describe('photoUrl', () => {
 
   it('اندازه را در بازهٔ مجاز نگه می‌دارد', () => {
     expect(photoPixelSize(4, 1)).toBe(48);
-    expect(photoPixelSize(2000, 2)).toBe(1024);
-    expect(employeePhotoSrc(signed, 1200)).toContain('size=1024');
+    expect(photoPixelSize(2000, 2)).toBe(PHOTO_MAX_PIXELS);
+    expect(PHOTO_MAX_PIXELS).toBe(2048);
+    expect(employeePhotoSrc(signed, 1200)).toContain(`size=${PHOTO_MAX_PIXELS}`);
   });
 
   it('آواتارهای بدون عکس و آدرس‌های غیرمرتبط را دست نمی‌زند', () => {
@@ -33,12 +38,26 @@ describe('photoUrl', () => {
     expect(employeePhotoSrc(media, 40)).toBe(media);
   });
 
-  it('srcSet برای 1x و 2x ساخته می‌شود', () => {
+  it('srcSet برای 1x تا 3x ساخته می‌شود', () => {
     const srcSet = employeePhotoSrcSet(signed, 64);
     expect(srcSet).toContain('size=64&');
     expect(srcSet).toContain(' 1x, ');
+    expect(srcSet).toContain('size=96&');
+    expect(srcSet).toContain(' 1.5x, ');
     expect(srcSet).toContain('size=128&');
-    expect(srcSet.endsWith(' 2x')).toBe(true);
+    expect(srcSet).toContain(' 2x, ');
+    expect(srcSet).toContain('size=192&');
+    expect(srcSet.endsWith(' 3x')).toBe(true);
     expect(employeePhotoSrcSet('http://hrms.local/media/x.jpg', 40)).toBeUndefined();
+  });
+
+  it('نسخهٔ تمام‌کیفیت و فایل اصلی را می‌سازد', () => {
+    const preview = employeePhotoPreview(signed);
+    expect(preview).toContain(`size=${PHOTO_PREVIEW_PIXELS}`);
+    expect(preview).toContain('v=abc123');
+    expect(preview).toContain('t=token.sig');
+    const original = employeePhotoOriginal(signed);
+    expect(original).toContain('full=1');
+    expect(original).not.toContain('size=');
   });
 });

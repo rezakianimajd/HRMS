@@ -1,4 +1,5 @@
 /** ابزارهای خالصِ گروه‌بندی مدارک پرسنلی در کتابخانهٔ اسناد. */
+import { employeePhotoPreview } from '../../core/utils/photoUrl';
 
 export const CATEGORY_RULES = [
   {
@@ -176,8 +177,9 @@ const employeePhotoRow = (employee) => {
   return {
     id: `employee-photo-${employee.id}`,
     title: 'عکس پرسنلی',
-    description: 'عکس ثبت‌شده در پروندهٔ پرسنلی',
-    file_url: url,
+    description: 'عکس ثبت‌شده در پروندهٔ پرسنلی (کیفیت کامل)',
+    /* پیش‌نمایش در اندازهٔ بزرگ/چاپ، نه نسخهٔ کوچک آواتار */
+    file_url: employeePhotoPreview(url),
     file_name: `employee-${employee.employee_id || employee.id}.jpg`,
     file_extension: '.jpg',
     isEmployeePhoto: true,

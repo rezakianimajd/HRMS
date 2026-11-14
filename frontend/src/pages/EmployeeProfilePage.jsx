@@ -104,6 +104,7 @@ const EmployeeProfilePage = () => {
             <EmployeeAvatar
               employee={e}
               size={104}
+              previewable
               sx={{ boxShadow: '0 10px 36px rgba(99,102,241,0.4)', border: '3px solid rgba(255,255,255,0.7)' }}
             />
             <Box sx={{ flex: 1, minWidth: 240 }}>

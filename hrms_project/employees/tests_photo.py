@@ -99,6 +99,19 @@ class RenderPhotoTests(SimpleTestCase):
         self.assertEqual(target.read_bytes(), first)
         self.assertEqual(photo_service.photo_thumbnail(employee, 64), first)
 
+    def test_cache_path_is_versioned(self):
+        current = photo_service.cache_path(1, 'employees/1/photo.jpg', 64)
+        legacy = photo_service.cache_path(1, 'employees/1/photo.jpg', 64, version='legacy')
+        self.assertNotEqual(current, legacy)
+        self.assertTrue(current.name.endswith('_64.webp'))
+
+    def test_source_media_uses_real_format_not_extension(self):
+        photo = FakePhoto(self.source, 'employees/1/photo.png',
+                          '/media/employees/1/photo.png')
+        content_type, extension = photo_service.source_media(FakeEmployee(1, photo))
+        self.assertEqual(content_type, 'image/jpeg')
+        self.assertEqual(extension, '.jpg')
+
 
 class PhotoUrlTests(SimpleTestCase):
     def test_without_photo_returns_empty(self):
@@ -116,10 +129,15 @@ class PhotoUrlTests(SimpleTestCase):
             with open(path, 'wb') as handle:
                 handle.write(b'not-a-real-image')
             photo = FakePhoto(path, 'employees/9/photo.jpg', '/media/employees/9/photo.jpg')
-            url = photo_service.photo_url(FakeEmployee(9, photo), FakeRequest(), size=160)
+            employee = FakeEmployee(9, photo)
+            url = photo_service.photo_url(employee, FakeRequest(), size=160)
+            full_url = photo_service.photo_full_url(employee, FakeRequest())
         self.assertIn('/api/employees/9/photo/', url)
         self.assertIn('size=160', url)
         self.assertIn('t=', url)
         self.assertIn('v=', url)
+        self.assertIn(f'cv={photo_service.RENDER_VERSION}', url)
         token = url.split('t=')[1].split('&')[0]
         self.assertTrue(verify_employee_token(token, 9))
+        self.assertIn('full=1', full_url)
+        self.assertNotIn('size=', full_url)

@@ -76,7 +76,7 @@ const PhonebookPage = () => {
               '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 20px 44px rgba(99,102,241,0.16)', border: '1px solid rgba(99,102,241,0.2)' },
             }}>
               <CardContent sx={{ px: 2.5, py: 3, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                <EmployeeAvatar employee={emp} size={68} sx={{ mb: 1.5, boxShadow: '0 6px 20px rgba(99,102,241,0.3)', border: '3px solid rgba(255,255,255,0.7)' }} />
+                <EmployeeAvatar employee={emp} size={68} previewable sx={{ mb: 1.5, boxShadow: '0 6px 20px rgba(99,102,241,0.3)', border: '3px solid rgba(255,255,255,0.7)' }} />
 
                 <Typography variant="subtitle1" fontWeight={800} noWrap sx={{ textAlign: 'center' }}>{emp.full_name}</Typography>
 
