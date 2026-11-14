@@ -26,11 +26,10 @@ def statement_document(data):
     status = data.get('status_display') or data.get('status') or ''
 
     identity = pe.field_grid([
-        ('شماره صورت / تنخواه', data.get('number')),
-        ('تنخواه', data.get('fund')),
+        ('شماره صورت', data.get('number')),
+        ('نام تنخواه', data.get('fund')),
         ('تاریخ صورت', pe.jalali(data.get('date'))),
-        ('مرکز هزینه', data.get('cost_center')),
-    ], columns=4)
+    ], columns=3, widths=['12%', '14%', '14%', '38%', '12%', '10%'])
 
     sections = [{'html': identity}]
     description = (data.get('description') or '').strip()

@@ -105,11 +105,21 @@ def raw(html):
     return RawHtml(html or '')
 
 
-def field_grid(fields, columns=3):
-    """جدول «برچسب/مقدار» — ورودی: [(label, value), ...] (فقط مقادیر غیرخالی)."""
+def field_grid(fields, columns=3, widths=None):
+    """جدول «برچسب/مقدار» — ورودی: [(label, value), ...] (فقط مقادیر غیرخالی).
+
+    ``widths`` اختیاری است و عرض هر سلول را به ترتیب (label/value) تعیین می‌کند؛
+    برای فیلدهایی که مقدارشان بلند است (مثل نام تنخواه) می‌توان عرض بیشتری داد.
+    """
     rows = [item for item in fields if item and item[1] not in (None, '', [])]
     if not rows:
         return ''
+    colgroup = ''
+    custom = ''
+    if widths and len(widths) >= columns * 2:
+        cols = ''.join(f'<col style="width:{width}">' for width in widths[:columns * 2])
+        colgroup = f'<colgroup>{cols}</colgroup>'
+        custom = ' pe-fields-custom'
     cells = []
     for index, (label, value) in enumerate(rows):
         if index % columns == 0:
@@ -120,7 +130,7 @@ def field_grid(fields, columns=3):
             for _pad in range(columns - 1 - (index % columns)):
                 cells.append('<th class="pe-label"></th><td class="pe-value"></td>')
             cells.append('</tr>')
-    return f'<table class="pe-fields">{"".join(cells)}</table>'
+    return f'<table class="pe-fields{custom}">{colgroup}{"".join(cells)}</table>'
 
 
 def data_table(columns, rows, options=None):

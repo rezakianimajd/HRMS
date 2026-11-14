@@ -187,7 +187,11 @@ class PettyStatementDocumentTests(SimpleTestCase):
         self.assertNotIn('تنخواه‌دار', html)
         self.assertNotIn('روش پرداخت', html)
         self.assertNotIn('برج اداری', html)
-        self.assertEqual(html.count('<th class="pe-label">'), 4)
+        self.assertNotIn('مرکز هزینه', html)
+        self.assertIn('نام تنخواه', html)
+        self.assertEqual(html.count('<th class="pe-label">'), 3)
+        self.assertIn('pe-fields-custom', html)
+        self.assertIn('width:38%', html)
         self.assertIn('pe-table-light', html)
         self.assertLess(
             html.index('خرید لوازم اداری'),

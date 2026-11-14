@@ -59,6 +59,7 @@ body {
 .pe-fields th.pe-label {
   width: 14%%; background: #f1f5f9; color: #475569; font-weight: 800; white-space: nowrap;
 }
+.pe-fields.pe-fields-custom th.pe-label { width: auto; }
 .pe-fields td.pe-value { font-weight: 700; white-space: pre-wrap; word-break: break-word; }
 .pe-table { width: 100%%; border-collapse: collapse; table-layout: fixed; }
 .pe-table th {
