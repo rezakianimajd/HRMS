@@ -19,7 +19,7 @@ export const today = () => {
 export const emptyLine = () => ({
   account: '', aux1: '', aux2: '', aux3: '',
   invoice_number: '', expense_date: today(), supplier: '', desc: '',
-  debit: '', vat_amount: '', tax_amount: '', attachment: null,
+  debit: '', vat_amount: '', attachment: null,
 });
 
 export const hasLineData = (line) => Boolean(
@@ -41,13 +41,11 @@ export const totalsOf = (lines) => {
   const filled = fillLines(lines);
   const gross = filled.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
   const vat = filled.reduce((sum, line) => sum + (Number(line.vat_amount) || 0), 0);
-  const tax = filled.reduce((sum, line) => sum + (Number(line.tax_amount) || 0), 0);
   return {
     count: filled.length,
     gross,
     vat,
-    tax,
-    net: Math.max(gross - vat - tax, 0),
+    net: Math.max(gross - vat, 0),
   };
 };
 
@@ -73,6 +71,7 @@ export const buildStatementFormData = ({ header, lines }) => {
   form.append('date', header.date || '');
   form.append('description', header.description || '');
   form.append('payment_method', header.payment_method || 'cash');
+  if (header.number) form.append('number', header.number);
   if (header.project) form.append('project', header.project);
   if (header.cost_center) form.append('cost_center', header.cost_center);
 
@@ -80,7 +79,6 @@ export const buildStatementFormData = ({ header, lines }) => {
   rows.forEach((line, index) => {
     const gross = Number(line.debit) || 0;
     const vat = Number(line.vat_amount) || 0;
-    const tax = Number(line.tax_amount) || 0;
     form.append(`lines[${index}]account`, line.account || '');
     form.append(`lines[${index}]auxiliary_1`, line.aux1 || '');
     form.append(`lines[${index}]auxiliary_2`, line.aux2 || '');
@@ -91,8 +89,7 @@ export const buildStatementFormData = ({ header, lines }) => {
     form.append(`lines[${index}]description`, line.desc || '');
     form.append(`lines[${index}]debit`, String(gross));
     form.append(`lines[${index}]vat_amount`, String(vat));
-    form.append(`lines[${index}]tax_amount`, String(tax));
-    form.append(`lines[${index}]net_amount`, String(Math.max(gross - vat - tax, 0)));
+    form.append(`lines[${index}]net_amount`, String(Math.max(gross - vat, 0)));
     if (line.attachment) form.append(`lines[${index}]attachment`, line.attachment);
   });
   return form;

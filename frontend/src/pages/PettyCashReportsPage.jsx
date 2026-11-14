@@ -7,14 +7,12 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Grid,
   Typography, Divider,
 } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import PageHeader from '../core/components/ui/PageHeader';
-import downloadFile from '../core/utils/downloadUtils';
 
 const COLOR = '#0ea5e9';
 const COLOR_DARK = '#0284c7';
@@ -223,11 +221,6 @@ const PettyCashReportsPage = () => {
   const totals = data?.totals;
   const counts = data?.counts;
 
-  const exportCsv = () => {
-    const q = new URLSearchParams({ ...params, export: 'csv' }).toString();
-    downloadFile(`${def.endpoint}?${q}`, { fallbackName: `petty-cash-${key}.csv` }).catch(() => {});
-  };
-
   const complianceSections = key === 'compliance' ? [
     { title: 'صورت‌های فاقد پیوست', rows: data?.missing_document || [], cols: ['number', 'date', 'fund', 'status', 'amount'] },
     { title: 'مغایرت مبلغ سطر', rows: data?.amount_mismatch || [], cols: ['number', 'line', 'expected', 'actual'] },
@@ -244,10 +237,6 @@ const PettyCashReportsPage = () => {
           <Stack direction="row" spacing={1} alignItems="center">
             <Button variant="outlined" size="small" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching}>
               به‌روزرسانی
-            </Button>
-            <Button variant="contained" size="small" startIcon={<DownloadIcon />} onClick={exportCsv}
-              sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
-              خروجی CSV
             </Button>
           </Stack>
         )}

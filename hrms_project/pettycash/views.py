@@ -1166,19 +1166,32 @@ class PettyCashExpenseStatementViewSet(FinancialViewSet):
         response['Content-Disposition'] = f'inline; filename="statement-{st.pk}.html"'
         return response
 
-    @action(detail=False, methods=['get'])
-    def export(self, request):
-        """خروجی CSV صورت‌های هزینهٔ تنخواه."""
-        import csv
-        from django.http import HttpResponse
-        qs = self.get_queryset().prefetch_related('lines')
-        response = HttpResponse(content_type='text/csv; charset=utf-8')
-        response['Content-Disposition'] = 'attachment; filename="petty_cash_expenses.csv"'
-        writer = csv.writer(response)
-        writer.writerow(['شماره', 'تاریخ', 'تنخواه', 'تنخواه‌دار', 'وضعیت', 'مبلغ', 'شرح'])
-        for st in qs:
-            writer.writerow([st.number or st.pk, st.date.isoformat(), st.fund.title, st.custodian.full_name if st.custodian else '', st.status, st.total, st.description])
-        return response
+    @action(detail=True, methods=['post'], url_path='apply')
+    def apply_to_fund(self, request, pk=None):
+        """ثبت صورت هزینه در تنخواه، مستقل از حسابداری (برای کار مستقل ماژول).
+
+        سند حسابداری/ارسال به حسابداری انجام نمی‌شود؛ فقط هزینه از ماندهٔ تنخواه کسر
+        و وضعیت صورت «ثبت‌شده» می‌شود. بعداً می‌توان مسیر ارسال را دوباره فعال کرد.
+        """
+        st = self.get_object()
+        if st.is_deleted:
+            return Response({'error': 'صورت حذف‌شده قابل ثبت نیست.'}, status=400)
+        if st.status == PettyCashExpenseStatement.Status.POSTED:
+            return Response(PettyCashExpenseStatementSerializer(st).data)
+        company = _company(request)
+        if not (
+            access.can_create_expense(company, request.user)
+            or access.is_senior_manager(request.user, company)
+        ):
+            return Response({'error': 'اجازهٔ ثبت صورت هزینه برای شما تعریف نشده است.'}, status=403)
+        try:
+            services.validate_statement_for_submission(st)
+            with db_transaction.atomic():
+                services.apply_statement_to_fund(st, user=request.user)
+        except PettyCashError as exc:
+            return Response({'error': str(exc)}, status=400)
+        services.audit('UPDATE', st, user=request.user, description='ثبت صورت هزینه در تنخواه')
+        return Response(PettyCashExpenseStatementSerializer(st).data)
 
     @action(detail=False, methods=['get'])
     def reminders(self, request):

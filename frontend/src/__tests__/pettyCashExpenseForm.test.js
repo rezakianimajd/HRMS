@@ -5,8 +5,8 @@ import {
 describe('pettyCashExpenseForm', () => {
   it('کلیدهای تودرتو را با قالب HTML می‌سازد (سازگار با DRF)', () => {
     const header = {
-      fund: 3, date: '2026-11-14', description: 'خرید', payment_method: 'cash',
-      project: 7, cost_center: 2,
+      fund: 3, number: 'PC-EXP-TEST', date: '2026-11-14', description: 'خرید',
+      payment_method: 'cash', project: 7, cost_center: 2,
     };
     const lines = [
       { ...emptyLine(), account: 11, aux1: 21, invoice_number: 'A-1', supplier: 'شرکت الف', debit: '1000', vat_amount: '100', tax_amount: '0' },
@@ -15,6 +15,7 @@ describe('pettyCashExpenseForm', () => {
     ];
     const form = buildStatementFormData({ header, lines });
     expect(form.get('fund')).toBe('3');
+    expect(form.get('number')).toBe('PC-EXP-TEST');
     expect(form.get('lines[0]account')).toBe('11');
     expect(form.get('lines[0]auxiliary_1')).toBe('21');
     expect(form.get('lines[0]supplier')).toBe('شرکت الف');
@@ -27,11 +28,11 @@ describe('pettyCashExpenseForm', () => {
 
   it('جمع‌ها و خالص را درست حساب می‌کند', () => {
     const lines = [
-      { ...emptyLine(), debit: '1000', vat_amount: '100', tax_amount: '50' },
-      { ...emptyLine(), debit: '500', vat_amount: '0', tax_amount: '0' },
+      { ...emptyLine(), debit: '1000', vat_amount: '100' },
+      { ...emptyLine(), debit: '500', vat_amount: '0' },
     ];
     expect(totalsOf(lines)).toEqual({
-      count: 2, gross: 1500, vat: 100, tax: 50, net: 1350,
+      count: 2, gross: 1500, vat: 100, net: 1400,
     });
   });
 

@@ -159,6 +159,19 @@ class ReportRouteTests(SimpleTestCase):
         self.assertIn('get', match.func.actions)
 
 
+class ExpenseActionRouteTests(SimpleTestCase):
+    def test_apply_to_fund_route_exists(self):
+        from django.urls import resolve
+        match = resolve('/api/petty-cash-expense-statements/1/apply/')
+        self.assertIn('post', match.func.actions)
+
+    def test_csv_export_action_is_removed(self):
+        from pettycash.views import PettyCashExpenseStatementViewSet
+        paths = {action.url_path for action in PettyCashExpenseStatementViewSet.get_extra_actions()}
+        self.assertIn('apply', paths)
+        self.assertNotIn('export', paths)
+
+
 class MultipartNestedLineKeyTests(SimpleTestCase):
     """کلیدهای تودرتوی multipart باید قالب HTML داشته باشند (lines[0]account)."""
 

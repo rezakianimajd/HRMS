@@ -15,11 +15,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RestoreIcon from '@mui/icons-material/Restore';
-import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
-import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
@@ -69,13 +67,6 @@ const pickRows = (payload) => (Array.isArray(payload) ? payload : payload?.resul
 
 const RowActions = ({ row, act, onTimeline }) => (
   <>
-    {row.status === 'draft' && (
-      <Tooltip title="ارسال برای تأیید">
-        <IconButton size="small" color="primary" onClick={() => act.mutate({ id: row.id, action: 'submit' })}>
-          <SendIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    )}
     {row.status === 'submitted' && (
       <>
         <Tooltip title="تأیید">
@@ -239,10 +230,6 @@ const PettyCashExpensesPage = () => {
   ));
   const allSelected = pageRows.length > 0 && pageRows.every((row) => selected.includes(row.id));
 
-  const exportCsv = () => {
-    downloadFile('/petty-cash-expense-statements/export/', { fallbackName: 'petty_cash_expenses.csv' }).catch(() => {});
-  };
-
   return (
     <Box>
       <PageHeader
@@ -262,7 +249,6 @@ const PettyCashExpensesPage = () => {
         actions={(
           <>
             <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching}>به‌روزرسانی</Button>
-            <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی CSV</Button>
             <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/petty-cash/expenses/new')}>
               صورت هزینه جدید
             </Button>
@@ -350,7 +336,6 @@ const PettyCashExpensesPage = () => {
               <>
                 <Chip size="small" label={`${toPersianDigits(selected.length)} انتخاب‌شده`}
                   sx={{ height: 23, fontSize: tableHeadFont, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
-                <Button size="small" startIcon={<SendIcon />} onClick={() => bulk.mutate({ ids: selected, action: 'submit' })}>ارسال</Button>
                 <Button size="small" color="success" startIcon={<CheckCircleIcon />} onClick={() => bulk.mutate({ ids: selected, action: 'approve' })}>تأیید</Button>
                 <Button size="small" color="error" startIcon={<UndoIcon />} onClick={() => {
                   const note = window.prompt('علت برگشت گروهی:');

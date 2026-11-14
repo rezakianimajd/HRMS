@@ -244,11 +244,11 @@ const PettyCashExpenseNewPage = () => {
   const gridHeight = headerHeight + rowHeight * visibleRows;
   const divider = tableTheme.divider || `1px solid ${BORDER}`;
   const amountColumn = Math.max(118, Math.round(cellFont * 9.5));
-  const gridCols = `44px 106px 82px 82px 82px 104px 112px minmax(170px, 1.2fr) minmax(190px, 1.6fr) ${amountColumn}px ${amountColumn}px ${amountColumn}px 48px`;
-  const gridMinWidth = 44 + 106 + (82 * 3) + 104 + 112 + 170 + 190 + (amountColumn * 3) + 48;
+  const gridCols = `44px 106px 82px 82px 82px 104px 112px minmax(170px, 1.2fr) minmax(190px, 1.6fr) ${amountColumn}px ${amountColumn}px 48px`;
+  const gridMinWidth = 44 + 106 + (82 * 3) + 104 + 112 + 170 + 190 + (amountColumn * 2) + 48;
 
   const [header, setHeader] = useState({
-    fund: '', date: today(), description: '', project: '', cost_center: '', payment_method: 'cash',
+    fund: '', number: '', date: today(), description: '', project: '', cost_center: '', payment_method: 'cash',
   });
   const [lines, setLines] = useState(() => Array.from({ length: ROWS_TO_START }, emptyLine));
   const [activeRow, setActiveRow] = useState(0);
@@ -374,7 +374,7 @@ const PettyCashExpenseNewPage = () => {
     return parts.join(' | ');
   };
 
-  const submit = async (andSubmit) => {
+  const submit = async (andApply) => {
     setMsg(null);
     setSavedId(null);
     if (!header.fund) { setMsg({ ok: false, text: 'تنخواه را انتخاب کنید.' }); return; }
@@ -389,26 +389,27 @@ const PettyCashExpenseNewPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const created = response.data;
-      let submitError = '';
-      if (andSubmit && created?.id) {
+      let applyError = '';
+      if (andApply && created?.id) {
         try {
-          await axiosInstance.post(`/petty-cash-expense-statements/${created.id}/submit/`);
+          await axiosInstance.post(`/petty-cash-expense-statements/${created.id}/apply/`);
         } catch (error) {
-          submitError = errorText(error) || 'ارسال به حسابداری انجام نشد.';
+          applyError = errorText(error) || 'ثبت در تنخواه انجام نشد.';
         }
       }
       qc.invalidateQueries({ queryKey: ['petty-expenses'] });
       qc.invalidateQueries({ queryKey: ['pc-expense-funds'] });
-      if (submitError) {
+      qc.invalidateQueries({ queryKey: ['petty-dashboard'] });
+      if (applyError) {
         setSavedId(created?.id || null);
         setMsg({
           ok: false,
-          text: `صورت هزینه ذخیره شد (شماره ${created?.number || created?.id}) اما ارسال ناموفق بود: ${submitError}`,
+          text: `صورت هزینه ذخیره شد (شماره ${created?.number || created?.id}) اما ثبت در تنخواه ناموفق بود: ${applyError}`,
         });
         return;
       }
       navigate('/petty-cash/expenses', {
-        state: { flash: andSubmit ? 'صورت هزینه ذخیره و برای تأیید ارسال شد' : 'صورت هزینه ذخیره شد' },
+        state: { flash: andApply ? 'صورت هزینه ذخیره و در تنخواه ثبت شد' : 'صورت هزینه ذخیره شد' },
       });
     } catch (error) {
       setMsg({ ok: false, text: errorText(error) || 'خطا در ذخیرهٔ صورت هزینه' });
@@ -438,7 +439,7 @@ const PettyCashExpenseNewPage = () => {
       </Button>
       <Button size="small" startIcon={<SendIcon />} variant="contained" color="success"
         disabled={saving || !canSave || !canCreate} onClick={() => submit(true)}>
-        ذخیره و ارسال
+        ذخیره و ثبت در تنخواه
       </Button>
     </>
   );
@@ -533,7 +534,9 @@ const PettyCashExpenseNewPage = () => {
             />
             <JalaliMaskedDateInput variant="outlined" label="تاریخ صورت" value={header.date}
               onChange={(value) => setHeaderField('date', value)} sx={{ width: '100%' }} />
-            <TextField size="small" label="شماره صورت" value="خودکار" InputProps={{ readOnly: true }} />
+            <TextField size="small" label="شماره صورت" value={header.number}
+              onChange={(event) => setHeaderField('number', toEnglishDigits(event.target.value))}
+              placeholder="خودکار" />
             <Autocomplete
               size="small" options={projectList}
               getOptionLabel={(option) => `${option.code || ''} — ${option.name || ''}`}
@@ -582,7 +585,7 @@ const PettyCashExpenseNewPage = () => {
             <InfoCard icon={<ReceiptLongIcon />} label="مبلغ کل" value={formatPersianNumber(totals.gross)}
               suffix="ریال" color={accent} />
             <InfoCard icon={<AccountBalanceWalletOutlinedIcon />} label="ارزش افزوده"
-              value={formatPersianNumber(totals.vat + totals.tax)} suffix="ریال" color={WARN} />
+              value={formatPersianNumber(totals.vat)} suffix="ریال" color={WARN} />
             <InfoCard icon={<RequestQuoteOutlinedIcon />} label="مبلغ خالص"
               value={formatPersianNumber(totals.net)} suffix="ریال" color={OK} />
             <InfoCard icon={<PaymentsOutlinedIcon />} label="مانده تنخواه"
@@ -638,7 +641,7 @@ const PettyCashExpenseNewPage = () => {
               bgcolor: 'var(--hrms-table-header-bg, #f8fafc)', borderBottom: divider,
             }}>
               {['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شماره فاکتور', 'تاریخ هزینه',
-                'فروشنده / طرف حساب', 'شرح هزینه', 'مبلغ کل', 'ارزش افزوده', 'سایر مالیات', 'پیوست']
+                'فروشنده / طرف حساب', 'شرح هزینه', 'مبلغ کل', 'ارزش افزوده', 'پیوست']
                 .map((label, index) => (
                   <Box key={label} sx={{
                     px: 0.75, fontSize: headerFont, fontWeight: Number(tableTheme.header.fontWeight) || 800,
@@ -757,10 +760,6 @@ const PettyCashExpenseNewPage = () => {
                     <AmountField value={line.vat_amount} fontSize={cellFont}
                       onChange={(value) => setLine(index, 'vat_amount', value)} />
                   </Box>
-                  <Box sx={{ px: 0.4, minWidth: 0 }}>
-                    <AmountField value={line.tax_amount} fontSize={cellFont}
-                      onChange={(value) => setLine(index, 'tax_amount', value)} />
-                  </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <input type="file" hidden id={`pc-att-${index}`}
                       onChange={(event) => setLine(index, 'attachment', event.target.files?.[0] || null)} />
@@ -785,8 +784,6 @@ const PettyCashExpenseNewPage = () => {
           <Chip size="small" label={`${toPersianDigits(totals.count)} ردیف`} sx={{ height: 23, fontWeight: 800 }} />
           <Chip size="small" label={`کل: ${formatPersianNumber(totals.gross)}`} sx={{ height: 23, fontWeight: 800 }} />
           <Chip size="small" label={`ارزش افزوده: ${formatPersianNumber(totals.vat)}`}
-            sx={{ height: 23, fontWeight: 800 }} />
-          <Chip size="small" label={`سایر مالیات: ${formatPersianNumber(totals.tax)}`}
             sx={{ height: 23, fontWeight: 800 }} />
           <Chip size="small" label={`خالص: ${formatPersianNumber(totals.net)}`}
             sx={{ height: 23, fontWeight: 900, bgcolor: alpha(OK, 0.12), color: OK }} />

@@ -18,11 +18,11 @@ import CategoryIcon from '@mui/icons-material/Category';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SaveIcon from '@mui/icons-material/Save';
-import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import PageHeader from '../core/components/ui/PageHeader';
-import InfoCard from '../core/components/ui/InfoCard';
+import PettyCashDashboard from './pettyCash/PettyCashDashboard';
 
 const COLOR = '#f59e0b';
 const COLOR_DARK = '#d97706';
@@ -43,123 +43,6 @@ const fieldSx = {
   },
 };
 
-/* ------------------------------- dashboard (نمای کلی) ------------------------------- */
-const HorizontalBar = ({ label, value, max, color }) => (
-  <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr 90px', gap: 1, alignItems: 'center', py: 0.5 }}>
-    <Typography variant="caption" color="textSecondary" noWrap>{label}</Typography>
-    <Box sx={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-      <Box sx={{ height: '100%', width: `${max ? Math.min(100, (value / max) * 100) : 0}%`, borderRadius: 4, background: `linear-gradient(90deg, ${color}, ${color}99)` }} />
-    </Box>
-    <Typography variant="caption" fontWeight={700} sx={{ textAlign: 'left' }}>{formatPersianNumber(value)}</Typography>
-  </Box>
-);
-
-const STATUS_COLORS = {
-  draft: '#64748b', submitted: '#f59e0b', approved: '#10b981', posted: '#3b82f6',
-  rejected: '#ef4444', edited: '#8b5cf6',
-};
-
-const DashboardTab = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ['petty-analytics'],
-    queryFn: () => axiosInstance.get('/petty-cash-funds/dashboard/').then(r => r.data),
-  });
-  const { data: reminders } = useQuery({
-    queryKey: ['petty-reminders'],
-    queryFn: () => axiosInstance.get('/petty-cash-expense-statements/reminders/').then(r => r.data),
-  });
-  const d = data || {};
-  const rem = reminders || {};
-
-  if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
-
-  const catMax = Math.max(1, ...(d.by_category || []).map(x => x.total));
-  const custMax = Math.max(1, ...(d.by_custodian || []).map(x => x.total));
-  const totalStatus = (d.total_statements || 0) || 1;
-
-  return (
-    <Box>
-      {(rem.draft_count || rem.submitted_count) ? (
-        <Paper sx={{ ...glass, p: 1.5, mb: 2, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', borderColor: '#f59e0b66' }}>
-          <Typography variant="body2" fontWeight={700} color="#b45309">یادآور:</Typography>
-          {rem.draft_count > 0 && <Chip size="small" color="warning" label={`${rem.draft_count} پیش‌نویس معطل`} />}
-          {rem.submitted_count > 0 && <Chip size="small" color="error" label={`${rem.submitted_count} در انتظار تأیید معطل`} />}
-        </Paper>
-      ) : null}
-
-      <Grid container spacing={2} sx={{ mb: 2.5 }}>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<AccountBalanceWalletIcon />} label="مجموع ماندهٔ تنخواه‌ها" value={d.total_balance || 0} color={COLOR_DARK} />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<CheckCircleIcon />} label="تنخواه فعال" value={d.active_funds || 0} color="#10b981" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<ReceiptLongIcon />} label="مبلغ در انتظار تأیید" value={d.pending_total || 0} color="#f59e0b" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<DashboardIcon />} label="مصرف این ماه" value={d.monthly_spend || 0} color="#3b82f6" />
-        </Grid>
-      </Grid>
-
-      <Grid container spacing={2.5}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ ...glass, p: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>مصرف بر اساس دسته‌بندی</Typography>
-            {(d.by_category || []).length === 0
-              ? <Typography variant="body2" color="textSecondary" textAlign="center" py={2}>داده‌ای ثبت نشده</Typography>
-              : (d.by_category || []).map((c, i) => (
-                <HorizontalBar key={i} label={c.category} value={c.total} max={catMax} color="#10b981" />
-              ))}
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ ...glass, p: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>مصرف بر اساس تنخواه‌دار</Typography>
-            {(d.by_custodian || []).length === 0
-              ? <Typography variant="body2" color="textSecondary" textAlign="center" py={2}>داده‌ای ثبت نشده</Typography>
-              : (d.by_custodian || []).map((c, i) => (
-                <HorizontalBar key={i} label={c.name} value={c.total} max={custMax} color="#f59e0b" />
-              ))}
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={5}>
-          <Paper sx={{ ...glass, p: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>وضعیت صورت‌ها</Typography>
-            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-              {Object.entries(d.status_counts || {}).map(([k, v]) => (
-                <Chip
-                  key={k}
-                  label={`${({ draft: 'پیش‌نویس', submitted: 'در انتظار', approved: 'تأیید', posted: 'ثبت', rejected: 'برگشت', edited: 'ویرایش' })[k] || k}: ${toPersianDigits(v)}`}
-                  sx={{ bgcolor: `${STATUS_COLORS[k] || '#64748b'}18`, color: STATUS_COLORS[k] || '#64748b', fontWeight: 700 }}
-                />
-              ))}
-            </Stack>
-          </Paper>
-        </Grid>
-
-        <Grid item xs={12} md={7}>
-          <Paper sx={{ ...glass, p: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>روند مصرف (۶ ماه اخیر)</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 160 }}>
-              {(d.monthly_trend || []).map((m, i) => {
-                const max = Math.max(1, ...(d.monthly_trend || []).map(x => x.total));
-                const h = `${Math.max(3, (m.total / max) * 130)}px`;
-                return (
-                  <Box key={i} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                    <Typography variant="caption">{formatPersianNumber(m.total)}</Typography>
-                    <Box sx={{ width: '100%', maxWidth: 40, height: h, borderRadius: '6px 6px 0 0', background: 'linear-gradient(180deg, #10b981, #05966999)' }} />
-                    <Typography variant="caption" color="textSecondary">{`${m.month}/${String(m.year).slice(-2)}`}</Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
-  );
-};
 
 /* ------------------------------- funds ------------------------------- */
 const FundsTab = () => {
@@ -475,7 +358,7 @@ const PettyCashPage = () => {
     <Box>
       <PageHeader icon={<AccountBalanceWalletIcon />} title="تنخواه" />
 
-      {tabIndex === 0 && <DashboardTab />}
+      {tabIndex === 0 && <PettyCashDashboard />}
       {tabIndex === 1 && <FundsTab />}
       {tabIndex === 2 && <TransactionsTab />}
       {tabIndex === 3 && <CategoriesTab />}
