@@ -19,17 +19,17 @@ export const today = () => {
 export const emptyLine = () => ({
   account: '', aux1: '', aux2: '', aux3: '',
   invoice_number: '', expense_date: today(), supplier: '', desc: '',
-  debit: '', vat_amount: '', attachment: null,
+  amount: '', vat_amount: '', attachment: null,
 });
 
 export const hasLineData = (line) => Boolean(
-  line.account || line.debit || line.desc || line.invoice_number || line.supplier || line.attachment
+  line.account || line.amount || line.desc || line.invoice_number || line.supplier || line.attachment
 );
 
 export const lineIssues = (line) => {
   const issues = [];
   if (!line.account) issues.push({ text: 'کد معین انتخاب نشده است', hard: true });
-  if (!(Number(line.debit) > 0)) issues.push({ text: 'مبلغ ردیف صفر است', hard: true });
+  if (!(Number(line.amount) > 0)) issues.push({ text: 'مبلغ ردیف صفر است', hard: true });
   if (!line.invoice_number) issues.push({ text: 'شماره فاکتور خالی است', hard: false });
   if (!line.attachment) issues.push({ text: 'پیوست فاکتور/رسید ندارد', hard: false });
   return issues;
@@ -37,15 +37,21 @@ export const lineIssues = (line) => {
 
 export const fillLines = (lines) => lines.filter(hasLineData);
 
+/** مبلغ هر ردیف = مبلغ پایه + ارزش افزوده. */
+export const lineTotal = (line) => (
+  (Number(line.amount) || 0) + (Number(line.vat_amount) || 0)
+);
+
 export const totalsOf = (lines) => {
   const filled = fillLines(lines);
-  const gross = filled.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
+  const base = filled.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
   const vat = filled.reduce((sum, line) => sum + (Number(line.vat_amount) || 0), 0);
   return {
     count: filled.length,
-    gross,
+    base,
     vat,
-    net: Math.max(gross - vat, 0),
+    gross: base + vat,
+    net: base,
   };
 };
 
@@ -77,8 +83,9 @@ export const buildStatementFormData = ({ header, lines }) => {
 
   const rows = fillLines(lines);
   rows.forEach((line, index) => {
-    const gross = Number(line.debit) || 0;
+    const base = Number(line.amount) || 0;
     const vat = Number(line.vat_amount) || 0;
+    const gross = base + vat;
     form.append(`lines[${index}]account`, line.account || '');
     form.append(`lines[${index}]auxiliary_1`, line.aux1 || '');
     form.append(`lines[${index}]auxiliary_2`, line.aux2 || '');
@@ -89,7 +96,7 @@ export const buildStatementFormData = ({ header, lines }) => {
     form.append(`lines[${index}]description`, line.desc || '');
     form.append(`lines[${index}]debit`, String(gross));
     form.append(`lines[${index}]vat_amount`, String(vat));
-    form.append(`lines[${index}]net_amount`, String(Math.max(gross - vat, 0)));
+    form.append(`lines[${index}]net_amount`, String(base));
     if (line.attachment) form.append(`lines[${index}]attachment`, line.attachment);
   });
   return form;

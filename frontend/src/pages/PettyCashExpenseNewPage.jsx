@@ -33,7 +33,7 @@ import { resolveTableTheme } from '../core/theme/tableStyles';
 import { SurfaceCard, ProgressBar } from './accounting/AccountingDashboardUI';
 import {
   PAYMENT_METHODS, buildStatementFormData, emptyLine, faSep, fillLines, lineIssues,
-  today, totalsOf,
+  lineTotal, today, totalsOf,
 } from './pettyCashExpenseForm';
 
 const ROWS_TO_START = 8;
@@ -244,8 +244,8 @@ const PettyCashExpenseNewPage = () => {
   const gridHeight = headerHeight + rowHeight * visibleRows;
   const divider = tableTheme.divider || `1px solid ${BORDER}`;
   const amountColumn = Math.max(118, Math.round(cellFont * 9.5));
-  const gridCols = `44px 106px 82px 82px 82px 104px 112px minmax(170px, 1.2fr) minmax(190px, 1.6fr) ${amountColumn}px ${amountColumn}px 48px`;
-  const gridMinWidth = 44 + 106 + (82 * 3) + 104 + 112 + 170 + 190 + (amountColumn * 2) + 48;
+  const gridCols = `44px 106px 82px 82px 82px 104px 112px minmax(170px, 1.2fr) minmax(190px, 1.6fr) ${amountColumn}px ${amountColumn}px ${amountColumn}px 48px`;
+  const gridMinWidth = 44 + 106 + (82 * 3) + 104 + 112 + 170 + 190 + (amountColumn * 3) + 48;
 
   const [header, setHeader] = useState({
     fund: '', number: '', date: today(), description: '', project: '', cost_center: '', payment_method: 'cash',
@@ -321,7 +321,7 @@ const PettyCashExpenseNewPage = () => {
   const filled = useMemo(() => fillLines(lines), [lines]);
   const issueCount = filled.reduce((sum, line) => sum + (lineIssues(line).length ? 1 : 0), 0);
   const canSave = Boolean(header.fund) && totals.count > 0
-    && filled.every((line) => line.account && Number(line.debit) > 0);
+    && filled.every((line) => line.account && Number(line.amount) > 0);
   const noFunds = !fundsQuery.isLoading && fundList.length === 0;
   const canCreate = accessQuery.data?.can_create_expense !== false && !noFunds;
   const isLoadingAccess = fundsQuery.isLoading || accessQuery.isLoading;
@@ -582,12 +582,12 @@ const PettyCashExpenseNewPage = () => {
 
         <SurfaceCard title="جمع‌های صورت" icon={InfoOutlinedIcon} color={accent} sx={{ height: '100%' }}>
           <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-            <InfoCard icon={<ReceiptLongIcon />} label="مبلغ کل" value={formatPersianNumber(totals.gross)}
+            <InfoCard icon={<ReceiptLongIcon />} label="جمع کل (با مالیات)" value={formatPersianNumber(totals.gross)}
               suffix="ریال" color={accent} />
             <InfoCard icon={<AccountBalanceWalletOutlinedIcon />} label="ارزش افزوده"
               value={formatPersianNumber(totals.vat)} suffix="ریال" color={WARN} />
-            <InfoCard icon={<RequestQuoteOutlinedIcon />} label="مبلغ خالص"
-              value={formatPersianNumber(totals.net)} suffix="ریال" color={OK} />
+            <InfoCard icon={<RequestQuoteOutlinedIcon />} label="مبلغ پایه"
+              value={formatPersianNumber(totals.base)} suffix="ریال" color={OK} />
             <InfoCard icon={<PaymentsOutlinedIcon />} label="مانده تنخواه"
               value={fund ? formatPersianNumber(fund.balance || 0) : '—'} suffix="ریال" color={INFO} />
           </Box>
@@ -641,7 +641,7 @@ const PettyCashExpenseNewPage = () => {
               bgcolor: 'var(--hrms-table-header-bg, #f8fafc)', borderBottom: divider,
             }}>
               {['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شماره فاکتور', 'تاریخ هزینه',
-                'فروشنده / طرف حساب', 'شرح هزینه', 'مبلغ کل', 'ارزش افزوده', 'پیوست']
+                'فروشنده / طرف حساب', 'شرح هزینه', 'مبلغ پایه', 'ارزش افزوده', 'جمع ردیف', 'پیوست']
                 .map((label, index) => (
                   <Box key={label} sx={{
                     px: 0.75, fontSize: headerFont, fontWeight: Number(tableTheme.header.fontWeight) || 800,
@@ -753,12 +753,21 @@ const PettyCashExpenseNewPage = () => {
                       inputProps={{ style: { textAlign: 'right', fontSize: cellFont, fontFamily: 'inherit' } }} />
                   </Box>
                   <Box sx={{ px: 0.4, minWidth: 0 }}>
-                    <AmountField value={line.debit} fontSize={cellFont}
-                      onChange={(value) => setLine(index, 'debit', value)} />
+                    <AmountField value={line.amount} fontSize={cellFont}
+                      onChange={(value) => setLine(index, 'amount', value)} />
                   </Box>
                   <Box sx={{ px: 0.4, minWidth: 0 }}>
                     <AmountField value={line.vat_amount} fontSize={cellFont}
                       onChange={(value) => setLine(index, 'vat_amount', value)} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0, display: 'flex', justifyContent: 'center' }}>
+                    <Typography noWrap sx={{
+                      fontSize: cellFont, fontWeight: 800,
+                      color: lineTotal(line) ? OK : MUTED,
+                      fontFamily: 'var(--hrms-table-number-font, inherit)',
+                    }}>
+                      {formatPersianNumber(lineTotal(line))}
+                    </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <input type="file" hidden id={`pc-att-${index}`}
@@ -782,10 +791,10 @@ const PettyCashExpenseNewPage = () => {
         }}>
           <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED }}>جمع ردیف‌ها:</Typography>
           <Chip size="small" label={`${toPersianDigits(totals.count)} ردیف`} sx={{ height: 23, fontWeight: 800 }} />
-          <Chip size="small" label={`کل: ${formatPersianNumber(totals.gross)}`} sx={{ height: 23, fontWeight: 800 }} />
+          <Chip size="small" label={`پایه: ${formatPersianNumber(totals.base)}`} sx={{ height: 23, fontWeight: 800 }} />
           <Chip size="small" label={`ارزش افزوده: ${formatPersianNumber(totals.vat)}`}
             sx={{ height: 23, fontWeight: 800 }} />
-          <Chip size="small" label={`خالص: ${formatPersianNumber(totals.net)}`}
+          <Chip size="small" label={`جمع کل: ${formatPersianNumber(totals.gross)}`}
             sx={{ height: 23, fontWeight: 900, bgcolor: alpha(OK, 0.12), color: OK }} />
           <Box sx={{ flex: 1 }} />
           {issueCount ? (
@@ -811,7 +820,7 @@ const PettyCashExpenseNewPage = () => {
           <Chip size="small"
             label={`مرکز هزینه: ${headerCostCenter ? headerCostCenter.name : '—'}`}
             sx={{ height: 23, fontWeight: 700, color: headerCostCenter ? INFO : MUTED }} />
-          <Chip size="small" label={`مبلغ ردیف: ${formatPersianNumber(Number(activeLine.debit) || 0)}`}
+          <Chip size="small" label={`جمع ردیف: ${formatPersianNumber(lineTotal(activeLine))}`}
             sx={{ height: 23, fontWeight: 800 }} />
         </Stack>
       </SurfaceCard>
