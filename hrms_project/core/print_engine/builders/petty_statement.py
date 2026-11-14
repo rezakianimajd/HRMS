@@ -4,61 +4,49 @@
 دادهٔ صورت را با همان دامنهٔ دید تنخواه از دیتابیس می‌خواند.
 """
 from core.print_engine import components as pe
-from core.print_engine.registry import PrintError, can_print
+from core.print_engine.registry import PrintError, _company_info, can_print
 
 LINE_COLUMNS = [
-    {'key': 'line_no', 'label': '#', 'width': '4%', 'align': 'center', 'format': 'digits'},
-    {'key': 'account', 'label': 'کد معین / سرفصل', 'width': '18%'},
-    {'key': 'description', 'label': 'شرح هزینه', 'width': '21%'},
-    {'key': 'supplier', 'label': 'فروشنده / طرف حساب', 'width': '16%'},
-    {'key': 'invoice_number', 'label': 'شماره فاکتور', 'width': '10%', 'align': 'center'},
-    {'key': 'base', 'label': 'مبلغ پایه', 'width': '11%', 'format': 'money', 'unit': '', 'align': 'left'},
-    {'key': 'vat', 'label': 'ارزش افزوده', 'width': '10%', 'format': 'money', 'unit': '', 'align': 'left'},
-    {'key': 'total', 'label': 'جمع ردیف', 'width': '10%', 'format': 'money', 'unit': '', 'align': 'left'},
+    {'key': 'line_no', 'label': '#', 'width': '4%', 'align': 'center', 'headerAlign': 'center', 'format': 'digits'},
+    {'key': 'account', 'label': 'کد معین / سرفصل', 'width': '14%', 'align': 'center', 'headerAlign': 'center'},
+    {'key': 'aux1', 'label': 'کد تفصیل ۱', 'width': '10%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'aux2', 'label': 'کد تفصیل ۲', 'width': '10%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'description', 'label': 'شرح هزینه', 'width': '19%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'supplier', 'label': 'فروشنده / طرف حساب', 'width': '14%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'invoice_number', 'label': 'شماره فاکتور', 'width': '9%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '7.5pt'},
+    {'key': 'base', 'label': 'مبلغ پایه', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
+    {'key': 'vat', 'label': 'ارزش افزوده', 'width': '6%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
+    {'key': 'total', 'label': 'جمع ردیف', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
 ]
-
-
-def _amount(value):
-    try:
-        return float(value or 0)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def statement_document(data):
     """ساختار سند «صورت ریز هزینهٔ تنخواه» از دادهٔ آماده (بدون دیتابیس)."""
     lines = data.get('lines') or []
-    base_total = _amount(data.get('base_total')) or sum(_amount(row.get('base')) for row in lines)
-    vat_total = _amount(data.get('vat_total')) or sum(_amount(row.get('vat')) for row in lines)
-    total = _amount(data.get('total')) or (base_total + vat_total)
     status = data.get('status_display') or data.get('status') or ''
 
     identity = pe.field_grid([
+        ('شماره صورت', data.get('number')),
         ('تنخواه', data.get('fund')),
+        ('شماره تنخواه', data.get('fund_code')),
         ('تنخواه‌دار', data.get('custodian')),
         ('تاریخ صورت', pe.jalali(data.get('date'))),
         ('روش پرداخت', data.get('payment_method')),
         ('پروژه', data.get('project')),
         ('مرکز هزینه', data.get('cost_center')),
-        ('مهلت تسویه', pe.jalali(data.get('due_date')) if data.get('due_date') else ''),
-    ])
-    totals = pe.field_grid([
-        ('جمع مبلغ پایه', pe.money(base_total, with_unit=False)),
-        ('جمع ارزش افزوده', pe.money(vat_total, with_unit=False)),
-        ('جمع کل', pe.money(total, with_unit=False)),
     ])
 
-    sections = [
-        {'title': 'مشخصات صورت هزینه', 'html': identity},
-        {'title': 'سطرهای هزینه', 'html': pe.data_table(LINE_COLUMNS, lines, {'zebra': True})},
-        {'title': 'جمع‌ها', 'html': totals},
-    ]
+    sections = [{'title': 'مشخصات تنخواه', 'html': identity}]
     description = (data.get('description') or '').strip()
     if description:
         sections.append({
-            'title': 'شرح صورت',
+            'title': 'شرح صورت ریز هزینه',
             'html': f'<div class="pe-note" style="border-style:solid">{pe.esc(description)}</div>',
         })
+    sections.append({
+        'title': 'سطرهای هزینه',
+        'html': pe.data_table(LINE_COLUMNS, lines, {'zebra': True}),
+    })
 
     watermark = ''
     if status and status not in ('ثبت‌شده', 'posted'):
@@ -74,22 +62,20 @@ def statement_document(data):
             ('تاریخ', pe.jalali(data.get('date'))),
         ],
         'sections': sections,
-        'amount_box': {
-            'words': pe.amount_words(total),
-            'value': pe.money(total),
-        },
-        'barcode': pe.barcode(data.get('number') or ''),
         'signatures': pe.signatures([
             {'title': 'تهیه‌کننده', 'name': data.get('custodian') or ''},
             {'title': 'تأییدکننده', 'name': data.get('approved_by') or ''},
             {'title': 'مهر و امضا'},
         ]),
-        'footer_note': (
-            f'مبلغ پایه: {pe.money(base_total)} — ارزش افزوده: {pe.money(vat_total)}'
-        ),
         'watermark': watermark,
         'printed_on': data.get('printed_on'),
     }
+
+
+def _aux_label(value):
+    if not value:
+        return ''
+    return f'{value.code} — {value.name}'
 
 
 def _line_payload(line):
@@ -100,6 +86,8 @@ def _line_payload(line):
     return {
         'line_no': line.line_no,
         'account': f'{line.account.code} — {line.account.name}' if line.account_id else '',
+        'aux1': _aux_label(line.auxiliary_1),
+        'aux2': _aux_label(line.auxiliary_2),
         'description': line.description or '',
         'supplier': line.supplier or '',
         'invoice_number': line.invoice_number or '',
@@ -121,7 +109,7 @@ def load_statement(payload, options=None, request=None):
     queryset = (
         PettyCashExpenseStatement.objects
         .select_related('fund', 'custodian', 'project', 'cost_center')
-        .prefetch_related('lines__account')
+        .prefetch_related('lines__account', 'lines__auxiliary_1', 'lines__auxiliary_2')
     )
     if company:
         queryset = queryset.filter(company=company)
@@ -131,26 +119,20 @@ def load_statement(payload, options=None, request=None):
         raise PrintError('صورت هزینهٔ تنخواه یافت نشد.', 404)
 
     return statement_document({
-        'company': {
-            'name': getattr(company, 'name', '') or '',
-            'subtitle': getattr(company, 'code', '') or '',
-        },
+        'company': _company_info(company),
         'number': statement.number or statement.pk,
         'date': statement.date,
         'fund': statement.fund.title if statement.fund_id else '',
+        'fund_code': statement.fund.code if statement.fund_id else '',
         'custodian': statement.custodian.full_name if statement.custodian_id else '',
         'status': statement.status,
         'status_display': statement.get_status_display(),
         'payment_method': statement.get_payment_method_display(),
         'project': statement.project.name if statement.project_id else '',
         'cost_center': statement.cost_center.name if statement.cost_center_id else '',
-        'due_date': statement.due_date,
         'description': statement.description,
         'approved_by': getattr(statement.approved_by, 'username', '') if statement.approved_by_id else '',
         'lines': [_line_payload(line) for line in statement.lines.all()],
-        'base_total': statement.net_total,
-        'vat_total': statement.tax_total,
-        'total': statement.total,
         'printed_on': payload.get('printed_on'),
     })
 

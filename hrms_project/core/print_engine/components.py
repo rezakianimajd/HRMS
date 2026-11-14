@@ -127,7 +127,8 @@ def data_table(columns, rows, options=None):
     """جدول دادهٔ گزارش — columns: [{key,label,align,width,format}]، rows: [dict]."""
     options = options or {}
     head = ''.join(
-        f'<th style="text-align:{col.get("align", "right")};'
+        f'<th style="text-align:{col.get("headerAlign", col.get("align", "right"))};'
+        f'{("font-size:" + str(col["headerFontSize"]) + ";") if col.get("headerFontSize") else ""}'
         f'{"width:" + str(col["width"]) + ";" if col.get("width") else ""}">'
         f'{esc(col.get("label", ""))}</th>'
         for col in columns
@@ -148,7 +149,11 @@ def data_table(columns, rows, options=None):
                 rendered = fa_digits(value)
             else:
                 rendered = esc(value)
-            cells.append(f'<td style="text-align:{col.get("align", "right")}">{rendered}</td>')
+            cells.append(
+                f'<td style="text-align:{col.get("align", "right")};'
+                f'{("font-size:" + str(col["fontSize"]) + ";") if col.get("fontSize") else ""}">'
+                f'{rendered}</td>'
+            )
         body.append(f'<tr>{"".join(cells)}</tr>')
     total = options.get('total_row')
     footer = ''
