@@ -64,6 +64,10 @@ body {
 .pe-table th {
   background: #0f172a; color: #fff; font-size: 8.5pt; padding: 4px 5px; font-weight: 800;
 }
+.pe-table.pe-table-light th {
+  background: #e2e8f0; color: #0f172a; border: 1px solid #cbd5e1;
+}
+.pe-table.pe-table-light tfoot td { background: #f1f5f9; color: #0f172a; }
 .pe-table td {
   border: 1px solid #cbd5e1; padding: 3px 5px; font-size: 8.5pt;
   word-break: break-word; vertical-align: middle;

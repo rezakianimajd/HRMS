@@ -181,6 +181,18 @@ class PettyStatementDocumentTests(SimpleTestCase):
         self.assertIn('کاغذ A4', html)
         self.assertIn('شرکت الف', html)
         self.assertIn('۱۱۰٬۰۰۰', html)
+        self.assertNotIn('مشخصات تنخواه', html)
+        self.assertNotIn('شرح صورت ریز هزینه', html)
+        self.assertNotIn('سطرهای هزینه', html)
+        self.assertNotIn('تنخواه‌دار', html)
+        self.assertNotIn('روش پرداخت', html)
+        self.assertNotIn('برج اداری', html)
+        self.assertEqual(html.count('<th class="pe-label">'), 4)
+        self.assertIn('pe-table-light', html)
+        self.assertLess(
+            html.index('خرید لوازم اداری'),
+            html.index('class="pe-table pe-table-light'),
+        )
         self.assertNotIn('<div class="pe-amount-box">', html)
         self.assertNotIn('<div class="pe-barcode">', html)
         self.assertIn('pe-watermark', html)

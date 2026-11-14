@@ -166,9 +166,10 @@ def data_table(columns, rows, options=None):
             '</tr></tfoot>'
         )
     zebra = 'pe-zebra' if options.get('zebra', True) else ''
+    header_style = ' pe-table-light' if options.get('header_style') == 'light' else ''
     empty = '<tr><td colspan="99">داده‌ای برای چاپ نیست.</td></tr>'
     return (
-        f'<table class="pe-table {zebra}"><thead><tr>{head}</tr></thead>'
+        f'<table class="pe-table{header_style} {zebra}"><thead><tr>{head}</tr></thead>'
         f'<tbody>{"".join(body) or empty}</tbody>{footer}</table>'
     )
 

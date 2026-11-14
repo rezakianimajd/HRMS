@@ -28,23 +28,18 @@ def statement_document(data):
     identity = pe.field_grid([
         ('شماره صورت / تنخواه', data.get('number')),
         ('تنخواه', data.get('fund')),
-        ('تنخواه‌دار', data.get('custodian')),
         ('تاریخ صورت', pe.jalali(data.get('date'))),
-        ('روش پرداخت', data.get('payment_method')),
-        ('پروژه', data.get('project')),
         ('مرکز هزینه', data.get('cost_center')),
-    ])
+    ], columns=4)
 
-    sections = [{'title': 'مشخصات تنخواه', 'html': identity}]
+    sections = [{'html': identity}]
     description = (data.get('description') or '').strip()
     if description:
         sections.append({
-            'title': 'شرح صورت ریز هزینه',
             'html': f'<div class="pe-note" style="border-style:solid">{pe.esc(description)}</div>',
         })
     sections.append({
-        'title': 'سطرهای هزینه',
-        'html': pe.data_table(LINE_COLUMNS, lines, {'zebra': True}),
+        'html': pe.data_table(LINE_COLUMNS, lines, {'zebra': True, 'header_style': 'light'}),
     })
 
     watermark = ''
