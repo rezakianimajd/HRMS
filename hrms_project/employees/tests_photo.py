@@ -104,6 +104,15 @@ class RenderPhotoTests(SimpleTestCase):
         legacy = photo_service.cache_path(1, 'employees/1/photo.jpg', 64, version='legacy')
         self.assertNotEqual(current, legacy)
         self.assertTrue(current.name.endswith('_64.webp'))
+        cropped = photo_service.cache_path(1, 'employees/1/photo.jpg', 64, crop=True)
+        self.assertNotEqual(current, cropped)
+
+    def test_crop_returns_square_avatar_without_upscale(self):
+        with self._open(photo_service.render_photo(self.source, 96, crop=True)) as image:
+            self.assertEqual(image.size, (96, 96))
+        # منبع ۱۲۰۰px است؛ درخواست بزرگ‌تر نباید بزرگ‌نمایی شود
+        with self._open(photo_service.render_photo(self.source, 2000, crop=True)) as image:
+            self.assertEqual(image.size, (self.size, self.size))
 
     def test_source_media_uses_real_format_not_extension(self):
         photo = FakePhoto(self.source, 'employees/1/photo.png',
@@ -131,12 +140,15 @@ class PhotoUrlTests(SimpleTestCase):
             photo = FakePhoto(path, 'employees/9/photo.jpg', '/media/employees/9/photo.jpg')
             employee = FakeEmployee(9, photo)
             url = photo_service.photo_url(employee, FakeRequest(), size=160)
+            avatar_url = photo_service.photo_url(employee, FakeRequest(), size=160, crop=True)
             full_url = photo_service.photo_full_url(employee, FakeRequest())
         self.assertIn('/api/employees/9/photo/', url)
         self.assertIn('size=160', url)
         self.assertIn('t=', url)
         self.assertIn('v=', url)
         self.assertIn(f'cv={photo_service.RENDER_VERSION}', url)
+        self.assertNotIn('crop=1', url)
+        self.assertIn('crop=1', avatar_url)
         token = url.split('t=')[1].split('&')[0]
         self.assertTrue(verify_employee_token(token, 9))
         self.assertIn('full=1', full_url)

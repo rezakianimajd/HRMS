@@ -31,17 +31,28 @@ def clamp_size(value, default: int = DEFAULT_SIZE) -> int:
     return max(MIN_SIZE, min(MAX_SIZE, size))
 
 
-def cache_path(employee_id, source_name: str, size: int, version: str = RENDER_VERSION) -> Path:
+def cache_path(
+    employee_id, source_name: str, size: int, version: str = RENDER_VERSION,
+    *, crop: bool = False,
+) -> Path:
     digest = hashlib.sha1(
-        f'{version}|{source_name}|{size}'.encode('utf-8')
+        f'{version}|{source_name}|{size}|crop{int(bool(crop))}'.encode('utf-8')
     ).hexdigest()[:20]
     return (
         Path(settings.MEDIA_ROOT) / CACHE_FOLDER / str(employee_id) / f'{digest}_{size}.webp'
     )
 
 
-def render_photo(source_path: str, size: int, *, sharpen: bool = True) -> bytes:
-    """نسخهٔ WebP باکیفیت با بزرگ‌ترین ضلع ``size`` (بدون کشیدگی/بریدگی)."""
+def render_photo(
+    source_path: str, size: int, *, sharpen: bool = True, crop: bool = False,
+) -> bytes:
+    """نسخهٔ WebP باکیفیت از تصویر اصلی (بدون تغییر فایل منبع).
+
+    ``crop=False`` → بزرگ‌ترین ضلع ``size`` با حفظ نسبت (برای پیش‌نمایش/چاپ).
+    ``crop=True``  → مربع ``size×size`` با برش مرکزی-بالا (برای آواتار) تا CSS
+    دیگر تصویر را بزرگ‌نمایی نکند؛ همین علت اصلی تار/پیکسلی‌شدن آواتارها بود.
+    اگر تصویر منبع کوچک‌تر از ``size`` باشد، بزرگ‌نمایی انجام نمی‌شود.
+    """
     from PIL import Image, ImageFilter, ImageOps
 
     with Image.open(source_path) as image:
@@ -49,10 +60,17 @@ def render_photo(source_path: str, size: int, *, sharpen: bool = True) -> bytes:
         icc_profile = image.info.get('icc_profile')
         image = image.convert('RGB')
         source_width, source_height = image.size
-        image.thumbnail((size, size), Image.LANCZOS)
+        if crop:
+            side = min(size, source_width, source_height)
+            # برش مربع با گرایش به بالای تصویر (چهره در پرتره‌ها حفظ شود)
+            image = ImageOps.fit(
+                image, (side, side), Image.LANCZOS, centering=(0.5, 0.28),
+            )
+        else:
+            image.thumbnail((size, size), Image.LANCZOS)
         # فقط وقتی واقعاً کوچک شده، شارپ ملایم (بدون هاله/نویز)
         downscale = max(source_width, source_height) > max(image.size) * 1.15
-        if sharpen and downscale and min(image.size) >= 96:
+        if sharpen and downscale and min(image.size) >= 64:
             image = image.filter(ImageFilter.UnsharpMask(radius=0.8, percent=70, threshold=3))
         buffer = io.BytesIO()
         save_kwargs = {
@@ -68,12 +86,12 @@ def render_photo(source_path: str, size: int, *, sharpen: bool = True) -> bytes:
         return buffer.getvalue()
 
 
-def photo_thumbnail(employee, size, *, request=None) -> bytes:
+def photo_thumbnail(employee, size, *, request=None, crop: bool = False) -> bytes:
     """بایت‌های نسخهٔ نمایشی (با کش روی دیسک)."""
-    target = cache_path(employee.pk, employee.photo.name, size)
+    target = cache_path(employee.pk, employee.photo.name, size, crop=crop)
     if target.exists():
         return target.read_bytes()
-    data = render_photo(employee.photo.path, size)
+    data = render_photo(employee.photo.path, size, crop=crop)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
     return data
@@ -124,6 +142,7 @@ def photo_version(employee) -> str:
 
 def signed_photo_url(
     employee, request, *, size: int = DEFAULT_SIZE, full: bool = False,
+    crop: bool = False,
 ) -> str:
     """URL امضاشدهٔ عکس (نمایشی WebP یا فایل اصلی با ``full=1``)."""
     from employees.photo_tokens import sign_employee
@@ -140,16 +159,20 @@ def signed_photo_url(
         params.insert(0, 'full=1')
     else:
         params.insert(0, f'size={clamp_size(size)}')
+        if crop:
+            params.insert(1, 'crop=1')
     path = f'/api/employees/{employee.pk}/photo/?{"&".join(params)}'
     return request.build_absolute_uri(path)
 
 
-def photo_url(employee, request=None, *, size: int = DEFAULT_SIZE) -> str:
+def photo_url(
+    employee, request=None, *, size: int = DEFAULT_SIZE, crop: bool = False,
+) -> str:
     """URL نمایشی عکس پرسنلی =نسخهٔ شارپ/WebP= با fallback به فایل اصلی."""
     if not getattr(employee, 'photo', None):
         return ''
     try:
-        signed = signed_photo_url(employee, request, size=size)
+        signed = signed_photo_url(employee, request, size=size, crop=crop)
     except Exception:  # noqa: BLE001 — نبود فایل/تنظیمات نباید پاسخ API را بشکند
         signed = ''
     if signed:

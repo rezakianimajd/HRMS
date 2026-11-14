@@ -170,7 +170,9 @@ const EmployeeAvatar = ({
             alt={fullName || 'عکس پرسنلی'}
             data-testid="employee-photo-full"
             sx={{
-              display: 'block', width: '100%', maxHeight: '80vh', objectFit: 'contain',
+              display: 'block', maxWidth: '100%', maxHeight: '80vh',
+              width: 'auto', height: 'auto', objectFit: 'contain',
+              /* بدون بزرگ‌نمایی: تصویر کوچک‌تر از قاب، به اندازهٔ طبیعی می‌ماند */
               imageRendering: 'auto',
             }}
           />

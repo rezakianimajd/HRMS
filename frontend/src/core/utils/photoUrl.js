@@ -31,6 +31,8 @@ const withPhotoParams = (url, mutate) => {
 export const employeePhotoSrc = (url, size, { scale = 2 } = {}) => withPhotoParams(url, (params) => {
   params.set('size', String(photoPixelSize(size, scale)));
   params.delete('full');
+  /* آواتار مربع است؛ نسخهٔ مربعِ برش‌خورده می‌گیریم تا CSS تصویر را بزرگ‌نمایی نکند */
+  params.set('crop', '1');
 });
 
 /** srcSet برای نمایشگرهای 1x تا 3x (اعداد تکراری حذف می‌شوند). */
@@ -46,15 +48,17 @@ export const employeePhotoSrcSet = (url, size) => {
   return [...unique.entries()].map(([src, scale]) => `${src} ${scale}x`).join(', ');
 };
 
-/** نسخهٔ تمام‌کیفیت (WebP تا 2048px) برای نمایش بزرگ/چاپ. */
+/** نسخهٔ تمام‌کیفیت (WebP تا 2048px) برای نمایش بزرگ/چاپ — بدون برش مربع. */
 export const employeePhotoPreview = (url) => withPhotoParams(url, (params) => {
   params.set('size', String(PHOTO_PREVIEW_PIXELS));
   params.delete('full');
+  params.delete('crop');
 });
 
 /** فایل اصلی آپلودی (بدون تغییر کیفیت) برای دانلود یا باز کردن در تب جدید. */
 export const employeePhotoOriginal = (url) => withPhotoParams(url, (params) => {
   params.delete('size');
+  params.delete('crop');
   params.set('full', '1');
 });
 

@@ -177,8 +177,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return response
 
         size = photo_service.clamp_size(request.query_params.get('size'))
+        crop = str(request.query_params.get('crop') or '').lower() in ('1', 'true', 'yes')
         try:
-            data = photo_service.photo_thumbnail(employee, size)
+            data = photo_service.photo_thumbnail(employee, size, crop=crop)
         except Exception as exc:  # noqa: BLE001 — فایل خراب نباید آواتار را ۵۰۰ کند
             logger.warning('employees: ساخت عکس نمایشی ناموفق employee=%s: %s', employee.pk, exc)
             raise Http404

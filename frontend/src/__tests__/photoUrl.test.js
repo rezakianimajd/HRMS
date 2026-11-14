@@ -15,6 +15,9 @@ describe('photoUrl', () => {
   it('اندازهٔ نمایشی را برای آواتارهای رتینا دو برابر می‌کند', () => {
     expect(employeePhotoSrc(signed, 64)).toContain('size=128');
     expect(employeePhotoSrc(signed, 64, { scale: 1 })).toContain('size=64');
+    // آواتار مربع است: نسخهٔ برش‌خوردهٔ مربع درخواست می‌شود
+    expect(employeePhotoSrc(signed, 32)).toContain('crop=1');
+    expect(employeePhotoSrc(signed, 68)).toContain('crop=1');
   });
 
   it('توکن و نسخهٔ کش را حفظ می‌کند', () => {
@@ -51,13 +54,15 @@ describe('photoUrl', () => {
     expect(employeePhotoSrcSet('http://hrms.local/media/x.jpg', 40)).toBeUndefined();
   });
 
-  it('نسخهٔ تمام‌کیفیت و فایل اصلی را می‌سازد', () => {
+  it('نسخهٔ تمام‌کیفیت و فایل اصلی را بدون برش می‌سازد', () => {
     const preview = employeePhotoPreview(signed);
     expect(preview).toContain(`size=${PHOTO_PREVIEW_PIXELS}`);
     expect(preview).toContain('v=abc123');
     expect(preview).toContain('t=token.sig');
+    expect(preview).not.toContain('crop=1');
     const original = employeePhotoOriginal(signed);
     expect(original).toContain('full=1');
     expect(original).not.toContain('size=');
+    expect(original).not.toContain('crop=');
   });
 });
