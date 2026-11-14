@@ -8,12 +8,13 @@ from core.print_engine.registry import PrintError, _company_info, can_print
 
 LINE_COLUMNS = [
     {'key': 'line_no', 'label': '#', 'width': '3%', 'align': 'center', 'headerAlign': 'center', 'format': 'digits'},
-    {'key': 'account', 'label': 'کد معین / سرفصل', 'width': '14%', 'align': 'center', 'headerAlign': 'center'},
-    {'key': 'aux1', 'label': 'کد تفصیل ۱', 'width': '9%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'aux2', 'label': 'کد تفصیل ۲', 'width': '9%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'description', 'label': 'شرح هزینه', 'width': '15%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'supplier', 'label': 'فروشنده / طرف حساب', 'width': '13%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'invoice_number', 'label': 'شماره فاکتور', 'width': '7%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '7.5pt'},
+    {'key': 'expense_date', 'label': 'تاریخ', 'width': '7%', 'format': 'jalali', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'account', 'label': 'کد معین / سرفصل', 'width': '12%', 'align': 'center', 'headerAlign': 'center'},
+    {'key': 'aux1', 'label': 'کد تفصیل ۱', 'width': '8%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'aux2', 'label': 'کد تفصیل ۲', 'width': '8%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'description', 'label': 'شرح هزینه', 'width': '14%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'supplier', 'label': 'فروشنده / طرف حساب', 'width': '12%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'invoice_number', 'label': 'شماره فاکتور', 'width': '6%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '7.5pt'},
     {'key': 'base', 'label': 'مبلغ پایه', 'width': '12%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
     {'key': 'vat', 'label': 'ارزش افزوده', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
     {'key': 'total', 'label': 'جمع ردیف', 'width': '10%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
@@ -151,6 +152,7 @@ def _line_payload(line):
         base = (line.debit or 0) - vat - (line.tax_amount or 0)
     return {
         'line_no': line.line_no,
+        'expense_date': line.expense_date,
         'account': f'{line.account.code} — {line.account.name}' if line.account_id else '',
         'aux1': _aux_label(line.auxiliary_1),
         'aux2': _aux_label(line.auxiliary_2),

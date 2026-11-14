@@ -154,6 +154,7 @@ PETTY_STATEMENT_DATA = {
     'total': 110000,
     'lines': [{
         'line_no': 1,
+        'expense_date': '2026-11-10',
         'account': '701 — هزینه‌های اداری',
         'aux1': '101 — واحد مالی',
         'aux2': '202 — دفتر مرکزی',
@@ -202,9 +203,11 @@ class PettyStatementDocumentTests(SimpleTestCase):
         self.assertIn('pe-statement-page', html)
         self.assertIn('pe-statement-totals', html)
         self.assertIn('جمع نهایی', html)
-        self.assertIn('width:15%;', html)
-        self.assertIn('width:7%;', html)
+        self.assertIn('width:14%;', html)
+        self.assertIn('width:6%;', html)
         self.assertIn('font-family: inherit;', html)
+        self.assertIn('۱۴۰۵/۰۸/۱۹', html)
+        self.assertIn('>تاریخ</th>', html)
         self.assertLess(
             html.index('کاغذ A۴'),
             html.index('class="pe-table pe-table-light pe-statement-totals-table"'),
