@@ -19,27 +19,61 @@ LINE_COLUMNS = [
     {'key': 'total', 'label': 'جمع ردیف', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
 ]
 
+ROWS_PER_PAGE = 10
+
 
 def statement_document(data):
     """ساختار سند «صورت ریز هزینهٔ تنخواه» از دادهٔ آماده (بدون دیتابیس)."""
-    lines = data.get('lines') or []
+    lines = [
+        {
+            **line,
+            **{
+                key: pe.fa_digits(line.get(key) or '')
+                for key in ('account', 'aux1', 'aux2', 'description', 'supplier', 'invoice_number')
+            },
+        }
+        for line in (data.get('lines') or [])
+    ]
     status = data.get('status_display') or data.get('status') or ''
+    number = pe.fa_digits(data.get('number') or '')
+    fund = pe.fa_digits(data.get('fund') or '')
 
     identity = pe.field_grid([
-        ('شماره صورت', data.get('number')),
-        ('نام تنخواه', data.get('fund')),
+        ('شماره صورت', number),
+        ('نام تنخواه', fund),
         ('تاریخ صورت', pe.jalali(data.get('date'))),
     ], columns=3, widths=['12%', '14%', '14%', '38%', '12%', '10%'])
 
-    sections = [{'html': identity}]
-    description = (data.get('description') or '').strip()
-    if description:
-        sections.append({
-            'html': f'<div class="pe-note" style="border-style:solid">{pe.esc(description)}</div>',
-        })
-    sections.append({
-        'html': pe.data_table(LINE_COLUMNS, lines, {'zebra': True, 'header_style': 'light'}),
-    })
+    pages = [
+        lines[start:start + ROWS_PER_PAGE]
+        for start in range(0, len(lines), ROWS_PER_PAGE)
+    ] or [[]]
+    grand_totals = _line_totals(lines)
+    sections = []
+    for index, page_lines in enumerate(pages):
+        last_page = index == len(pages) - 1
+        classes = 'pe-statement-page'
+        if index == 0:
+            classes += ' pe-statement-page-first'
+        if last_page:
+            classes += ' pe-statement-page-last'
+        page_html = f'<div class="{classes}">'
+        if index == 0:
+            page_html += identity
+            page_html += '<div class="pe-statement-divider"></div>'
+        page_html += pe.data_table(
+            LINE_COLUMNS, page_lines, {'zebra': True, 'header_style': 'light'},
+        )
+        page_totals = _line_totals(page_lines)
+        if last_page and len(pages) == 1:
+            total_rows = [('جمع نهایی', grand_totals, 'pe-grand-total')]
+        else:
+            total_rows = [('جمع این صفحه', page_totals, '')]
+            if last_page:
+                total_rows.append(('جمع نهایی', grand_totals, 'pe-grand-total'))
+        page_html += _totals_table(total_rows)
+        page_html += '</div>'
+        sections.append({'html': page_html})
 
     watermark = ''
     if status and status not in ('ثبت‌شده', 'posted'):
@@ -47,22 +81,63 @@ def statement_document(data):
 
     return {
         'title': 'صورت ریز هزینهٔ تنخواه',
-        'subtitle': data.get('fund') or '',
+        'subtitle': fund,
         'badge': status,
         'company': data.get('company') or {},
         'meta': [
-            ('شماره صورت', data.get('number')),
+            ('شماره صورت', number),
             ('تاریخ', pe.jalali(data.get('date'))),
         ],
         'sections': sections,
         'signatures': pe.signatures([
-            {'title': 'تهیه‌کننده', 'name': data.get('custodian') or ''},
-            {'title': 'تأییدکننده', 'name': data.get('approved_by') or ''},
+            {'title': 'تهیه‌کننده', 'name': pe.fa_digits(data.get('custodian') or '')},
+            {'title': 'تأییدکننده', 'name': pe.fa_digits(data.get('approved_by') or '')},
             {'title': 'مهر و امضا'},
         ]),
         'watermark': watermark,
         'printed_on': data.get('printed_on'),
     }
+
+
+def _sum_values(rows, key):
+    total = 0
+    for row in rows:
+        amount = pe.to_decimal(row.get(key))
+        if amount is not None:
+            total += amount
+    return total
+
+
+def _line_totals(rows):
+    """جمع سه ستون مالی سطرها (پایه، ارزش افزوده، جمع ردیف)."""
+    return (
+        _sum_values(rows, 'base'),
+        _sum_values(rows, 'vat'),
+        _sum_values(rows, 'total'),
+    )
+
+
+def _totals_table(rows):
+    """جدول جمع‌ها با همان عرض ستون‌های جدول هزینه‌ها."""
+    colgroup = ''.join(
+        f'<col style="width:{column.get("width", "10%")}">' for column in LINE_COLUMNS
+    )
+    body = []
+    for label, values, css_class in rows:
+        cells = (
+            f'<td colspan="{len(LINE_COLUMNS) - 3}" class="pe-total-label">{pe.esc(label)}</td>'
+            + ''.join(
+                f'<td class="pe-total-value">{pe.money(value, unit="", fa=True)}</td>'
+                for value in values
+            )
+        )
+        body.append(f'<tr class="{css_class}">{cells}</tr>')
+    return (
+        '<div class="pe-statement-totals">'
+        f'<table class="pe-table pe-table-light pe-statement-totals-table">'
+        f'<colgroup>{colgroup}</colgroup><tbody>{"".join(body)}</tbody></table>'
+        '</div>'
+    )
 
 
 def _aux_label(value):

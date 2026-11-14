@@ -84,6 +84,24 @@ body {
 .pe-amount-words { font-size: 9pt; font-weight: 800; }
 .pe-amount-value { font-size: 11pt; font-weight: 900; font-family: 'Consolas', monospace; }
 .pe-note { font-size: 8.5pt; color: #475569; border: 1px dashed #94a3b8; padding: 4px 8px; border-radius: 6px; }
+.pe-statement-page {
+  display: flex; flex-direction: column; min-height: 172mm;
+  page-break-after: always; break-after: page;
+}
+.pe-statement-page.pe-statement-page-first { min-height: 130mm; }
+.pe-statement-page-last { page-break-after: auto; break-after: auto; }
+.pe-statement-divider {
+  height: 1px; margin: 7px 0 9px; border-radius: 999px;
+  background: linear-gradient(90deg, transparent, #94a3b8 15%%, #0f172a 50%%, #94a3b8 85%%, transparent);
+}
+.pe-statement-totals { margin-top: auto; padding-top: 4px; page-break-inside: avoid; }
+.pe-statement-totals-table td {
+  background: #f8fafc; font-weight: 800; font-size: 8pt;
+  padding: 4px 5px;
+}
+.pe-statement-totals-table td.pe-total-label { text-align: right; color: #334155; }
+.pe-statement-totals-table td.pe-total-value { text-align: left; font-family: 'Consolas', monospace; }
+.pe-statement-totals-table tr.pe-grand-total td { background: #e2e8f0; color: #0f172a; }
 .pe-sign-row { display: flex; gap: 10px; margin-top: 14px; page-break-inside: avoid; }
 .pe-sign {
   flex: 1; border: 1px solid #94a3b8; border-radius: 8px; min-height: 60px;
@@ -102,7 +120,12 @@ body {
 .pe-footer .pe-sign-title { font-size: 7.5pt; }
 .pe-footer .pe-sign-name { margin-top: 6px; font-size: 8pt; }
 .pe-footer-meta { display: flex; gap: 10px; font-size: 7.5pt; color: #64748b; margin-top: 1mm; }
-.pe-page-number::after { content: counter(page); }
+@counter-style pe-persian-page {
+  system: numeric;
+  symbols: '۰' '۱' '۲' '۳' '۴' '۵' '۶' '۷' '۸' '۹';
+  suffix: '';
+}
+.pe-page-number::after { content: counter(page, pe-persian-page); }
 @media screen { .pe-page-number::after { content: '۱'; } }
 .pe-screen-toolbar {
   position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 20;
@@ -214,9 +237,14 @@ def _header(document, options):
         ('نشانی', config.get('address')), ('تلفن', config.get('phone')),
         ('ایمیل', config.get('email')), ('وبگاه', config.get('website')),
     ]
-    contact_text = ' · '.join(f'{label}: {value}' for label, value in contacts if value)
+    contact_text = ' · '.join(
+        f'{label}: {fa_digits(value)}' for label, value in contacts if value
+    )
     contact_html = f'<div class="pe-header-contact">{esc(contact_text)}</div>' if contact_text else ''
-    extra_html = f'<div class="pe-header-extra">{esc(config["extra"])}</div>' if config.get('extra') else ''
+    extra_html = (
+        f'<div class="pe-header-extra">{esc(fa_digits(config["extra"]))}</div>'
+        if config.get('extra') else ''
+    )
     padding = f'{_num_text(space_top)}mm {_num_text(space_side)}mm {_num_text(space_bottom)}mm'
     return (
         f'<header class="pe-header" style="{border}padding:{padding};">'

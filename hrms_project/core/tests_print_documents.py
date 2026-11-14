@@ -175,12 +175,17 @@ class PettyStatementDocumentTests(SimpleTestCase):
         document = statement_document(PETTY_STATEMENT_DATA)
         html = render_document(document, {'paper': 'A4', 'orientation': 'landscape'})
         self.assertIn('صورت ریز هزینهٔ تنخواه', html)
-        self.assertIn('PC-EXP-2026-0001', html)
-        self.assertIn('101 — واحد مالی', html)
-        self.assertIn('202 — دفتر مرکزی', html)
-        self.assertIn('کاغذ A4', html)
+        self.assertIn('PC-EXP-۲۰۲۶-۰۰۰۱', html)
+        self.assertNotIn('PC-EXP-2026-0001', html)
+        self.assertIn('۷۰۱ — هزینه‌های اداری', html)
+        self.assertIn('۱۰۱ — واحد مالی', html)
+        self.assertIn('۲۰۲ — دفتر مرکزی', html)
+        self.assertIn('INV-۱', html)
+        self.assertNotIn('INV-1', html)
+        self.assertIn('کاغذ A۴', html)
         self.assertIn('شرکت الف', html)
         self.assertIn('۱۱۰٬۰۰۰', html)
+        self.assertNotIn('خرید لوازم اداری', html)
         self.assertNotIn('مشخصات تنخواه', html)
         self.assertNotIn('شرح صورت ریز هزینه', html)
         self.assertNotIn('سطرهای هزینه', html)
@@ -193,13 +198,39 @@ class PettyStatementDocumentTests(SimpleTestCase):
         self.assertIn('pe-fields-custom', html)
         self.assertIn('width:38%', html)
         self.assertIn('pe-table-light', html)
+        self.assertIn('pe-statement-divider', html)
+        self.assertIn('pe-statement-page', html)
+        self.assertIn('pe-statement-totals', html)
+        self.assertIn('جمع نهایی', html)
         self.assertLess(
-            html.index('خرید لوازم اداری'),
-            html.index('class="pe-table pe-table-light'),
+            html.index('کاغذ A۴'),
+            html.index('class="pe-table pe-table-light pe-statement-totals-table"'),
         )
         self.assertNotIn('<div class="pe-amount-box">', html)
         self.assertNotIn('<div class="pe-barcode">', html)
         self.assertIn('pe-watermark', html)
+
+    def test_multiple_pages_have_page_and_final_totals(self):
+        from core.print_engine.builders.petty_statement import statement_document
+
+        lines = [
+            {
+                **PETTY_STATEMENT_DATA['lines'][0],
+                'line_no': index,
+                'invoice_number': f'INV-{index}',
+            }
+            for index in range(1, 12)
+        ]
+        document = statement_document({**PETTY_STATEMENT_DATA, 'lines': lines})
+        html = render_document(document, {'paper': 'A4', 'orientation': 'landscape'})
+        self.assertEqual(html.count('class="pe-statement-page'), 2)
+        self.assertIn('pe-statement-page-first', html)
+        self.assertIn('pe-statement-page-last', html)
+        self.assertEqual(html.count('جمع این صفحه'), 2)
+        self.assertEqual(html.count('جمع نهایی'), 1)
+        self.assertIn('۱٬۰۰۰٬۰۰۰', html)
+        self.assertIn('۱٬۱۰۰٬۰۰۰', html)
+        self.assertIn('۱٬۲۱۰٬۰۰۰', html)
 
     def test_available_documents_lists_petty_statement(self):
         keys = {item['key'] for item in registry.available_documents()}
