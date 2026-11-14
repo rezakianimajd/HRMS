@@ -211,7 +211,7 @@ class PettyStatementDocumentTests(SimpleTestCase):
         )
         self.assertNotIn('<div class="pe-amount-box">', html)
         self.assertNotIn('<div class="pe-barcode">', html)
-        self.assertIn('pe-watermark', html)
+        self.assertNotIn('<div class="pe-watermark">', html)
 
     def test_multiple_pages_have_page_and_final_totals(self):
         from core.print_engine.builders.petty_statement import statement_document

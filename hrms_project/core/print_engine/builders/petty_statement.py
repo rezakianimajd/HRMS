@@ -76,8 +76,6 @@ def statement_document(data):
         sections.append({'html': page_html})
 
     watermark = ''
-    if status and status not in ('ثبت‌شده', 'posted'):
-        watermark = 'پیش‌نویس'
 
     return {
         'title': 'صورت ریز هزینهٔ تنخواه',
