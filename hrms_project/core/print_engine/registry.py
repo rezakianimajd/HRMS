@@ -534,7 +534,18 @@ def build_voucher(payload, options, request=None):
     return load_voucher(payload, options, request)
 
 
-DOCUMENTS.update({'payslip': build_payslip, 'voucher': build_voucher})
+def build_petty_statement(payload, options, request=None):
+    """صورت ریز هزینهٔ تنخواه."""
+    from core.print_engine.builders.petty_statement import load_statement
+
+    return load_statement(payload, options, request)
+
+
+DOCUMENTS.update({
+    'payslip': build_payslip,
+    'voucher': build_voucher,
+    'petty-statement': build_petty_statement,
+})
 
 
 def _render_options(options, request):
@@ -576,5 +587,6 @@ def available_documents():
         {'key': 'table', 'label': 'گزارش جدولی'},
         {'key': 'payslip', 'label': 'فیش حقوقی'},
         {'key': 'voucher', 'label': 'سند خزانه‌داری'},
+        {'key': 'petty-statement', 'label': 'صورت ریز هزینهٔ تنخواه'},
         {'key': 'custom', 'label': 'سند آماده (HTML)'},
     ]

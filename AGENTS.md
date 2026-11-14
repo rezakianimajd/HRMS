@@ -650,11 +650,23 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `vat_amount` = VAT و `net_amount` = پایه ارسال می‌شود؛ جمع صورت/کسر از تنخواه با gross (شامل VAT)
     و «مبلغ پایه» جدا در خلاصه/فوتر نمایش داده می‌شود. تأیید زنده: پایه ۱۰۰٬۰۰۰ + VAT ۱۰٬۰۰۰ ⇒
     `total=110000`, `net_total=100000` و `apply` مانده را ۱۱۰٬۰۰۰ کاهش داد.
-  - **تأیید زندهٔ `kpsmi` (تراکنش و rollback):** ساخت با شمارهٔ دستی `PC-TEST-9999` = ۲۰۱؛
+  - **ویرایش صورت هزینه (۲۰۲۶-۱۱-۱۴):** مسیر `/petty-cash/expenses/:id/edit` اضافه شد و همان
+    `PettyCashExpenseNewPage` با `useParams` رکورد را از `/petty-cash-expense-statements/{id}/` می‌خواند
+    و هدر/سطرها را پر می‌کند. ذخیره با `PATCH` انجام می‌شود و `line.id` برای هر سطر ارسال می‌شود؛
+    `PettyCashExpenseStatementSerializer.update` به‌جای حذف همهٔ سطرها، سطرهای موجود را **به‌روزرسانی**
+    می‌کند (شناسه و پیوست حفظ می‌شوند)، فقط سطرهای حذف‌شده را پاک می‌کند و سطرهای جدید را می‌سازد.
+    فقط وضعیت‌های قابل‌ویرایش (`draft/rejected/edited`) دکمهٔ ویرایش در فهرست دارند.
+  - **چاپ صورت هزینه با موتور چاپ و پیش‌نمایش:** بیلدر `core/print_engine/builders/petty_statement.py`
+    (`statement_document` خالص + `load_statement` با `scope_by_fund`) و سند `petty-statement` در
+    `registry` اضافه شد. دکمهٔ چاپ هر ردیف فهرست و دکمهٔ «پیش‌نمایش و چاپ» صفحهٔ ویرایش از
+    `usePrintDocument` + `PrintPreviewDialog` استفاده می‌کنند (HTML سروری، انتخاب کاغذ/جهت، سربرگ
+    تنظیمات چاپ)، نه دانلود PDF قدیمی.
+  - **تأیید زندهٔ ویرایش/چاپ:** `PATCH` = ۲۰۰ با همان `line.id` و همان پیوست، `total=220000` و
+    `net=200000`؛ `POST /api/print/preview/` = ۲۰۰ (۱۲٬۴۳۲ بایت) شامل شماره، فروشنده و مبلغ.
     `apply` = ۲۰۰ و `status=posted`؛ ماندهٔ تنخواه **۱۰۰٬۰۰۰** کاهش یافت؛ `export` = ۴۰۴؛
     کاربر بدون تخصیص = ۰ تنخواه/۰ صورت. تست: `pettycash` **۲۹**، فرانت
     `pettyCashExpenseForm` (۳) + `pettyCashExpenseSmoke` (۲) + `pettyCashDashboardSmoke` (۱).
-    باندل زنده: **`main.8be36f37.js`** (بک‌اند اعمال و gunicorn active).
+    باندل زنده: **`main.deb23d51.js`** (بک‌اند اعمال و gunicorn active).
 
 
 - **صورت ریز هزینهٔ تنخواه: بازطراحی تم‌محور، رفع ذخیره و دامنهٔ دید سخت‌گیرانه (۲۰۲۶-۱۱-۱۴):**

@@ -22,6 +22,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
 import { alpha, useTheme } from '@mui/material/styles';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
@@ -29,7 +30,8 @@ import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-import downloadFile from '../core/utils/downloadUtils';
+import usePrintDocument from '../core/print/usePrintDocument';
+import PrintPreviewDialog from '../core/print/PrintPreviewDialog';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
 import { SurfaceCard } from './accounting/AccountingDashboardUI';
@@ -65,7 +67,7 @@ const useDebounced = (value, delay = 320) => {
 
 const pickRows = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
 
-const RowActions = ({ row, act, onTimeline }) => (
+const RowActions = ({ row, act, onTimeline, onEdit, onPrint }) => (
   <>
     {row.status === 'submitted' && (
       <>
@@ -84,8 +86,15 @@ const RowActions = ({ row, act, onTimeline }) => (
         </Tooltip>
       </>
     )}
-    <Tooltip title="نسخهٔ چاپی">
-      <IconButton size="small" onClick={() => downloadFile(`/petty-cash-expense-statements/${row.id}/pdf/`, { fallbackName: `petty-statement-${row.id}.pdf` }).catch(() => {})}>
+    {row.is_editable ? (
+      <Tooltip title="ویرایش صورت">
+        <IconButton size="small" color="primary" onClick={() => onEdit(row)}>
+          <EditIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    ) : null}
+    <Tooltip title="پیش‌نمایش و چاپ">
+      <IconButton size="small" onClick={() => onPrint(row)}>
         <PrintIcon fontSize="small" />
       </IconButton>
     </Tooltip>
@@ -112,6 +121,7 @@ const RowActions = ({ row, act, onTimeline }) => (
 
 const PettyCashExpensesPage = () => {
   const qc = useQueryClient();
+  const print = usePrintDocument();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -229,6 +239,12 @@ const PettyCashExpensesPage = () => {
     prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
   ));
   const allSelected = pageRows.length > 0 && pageRows.every((row) => selected.includes(row.id));
+
+  const openPrint = (row) => print.openDocument({
+    document: 'petty-statement',
+    payload: { id: row.id },
+    options: { paper: 'A4', orientation: 'landscape' },
+  });
 
   return (
     <Box>
@@ -419,7 +435,9 @@ const PettyCashExpensesPage = () => {
                                 </IconButton>
                               </Tooltip>
                             ) : (
-                              <RowActions row={row} act={act} onTimeline={setTimeline} />
+                              <RowActions row={row} act={act} onTimeline={setTimeline}
+                          onEdit={(item) => navigate(`/petty-cash/expenses/${item.id}/edit`)}
+                          onPrint={openPrint} />
                             )}
                           </Stack>
                         </TableCell>
@@ -480,6 +498,18 @@ const PettyCashExpensesPage = () => {
         </DialogTitle>
         <DialogContent sx={{ p: 2 }}><Timeline events={timeline?.history} /></DialogContent>
       </Dialog>
+
+      <PrintPreviewDialog
+        open={print.open}
+        title={print.title || 'چاپ صورت ریز هزینهٔ تنخواه'}
+        html={print.html}
+        loading={print.loading}
+        error={print.error}
+        options={print.options}
+        onChangeOptions={print.updateOptions}
+        onRefresh={print.refresh}
+        onClose={print.close}
+      />
     </Box>
   );
 };

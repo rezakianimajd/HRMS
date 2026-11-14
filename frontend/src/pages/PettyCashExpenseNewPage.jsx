@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -22,6 +22,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
+import PrintIcon from '@mui/icons-material/Print';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliMaskedDateInput from '../core/components/ui/JalaliMaskedDateInput';
 import PageHeader from '../core/components/ui/PageHeader';
@@ -31,6 +32,8 @@ import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
 import { resolveTableTheme } from '../core/theme/tableStyles';
 import { SurfaceCard, ProgressBar } from './accounting/AccountingDashboardUI';
+import usePrintDocument from '../core/print/usePrintDocument';
+import PrintPreviewDialog from '../core/print/PrintPreviewDialog';
 import {
   PAYMENT_METHODS, buildStatementFormData, emptyLine, faSep, fillLines, lineIssues,
   lineTotal, today, totalsOf,
@@ -221,7 +224,11 @@ const AccessState = ({ canCreate, hasFunds, onBack }) => (
 
 const PettyCashExpenseNewPage = () => {
   const navigate = useNavigate();
+  const { id: editingIdParam } = useParams();
+  const editingId = editingIdParam || '';
+  const isEditing = Boolean(editingId);
   const qc = useQueryClient();
+  const print = usePrintDocument();
   const theme = useTheme();
   const { tokens } = useDesignTokens();
   const { getPalette } = useModulePalette();
@@ -256,6 +263,7 @@ const PettyCashExpenseNewPage = () => {
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState(null);
+  const [hydrated, setHydrated] = useState(!isEditing);
 
   const fundsQuery = useQuery({
     queryKey: ['pc-expense-funds'],
@@ -295,6 +303,13 @@ const PettyCashExpenseNewPage = () => {
     staleTime: 120000,
     retry: false,
   });
+  const statementQuery = useQuery({
+    queryKey: ['pc-statement', editingId],
+    queryFn: () => axiosInstance.get(`/petty-cash-expense-statements/${editingId}/`)
+      .then((response) => response.data),
+    enabled: isEditing,
+    retry: false,
+  });
 
   const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
   const fundList = useMemo(() => asList(fundsQuery.data), [fundsQuery.data]);
@@ -316,12 +331,56 @@ const PettyCashExpenseNewPage = () => {
     }
   }, [fundList, header.fund]);
 
+  useEffect(() => {
+    const statement = statementQuery.data;
+    if (!isEditing || !statement || hydrated) return;
+    setHeader({
+      fund: statement.fund || '',
+      number: statement.number || '',
+      date: statement.date || today(),
+      description: statement.description || '',
+      project: statement.project || '',
+      cost_center: statement.cost_center || '',
+      payment_method: statement.payment_method || 'cash',
+    });
+    const rows = (statement.lines || []).map((line) => {
+      const vat = Number(line.vat_amount) || 0;
+      const debit = Number(line.debit) || 0;
+      const tax = Number(line.tax_amount) || 0;
+      const base = line.net_amount !== null && line.net_amount !== undefined
+        ? Number(line.net_amount)
+        : Math.max(debit - vat - tax, 0);
+      return {
+        id: line.id,
+        account: line.account || '',
+        aux1: line.auxiliary_1 || '',
+        aux2: line.auxiliary_2 || '',
+        aux3: line.auxiliary_3 || '',
+        invoice_number: line.invoice_number || '',
+        expense_date: line.expense_date || statement.date,
+        supplier: line.supplier || '',
+        desc: line.description || '',
+        amount: String(base),
+        vat_amount: String(vat),
+        attachment: null,
+        existingAttachment: line.attachment_url
+          || (line.attachments && line.attachments[0] && line.attachments[0].file_url) || '',
+      };
+    });
+    const padded = rows.length
+      ? [...rows, ...Array.from({ length: Math.max(0, ROWS_TO_START - rows.length) }, emptyLine)]
+      : Array.from({ length: ROWS_TO_START }, emptyLine);
+    setLines(padded);
+    setHydrated(true);
+  }, [isEditing, statementQuery.data, hydrated]);
+
 
   const totals = useMemo(() => totalsOf(lines), [lines]);
   const filled = useMemo(() => fillLines(lines), [lines]);
   const issueCount = filled.reduce((sum, line) => sum + (lineIssues(line).length ? 1 : 0), 0);
   const canSave = Boolean(header.fund) && totals.count > 0
     && filled.every((line) => line.account && Number(line.amount) > 0);
+  const editingBlocked = isEditing && statementQuery.data ? !statementQuery.data.is_editable : false;
   const noFunds = !fundsQuery.isLoading && fundList.length === 0;
   const canCreate = accessQuery.data?.can_create_expense !== false && !noFunds;
   const isLoadingAccess = fundsQuery.isLoading || accessQuery.isLoading;
@@ -381,18 +440,23 @@ const PettyCashExpenseNewPage = () => {
     if (!filled.length) { setMsg({ ok: false, text: 'حداقل یک ردیف هزینه لازم است.' }); return; }
     if (!canSave) { setMsg({ ok: false, text: 'ردیف‌های ناقص (کد معین یا مبلغ) را تکمیل کنید.' }); return; }
     if (!canCreate) { setMsg({ ok: false, text: 'ثبت صورت هزینه برای شما مجاز نیست.' }); return; }
+    if (editingBlocked) { setMsg({ ok: false, text: 'این صورت هزینه در وضعیت جاری قابل ویرایش نیست.' }); return; }
 
     const form = buildStatementFormData({ header, lines });
     setSaving(true);
     try {
-      const response = await axiosInstance.post('/petty-cash-expense-statements/', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const endpoint = isEditing
+        ? `/petty-cash-expense-statements/${editingId}/`
+        : '/petty-cash-expense-statements/';
+      const response = isEditing
+        ? await axiosInstance.patch(endpoint, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+        : await axiosInstance.post(endpoint, form, { headers: { 'Content-Type': 'multipart/form-data' } });
       const created = response.data;
+      const targetId = created?.id || editingId;
       let applyError = '';
-      if (andApply && created?.id) {
+      if (andApply && targetId) {
         try {
-          await axiosInstance.post(`/petty-cash-expense-statements/${created.id}/apply/`);
+          await axiosInstance.post(`/petty-cash-expense-statements/${targetId}/apply/`);
         } catch (error) {
           applyError = errorText(error) || 'ثبت در تنخواه انجام نشد.';
         }
@@ -400,16 +464,17 @@ const PettyCashExpenseNewPage = () => {
       qc.invalidateQueries({ queryKey: ['petty-expenses'] });
       qc.invalidateQueries({ queryKey: ['pc-expense-funds'] });
       qc.invalidateQueries({ queryKey: ['petty-dashboard'] });
+      qc.invalidateQueries({ queryKey: ['pc-statement', editingId] });
       if (applyError) {
-        setSavedId(created?.id || null);
+        setSavedId(targetId || null);
         setMsg({
           ok: false,
-          text: `صورت هزینه ذخیره شد (شماره ${created?.number || created?.id}) اما ثبت در تنخواه ناموفق بود: ${applyError}`,
+          text: `صورت هزینه ذخیره شد (شماره ${created?.number || targetId}) اما ثبت در تنخواه ناموفق بود: ${applyError}`,
         });
         return;
       }
       navigate('/petty-cash/expenses', {
-        state: { flash: andApply ? 'صورت هزینه ذخیره و در تنخواه ثبت شد' : 'صورت هزینه ذخیره شد' },
+        state: { flash: isEditing ? 'صورت هزینه ویرایش شد' : (andApply ? 'صورت هزینه ذخیره و در تنخواه ثبت شد' : 'صورت هزینه ذخیره شد') },
       });
     } catch (error) {
       setMsg({ ok: false, text: errorText(error) || 'خطا در ذخیرهٔ صورت هزینه' });
@@ -433,12 +498,22 @@ const PettyCashExpenseNewPage = () => {
         onClick={() => navigate('/petty-cash/expenses')}>
         بازگشت
       </Button>
+      {isEditing ? (
+        <Button size="small" startIcon={<PrintIcon />} variant="outlined"
+          onClick={() => print.openDocument({
+            document: 'petty-statement',
+            payload: { id: editingId },
+            options: { paper: 'A4', orientation: 'landscape' },
+          })}>
+          پیش‌نمایش و چاپ
+        </Button>
+      ) : null}
       <Button size="small" startIcon={<SaveIcon />} variant="contained"
-        disabled={saving || !canSave || !canCreate} onClick={() => submit(false)}>
-        {saving ? <CircularProgress size={16} color="inherit" /> : 'ذخیره پیش‌نویس'}
+        disabled={saving || !canSave || !canCreate || editingBlocked} onClick={() => submit(false)}>
+        {saving ? <CircularProgress size={16} color="inherit" /> : (isEditing ? 'ذخیره تغییرات' : 'ذخیره پیش‌نویس')}
       </Button>
       <Button size="small" startIcon={<SendIcon />} variant="contained" color="success"
-        disabled={saving || !canSave || !canCreate} onClick={() => submit(true)}>
+        disabled={saving || !canSave || !canCreate || editingBlocked} onClick={() => submit(true)}>
         ذخیره و ثبت در تنخواه
       </Button>
     </>
@@ -447,8 +522,10 @@ const PettyCashExpenseNewPage = () => {
   const headerNode = (
     <PageHeader
       icon={<PostAddIcon />}
-      title="ثبت صورت ریز هزینه"
-      subtitle="ثبت هزینه‌های تنخواه با کدینگ حسابداری، فروشنده و پیوست"
+      title={isEditing ? 'ویرایش صورت ریز هزینه' : 'ثبت صورت ریز هزینه'}
+      subtitle={isEditing
+        ? 'ویرایش سطرها، فروشنده و پیوست‌های صورت هزینهٔ تنخواه'
+        : 'ثبت هزینه‌های تنخواه با کدینگ حسابداری، فروشنده و پیوست'}
       badge={(
         <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
           <Chip size="small" label={fund ? `تنخواه: ${fund.title}` : 'تنخواه انتخاب نشده'}
@@ -460,6 +537,39 @@ const PettyCashExpenseNewPage = () => {
       actions={headerActions}
     />
   );
+
+  if (isEditing && statementQuery.isLoading) {
+    return (
+      <Box>
+        {headerNode}
+        <Paper elevation={0} sx={{ p: 5, textAlign: 'center', borderRadius: CARD_RADIUS, bgcolor: CARD_BG }}>
+          <CircularProgress size={26} />
+          <Typography sx={{ mt: 1.5, fontSize: 13, color: MUTED }}>در حال بارگذاری صورت هزینه…</Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  if (editingBlocked) {
+    return (
+      <Box>
+        {headerNode}
+        <Paper elevation={0} sx={{ p: 4, borderRadius: CARD_RADIUS, bgcolor: CARD_BG, textAlign: 'center' }}>
+          <WarningAmberIcon sx={{ fontSize: 38, color: WARN, mb: 1 }} />
+          <Typography sx={{ fontSize: 15, fontWeight: 900, mb: 0.75 }}>
+            این صورت هزینه قابل ویرایش نیست
+          </Typography>
+          <Typography sx={{ fontSize: 12.5, color: MUTED, mb: 2 }}>
+            وضعیت فعلی: «{statementQuery.data?.status_display || '—'}». فقط پیش‌نویس، برگشت‌خورده یا ویرایش‌شده قابل ویرایش است.
+          </Typography>
+          <Button variant="contained" startIcon={<ArrowForwardIcon />}
+            onClick={() => navigate('/petty-cash/expenses')}>
+            بازگشت به فهرست
+          </Button>
+        </Paper>
+      </Box>
+    );
+  }
 
   if (isLoadingAccess) {
     return (
@@ -772,9 +882,11 @@ const PettyCashExpenseNewPage = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <input type="file" hidden id={`pc-att-${index}`}
                       onChange={(event) => setLine(index, 'attachment', event.target.files?.[0] || null)} />
-                    <Tooltip title={line.attachment ? line.attachment.name : 'پیوست فاکتور/رسید'}>
+                    <Tooltip title={line.attachment
+                      ? line.attachment.name
+                      : (line.existingAttachment ? 'پیوست موجود (با ذخیره حفظ می‌شود)' : 'پیوست فاکتور/رسید')}>
                       <IconButton size="small" component="label" htmlFor={`pc-att-${index}`}
-                        color={line.attachment ? 'success' : 'default'}>
+                        color={line.attachment || line.existingAttachment ? 'success' : 'default'}>
                         <AttachFileIcon sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
@@ -840,6 +952,17 @@ const PettyCashExpenseNewPage = () => {
           else setLine(picker.row, picker.slot, option.id);
           setPicker(null);
         }}
+      />
+      <PrintPreviewDialog
+        open={print.open}
+        title={print.title || 'چاپ صورت ریز هزینهٔ تنخواه'}
+        html={print.html}
+        loading={print.loading}
+        error={print.error}
+        options={print.options}
+        onChangeOptions={print.updateOptions}
+        onRefresh={print.refresh}
+        onClose={print.close}
       />
     </Box>
   );

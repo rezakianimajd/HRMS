@@ -133,3 +133,51 @@ class VoucherDocumentTests(SimpleTestCase):
     def test_available_documents_lists_new_kinds(self):
         keys = {item['key'] for item in registry.available_documents()}
         self.assertTrue({'payslip', 'voucher'} <= keys)
+
+
+PETTY_STATEMENT_DATA = {
+    'company': {'name': 'موسسه نمونه'},
+    'number': 'PC-EXP-2026-0001',
+    'date': '2026-11-14',
+    'fund': 'تنخواه مرکزی',
+    'custodian': 'مریم احمدی',
+    'status': 'draft',
+    'status_display': 'پیش‌نویس',
+    'payment_method': 'نقد',
+    'project': 'برج اداری',
+    'cost_center': 'اداری',
+    'due_date': '2026-12-14',
+    'description': 'خرید لوازم اداری',
+    'base_total': 100000,
+    'vat_total': 10000,
+    'total': 110000,
+    'lines': [{
+        'line_no': 1,
+        'account': '701 — هزینه‌های اداری',
+        'description': 'کاغذ A4',
+        'supplier': 'شرکت الف',
+        'invoice_number': 'INV-1',
+        'base': 100000,
+        'vat': 10000,
+        'total': 110000,
+    }],
+    'printed_on': '2026-11-14',
+}
+
+
+class PettyStatementDocumentTests(SimpleTestCase):
+    def test_document_renders_lines_and_totals(self):
+        from core.print_engine.builders.petty_statement import statement_document
+
+        document = statement_document(PETTY_STATEMENT_DATA)
+        html = render_document(document, {'paper': 'A4', 'orientation': 'landscape'})
+        self.assertIn('صورت ریز هزینهٔ تنخواه', html)
+        self.assertIn('PC-EXP-2026-0001', html)
+        self.assertIn('کاغذ A4', html)
+        self.assertIn('شرکت الف', html)
+        self.assertIn('۱۱۰٬۰۰۰', html)
+        self.assertIn('pe-watermark', html)
+
+    def test_available_documents_lists_petty_statement(self):
+        keys = {item['key'] for item in registry.available_documents()}
+        self.assertIn('petty-statement', keys)

@@ -17,7 +17,7 @@ export const today = () => {
 };
 
 export const emptyLine = () => ({
-  account: '', aux1: '', aux2: '', aux3: '',
+  id: '', account: '', aux1: '', aux2: '', aux3: '',
   invoice_number: '', expense_date: today(), supplier: '', desc: '',
   amount: '', vat_amount: '', attachment: null,
 });
@@ -86,6 +86,7 @@ export const buildStatementFormData = ({ header, lines }) => {
     const base = Number(line.amount) || 0;
     const vat = Number(line.vat_amount) || 0;
     const gross = base + vat;
+    if (line.id) form.append(`lines[${index}]id`, String(line.id));
     form.append(`lines[${index}]account`, line.account || '');
     form.append(`lines[${index}]auxiliary_1`, line.aux1 || '');
     form.append(`lines[${index}]auxiliary_2`, line.aux2 || '');

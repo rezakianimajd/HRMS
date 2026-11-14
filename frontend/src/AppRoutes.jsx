@@ -294,6 +294,7 @@ const AppRoutes = () => {
       <Route path="/petty-cash/calendar" element={<ProtectedLayout><PettyCashCalendarPage /></ProtectedLayout>} />
       <Route path="/petty-cash/expenses" element={<ProtectedLayout><PettyCashExpensesPage /></ProtectedLayout>} />
       <Route path="/petty-cash/expenses/new" element={<ProtectedLayout><PettyCashExpenseNewPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/expenses/:id/edit" element={<ProtectedLayout><PettyCashExpenseNewPage /></ProtectedLayout>} />
       <Route path="/petty-cash/requests" element={<ProtectedLayout><PettyCashRequestsPage /></ProtectedLayout>} />
       <Route path="/petty-cash/settlements" element={<ProtectedLayout><PettyCashSettlementsPage /></ProtectedLayout>} />
       <Route path="/petty-cash/settings" element={<ProtectedLayout><PettyCashSettingsPage /></ProtectedLayout>} />

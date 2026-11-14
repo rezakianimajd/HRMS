@@ -120,6 +120,7 @@ class PettyCashApprovalPolicySerializer(serializers.ModelSerializer):
 
 
 class PettyCashExpenseStatementLineSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
     account_code = serializers.CharField(source='account.code', read_only=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
     attachment_url = serializers.SerializerMethodField()
@@ -216,6 +217,7 @@ class PettyCashExpenseStatementSerializer(serializers.ModelSerializer):
             validated_data['due_date'] = validated_data['date'] + timezone.timedelta(days=days)
         st = PettyCashExpenseStatement.objects.create(company=company, **validated_data)
         for i, line in enumerate(lines, start=1):
+            line.pop('id', None)
             line.pop('statement', None)
             line.pop('company', None)
             attachment = line.pop('attachment', None)
@@ -244,24 +246,41 @@ class PettyCashExpenseStatementSerializer(serializers.ModelSerializer):
             instance.number = next_statement_number(company, instance.date)
         instance.save()
         if lines is not None:
-            instance.lines.all().delete()
+            existing = {str(line.pk): line for line in instance.lines.all()}
+            kept = set()
             for i, line in enumerate(lines, start=1):
+                line_id = line.pop('id', None)
                 line.pop('statement', None)
                 line.pop('company', None)
                 attachment = line.pop('attachment', None)
                 extra_files = line.pop('attachments', None)
-                ln = PettyCashExpenseStatementLine.objects.create(
-                    statement=instance, company=company, line_no=i, **line,
-                )
-                if attachment:
-                    ln.attachment = attachment
-                    ln.save(update_fields=['attachment'])
+                target = existing.get(str(line_id)) if line_id else None
+                if target is not None:
+                    for key, value in line.items():
+                        setattr(target, key, value)
+                    target.line_no = i
+                    if attachment:
+                        target.attachment = attachment
+                    target.save()
+                    ln = target
+                else:
+                    ln = PettyCashExpenseStatementLine.objects.create(
+                        statement=instance, company=company, line_no=i, **line,
+                    )
+                    if attachment:
+                        ln.attachment = attachment
+                        ln.save(update_fields=['attachment'])
+                kept.add(ln.pk)
                 for extra in (extra_files or []):
                     if hasattr(extra, 'read'):
                         PettyCashExpenseAttachment.objects.create(
                             company=company, line=ln, file=extra,
                             title=getattr(extra, 'name', '')[:200],
                         )
+            if kept:
+                instance.lines.exclude(pk__in=list(kept)).delete()
+            else:
+                instance.lines.all().delete()
         return instance
 
 
