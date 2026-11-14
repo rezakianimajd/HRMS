@@ -865,8 +865,70 @@ class PettyCashExpenseStatementViewSet(FinancialViewSet):
         return qs
 
 
-    @action(detail=False, methods=['post'])
-    def bulk_action(self, request):
+    @action(detail=False, methods=['get'])
+    def vendors(self, request):
+        """جست‌وجوی فروشنده در «طرف‌حساب‌ها» و «تأمین‌کنندگان» برای ستون فروشنده.
+
+        خروجی یکپارچه و محدود به شرکت جاری است تا در صورت‌ریز هزینه، یک فیلد
+        جست‌وجوپذیر داشته باشیم و نام درست (بدون تایپ دستی) ثبت شود.
+        """
+        term = (request.query_params.get('q') or '').strip()
+        company = _company(request)
+        if not company or len(term) < 2:
+            return Response([])
+
+        from contracts.models import ContractParty
+        from procurement.models import Supplier
+
+        condition = (
+            Q(name__icontains=term)
+            | Q(national_id__icontains=term)
+            | Q(economic_code__icontains=term)
+        )
+        results = []
+        parties = (
+            ContractParty.objects
+            .filter(company=company, is_active=True)
+            .filter(condition)
+            .only('id', 'name', 'national_id', 'phone', 'mobile', 'party_type')
+            .order_by('name')[:15]
+        )
+        for row in parties:
+            results.append({
+                'id': f'party:{row.pk}',
+                'name': row.name,
+                'code': row.national_id or '',
+                'kind': 'party',
+                'kind_display': 'طرف حساب',
+                'detail': row.get_party_type_display() if hasattr(row, 'get_party_type_display') else '',
+                'phone': row.mobile or row.phone or '',
+            })
+        suppliers = (
+            Supplier.objects
+            .filter(company=company)
+            .exclude(status=Supplier.Status.BLACKLISTED)
+            .filter(
+                condition
+                | Q(code__icontains=term)
+                | Q(registration_number__icontains=term)
+                | Q(phone__icontains=term)
+                | Q(mobile__icontains=term)
+            )
+            .only('id', 'name', 'code', 'national_id', 'phone', 'mobile', 'status')
+            .order_by('name')[:15]
+        )
+        for row in suppliers:
+            results.append({
+                'id': f'supplier:{row.pk}',
+                'name': row.name,
+                'code': row.code,
+                'kind': 'supplier',
+                'kind_display': 'تأمین‌کننده',
+                'detail': row.get_status_display(),
+                'phone': row.mobile or row.phone or '',
+            })
+        return Response(results)
+
         """اکشن انبوه: submit/approve/return روی چند صورت (با کنترل‌های سرور)."""
         ids = request.data.get('ids', [])
         act = request.data.get('action')

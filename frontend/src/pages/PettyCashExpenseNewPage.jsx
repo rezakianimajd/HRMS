@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Grid, IconButton,
-  MenuItem, Stack, TextField, Tooltip, Typography,
+  Alert, Autocomplete, Box, Button, Chip, CircularProgress, IconButton, InputAdornment,
+  MenuItem, Paper, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
@@ -16,116 +17,40 @@ import PostAddIcon from '@mui/icons-material/PostAdd';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { alpha, useTheme } from '@mui/material/styles';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import SearchIcon from '@mui/icons-material/Search';
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliMaskedDateInput from '../core/components/ui/JalaliMaskedDateInput';
 import PageHeader from '../core/components/ui/PageHeader';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 import InfoCard from '../core/components/ui/InfoCard';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
-import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
+import { resolveTableTheme } from '../core/theme/tableStyles';
 import { SurfaceCard, ProgressBar } from './accounting/AccountingDashboardUI';
+import {
+  PAYMENT_METHODS, buildStatementFormData, emptyLine, faSep, fillLines, lineIssues,
+  today, totalsOf,
+} from './pettyCashExpenseForm';
 
-const GREEN = '#0f766e';
-const RED = '#e11d48';
-const AMBER = '#d97706';
-const CYAN = '#0891b2';
-const VIOLET = '#6366f1';
-const ROWS = 8;
-const ROW_HEIGHT = 42;
-const HEADER_HEIGHT = 32;
-const GRID_HEIGHT = (ROWS * ROW_HEIGHT) + HEADER_HEIGHT;
-const FONT = 'inherit';
+const ROWS_TO_START = 8;
 
-const PAYMENT_METHODS = [
-  { value: 'cash', label: 'نقد' },
-  { value: 'card', label: 'کارت' },
-  { value: 'bank_transfer', label: 'انتقال بانکی' },
-  { value: 'cheque', label: 'چک' },
-  { value: 'other', label: 'سایر' },
-];
-
-const fieldSx = { '& .MuiOutlinedInput-root': { borderRadius: '10px' } };
-
-const today = () => {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${m}-${day}`;
-};
-
-const emptyLine = () => ({
-  account: '', aux1: '', aux2: '', aux3: '',
-  invoice_number: '', expense_date: today(), supplier: '', desc: '',
-  debit: '', vat_amount: '', tax_amount: '', attachment: null,
-});
-
-const hasData = (line) => Boolean(
-  line.account || line.debit || line.desc || line.invoice_number || line.supplier || line.attachment
-);
-
-const faSep = (value) => {
-  const raw = String(value ?? '').trim();
-  if (!raw) return '';
-  const negative = raw.startsWith('-');
-  const [int, dec] = raw.replace('-', '').split('.');
-  const withSep = (int || '').replace(/\B(?=(\d{3})+(?!\d))/g, '٬');
-  return `${negative ? '-' : ''}${toPersianDigits(withSep)}${dec ? `٫${toPersianDigits(dec)}` : ''}`;
-};
-
-const rowAccent = (active, color) => (active ? `inset -3px 0 0 ${color}` : 'none');
-
-const Cell = React.forwardRef(({ children, center = false }, ref) => (
-  <Box ref={ref} sx={{ px: 0.1, py: 0.1, display: 'flex', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', minWidth: 0 }}>
-    {children}
-  </Box>
-));
-
-const FaField = ({ value, onChange, placeholder = '', numeric = false, center = false, disabled = false }) => (
-  <TextField
-    size="small" fullWidth type="text" inputMode={numeric ? 'decimal' : 'text'} variant="standard"
-    disabled={disabled}
-    value={numeric ? faSep(value) : toPersianDigits(value == null ? '' : String(value))}
-    onChange={(e) => {
-      const eng = toEnglishDigits(e.target.value);
-      onChange(numeric ? eng.replace(/[^0-9.]/g, '') : eng);
-    }}
-    placeholder={placeholder}
-    InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
-    inputProps={{ style: { textAlign: center ? 'center' : 'right', fontFamily: FONT } }}
-  />
-);
-
-const MetaPill = ({ label, value, color }) => {
-  const theme = useTheme();
-  const { typography, getPalette } = useModulePalette();
-  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  const pillColor = color || getPalette('pettycash')?.accent || '#f59e0b';
-  return (
-    <Box sx={{
-      display: 'flex', alignItems: 'center', gap: 0.65, minWidth: 0,
-      bgcolor: alpha(pillColor, 0.05), border: `1px solid ${alpha(pillColor, 0.12)}`,
-      borderRadius: '9px', px: 1, py: 0.45,
-    }}>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 12), fontWeight: 800, color: pillColor, whiteSpace: 'nowrap' }}>{label}</Typography>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 700, color: theme.palette.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</Typography>
-    </Box>
-  );
-};
-
-const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', disabled = false }) => {
+const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', disabled = false, fontSize = 12 }) => {
   const [draft, setDraft] = useState('');
   useEffect(() => { setDraft(code ? String(code) : ''); }, [code]);
 
   const commit = () => {
-    const eng = toEnglishDigits(draft).trim();
-    if (!eng) {
+    const value = toEnglishDigits(draft).trim();
+    if (!value) {
       if (code) onMatch('');
       else setDraft('');
       return;
     }
-    const opt = options.find((o) => String(o.code) === eng);
-    if (opt) onMatch(opt.id);
+    const option = options.find((row) => String(row.code) === value);
+    if (option) onMatch(option.id);
     else setDraft(code ? String(code) : '');
   };
 
@@ -133,81 +58,273 @@ const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', 
     <TextField
       size="small" fullWidth variant="standard" disabled={disabled}
       value={toPersianDigits(draft)}
-      onChange={(e) => {
-        const next = toEnglishDigits(e.target.value);
+      onChange={(event) => {
+        const next = toEnglishDigits(event.target.value);
         setDraft(next);
         if (!next.trim() && code) onMatch('');
       }}
-      onKeyDown={(e) => {
+      onKeyDown={(event) => {
         if (disabled) return;
-        if (e.key === ' ') { e.preventDefault(); onOpenPicker(); }
-        else if (e.key === 'Enter') { e.preventDefault(); commit(); e.target.blur(); }
+        if (event.key === ' ') {
+          event.preventDefault();
+          onOpenPicker();
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+          event.target.blur();
+        }
       }}
       onBlur={commit}
       placeholder={placeholder}
-      InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
-      inputProps={{ style: { textAlign: 'center', fontFamily: FONT } }}
+      InputProps={{ disableUnderline: true }}
+      inputProps={{ style: { textAlign: 'center', fontSize, fontFamily: 'inherit' } }}
     />
   );
 };
+
+const AmountField = ({ value, onChange, fontSize = 12, disabled = false }) => (
+  <TextField
+    size="small" fullWidth type="text" inputMode="decimal" variant="standard"
+    disabled={disabled}
+    value={faSep(value)}
+    onChange={(event) => {
+      const english = toEnglishDigits(event.target.value);
+      onChange(english.replace(/[^0-9.-]/g, ''));
+    }}
+    placeholder="۰"
+    InputProps={{ disableUnderline: true }}
+    inputProps={{ style: { textAlign: 'center', fontSize, fontFamily: 'var(--hrms-table-number-font, inherit)' } }}
+  />
+);
+
+/** جست‌وجوی یکپارچهٔ فروشنده در طرف‌حساب‌ها و تأمین‌کنندگان. */
+const VendorCell = ({ value, onChange, fontSize = 12, disabled = false }) => {
+  const [term, setTerm] = useState('');
+  const [input, setInput] = useState(value || '');
+  useEffect(() => { setInput(value || ''); }, [value]);
+
+  const trimmed = term.trim();
+  const enabled = trimmed.length >= 2 && !disabled;
+  const { data, isFetching } = useQuery({
+    queryKey: ['pc-vendors', trimmed],
+    queryFn: () => axiosInstance.get('/petty-cash-expense-statements/vendors/', {
+      params: { q: trimmed },
+    }).then((response) => response.data),
+    enabled,
+    staleTime: 60000,
+    retry: false,
+  });
+  const options = Array.isArray(data) ? data : [];
+
+  return (
+    <Autocomplete
+      freeSolo
+      size="small"
+      disabled={disabled}
+      options={options}
+      value={value || null}
+      inputValue={input}
+      filterOptions={(rows) => rows}
+      getOptionLabel={(option) => (typeof option === 'string' ? option : option?.name || '')}
+      isOptionEqualToValue={(option, current) => (
+        typeof current === 'string' ? option?.name === current : option?.id === current?.id
+      )}
+      onInputChange={(_event, next, reason) => {
+        setInput(next);
+        setTerm(next);
+        if (reason === 'input' || reason === 'clear') onChange(next);
+      }}
+      onChange={(_event, next) => {
+        const name = typeof next === 'string' ? next : (next?.name || '');
+        onChange(name);
+        setInput(name);
+      }}
+      renderOption={(props, option) => (
+        <li {...props} key={option.id}>
+          <Box sx={{ minWidth: 0, width: '100%' }}>
+            <Stack direction="row" spacing={0.75} alignItems="center">
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, flex: 1 }}>{option.name}</Typography>
+              <Chip size="small" label={option.kind_display}
+                sx={{ height: 19, fontSize: 10, fontWeight: 800 }} />
+            </Stack>
+            <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+              {[option.code, option.detail, option.phone].filter(Boolean).join(' · ') || '—'}
+            </Typography>
+          </Box>
+        </li>
+      )}
+      noOptionsText={trimmed.length < 2 ? 'حداقل ۲ حرف بنویسید' : 'موردی یافت نشد'}
+      loading={isFetching}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          variant="standard"
+          placeholder="فروشنده / طرف حساب"
+          InputProps={{
+            ...params.InputProps,
+            disableUnderline: true,
+            startAdornment: (
+              <InputAdornment position="start" sx={{ ml: 0.25 }}>
+                <SearchIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <>
+                {isFetching ? <CircularProgress size={12} /> : null}
+                {params.InputProps.endAdornment}
+              </>
+            ),
+          }}
+          inputProps={{
+            ...params.inputProps,
+            style: { fontSize, fontFamily: 'inherit', textAlign: 'right', padding: 0 },
+          }}
+        />
+      )}
+      sx={{ width: '100%', '& .MuiAutocomplete-inputRoot': { py: 0 } }}
+    />
+  );
+};
+
+const AccessState = ({ canCreate, hasFunds, onBack }) => (
+  <Paper elevation={0} sx={{
+    p: { xs: 3, md: 5 }, borderRadius: 'var(--hrms-radius-large, 18px)',
+    bgcolor: 'var(--hrms-region-card-bg, #fff)', border: 'var(--hrms-border-card, 1px solid #e8edf4)',
+    boxShadow: 'var(--hrms-shadow-card, none)', textAlign: 'center',
+  }}>
+    <Box sx={{
+      width: 66, height: 66, mx: 'auto', mb: 2, borderRadius: '20px',
+      display: 'grid', placeItems: 'center', color: '#b45309',
+      bgcolor: 'rgba(245,158,11,0.10)', border: '1px solid rgba(245,158,11,0.22)',
+    }}>
+      <LockOutlinedIcon sx={{ fontSize: 30 }} />
+    </Box>
+    <Typography sx={{ fontSize: 18, fontWeight: 900, mb: 1 }}>
+      {hasFunds ? 'اجازهٔ ثبت صورت هزینه برای شما فعال نیست' : 'تنخواهی به شما تخصیص داده نشده است'}
+    </Typography>
+    <Typography sx={{ fontSize: 13, color: 'text.secondary', maxWidth: 640, mx: 'auto', lineHeight: 1.9 }}>
+      {hasFunds
+        ? 'در «تنظیمات ← تعاریف اولیه ← تنخواه‌داران» گزینهٔ «ثبت صورت هزینه» برای شما خاموش است. برای فعال‌سازی با مدیر سیستم تماس بگیرید.'
+        : 'شما در «تنظیمات ← تعاریف اولیه ← تنخواه‌داران» برای هیچ تنخواهی به‌عنوان تنخواه‌دار یا کمک‌تنخواه‌دار ثبت نشده‌اید؛ بنابراین حتی با داشتن مجوز ماژول، تنخواه‌ها و صورت هزینه‌ها برای شما نمایش داده نمی‌شوند.'}
+    </Typography>
+    <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2.5 }}>
+      <Button variant="contained" startIcon={<ArrowForwardIcon />} onClick={onBack}>
+        بازگشت به فهرست
+      </Button>
+      {canCreate === false && hasFunds ? (
+        <Chip size="small" label="دسترسی ثبت: غیرفعال" sx={{ alignSelf: 'center', fontWeight: 800 }} />
+      ) : null}
+    </Stack>
+  </Paper>
+);
 
 
 const PettyCashExpenseNewPage = () => {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const theme = useTheme();
-  const { typography, getPalette } = useModulePalette();
-  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  const accent = getPalette('pettycash')?.accent || '#f59e0b';
-  const CARD_BORDER = theme.palette.divider;
-  const MUTED = theme.palette.text.secondary;
-  const gridFont = Math.max(type.bodySize - 3, 12);
-  const amountColumn = Math.max(130, Math.ceil(type.bodySize * 10));
+  const { tokens } = useDesignTokens();
+  const { getPalette } = useModulePalette();
+  const tableTheme = useMemo(() => resolveTableTheme(tokens), [tokens]);
+
+  const accent = getPalette('pettycash')?.accent || tokens.colors?.warning || '#f59e0b';
+  const OK = tokens.colors?.success || theme.palette.success.main;
+  const WARN = tokens.colors?.warning || theme.palette.warning.main;
+  const DANGER = tokens.colors?.danger || theme.palette.error.main;
+  const INFO = tokens.colors?.info || theme.palette.info.main;
+  const MUTED = tokens.colors?.textSecondary || theme.palette.text.secondary;
+  const BORDER = tokens.colors?.border || theme.palette.divider;
+  const CARD_RADIUS = 'var(--hrms-radius-large, 18px)';
+  const CARD_BG = 'var(--hrms-region-card-bg, #ffffff)';
+  const cellFont = Math.max(11.5, Number(tableTheme.cellFontSize) || 12.5);
+  const headerFont = Math.max(11.5, Number(tableTheme.headerFontSize) || 13);
+  const headerHeight = Math.max(34, Math.min(64, Number(tableTheme.headerHeight) || 40));
+  const rowHeight = Math.max(42, Math.min(64, Number(tableTheme.rowHeight) || 44));
+  const visibleRows = Math.max(6, Math.min(16, Number(tableTheme.visibleRows) || 10));
+  const gridHeight = headerHeight + rowHeight * visibleRows;
+  const divider = tableTheme.divider || `1px solid ${BORDER}`;
+  const amountColumn = Math.max(118, Math.round(cellFont * 9.5));
+  const gridCols = `44px 106px 82px 82px 82px 104px 112px minmax(170px, 1.2fr) minmax(190px, 1.6fr) ${amountColumn}px ${amountColumn}px ${amountColumn}px 48px`;
+  const gridMinWidth = 44 + 106 + (82 * 3) + 104 + 112 + 170 + 190 + (amountColumn * 3) + 48;
 
   const [header, setHeader] = useState({
     fund: '', date: today(), description: '', project: '', cost_center: '', payment_method: 'cash',
   });
-  const [lines, setLines] = useState(() => Array.from({ length: ROWS }, emptyLine));
+  const [lines, setLines] = useState(() => Array.from({ length: ROWS_TO_START }, emptyLine));
   const [activeRow, setActiveRow] = useState(0);
   const [picker, setPicker] = useState(null);
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
-  const gridRef = useRef(null);
+  const [savedId, setSavedId] = useState(null);
 
-  const { data: funds } = useQuery({
-    queryKey: ['pc-funds-list'],
-    queryFn: () => axiosInstance.get('/petty-cash-funds/').then((r) => r.data),
+  const fundsQuery = useQuery({
+    queryKey: ['pc-expense-funds'],
+    queryFn: () => axiosInstance.get('/petty-cash-funds/', { params: { status: 'active' } })
+      .then((response) => response.data),
+    staleTime: 30000,
   });
-  const { data: accounts } = useQuery({
+  const accessQuery = useQuery({
+    queryKey: ['pc-access-summary'],
+    queryFn: () => axiosInstance.get('/petty-cash-settings/access_summary/')
+      .then((response) => response.data),
+    staleTime: 30000,
+  });
+  const accountsQuery = useQuery({
     queryKey: ['pc-accounts'],
-    queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'subsidiary' } }).then((r) => r.data),
+    queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'subsidiary' } })
+      .then((response) => response.data),
+    staleTime: 120000,
   });
-  const { data: auxs } = useQuery({
+  const auxQuery = useQuery({
     queryKey: ['pc-aux'],
-    queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then((r) => r.data),
+    queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/')
+      .then((response) => response.data),
+    staleTime: 120000,
   });
-  const { data: projects } = useQuery({
+  const projectsQuery = useQuery({
     queryKey: ['pc-projects'],
-    queryFn: () => axiosInstance.get('/projects/', { params: { page_size: 300 } }).then((r) => r.data),
+    queryFn: () => axiosInstance.get('/projects/', { params: { page_size: 300 } })
+      .then((response) => response.data),
+    staleTime: 120000,
     retry: false,
   });
-  const { data: costCenters } = useQuery({
+  const costCentersQuery = useQuery({
     queryKey: ['pc-cost-centers'],
-    queryFn: () => axiosInstance.get('/accounting/cost-centers/').then((r) => r.data),
+    queryFn: () => axiosInstance.get('/accounting/cost-centers/')
+      .then((response) => response.data),
+    staleTime: 120000,
     retry: false,
   });
 
-  const fundList = Array.isArray(funds) ? funds : funds?.results || [];
-  const accountList = (Array.isArray(accounts) ? accounts : accounts?.results || [])
-    .filter((a) => ['asset', 'expense', 'cost_of_sales'].includes(a.account_type_category));
-  const auxList = Array.isArray(auxs) ? auxs : auxs?.results || [];
-  const projectList = Array.isArray(projects) ? projects : projects?.results || [];
-  const costCenterList = Array.isArray(costCenters) ? costCenters : costCenters?.results || [];
+  const asList = (data) => (Array.isArray(data) ? data : data?.results || []);
+  const fundList = useMemo(() => asList(fundsQuery.data), [fundsQuery.data]);
+  const accountList = useMemo(() => asList(accountsQuery.data)
+    .filter((row) => ['asset', 'expense', 'cost_of_sales'].includes(row.account_type_category)),
+  [accountsQuery.data]);
+  const auxList = useMemo(() => asList(auxQuery.data), [auxQuery.data]);
+  const projectList = useMemo(() => asList(projectsQuery.data), [projectsQuery.data]);
+  const costCenterList = useMemo(() => asList(costCentersQuery.data), [costCentersQuery.data]);
 
-  const fund = fundList.find((f) => String(f.id) === String(header.fund));
-  const accountById = new Map(accountList.map((a) => [String(a.id), a]));
-  const auxById = new Map(auxList.map((a) => [String(a.id), a]));
-  const costCenterById = new Map(costCenterList.map((c) => [String(c.id), c]));
+  const accountById = useMemo(() => new Map(accountList.map((row) => [String(row.id), row])), [accountList]);
+  const auxById = useMemo(() => new Map(auxList.map((row) => [String(row.id), row])), [auxList]);
+  const costCenterById = useMemo(() => new Map(costCenterList.map((row) => [String(row.id), row])), [costCenterList]);
+  const fund = fundList.find((row) => String(row.id) === String(header.fund));
+
+  useEffect(() => {
+    if (!header.fund && fundList.length === 1) {
+      setHeader((prev) => ({ ...prev, fund: fundList[0].id }));
+    }
+  }, [fundList, header.fund]);
+
+
+  const totals = useMemo(() => totalsOf(lines), [lines]);
+  const filled = useMemo(() => fillLines(lines), [lines]);
+  const issueCount = filled.reduce((sum, line) => sum + (lineIssues(line).length ? 1 : 0), 0);
+  const canSave = Boolean(header.fund) && totals.count > 0
+    && filled.every((line) => line.account && Number(line.debit) > 0);
+  const noFunds = !fundsQuery.isLoading && fundList.length === 0;
+  const canCreate = accessQuery.data?.can_create_expense !== false && !noFunds;
+  const isLoadingAccess = fundsQuery.isLoading || accessQuery.isLoading;
 
   const setHeaderField = (key, value) => setHeader((prev) => ({ ...prev, [key]: value }));
   const setLine = (index, key, value) => setLines((prev) => {
@@ -225,101 +342,76 @@ const PettyCashExpenseNewPage = () => {
     setActiveRow(lines.length);
   };
   const removeRow = (index) => {
-    setLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+    setLines((prev) => (prev.length <= 1 ? prev : prev.filter((_row, rowIndex) => rowIndex !== index)));
     setActiveRow((prev) => Math.max(0, Math.min(prev, lines.length - 2)));
   };
-
-  const filledLines = lines.filter(hasData);
-  const totalGross = filledLines.reduce((sum, line) => sum + (Number(line.debit) || 0), 0);
-  const totalVat = filledLines.reduce((sum, line) => sum + (Number(line.vat_amount) || 0), 0);
-  const totalTax = filledLines.reduce((sum, line) => sum + (Number(line.tax_amount) || 0), 0);
-  const totalNet = Math.max(totalGross - totalVat - totalTax, 0);
-  const filledCount = filledLines.length;
-
-  const rowIssues = (line) => {
-    const issues = [];
-    if (!line.account) issues.push({ text: 'کد معین انتخاب نشده است', hard: true });
-    if (!(Number(line.debit) > 0)) issues.push({ text: 'مبلغ ردیف صفر است', hard: true });
-    if (!line.invoice_number) issues.push({ text: 'شماره فاکتور خالی است', hard: false });
-    if (!line.attachment) issues.push({ text: 'پیوست فاکتور/رسید ندارد', hard: false });
-    return issues;
-  };
-  const issueCount = filledLines.reduce((sum, line) => sum + (rowIssues(line).length ? 1 : 0), 0);
-  const canSave = Boolean(header.fund) && filledCount > 0 && filledLines.every((l) => l.account && Number(l.debit) > 0);
 
   const pickerOptions = () => {
     if (!picker) return [];
     if (picker.slot === 'account') return accountList;
     if (picker.slot === 'cost_center') return costCenterList;
     const account = accountById.get(String(lines[picker.row]?.account));
-    const catKey = { aux1: 'auxiliary_category_1', aux2: 'auxiliary_category_2', aux3: 'auxiliary_category_3' }[picker.slot];
-    const categoryId = account ? account[catKey] : null;
-    return categoryId ? auxList.filter((a) => String(a.category) === String(categoryId)) : [];
+    const key = { aux1: 'auxiliary_category_1', aux2: 'auxiliary_category_2', aux3: 'auxiliary_category_3' }[picker.slot];
+    const categoryId = account ? account[key] : null;
+    return categoryId ? auxList.filter((row) => String(row.category) === String(categoryId)) : [];
   };
-  const openPicker = (row, slot) => setPicker({ row, slot });
 
+  const errorText = (error) => {
+    const data = error?.response?.data;
+    if (!data) return error?.message || '';
+    if (typeof data === 'string') return data;
+    if (data.error || data.detail) return data.error || data.detail;
+    const parts = [];
+    const walk = (value, path = '') => {
+      Object.entries(value || {}).forEach(([key, item]) => {
+        const label = path ? `${path}.${key}` : key;
+        if (Array.isArray(item)) parts.push(`${label}: ${item.map(String).join('، ')}`);
+        else if (item && typeof item === 'object') walk(item, label);
+        else if (item !== null && item !== undefined && item !== '') parts.push(`${label}: ${item}`);
+      });
+    };
+    walk(data);
+    return parts.join(' | ');
+  };
 
   const submit = async (andSubmit) => {
+    setMsg(null);
+    setSavedId(null);
     if (!header.fund) { setMsg({ ok: false, text: 'تنخواه را انتخاب کنید.' }); return; }
-    if (!filledCount) { setMsg({ ok: false, text: 'حداقل یک ردیف هزینه لازم است.' }); return; }
+    if (!filled.length) { setMsg({ ok: false, text: 'حداقل یک ردیف هزینه لازم است.' }); return; }
     if (!canSave) { setMsg({ ok: false, text: 'ردیف‌های ناقص (کد معین یا مبلغ) را تکمیل کنید.' }); return; }
+    if (!canCreate) { setMsg({ ok: false, text: 'ثبت صورت هزینه برای شما مجاز نیست.' }); return; }
 
-    const fd = new FormData();
-    fd.append('fund', header.fund);
-    fd.append('date', header.date);
-    fd.append('description', header.description || '');
-    if (header.project) fd.append('project', header.project);
-    if (header.cost_center) fd.append('cost_center', header.cost_center);
-    fd.append('payment_method', header.payment_method);
-    filledLines.forEach((line, idx) => {
-      const gross = Number(line.debit) || 0;
-      const vat = Number(line.vat_amount) || 0;
-      const tax = Number(line.tax_amount) || 0;
-      fd.append(`lines[${idx}].account`, line.account || '');
-      fd.append(`lines[${idx}].auxiliary_1`, line.aux1 || '');
-      fd.append(`lines[${idx}].auxiliary_2`, line.aux2 || '');
-      fd.append(`lines[${idx}].auxiliary_3`, line.aux3 || '');
-      fd.append(`lines[${idx}].invoice_number`, line.invoice_number || '');
-      fd.append(`lines[${idx}].supplier`, line.supplier || '');
-      fd.append(`lines[${idx}].expense_date`, line.expense_date || header.date);
-      fd.append(`lines[${idx}].description`, line.desc || '');
-      fd.append(`lines[${idx}].debit`, gross);
-      fd.append(`lines[${idx}].vat_amount`, vat);
-      fd.append(`lines[${idx}].tax_amount`, tax);
-      fd.append(`lines[${idx}].net_amount`, Math.max(gross - vat - tax, 0));
-      if (line.attachment) fd.append(`lines[${idx}].attachment`, line.attachment);
-    });
-
+    const form = buildStatementFormData({ header, lines });
     setSaving(true);
     try {
-      const response = await axiosInstance.post('/petty-cash-expense-statements/', fd, {
+      const response = await axiosInstance.post('/petty-cash-expense-statements/', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const created = response.data;
+      let submitError = '';
       if (andSubmit && created?.id) {
-        await axiosInstance.post(`/petty-cash-expense-statements/${created.id}/submit/`);
+        try {
+          await axiosInstance.post(`/petty-cash-expense-statements/${created.id}/submit/`);
+        } catch (error) {
+          submitError = errorText(error) || 'ارسال به حسابداری انجام نشد.';
+        }
       }
       qc.invalidateQueries({ queryKey: ['petty-expenses'] });
+      qc.invalidateQueries({ queryKey: ['pc-expense-funds'] });
+      if (submitError) {
+        setSavedId(created?.id || null);
+        setMsg({
+          ok: false,
+          text: `صورت هزینه ذخیره شد (شماره ${created?.number || created?.id}) اما ارسال ناموفق بود: ${submitError}`,
+        });
+        return;
+      }
       navigate('/petty-cash/expenses', {
         state: { flash: andSubmit ? 'صورت هزینه ذخیره و برای تأیید ارسال شد' : 'صورت هزینه ذخیره شد' },
       });
-    } catch (e) {
-      const data = e.response?.data;
-      let text = data?.error || data?.detail;
-      if (!text && data && typeof data === 'object') {
-        const parts = [];
-        const walk = (obj, path = '') => {
-          Object.entries(obj || {}).forEach(([key, value]) => {
-            const label = path ? `${path}.${key}` : key;
-            if (Array.isArray(value)) parts.push(`${label}: ${value.map(String).join('، ')}`);
-            else if (value && typeof value === 'object') walk(value, label);
-            else if (value !== null && value !== undefined && value !== '') parts.push(`${label}: ${value}`);
-          });
-        };
-        walk(data);
-        text = parts.join(' | ');
-      }
-      setMsg({ ok: false, text: text || 'خطا در ذخیره صورت هزینه' });
+    } catch (error) {
+      setMsg({ ok: false, text: errorText(error) || 'خطا در ذخیرهٔ صورت هزینه' });
     } finally {
       setSaving(false);
     }
@@ -327,111 +419,187 @@ const PettyCashExpenseNewPage = () => {
 
   const activeLine = lines[activeRow] || emptyLine();
   const activeAccount = accountById.get(String(activeLine.account));
-  const activeAuxs = ['aux1', 'aux2', 'aux3'].map((key) => auxById.get(String(activeLine[key])));
+  const activeAuxes = ['aux1', 'aux2', 'aux3'].map((key) => auxById.get(String(activeLine[key])));
   const headerCostCenter = costCenterById.get(String(header.cost_center));
-  const activeGross = Number(activeLine.debit) || 0;
+  const paymentMethods = (fund?.payment_methods?.length
+    ? PAYMENT_METHODS.filter((item) => fund.payment_methods.includes(item.value))
+    : PAYMENT_METHODS);
 
-  const gridCols = `40px 92px 74px 74px 74px 96px 112px minmax(130px, 1fr) minmax(170px, 1.5fr) ${amountColumn}px ${amountColumn}px 46px`;
-  const gridMinWidth = 40 + 92 + (74 * 3) + 96 + 112 + 130 + 170 + (amountColumn * 2) + 46;
-  const HEADERS = ['ردیف', 'معین', 'تفصیل۱', 'تفصیل۲', 'تفصیل۳', 'شماره فاکتور', 'تاریخ هزینه', 'فروشنده', 'شرح هزینه', 'مبلغ کل', 'ارزش افزوده', 'پیوست'];
 
+  const headerActions = (
+    <>
+      <Button size="small" startIcon={<ArrowForwardIcon />} variant="outlined"
+        onClick={() => navigate('/petty-cash/expenses')}>
+        بازگشت
+      </Button>
+      <Button size="small" startIcon={<SaveIcon />} variant="contained"
+        disabled={saving || !canSave || !canCreate} onClick={() => submit(false)}>
+        {saving ? <CircularProgress size={16} color="inherit" /> : 'ذخیره پیش‌نویس'}
+      </Button>
+      <Button size="small" startIcon={<SendIcon />} variant="contained" color="success"
+        disabled={saving || !canSave || !canCreate} onClick={() => submit(true)}>
+        ذخیره و ارسال
+      </Button>
+    </>
+  );
+
+  const headerNode = (
+    <PageHeader
+      icon={<PostAddIcon />}
+      title="ثبت صورت ریز هزینه"
+      subtitle="ثبت هزینه‌های تنخواه با کدینگ حسابداری، فروشنده و پیوست"
+      badge={(
+        <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
+          <Chip size="small" label={fund ? `تنخواه: ${fund.title}` : 'تنخواه انتخاب نشده'}
+            sx={{ height: 24, fontWeight: 800, bgcolor: alpha(accent, 0.10), color: fund ? accent : MUTED }} />
+          <Chip size="small" label={`${toPersianDigits(totals.count)} ردیف`} sx={{ height: 24, fontWeight: 800 }} />
+        </Stack>
+      )}
+      sx={{ mb: 1.5, py: 1 }}
+      actions={headerActions}
+    />
+  );
+
+  if (isLoadingAccess) {
+    return (
+      <Box>
+        {headerNode}
+        <Paper elevation={0} sx={{ p: 5, textAlign: 'center', borderRadius: CARD_RADIUS, bgcolor: CARD_BG }}>
+          <CircularProgress size={26} />
+          <Typography sx={{ mt: 1.5, fontSize: 13, color: MUTED }}>در حال بررسی دسترسی تنخواه…</Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  if (!canCreate) {
+    return (
+      <Box>
+        {headerNode}
+        <AccessState canCreate={accessQuery.data?.can_create_expense} hasFunds={fundList.length > 0}
+          onBack={() => navigate('/petty-cash/expenses')} />
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ pb: 1 }}>
-      <PageHeader
-        icon={<PostAddIcon />}
-        title="صورت ریز هزینه جدید"
-        badge={(
-          <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
-            <Chip size="small" label={fund ? `تنخواه: ${fund.title}` : 'تنخواه انتخاب نشده'}
-              sx={{ height: 24, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: fund ? accent : MUTED }} />
-            {filledCount ? <Chip size="small" label={`${toPersianDigits(filledCount)} ردیف`} sx={{ height: 24, fontWeight: 800 }} /> : null}
-          </Stack>
-        )}
-        sx={{ mb: 1.5, py: 1 }}
-        actions={(
-          <>
-            <Button size="small" startIcon={<ArrowForwardIcon />} variant="outlined" onClick={() => navigate('/petty-cash/expenses')}>
-              بازگشت
-            </Button>
-            <Button size="small" startIcon={<SaveIcon />} variant="contained" disabled={saving || !canSave} onClick={() => submit(false)}>
-              {saving ? <CircularProgress size={16} color="inherit" /> : 'ذخیره پیش‌نویس'}
-            </Button>
-            <Button size="small" startIcon={<SendIcon />} variant="contained" color="success" disabled={saving || !canSave} onClick={() => submit(true)}>
-              ذخیره و ارسال
-            </Button>
-          </>
-        )}
-      />
+    <Box sx={{ pb: 2 }}>
+      {headerNode}
 
-      {msg && (
+      {msg ? (
         <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}
-          sx={{ mb: 1.25, borderRadius: '12px', fontSize: Math.max(type.bodySize - 1, 12.5) }}>
+          sx={{ mb: 1.25, borderRadius: RADIUS, fontSize: 13 }}>
           {msg.text}
+          {savedId ? (
+            <Button size="small" sx={{ ml: 1 }} onClick={() => navigate('/petty-cash/expenses')}>
+              مشاهدهٔ فهرست
+            </Button>
+          ) : null}
         </Alert>
-      )}
+      ) : null}
 
 
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={12} lg={8}>
-          <SurfaceCard title="مشخصات صورت هزینه" icon={ReceiptLongIcon} color={accent} sx={{ height: '100%' }}>
-            <Box sx={{
-              display: 'grid', gap: 1.25,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
-            }}>
-              <Autocomplete size="small" options={fundList}
-                getOptionLabel={(option) => `${option.code || ''} — ${option.title || ''}`}
-                value={fundList.find((f) => String(f.id) === String(header.fund)) || null}
-                onChange={(_, option) => setHeaderField('fund', option ? option.id : '')}
-                isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
-                renderInput={(params) => <TextField {...params} size="small" label="تنخواه" />}
-                sx={{ minWidth: 0 }} />
-              <JalaliMaskedDateInput variant="outlined" label="تاریخ صورت" value={header.date}
-                onChange={(value) => setHeaderField('date', value)} sx={{ width: '100%' }} />
-              <TextField size="small" label="شماره صورت" value="خودکار" InputProps={{ readOnly: true }} sx={fieldSx} />
-              <Autocomplete size="small" options={projectList}
-                getOptionLabel={(option) => `${option.code || ''} — ${option.name || ''}`}
-                value={projectList.find((p) => String(p.id) === String(header.project)) || null}
-                onChange={(_, option) => setHeaderField('project', option ? option.id : '')}
-                isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
-                renderInput={(params) => <TextField {...params} size="small" label="پروژه" />}
-                sx={{ minWidth: 0 }} />
-              <TextField size="small" select label="روش پرداخت" value={header.payment_method}
-                onChange={(e) => setHeaderField('payment_method', e.target.value)} sx={fieldSx}>
-                {PAYMENT_METHODS.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
-              </TextField>
-              <TextField size="small" label="مرکز هزینه" value={costCenterById.get(String(header.cost_center))?.name || ''}
-                onClick={() => openPicker(-1, 'cost_center')} placeholder="انتخاب…"
-                sx={{ ...fieldSx, cursor: 'pointer' }} InputProps={{ readOnly: true }} />
-              <TextField size="small" label="شرح صورت" value={header.description}
-                onChange={(e) => setHeaderField('description', e.target.value)}
-                placeholder="موضوع یا علت ثبت صورت هزینه"
-                sx={{ ...fieldSx, gridColumn: { xs: 'auto', sm: '1 / -1', lg: 'span 3' } }} />
-            </Box>
-          </SurfaceCard>
-        </Grid>
+      <Box sx={{
+        display: 'grid', gap: 1.5,
+        gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 2.2fr) minmax(280px, 1fr)' },
+        mb: 1.5,
+      }}>
+        <SurfaceCard title="مشخصات صورت هزینه" icon={ReceiptLongIcon} color={accent} sx={{ height: '100%' }}>
+          <Box sx={{
+            display: 'grid', gap: 1.25,
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(3, minmax(0, 1fr))' },
+          }}>
+            <Autocomplete
+              size="small"
+              options={fundList}
+              getOptionLabel={(option) => `${option.code || ''} — ${option.title || ''}`}
+              value={fundList.find((row) => String(row.id) === String(header.fund)) || null}
+              onChange={(_event, option) => setHeaderField('fund', option ? option.id : '')}
+              isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
+              renderOption={(props, option) => (
+                <li {...props} key={option.id}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
+                      {option.code} — {option.title}
+                    </Typography>
+                    <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      تنخواه‌دار: {option.custodian_name || '—'} · مانده: {formatPersianNumber(option.balance || 0)}
+                    </Typography>
+                  </Box>
+                </li>
+              )}
+              renderInput={(params) => <TextField {...params} size="small" label="تنخواه" />}
+              sx={{ minWidth: 0 }}
+            />
+            <JalaliMaskedDateInput variant="outlined" label="تاریخ صورت" value={header.date}
+              onChange={(value) => setHeaderField('date', value)} sx={{ width: '100%' }} />
+            <TextField size="small" label="شماره صورت" value="خودکار" InputProps={{ readOnly: true }} />
+            <Autocomplete
+              size="small" options={projectList}
+              getOptionLabel={(option) => `${option.code || ''} — ${option.name || ''}`}
+              value={projectList.find((row) => String(row.id) === String(header.project)) || null}
+              onChange={(_event, option) => setHeaderField('project', option ? option.id : '')}
+              isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
+              renderInput={(params) => <TextField {...params} size="small" label="پروژه" />}
+              sx={{ minWidth: 0 }}
+            />
+            <TextField size="small" select label="روش پرداخت" value={header.payment_method}
+              onChange={(event) => setHeaderField('payment_method', event.target.value)}>
+              {paymentMethods.map((item) => (
+                <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="مرکز هزینه"
+              value={headerCostCenter ? `${headerCostCenter.code || ''} ${headerCostCenter.name || ''}` : ''}
+              onClick={() => setPicker({ row: -1, slot: 'cost_center' })} placeholder="انتخاب…"
+              sx={{ cursor: 'pointer' }} InputProps={{ readOnly: true }} />
+            <TextField size="small" label="شرح صورت" value={header.description}
+              onChange={(event) => setHeaderField('description', event.target.value)}
+              placeholder="موضوع یا علت ثبت صورت هزینه"
+              sx={{ gridColumn: { xs: 'auto', sm: '1 / -1', xl: 'span 3' } }} />
+          </Box>
 
-        <Grid item xs={12} lg={4}>
-          <SurfaceCard title="خلاصهٔ مبالغ" icon={InfoOutlinedIcon} color={accent} sx={{ height: '100%' }}>
-            <Grid container spacing={1}>
-              <Grid item xs={6}><InfoCard icon={<ReceiptLongIcon />} label="مبلغ کل" value={formatPersianNumber(totalGross)} suffix="ریال" color={accent} /></Grid>
-              <Grid item xs={6}><InfoCard icon={<AddCircleOutlineIcon />} label="ارزش افزوده" value={formatPersianNumber(totalVat + totalTax)} suffix="ریال" color={AMBER} /></Grid>
-              <Grid item xs={6}><InfoCard icon={<RemoveCircleOutlineIcon />} label="مبلغ خالص" value={formatPersianNumber(totalNet)} suffix="ریال" color={GREEN} /></Grid>
-              <Grid item xs={6}><InfoCard icon={<ReceiptLongIcon />} label="مانده تنخواه" value={fund ? formatPersianNumber(fund.balance) : '—'} suffix="ریال" color={CYAN} /></Grid>
-            </Grid>
-            <Box sx={{ mt: 1 }}>
-              <ProgressBar value={(filledCount / ROWS) * 100} color={issueCount ? AMBER : GREEN} height={6} />
-            </Box>
-            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-              <Chip size="small" label={`${toPersianDigits(filledCount)} ردیف`} sx={{ height: 23, fontWeight: 800 }} />
-              {issueCount ? (
-                <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} label={`${toPersianDigits(issueCount)} هشدار`}
-                  sx={{ height: 23, fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
-              ) : null}
+          {fund ? (
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 1.5 }}>
+              <Chip size="small" icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: 14 }} />}
+                label={`مانده: ${formatPersianNumber(fund.balance || 0)} ریال`}
+                sx={{ height: 24, fontWeight: 800, bgcolor: alpha(OK, 0.10), color: OK }} />
+              <Chip size="small" icon={<PaymentsOutlinedIcon sx={{ fontSize: 14 }} />}
+                label={`سقف: ${fund.limit ? formatPersianNumber(fund.limit) : '—'}`}
+                sx={{ height: 24, fontWeight: 800 }} />
+              <Chip size="small" label={`تنخواه‌دار: ${fund.custodian_name || '—'}`}
+                sx={{ height: 24, fontWeight: 800, bgcolor: alpha(INFO, 0.10), color: INFO }} />
+              <Box sx={{ flex: 1, minWidth: 120 }}>
+                <ProgressBar value={fund.usage_percent || 0} color={accent} height={6} />
+              </Box>
             </Stack>
-          </SurfaceCard>
-        </Grid>
-      </Grid>
+          ) : null}
+        </SurfaceCard>
+
+
+        <SurfaceCard title="جمع‌های صورت" icon={InfoOutlinedIcon} color={accent} sx={{ height: '100%' }}>
+          <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+            <InfoCard icon={<ReceiptLongIcon />} label="مبلغ کل" value={formatPersianNumber(totals.gross)}
+              suffix="ریال" color={accent} />
+            <InfoCard icon={<AccountBalanceWalletOutlinedIcon />} label="ارزش افزوده"
+              value={formatPersianNumber(totals.vat + totals.tax)} suffix="ریال" color={WARN} />
+            <InfoCard icon={<RequestQuoteOutlinedIcon />} label="مبلغ خالص"
+              value={formatPersianNumber(totals.net)} suffix="ریال" color={OK} />
+            <InfoCard icon={<PaymentsOutlinedIcon />} label="مانده تنخواه"
+              value={fund ? formatPersianNumber(fund.balance || 0) : '—'} suffix="ریال" color={INFO} />
+          </Box>
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+            <Chip size="small" label={`${toPersianDigits(totals.count)} ردیف`} sx={{ height: 23, fontWeight: 800 }} />
+            {issueCount ? (
+              <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />}
+                label={`${toPersianDigits(issueCount)} هشدار`}
+                sx={{ height: 23, fontWeight: 800, bgcolor: alpha(WARN, 0.12), color: WARN }} />
+            ) : (
+              <Chip size="small" label="بدون هشدار" sx={{ height: 23, fontWeight: 800, color: OK }} />
+            )}
+          </Stack>
+        </SurfaceCard>
+      </Box>
 
 
       <SurfaceCard
@@ -441,33 +609,47 @@ const PettyCashExpenseNewPage = () => {
         contentSx={{ p: 0 }}
         action={(
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
+            <Typography sx={{ fontSize: 11.5, color: MUTED, display: { xs: 'none', md: 'block' } }}>
+              Space = انتخاب کد · Enter = تأیید
+            </Typography>
             {issueCount ? (
-              <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} label={`${toPersianDigits(issueCount)} هشدار`}
-                sx={{ height: 23, fontSize: gridFont, fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
+              <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />}
+                label={`${toPersianDigits(issueCount)} هشدار`}
+                sx={{ height: 23, fontWeight: 800, bgcolor: alpha(WARN, 0.12), color: WARN }} />
             ) : null}
             <Tooltip title="افزودن ردیف">
-              <IconButton size="small" color="primary" onClick={addRow}>
+              <IconButton size="small" sx={{ color: accent }} onClick={addRow}>
                 <AddCircleOutlineIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="حذف ردیف انتخاب‌شده">
-              <IconButton size="small" color="error" onClick={() => removeRow(activeRow)}>
+              <IconButton size="small" sx={{ color: DANGER }} onClick={() => removeRow(activeRow)}>
                 <RemoveCircleOutlineIcon fontSize="small" />
               </IconButton>
             </Tooltip>
           </Stack>
         )}
       >
-        <Box ref={gridRef} sx={{ overflowX: 'auto', overflowY: 'auto', height: GRID_HEIGHT }}>
+        <Box sx={{ overflow: 'auto', height: gridHeight, bgcolor: CARD_BG }}>
           <Box sx={{ minWidth: gridMinWidth }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, height: HEADER_HEIGHT, position: 'sticky', top: 0, zIndex: 3, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${CARD_BORDER}` }}>
-              {HEADERS.map((label, index) => (
-                <Box key={index} sx={{
-                  px: 0.7, fontWeight: 800, fontSize: gridFont, color: theme.palette.text.primary,
-                  borderLeft: index ? `1px solid ${theme.palette.divider}` : 'none', whiteSpace: 'nowrap',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT,
-                }}>{label}</Box>
-              ))}
+            <Box sx={{
+              display: 'grid', gridTemplateColumns: gridCols, height: headerHeight,
+              position: 'sticky', top: 0, zIndex: 3,
+              bgcolor: 'var(--hrms-table-header-bg, #f8fafc)', borderBottom: divider,
+            }}>
+              {['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شماره فاکتور', 'تاریخ هزینه',
+                'فروشنده / طرف حساب', 'شرح هزینه', 'مبلغ کل', 'ارزش افزوده', 'سایر مالیات', 'پیوست']
+                .map((label, index) => (
+                  <Box key={label} sx={{
+                    px: 0.75, fontSize: headerFont, fontWeight: Number(tableTheme.header.fontWeight) || 800,
+                    color: tableTheme.header.color || theme.palette.text.primary,
+                    borderLeft: index ? divider : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {label}
+                  </Box>
+                ))}
             </Box>
 
             {lines.map((line, index) => {
@@ -477,109 +659,163 @@ const PettyCashExpenseNewPage = () => {
                 { key: 'aux2', catId: account?.auxiliary_category_2 },
                 { key: 'aux3', catId: account?.auxiliary_category_3 },
               ];
-              const issues = rowIssues(line);
+              const issues = lineIssues(line);
               return (
-                <Box key={index} onClick={() => setActiveRow(index)}
+                <Box
+                  key={index}
+                  onClick={() => setActiveRow(index)}
                   sx={{
                     display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center',
-                    borderBottom: `1px solid ${theme.palette.divider}`,
+                    minHeight: rowHeight, borderBottom: divider,
                     bgcolor: activeRow === index ? alpha(accent, 0.08) : 'transparent',
-                    boxShadow: rowAccent(activeRow === index, accent),
-                    '&:hover': { bgcolor: activeRow === index ? alpha(accent, 0.12) : theme.palette.action.hover },
-                    height: ROW_HEIGHT, transition: 'background-color .12s ease',
-                  }}>
+                    boxShadow: activeRow === index ? `inset -3px 0 0 ${accent}` : 'none',
+                    '&:hover': {
+                      bgcolor: activeRow === index ? alpha(accent, 0.12) : tableTheme.hoverBg,
+                    },
+                    transition: 'background-color .12s ease',
+                  }}
+                >
                   <Stack alignItems="center" justifyContent="center" spacing={0.1}>
                     {issues.length ? (
                       <Tooltip title={issues.map((item) => item.text).join(' · ')}>
-                        <WarningAmberIcon sx={{ fontSize: 13, color: issues.some((i) => i.hard) ? RED : AMBER, cursor: 'help' }} />
+                        <WarningAmberIcon sx={{
+                          fontSize: 13,
+                          color: issues.some((item) => item.hard) ? DANGER : WARN,
+                          cursor: 'help',
+                        }} />
                       </Tooltip>
                     ) : null}
-                    <Typography sx={{ fontFamily: FONT, fontSize: gridFont, fontWeight: 800, color: activeRow === index ? accent : MUTED }}>
+                    <Typography sx={{
+                      fontSize: cellFont, fontWeight: 800,
+                      color: activeRow === index ? accent : MUTED,
+                    }}>
                       {toPersianDigits(index + 1)}
                     </Typography>
                   </Stack>
 
-                  <Tooltip title="کد معین (Space برای انتخاب)">
-                    <Cell>
-                      <CodeInput
-                        code={account?.code || ''}
-                        options={accountList}
-                        onMatch={(accountId) => setAccount(index, accountId)}
-                        onOpenPicker={() => openPicker(index, 'account')}
-                        placeholder="…"
-                      />
-                    </Cell>
-                  </Tooltip>
-
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
+                    <Tooltip title="کد معین (Space برای انتخاب)">
+                      <Box>
+                        <CodeInput
+                          code={account?.code || ''}
+                          options={accountList}
+                          onMatch={(value) => setAccount(index, value)}
+                          onOpenPicker={() => setPicker({ row: index, slot: 'account' })}
+                          fontSize={cellFont}
+                        />
+                      </Box>
+                    </Tooltip>
+                  </Box>
 
                   {slots.map((slot) => (
-                    <Tooltip key={slot.key} title={slot.catId ? 'تفصیل (Space برای انتخاب)' : 'ابتدا کد معین را انتخاب کنید'}>
-                      <Cell>
-                        <CodeInput
-                          code={auxById.get(String(line[slot.key]))?.code || ''}
-                          options={auxList.filter((a) => String(a.category) === String(slot.catId))}
-                          onMatch={(auxId) => setLine(index, slot.key, auxId)}
-                          onOpenPicker={() => slot.catId && openPicker(index, slot.key)}
-                          placeholder={slot.catId ? '…' : '—'}
-                          disabled={!slot.catId}
-                        />
-                      </Cell>
-                    </Tooltip>
+                    <Box key={slot.key} sx={{ px: 0.4, minWidth: 0 }}>
+                      <Tooltip title={slot.catId ? 'تفصیل (Space برای انتخاب)' : 'ابتدا کد معین را انتخاب کنید'}>
+                        <Box>
+                          <CodeInput
+                            code={auxById.get(String(line[slot.key]))?.code || ''}
+                            options={auxList.filter((row) => String(row.category) === String(slot.catId))}
+                            onMatch={(value) => setLine(index, slot.key, value)}
+                            onOpenPicker={() => slot.catId && setPicker({ row: index, slot: slot.key })}
+                            placeholder={slot.catId ? '…' : '—'}
+                            disabled={!slot.catId}
+                            fontSize={cellFont}
+                          />
+                        </Box>
+                      </Tooltip>
+                    </Box>
                   ))}
 
-                  <Cell>
-                    <FaField value={line.invoice_number} placeholder="شماره فاکتور"
-                      onChange={(value) => setLine(index, 'invoice_number', value)} />
-                  </Cell>
-                  <Cell>
+
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
+                    <TextField size="small" fullWidth variant="standard" value={line.invoice_number}
+                      onChange={(event) => setLine(index, 'invoice_number', toEnglishDigits(event.target.value))}
+                      placeholder="شماره فاکتور"
+                      InputProps={{ disableUnderline: true }}
+                      inputProps={{ style: { textAlign: 'center', fontSize: cellFont, fontFamily: 'inherit' } }} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
                     <JalaliMaskedDateInput value={line.expense_date}
                       onChange={(value) => setLine(index, 'expense_date', value)}
-                      sx={{ '& .MuiInputBase-input': { fontSize: gridFont, textAlign: 'center' } }} />
-                  </Cell>
-                  <Cell>
-                    <TextField size="small" fullWidth variant="standard" value={line.supplier}
-                      onChange={(e) => setLine(index, 'supplier', e.target.value)} placeholder="فروشنده"
-                      InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
-                      inputProps={{ style: { textAlign: 'right', fontFamily: FONT } }} />
-                  </Cell>
-                  <Cell>
+                      sx={{ '& .MuiInputBase-input': { fontSize: cellFont, textAlign: 'center' } }} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
+                    <VendorCell value={line.supplier} fontSize={cellFont}
+                      onChange={(value) => setLine(index, 'supplier', value)} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
                     <TextField size="small" fullWidth variant="standard" value={line.desc}
-                      onChange={(e) => setLine(index, 'desc', e.target.value)} placeholder="شرح هزینه"
-                      InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
-                      inputProps={{ style: { textAlign: 'right', fontFamily: FONT } }} />
-                  </Cell>
-                  <Cell center><FaField numeric center value={line.debit} onChange={(value) => setLine(index, 'debit', value)} /></Cell>
-                  <Cell center><FaField numeric center value={line.vat_amount} onChange={(value) => setLine(index, 'vat_amount', value)} /></Cell>
-                  <Cell center>
+                      onChange={(event) => setLine(index, 'desc', event.target.value)}
+                      placeholder="شرح هزینه"
+                      InputProps={{ disableUnderline: true }}
+                      inputProps={{ style: { textAlign: 'right', fontSize: cellFont, fontFamily: 'inherit' } }} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
+                    <AmountField value={line.debit} fontSize={cellFont}
+                      onChange={(value) => setLine(index, 'debit', value)} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
+                    <AmountField value={line.vat_amount} fontSize={cellFont}
+                      onChange={(value) => setLine(index, 'vat_amount', value)} />
+                  </Box>
+                  <Box sx={{ px: 0.4, minWidth: 0 }}>
+                    <AmountField value={line.tax_amount} fontSize={cellFont}
+                      onChange={(value) => setLine(index, 'tax_amount', value)} />
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <input type="file" hidden id={`pc-att-${index}`}
-                      onChange={(e) => setLine(index, 'attachment', e.target.files?.[0] || null)} />
+                      onChange={(event) => setLine(index, 'attachment', event.target.files?.[0] || null)} />
                     <Tooltip title={line.attachment ? line.attachment.name : 'پیوست فاکتور/رسید'}>
                       <IconButton size="small" component="label" htmlFor={`pc-att-${index}`}
                         color={line.attachment ? 'success' : 'default'}>
                         <AttachFileIcon sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
-                  </Cell>
+                  </Box>
                 </Box>
               );
             })}
           </Box>
         </Box>
+
+        <Box sx={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1,
+          px: 1.5, py: 1, borderTop: divider, bgcolor: CARD_BG,
+        }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED }}>جمع ردیف‌ها:</Typography>
+          <Chip size="small" label={`${toPersianDigits(totals.count)} ردیف`} sx={{ height: 23, fontWeight: 800 }} />
+          <Chip size="small" label={`کل: ${formatPersianNumber(totals.gross)}`} sx={{ height: 23, fontWeight: 800 }} />
+          <Chip size="small" label={`ارزش افزوده: ${formatPersianNumber(totals.vat)}`}
+            sx={{ height: 23, fontWeight: 800 }} />
+          <Chip size="small" label={`سایر مالیات: ${formatPersianNumber(totals.tax)}`}
+            sx={{ height: 23, fontWeight: 800 }} />
+          <Chip size="small" label={`خالص: ${formatPersianNumber(totals.net)}`}
+            sx={{ height: 23, fontWeight: 900, bgcolor: alpha(OK, 0.12), color: OK }} />
+          <Box sx={{ flex: 1 }} />
+          {issueCount ? (
+            <Typography sx={{ fontSize: 11.5, color: WARN }}>
+              {toPersianDigits(issueCount)} ردیف نیاز به بررسی دارد
+            </Typography>
+          ) : null}
+        </Box>
       </SurfaceCard>
 
-      <SurfaceCard title="شناسه‌های ردیف انتخاب‌شده" icon={InfoOutlinedIcon} color={accent} sx={{ mt: 1.5 }}>
+
+      <SurfaceCard title="ردیف انتخاب‌شده" icon={InfoOutlinedIcon} color={accent} sx={{ mt: 1.5 }}>
         <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
           <Chip size="small" label={`ردیف ${toPersianDigits(activeRow + 1)}`}
-            sx={{ height: 23, fontSize: gridFont, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
-          <MetaPill label="معین" value={activeAccount ? `${activeAccount.code} — ${activeAccount.name}` : '—'} />
+            sx={{ height: 23, fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }} />
+          <Chip size="small" label={activeAccount ? `${activeAccount.code} — ${activeAccount.name}` : 'کد معین: —'}
+            sx={{ height: 23, fontWeight: 700 }} />
           {['تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳'].map((label, index) => (
-            <MetaPill key={label} label={label}
-              value={activeAuxs[index] ? `${activeAuxs[index].code} — ${activeAuxs[index].name}` : '—'}
-              color={activeAuxs[index] ? GREEN : MUTED} />
+            <Chip key={label} size="small"
+              label={`${label}: ${activeAuxes[index] ? activeAuxes[index].name : '—'}`}
+              sx={{ height: 23, fontWeight: 700, color: activeAuxes[index] ? OK : MUTED }} />
           ))}
-          <MetaPill label="مرکز هزینهٔ صورت" value={headerCostCenter ? `${headerCostCenter.code} — ${headerCostCenter.name}` : '—'}
-            color={headerCostCenter ? VIOLET : MUTED} />
-          <MetaPill label="جمع ردیف" value={formatPersianNumber(activeGross)} color={CYAN} />
+          <Chip size="small"
+            label={`مرکز هزینه: ${headerCostCenter ? headerCostCenter.name : '—'}`}
+            sx={{ height: 23, fontWeight: 700, color: headerCostCenter ? INFO : MUTED }} />
+          <Chip size="small" label={`مبلغ ردیف: ${formatPersianNumber(Number(activeLine.debit) || 0)}`}
+            sx={{ height: 23, fontWeight: 800 }} />
         </Stack>
       </SurfaceCard>
 

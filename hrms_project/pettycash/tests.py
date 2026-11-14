@@ -159,13 +159,44 @@ class ReportRouteTests(SimpleTestCase):
         self.assertIn('get', match.func.actions)
 
 
+class MultipartNestedLineKeyTests(SimpleTestCase):
+    """کلیدهای تودرتوی multipart باید قالب HTML داشته باشند (lines[0]account)."""
+
+    def test_html_style_keys_build_line_dictionaries(self):
+        from django.http import QueryDict
+        from rest_framework.utils import html
+
+        data = QueryDict('', mutable=True)
+        data['lines[0]account'] = '5'
+        data['lines[0]debit'] = '1000'
+        data['lines[1]account'] = '6'
+        data['lines[1]debit'] = '2000'
+        parsed = html.parse_html_list(data, prefix='lines')
+        self.assertEqual(len(parsed), 2)
+        self.assertEqual(parsed[0]['account'], '5')
+        self.assertEqual(parsed[1]['debit'], '2000')
+
+    def test_dotted_keys_are_not_valid_field_names(self):
+        from django.http import QueryDict
+        from rest_framework.utils import html
+
+        data = QueryDict('', mutable=True)
+        data['lines[0].account'] = '5'
+        parsed = html.parse_html_list(data, prefix='lines')
+        # قالب قدیمی (با نقطه) کلید «.account» می‌سازد و سریالایزر آن را نمی‌شناسد
+        self.assertIn('.account', parsed[0])
+        self.assertNotIn('account', parsed[0])
+
+
 class AccessControlTests(SimpleTestCase):
     def _settings(self, restrict=True, seniors=None):
         return SimpleNamespace(restrict_visibility=restrict, senior_manager_ids=seniors or [])
 
-    def test_unrestricted_settings_returns_none(self):
-        with patch.object(access, 'get_settings', return_value=self._settings(False)):
-            self.assertIsNone(access.accessible_fund_ids(1, _fake_user()))
+    def test_unrestricted_setting_does_not_bypass_scope(self):
+        with patch.object(access, 'get_settings', return_value=self._settings(False)), \
+                patch.object(access, 'is_senior_manager', return_value=False), \
+                patch.object(access, 'assignments_for_user', return_value=[]):
+            self.assertEqual(access.accessible_fund_ids(1, _fake_user()), set())
 
     def test_superuser_sees_everything(self):
         with patch.object(access, 'get_settings', return_value=self._settings(True)):
@@ -184,9 +215,11 @@ class AccessControlTests(SimpleTestCase):
                 patch.object(access, 'assignments_for_user', return_value=[]):
             self.assertEqual(access.accessible_fund_ids(1, _fake_user()), set())
 
-    def test_custodian_scope_includes_own_and_assigned_and_supervisor_funds(self):
+    def test_custodian_scope_uses_explicit_assigned_funds_only(self):
         supervisor = SimpleNamespace(employee_id=2, funds=_FundList([60]))
-        assignment = SimpleNamespace(employee_id=1, funds=_FundList([30]), supervisor=supervisor)
+        assignment = SimpleNamespace(
+            role='custodian', employee_id=1, funds=_FundList([30]), supervisor=supervisor,
+        )
         fake_manager = MagicMock()
         fake_manager.filter.return_value = _FundList([20, 21])
         with patch.object(access, 'get_settings', return_value=self._settings(True)), \
@@ -194,7 +227,29 @@ class AccessControlTests(SimpleTestCase):
                 patch.object(access, 'assignments_for_user', return_value=[assignment]), \
                 patch.object(access, 'PettyCashFund', SimpleNamespace(objects=fake_manager)):
             fund_ids = access.accessible_fund_ids(1, _fake_user())
-        self.assertEqual(fund_ids, {20, 21, 30, 60})
+        # لیست «تنخواه‌های مجاز» پرشده است؛ تنخواه‌های دیگرِ همین شخص نباید اضافه شوند
+        self.assertEqual(fund_ids, {30})
+
+    def test_custodian_without_explicit_funds_uses_own_funds(self):
+        assignment = SimpleNamespace(
+            role='custodian', employee_id=1, funds=_FundList([]), supervisor=None,
+        )
+        fake_manager = MagicMock()
+        fake_manager.filter.return_value = _FundList([20, 21])
+        with patch.object(access, 'get_settings', return_value=self._settings(True)), \
+                patch.object(access, 'is_senior_manager', return_value=False), \
+                patch.object(access, 'assignments_for_user', return_value=[assignment]), \
+                patch.object(access, 'PettyCashFund', SimpleNamespace(objects=fake_manager)):
+            fund_ids = access.accessible_fund_ids(1, _fake_user())
+        self.assertEqual(fund_ids, {20, 21})
+
+    def test_can_create_expense_ignores_visibility_toggle(self):
+        assignments = MagicMock()
+        assignments.filter.return_value.exists.return_value = False
+        with patch.object(access, 'get_settings', return_value=self._settings(False)), \
+                patch.object(access, 'is_senior_manager', return_value=False), \
+                patch.object(access, 'assignments_for_user', return_value=assignments):
+            self.assertFalse(access.can_create_expense(1, _fake_user()))
 
     def test_scope_by_fund_filters_queryset(self):
         qs = MagicMock()

@@ -7,7 +7,8 @@
     می‌بینند.
   * **تنخواه‌دار**: فقط تنخواه‌هایی که تنخواه‌دار آن‌هاست + تنخواه‌های صریحاً تخصیص‌یافته.
   * **کمک‌تنخواه‌دار**: تنخواه‌های تخصیص‌یافته + تنخواه‌های تنخواه‌دار مسئول.
-  * سایر کاربران (بدون تعریف) هیچ تنخواهی نمی‌بینند مگر اینکه محدودسازی در تنظیمات خاموش شود.
+  * سایر کاربران (بدون تعریف در «تعاریف اولیهٔ تنخواه‌داران») هیچ تنخواهی نمی‌بینند؛
+    حتی اگر مجوز ماژول داشته باشند یا تنظیم «محدودسازی دسترسی» خاموش باشد.
 
 توابع این ماژول تنها نقطهٔ تعیین دامنهٔ دید هستند تا در همهٔ ویوها یکسان اعمال شود.
 """
@@ -81,15 +82,17 @@ def assignments_for_user(company, user):
 
 
 def accessible_fund_ids(company, user):
-    """شناسهٔ تنخواه‌های قابل مشاهده.
+    """شناسهٔ تنخواه‌های قابل مشاهده برای کاربر.
 
-    `None` یعنی دسترسی کامل (بدون محدودیت). مجموعهٔ خالی یعنی هیچ تنخواهی.
+    قاعدهٔ سخت‌گیرانه (مستقل از تنظیمات): هر کاربر غیرمدیر ارشد فقط تنخواه‌هایی را
+    می‌بیند که در «تعاریف اولیهٔ تنخواه‌داران» به او تخصیص داده شده یا تنخواه‌دار آن است.
+    `None` یعنی دسترسی کامل (مدیر ارشد)، مجموعهٔ خالی یعنی هیچ تنخواهی.
+
+    اگر برای یک تنخواه‌دار در تعاریف، لیست «تنخواه‌های مجاز» پر شده باشد همان لیست
+    مبنا است؛ اگر خالی باشد همهٔ تنخواه‌هایی که تنخواه‌دار آن‌هاست.
     """
     if not company:
         return set()
-    settings_obj = get_settings(company)
-    if settings_obj and not settings_obj.restrict_visibility:
-        return None
     if is_senior_manager(user, company):
         return None
 
@@ -98,24 +101,30 @@ def accessible_fund_ids(company, user):
         return set()
 
     fund_ids = set()
-    employee_ids = {a.employee_id for a in assignments if a.employee_id}
-    if employee_ids:
-        fund_ids.update(
-            PettyCashFund.objects
-            .filter(company=company, custodian_id__in=employee_ids)
-            .values_list('id', flat=True)
-        )
     for assignment in assignments:
-        fund_ids.update(assignment.funds.values_list('id', flat=True))
+        assigned_ids = set(assignment.funds.values_list('id', flat=True))
         supervisor = assignment.supervisor
-        if supervisor is not None:
-            fund_ids.update(supervisor.funds.values_list('id', flat=True))
-            if supervisor.employee_id:
-                fund_ids.update(
-                    PettyCashFund.objects
-                    .filter(company=company, custodian_id=supervisor.employee_id)
-                    .values_list('id', flat=True)
-                )
+        if assignment.role == PettyCashCustodian.Role.ASSISTANT:
+            fund_ids.update(assigned_ids)
+            if supervisor is not None:
+                supervisor_funds = set(supervisor.funds.values_list('id', flat=True))
+                if supervisor_funds:
+                    fund_ids.update(supervisor_funds)
+                elif supervisor.employee_id:
+                    fund_ids.update(
+                        PettyCashFund.objects
+                        .filter(company=company, custodian_id=supervisor.employee_id)
+                        .values_list('id', flat=True)
+                    )
+            continue
+        if assigned_ids:
+            fund_ids.update(assigned_ids)
+        elif assignment.employee_id:
+            fund_ids.update(
+                PettyCashFund.objects
+                .filter(company=company, custodian_id=assignment.employee_id)
+                .values_list('id', flat=True)
+            )
     return fund_ids
 
 
@@ -129,9 +138,11 @@ def has_module_role(company, user):
 
 
 def can_create_expense(company, user):
-    settings_obj = get_settings(company) if company else None
-    if settings_obj and not settings_obj.restrict_visibility:
-        return True
+    """ثبت صورت هزینه: مدیر ارشد یا تنخواه‌دار/کمک‌تنخواه‌داری که در تعاریف اجازه دارد.
+
+    تنظیم «محدودسازی دسترسی» نمی‌تواند این قاعده را دور بزند؛ کاربری که در تعاریف
+    تنخواه‌داران نیست، حتی با مجوز ماژول، اجازهٔ ثبت ندارد.
+    """
     if is_senior_manager(user, company):
         return True
     return assignments_for_user(company, user).filter(can_create_expense=True).exists()
