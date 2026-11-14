@@ -3,27 +3,19 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogContent, DialogTitle,
-  FormControl, IconButton, InputAdornment, InputLabel, LinearProgress, MenuItem, Paper,
-  Select, Stack, Table, TableBody, TableCell, TableContainer, TableFooter, TableHead,
-  TablePagination, TableRow, TextField, Tooltip, Typography,
+  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogContent,
+  DialogTitle, IconButton, MenuItem, Paper, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
+import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RestoreIcon from '@mui/icons-material/Restore';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import EditNoteIcon from '@mui/icons-material/EditNote';
-import EditIcon from '@mui/icons-material/Edit';
-import LockIcon from '@mui/icons-material/Lock';
 import { alpha, useTheme } from '@mui/material/styles';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
@@ -33,30 +25,21 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import usePrintDocument from '../core/print/usePrintDocument';
 import PrintPreviewDialog from '../core/print/PrintPreviewDialog';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
-import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { SurfaceCard } from './accounting/AccountingDashboardUI';
+import {
+  ModulePager, ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
+} from './contracts/contractModuleUi';
 
-const GREEN = '#0f766e';
-const RED = '#e11d48';
-const VIOLET = '#6366f1';
-
-const STATUS_META = {
-  draft: { label: 'پیش‌نویس', color: '#64748b', icon: EditNoteIcon },
-  submitted: { label: 'در انتظار تأیید', color: '#f59e0b', icon: PendingActionsIcon },
-  approved: { label: 'تأییدشده', color: '#2563eb', icon: CheckCircleIcon },
-  posted: { label: 'ثبت‌شده', color: GREEN, icon: LockIcon },
-  rejected: { label: 'برگشت‌خورده', color: RED, icon: UndoIcon },
-  edited: { label: 'ویرایش‌شده', color: VIOLET, icon: EditNoteIcon },
-};
-
+const PAGE_SIZE = 20;
+const VISIBLE_ROWS = 12;
 const SORT_OPTIONS = [
-  { value: '-date', label: 'جدیدترین تاریخ' },
-  { value: 'date', label: 'قدیمی‌ترین تاریخ' },
-  { value: '-number', label: 'شماره نزولی' },
-  { value: 'number', label: 'شماره صعودی' },
+  { value: '-date', label: 'تاریخ (جدیدترین)' },
+  { value: 'date', label: 'تاریخ (قدیمی‌ترین)' },
+  { value: '-created_at', label: 'ایجاد (جدیدترین)' },
 ];
 
-const useDebounced = (value, delay = 320) => {
+const useDebounced = (value, delay = 350) => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value), delay);
@@ -67,57 +50,42 @@ const useDebounced = (value, delay = 320) => {
 
 const pickRows = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
 
-const RowActions = ({ row, act, onTimeline, onEdit, onPrint }) => (
-  <>
-    {row.status === 'submitted' && (
-      <>
-        <Tooltip title="تأیید">
-          <IconButton size="small" color="success" onClick={() => act.mutate({ id: row.id, action: 'approve' })}>
-            <CheckCircleIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="برگشت">
-          <IconButton size="small" color="error" onClick={() => {
-            const note = window.prompt('علت برگشت صورت:');
-            if (note) act.mutate({ id: row.id, action: 'reject', body: { note } });
-          }}>
-            <UndoIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </>
-    )}
-    {row.is_editable ? (
-      <Tooltip title="ویرایش صورت">
-        <IconButton size="small" color="primary" onClick={() => onEdit(row)}>
-          <EditIcon fontSize="small" />
+const RowActions = ({ row, onEdit, onPrint, onTimeline, onDelete, onRestore }) => (
+  <Stack direction="row" spacing={0.25} useFlexGap justifyContent="center"
+    onClick={(event) => event.stopPropagation()}>
+    <Tooltip title={row.is_editable ? 'ویرایش صورت' : 'این صورت هزینه قابل ویرایش نیست'}>
+      <span>
+        <IconButton size="small" color="primary" disabled={!row.is_editable}
+          aria-label="ویرایش صورت" onClick={() => onEdit(row)}>
+          <EditIcon sx={{ fontSize: 18 }} />
         </IconButton>
-      </Tooltip>
-    ) : null}
+      </span>
+    </Tooltip>
     <Tooltip title="پیش‌نمایش و چاپ">
-      <IconButton size="small" onClick={() => onPrint(row)}>
-        <PrintIcon fontSize="small" />
+      <IconButton size="small" aria-label="پیش‌نمایش و چاپ" onClick={() => onPrint(row)}>
+        <PrintIcon sx={{ fontSize: 18 }} />
       </IconButton>
     </Tooltip>
     <Tooltip title="تایم‌لاین">
-      <IconButton size="small" color="info" onClick={() => onTimeline(row)}>
-        <HistoryIcon fontSize="small" />
+      <IconButton size="small" color="info" aria-label="تایم‌لاین" onClick={() => onTimeline(row)}>
+        <HistoryIcon sx={{ fontSize: 18 }} />
       </IconButton>
     </Tooltip>
-    {row.status === 'draft' && (
-      <Tooltip title="حذف (نرم)">
-        <IconButton size="small" color="error" onClick={() => {
-          if (window.confirm('این صورت هزینه به سطل بازیافت منتقل شود؟')) {
-            act.mutate({ id: row.id, action: 'soft_delete' });
-          }
-        }}>
-          <DeleteIcon fontSize="small" />
+    {row.is_deleted ? (
+      <Tooltip title="بازیابی">
+        <IconButton size="small" color="success" aria-label="بازیابی" onClick={() => onRestore(row)}>
+          <RestoreIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Tooltip>
-    )}
-  </>
+    ) : (row.is_editable ? (
+      <Tooltip title="حذف (نرم)">
+        <IconButton size="small" color="error" aria-label="حذف صورت" onClick={() => onDelete(row)}>
+          <DeleteIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+      </Tooltip>
+    ) : null)}
+  </Stack>
 );
-
-
 
 const PettyCashExpensesPage = () => {
   const qc = useQueryClient();
@@ -125,27 +93,31 @@ const PettyCashExpensesPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const { typography, getPalette } = useModulePalette();
-  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  const accent = getPalette('pettycash')?.accent || '#f59e0b';
-  const CARD_BORDER = theme.palette.divider;
-  const MUTED = theme.palette.text.secondary;
+  const { tokens } = useDesignTokens();
+  const { getPalette } = useModulePalette();
+  const baseTheme = useModuleTheme();
 
-  const tableCellFont = Math.max(type.bodySize - 2, 12);
-  const tableHeadFont = Math.max(type.bodySize - 3, 12);
-  const headSx = {
-    fontSize: tableHeadFont, fontWeight: 800, color: theme.palette.text.primary,
-    bgcolor: theme.palette.action.hover, borderBottom: `1px solid ${CARD_BORDER}`,
-    whiteSpace: 'nowrap', py: 1.05, px: 1,
-  };
-  const cellSx = {
-    fontSize: tableCellFont, color: theme.palette.text.primary,
-    borderBottom: `1px solid ${CARD_BORDER}`, whiteSpace: 'nowrap', py: 0.8, px: 1,
-  };
-  const moneySx = {
-    fontFamily: theme.typography.fontFamily, fontVariantNumeric: 'tabular-nums',
-    direction: 'rtl', fontWeight: 800, fontSize: Math.max(type.bodySize - 1, 12),
-  };
+  const moduleTheme = useMemo(() => {
+    const base = baseTheme.tableTheme;
+    return {
+      ...baseTheme,
+      tableTheme: {
+        ...base,
+        singleLine: true,
+        visibleRows: VISIBLE_ROWS,
+        rowsPerPage: PAGE_SIZE,
+        tableHeight: Math.round(base.headerHeight + base.rowHeight * VISIBLE_ROWS),
+      },
+    };
+  }, [baseTheme]);
+
+  const accent = getPalette('pettycash')?.accent || tokens.colors?.warning || '#f59e0b';
+  const OK = tokens.colors?.success || theme.palette.success.main;
+  const WARN = tokens.colors?.warning || theme.palette.warning.main;
+  const INFO = tokens.colors?.info || theme.palette.info.main;
+  const DANGER = tokens.colors?.danger || theme.palette.error.main;
+  const MUTED = tokens.colors?.textSecondary || theme.palette.text.secondary;
+  const BORDER = tokens.colors?.border || theme.palette.divider;
 
   const [q, setQ] = useState('');
   const search = useDebounced(q);
@@ -156,9 +128,7 @@ const PettyCashExpensesPage = () => {
   const [ordering, setOrdering] = useState('-date');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
-  const [selected, setSelected] = useState([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
   const [timeline, setTimeline] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -169,76 +139,87 @@ const PettyCashExpensesPage = () => {
     }
   }, [location, navigate]);
 
+  const listParams = useMemo(() => {
+    const params = { page: page + 1, page_size: PAGE_SIZE, ordering };
+    const term = search.trim();
+    if (term) params.search = term;
+    if (status) params.status = status;
+    if (fund) params.fund = fund;
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    if (showDeleted) params.include_deleted = '1';
+    return params;
+  }, [page, ordering, search, status, fund, dateFrom, dateTo, showDeleted]);
+
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['petty-expenses'],
-    queryFn: () => axiosInstance.get('/petty-cash-expense-statements/', { params: { include_deleted: '1' } }).then((r) => r.data),
+    queryKey: ['petty-expenses', listParams],
+    queryFn: () => axiosInstance.get('/petty-cash-expense-statements/', { params: listParams })
+      .then((response) => response.data),
+    placeholderData: (previous) => previous,
+    staleTime: 30000,
   });
-  const { data: funds } = useQuery({
+  const { data: fundsData } = useQuery({
     queryKey: ['pc-funds-list'],
-    queryFn: () => axiosInstance.get('/petty-cash-funds/').then((r) => r.data),
+    queryFn: () => axiosInstance.get('/petty-cash-funds/').then((response) => response.data),
+    staleTime: 60000,
   });
 
-  const list = pickRows(data);
-  const fundList = pickRows(funds);
+  const rows = pickRows(data);
+  const total = Number(data?.count ?? rows.length);
+  const fundList = pickRows(fundsData);
+  const pageTotal = rows.reduce((sum, row) => sum + (Number(row.total) || 0), 0);
+
+  useEffect(() => { setPage(0); }, [search, status, fund, dateFrom, dateTo, ordering, showDeleted]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+  const pageNumbers = useMemo(() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    return Array.from({ length: Math.max(0, Math.min(totalPages, start + size) - start) }, (_v, i) => start + i);
+  }, [page, totalPages]);
+
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, rows.length);
+
   const resetFilters = () => {
-    setStatus(''); setFund(''); setDateFrom(''); setDateTo(''); setOrdering('-date'); setQ('');
+    setStatus(''); setFund(''); setDateFrom(''); setDateTo('');
+    setOrdering('-date'); setQ(''); setShowDeleted(false);
   };
   const activeFilters = [status, fund, dateFrom, dateTo].filter(Boolean).length;
+  const activeChips = [
+    status ? { key: 'status', label: `وضعیت: ${status}`, clear: () => setStatus('') } : null,
+    fund ? {
+      key: 'fund',
+      label: `تنخواه: ${fundList.find((row) => String(row.id) === String(fund))?.title || fund}`,
+      clear: () => setFund(''),
+    } : null,
+    dateFrom ? { key: 'from', label: `از ${toJalali(dateFrom)}`, clear: () => setDateFrom('') } : null,
+    dateTo ? { key: 'to', label: `تا ${toJalali(dateTo)}`, clear: () => setDateTo('') } : null,
+    showDeleted ? { key: 'deleted', label: 'شامل حذف‌شده‌ها', clear: () => setShowDeleted(false) } : null,
+  ].filter(Boolean);
 
-  const filtered = useMemo(() => {
-    const term = search.trim();
-    const rows = list.filter((row) => {
-      if (!showDeleted && row.is_deleted) return false;
-      if (status && row.status !== status) return false;
-      if (fund && String(row.fund) !== String(fund)) return false;
-      if (dateFrom && row.date < dateFrom) return false;
-      if (dateTo && row.date > dateTo) return false;
-      if (term) {
-        const haystack = `${row.number || ''} ${row.description || ''} ${row.fund_title || ''} ${row.custodian_name || ''}`;
-        if (!haystack.includes(term)) return false;
-      }
-      return true;
-    });
-    const dir = ordering.startsWith('-') ? -1 : 1;
-    const key = ordering.replace('-', '');
-    return [...rows].sort((a, b) => {
-      const av = key === 'number' ? String(a.number || a.id) : String(a[key] || '');
-      const bv = key === 'number' ? String(b.number || b.id) : String(b[key] || '');
-      return av > bv ? dir : av < bv ? -dir : 0;
-    });
-  }, [list, search, status, fund, dateFrom, dateTo, ordering, showDeleted]);
 
-  const pageRows = filtered.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
-  const pageTotal = pageRows.reduce((sum, row) => sum + (Number(row.total) || 0), 0);
-  const pendingCount = filtered.filter((row) => row.status === 'submitted').length;
+  const statusMeta = (value) => ({
+    draft: { label: 'پیش‌نویس', color: MUTED },
+    submitted: { label: 'در انتظار تأیید', color: WARN },
+    approved: { label: 'تأییدشده', color: INFO },
+    posted: { label: 'ثبت‌شده', color: OK },
+    rejected: { label: 'برگشت‌خورده', color: DANGER },
+    edited: { label: 'ویرایش‌شده', color: INFO },
+  }[value] || { label: value, color: MUTED });
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['petty-expenses'] });
-  const onError = (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا در انجام عملیات' });
+  const onError = (error) => setMsg({
+    ok: false,
+    text: error.response?.data?.error || 'خطا در انجام عملیات',
+  });
 
   const act = useMutation({
-    mutationFn: ({ id, action, body }) => axiosInstance.post(`/petty-cash-expense-statements/${id}/${action}/`, body || {}),
+    mutationFn: ({ id, action }) => axiosInstance.post(`/petty-cash-expense-statements/${id}/${action}/`),
     onSuccess: () => { refresh(); setMsg({ ok: true, text: 'عملیات انجام شد' }); },
     onError,
   });
-  const bulk = useMutation({
-    mutationFn: ({ ids, action, note }) => axiosInstance.post('/petty-cash-expense-statements/bulk_action/', { ids, action, note }),
-    onSuccess: (res) => {
-      refresh();
-      setSelected([]);
-      const failed = res.data?.errors?.length || 0;
-      setMsg({
-        ok: failed === 0,
-        text: failed ? `${res.data.count} مورد انجام شد و ${failed} مورد خطا داشت` : 'عملیات انبوه انجام شد',
-      });
-    },
-    onError,
-  });
-
-
-  const toggleSelect = (id) => setSelected((prev) => (
-    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-  ));
-  const allSelected = pageRows.length > 0 && pageRows.every((row) => selected.includes(row.id));
 
   const openPrint = (row) => print.openDocument({
     document: 'petty-statement',
@@ -246,97 +227,191 @@ const PettyCashExpensesPage = () => {
     options: { paper: 'A4', orientation: 'landscape' },
   });
 
+  const onEdit = (row) => {
+    if (!row.is_editable) return;
+    navigate(`/petty-cash/expenses/${row.id}/edit`);
+  };
+
+  const onDelete = (row) => {
+    if (!window.confirm('این صورت هزینه به سطل بازیافت منتقل شود؟')) return;
+    act.mutate({ id: row.id, action: 'soft_delete' });
+  };
+
+  const onRestore = (row) => act.mutate({ id: row.id, action: 'restore' });
+
+  const cellFont = moduleTheme.tableTheme.cell.fontSize;
+  const numberFont = 'var(--hrms-table-number-font, inherit)';
+  const columns = [
+    {
+      key: 'number', label: 'شماره صورت', width: '12%', align: 'center',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: cellFont, fontWeight: 800, color: accent }}>
+          {toPersianDigits(row.number || `#${row.id}`)}
+        </Typography>
+      ),
+    },
+    {
+      key: 'date', label: 'تاریخ', width: '9%', align: 'center',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: cellFont, fontWeight: 700, fontFamily: numberFont }}>
+          {row.date ? toJalali(row.date) : '—'}
+        </Typography>
+      ),
+    },
+    {
+      key: 'fund', label: 'تنخواه', width: '18%',
+      render: (row) => (
+        <Typography noWrap title={row.fund_title} sx={{ fontSize: cellFont, fontWeight: 700 }}>
+          {row.fund_title || '—'}
+        </Typography>
+      ),
+    },
+    {
+      key: 'custodian', label: 'تنخواه‌دار', width: '14%',
+      render: (row) => (
+        <Typography noWrap title={row.custodian_name} sx={{ fontSize: cellFont }}>
+          {row.custodian_name || '—'}
+        </Typography>
+      ),
+    },
+    {
+      key: 'description', label: 'شرح', width: '23%',
+      render: (row) => (
+        <Typography noWrap title={row.description} sx={{ fontSize: cellFont }}>
+          {row.description || '—'}
+        </Typography>
+      ),
+    },
+    {
+      key: 'total', label: 'مبلغ (ریال)', width: '13%', align: 'center',
+      render: (row) => (
+        <Typography noWrap sx={{ fontSize: cellFont, fontWeight: 800, fontFamily: numberFont, color: accent }}>
+          {formatPersianNumber(row.total || 0)}
+        </Typography>
+      ),
+    },
+    {
+      key: 'status', label: 'وضعیت', width: '11%', align: 'center',
+      render: (row) => {
+        const meta = statusMeta(row.status);
+        return (
+          <Chip size="small" label={row.is_deleted ? 'حذف‌شده' : meta.label}
+            sx={{
+              height: 23, fontSize: 11, fontWeight: 800,
+              bgcolor: alpha(row.is_deleted ? MUTED : meta.color, 0.10),
+              color: row.is_deleted ? MUTED : meta.color,
+            }} />
+        );
+      },
+    },
+    {
+      key: 'actions', label: 'عملیات', width: '14%', align: 'center',
+      render: (row) => (
+        <RowActions row={row} onEdit={onEdit} onPrint={openPrint}
+          onTimeline={setTimeline} onDelete={onDelete} onRestore={onRestore} />
+      ),
+    },
+  ];
+
+
   return (
-    <Box>
+    <Box sx={{ pb: 1 }}>
       <PageHeader
         icon={<ReceiptLongIcon />}
         title="صورت ریز هزینه‌ها"
         badge={(
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
-            <Chip size="small" label={`${toPersianDigits(filtered.length)} صورت`}
+            <Chip size="small" label={`${toPersianDigits(total)} صورت`}
               sx={{ height: 24, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
-            {pendingCount ? (
-              <Chip size="small" icon={<PendingActionsIcon sx={{ fontSize: 14 }} />} label={`${toPersianDigits(pendingCount)} در انتظار تأیید`}
-                sx={{ height: 24, fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
+            {rows.some((row) => row.status === 'submitted') ? (
+              <Chip size="small" icon={<PendingActionsIcon sx={{ fontSize: 14 }} />}
+                label={`${toPersianDigits(rows.filter((row) => row.status === 'submitted').length)} در انتظار`}
+                sx={{ height: 24, fontWeight: 800, bgcolor: alpha(WARN, 0.10), color: WARN }} />
             ) : null}
           </Stack>
         )}
         sx={{ mb: 1.5, py: 1 }}
         actions={(
           <>
-            <Button size="small" variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching}>به‌روزرسانی</Button>
-            <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/petty-cash/expenses/new')}>
+            <Button size="small" variant="outlined" startIcon={<RefreshIcon />}
+              onClick={() => refetch()} disabled={isFetching}>
+              به‌روزرسانی
+            </Button>
+            <Button size="small" variant="contained" startIcon={<AddIcon />}
+              onClick={() => navigate('/petty-cash/expenses/new')}>
               صورت هزینه جدید
             </Button>
           </>
         )}
       />
 
-      {msg && (
+      {msg ? (
         <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}
-          sx={{ mb: 1.25, borderRadius: '12px', fontSize: Math.max(type.bodySize - 1, 12.5) }}>
+          sx={{ mb: 1.25, borderRadius: 'var(--hrms-radius, 12px)', fontSize: 13 }}>
           {msg.text}
         </Alert>
-      )}
+      ) : null}
 
-      <Paper elevation={0} sx={{ p: 1.5, mb: 1.5, bgcolor: theme.palette.background.paper, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px', boxShadow: 'none' }}>
-        <Stack direction="row" spacing={1} useFlexGap alignItems="center">
-          <TextField size="small" fullWidth placeholder="جستجوی شماره، شرح، تنخواه یا تنخواه‌دار…" value={q} onChange={(e) => setQ(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-          <Button variant={filtersOpen ? 'contained' : 'outlined'} startIcon={<FilterAltIcon />}
-            onClick={() => setFiltersOpen((prev) => !prev)}
-            sx={{
-              flexShrink: 0, height: 40, minWidth: 108,
-              ...(filtersOpen
-                ? { bgcolor: accent, '&:hover': { bgcolor: accent } }
-                : { color: accent, borderColor: alpha(accent, 0.45) }),
-            }}>
-            فیلتر{activeFilters > 0 ? ` (${toPersianDigits(activeFilters)})` : ''}
-          </Button>
-        </Stack>
+      <ModuleToolbar
+        theme={moduleTheme}
+        search={q}
+        onSearch={setQ}
+        searchPlaceholder="جستجوی شماره، شرح، تنخواه یا تنخواه‌دار…"
+        sort={ordering}
+        sortOptions={SORT_OPTIONS}
+        onSort={setOrdering}
+        activeChips={activeChips}
+        activeFilterCount={activeFilters + (showDeleted ? 1 : 0)}
+        onReset={resetFilters}
+        filtersOpen={false}
+        setFiltersOpen={setFiltersOpen}
+      />
 
-        {filtersOpen ? (
-          <Box sx={{ mt: 1.25, pt: 1.25, borderTop: `1px solid ${CARD_BORDER}` }}>
-            <Box sx={{
-              display: 'grid', gap: 1,
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))' },
-            }}>
-              <FormControl size="small">
-                <InputLabel>تنخواه</InputLabel>
-                <Select value={fund} label="تنخواه" onChange={(e) => { setFund(e.target.value); setPage(0); }}>
-                  <MenuItem value="">همه</MenuItem>
-                  {fundList.map((f) => <MenuItem key={f.id} value={f.id}>{f.title}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: '100%' }} />
-              <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: '100%' }} />
-              <FormControl size="small">
-                <InputLabel>مرحله صورت</InputLabel>
-                <Select value={status} label="مرحله صورت" onChange={(e) => { setStatus(e.target.value); setPage(0); }}>
-                  <MenuItem value="">همه</MenuItem>
-                  {Object.entries(STATUS_META).map(([key, meta]) => (
-                    <MenuItem key={key} value={key}>{meta.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size="small">
-                <InputLabel>مرتب‌سازی</InputLabel>
-                <Select value={ordering} label="مرتب‌سازی" onChange={(e) => setOrdering(e.target.value)}>
-                  {SORT_OPTIONS.map((option) => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-              <Chip size="small" clickable label={showDeleted ? 'نمایش حذف‌شده‌ها: روشن' : 'نمایش حذف‌شده‌ها: خاموش'}
+
+      {filtersOpen ? (
+        <Paper elevation={0} sx={{
+          p: 1.25, mb: 1.5, borderRadius: 'var(--hrms-radius-large, 16px)',
+          border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper',
+        }}>
+          <Box sx={{
+            display: 'grid', gap: 1,
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' },
+            alignItems: 'center',
+          }}>
+            <Autocomplete
+              size="small" options={fundList}
+              value={fundList.find((row) => String(row.id) === String(fund)) || null}
+              onChange={(_event, option) => setFund(option ? option.id : '')}
+              getOptionLabel={(option) => `${option.code || ''} — ${option.title || ''}`}
+              isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
+              renderInput={(params) => <TextField {...params} size="small" label="تنخواه" />}
+            />
+            <TextField size="small" select label="وضعیت" value={status}
+              onChange={(event) => setStatus(event.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {Object.entries({
+                draft: 'پیش‌نویس', submitted: 'در انتظار تأیید', approved: 'تأییدشده',
+                posted: 'ثبت‌شده', rejected: 'برگشت‌خورده', edited: 'ویرایش‌شده',
+              }).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}
+            </TextField>
+            <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom}
+              onChange={setDateFrom} sx={{ width: '100%' }} />
+            <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo}
+              onChange={setDateTo} sx={{ width: '100%' }} />
+            <Stack direction="row" spacing={1} useFlexGap alignItems="center" flexWrap="wrap"
+              sx={{ gridColumn: { xs: 'auto', lg: '1 / -1' } }}>
+              <Chip size="small" clickable
+                label={showDeleted ? 'شامل حذف‌شده‌ها' : 'بدون حذف‌شده‌ها'}
                 color={showDeleted ? 'warning' : 'default'} onClick={() => setShowDeleted((prev) => !prev)}
-                sx={{ fontWeight: 700 }} />
-              {activeFilters > 0 || showDeleted ? (
-                <Button size="small" startIcon={<ClearIcon />} onClick={() => { resetFilters(); setShowDeleted(false); }}>پاک کردن فیلترها</Button>
-              ) : null}
-            </Box>
+                sx={{ fontWeight: 800 }} />
+              <Box sx={{ flex: 1 }} />
+              <Button size="small" variant="text" startIcon={<FilterAltIcon />} onClick={resetFilters}>
+                پاک کردن فیلترها
+              </Button>
+            </Stack>
           </Box>
-        ) : null}
-      </Paper>
+        </Paper>
+      ) : null}
 
 
       <SurfaceCard
@@ -346,141 +421,48 @@ const PettyCashExpensesPage = () => {
         contentSx={{ p: 0 }}
         action={(
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
-            <Chip size="small" label={`${toPersianDigits(filtered.length)} نتیجه`}
-              sx={{ height: 23, fontSize: tableHeadFont, fontWeight: 800 }} />
-            {selected.length ? (
-              <>
-                <Chip size="small" label={`${toPersianDigits(selected.length)} انتخاب‌شده`}
-                  sx={{ height: 23, fontSize: tableHeadFont, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
-                <Button size="small" color="success" startIcon={<CheckCircleIcon />} onClick={() => bulk.mutate({ ids: selected, action: 'approve' })}>تأیید</Button>
-                <Button size="small" color="error" startIcon={<UndoIcon />} onClick={() => {
-                  const note = window.prompt('علت برگشت گروهی:');
-                  if (note) bulk.mutate({ ids: selected, action: 'return', note });
-                }}>برگشت</Button>
-              </>
-            ) : null}
+            <Chip size="small" label={`${toPersianDigits(rows.length)} ردیف در صفحه`}
+              sx={{ height: 23, fontWeight: 800 }} />
+            <Chip size="small" label={`جمع صفحه: ${formatPersianNumber(pageTotal)}`}
+              sx={{ height: 23, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
           </Stack>
         )}
       >
-        {isLoading ? <Box textAlign="center" py={5}><CircularProgress /></Box> : (
+        {isLoading ? (
+          <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress size={26} /></Box>
+        ) : (
           <>
-            {isFetching ? <LinearProgress sx={{ height: 2 }} /> : null}
-            <TableContainer sx={{ maxHeight: 620 }}>
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox" sx={headSx}>
-                      <Checkbox size="small" checked={allSelected}
-                        onChange={(e) => setSelected(e.target.checked ? pageRows.map((row) => row.id) : [])} />
-                    </TableCell>
-                    <TableCell sx={headSx}>شماره</TableCell>
-                    <TableCell sx={headSx}>تاریخ</TableCell>
-                    <TableCell sx={headSx}>تنخواه</TableCell>
-                    <TableCell sx={headSx}>تنخواه‌دار</TableCell>
-                    <TableCell sx={headSx}>پروژه</TableCell>
-                    <TableCell sx={headSx}>سطر / مستند</TableCell>
-                    <TableCell align="center" sx={headSx}>مبلغ</TableCell>
-                    <TableCell sx={headSx}>مهلت تسویه</TableCell>
-                    <TableCell sx={headSx}>وضعیت</TableCell>
-                    <TableCell align="center" sx={headSx}>عملیات</TableCell>
-                  </TableRow>
-                </TableHead>
-
-                <TableBody>
-                  {pageRows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} align="center" sx={{ ...cellSx, py: 4, color: MUTED }}>
-                        صورت هزینه‌ای با این فیلترها یافت نشد.
-                      </TableCell>
-                    </TableRow>
-                  ) : pageRows.map((row) => {
-                    const meta = STATUS_META[row.status] || { label: row.status, color: MUTED };
-                    const Icon = meta.icon || ReceiptLongIcon;
-                    const rowLines = row.lines || [];
-                    return (
-                      <TableRow key={row.id} hover sx={{ opacity: row.is_deleted ? 0.55 : 1 }}>
-                        <TableCell padding="checkbox" sx={cellSx}>
-                          <Checkbox size="small" checked={selected.includes(row.id)} onChange={() => toggleSelect(row.id)} />
-                        </TableCell>
-                        <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{toPersianDigits(row.number || `#${row.id}`)}</TableCell>
-                        <TableCell sx={cellSx}>{toJalali(row.date)}</TableCell>
-                        <TableCell sx={cellSx}>{row.fund_title || '—'}</TableCell>
-                        <TableCell sx={cellSx}>{row.custodian_name || '—'}</TableCell>
-                        <TableCell sx={cellSx}>{row.project_name || '—'}</TableCell>
-                        <TableCell sx={cellSx}>
-                          <Stack direction="row" spacing={0.5} useFlexGap>
-                            <Chip size="small" label={`${toPersianDigits(rowLines.length)} سطر`} sx={{ height: 22, fontWeight: 700 }} />
-                            {rowLines.some((line) => !line.attachment && !(line.attachments || []).length) ? (
-                              <Chip size="small" label="فاقد پیوست" sx={{ height: 22, fontWeight: 700, bgcolor: '#fef2f2', color: RED }} />
-                            ) : null}
-                          </Stack>
-                        </TableCell>
-                        <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: accent }}>{formatPersianNumber(row.total)}</TableCell>
-                        <TableCell sx={{ ...cellSx, color: MUTED }}>{row.due_date ? toJalali(row.due_date) : '—'}</TableCell>
-                        <TableCell sx={cellSx}>
-                          <Chip size="small" icon={<Icon sx={{ fontSize: 14 }} />}
-                            label={row.is_deleted ? 'حذف‌شده' : meta.label}
-                            sx={{
-                              height: 24, fontWeight: 800,
-                              bgcolor: alpha(row.is_deleted ? '#64748b' : meta.color, 0.1),
-                              color: row.is_deleted ? '#64748b' : meta.color,
-                            }} />
-                        </TableCell>
-                        <TableCell align="center" sx={cellSx}>
-                          <Stack direction="row" spacing={0.25} justifyContent="center">
-                            {row.is_deleted ? (
-                              <Tooltip title="بازیابی">
-                                <IconButton size="small" color="success" onClick={() => act.mutate({ id: row.id, action: 'restore' })}>
-                                  <RestoreIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                            ) : (
-                              <RowActions row={row} act={act} onTimeline={setTimeline}
-                          onEdit={(item) => navigate(`/petty-cash/expenses/${item.id}/edit`)}
-                          onPrint={openPrint} />
-                            )}
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-
-                <TableFooter>
-                  <TableRow sx={{ bgcolor: theme.palette.action.hover }}>
-                    <TableCell colSpan={7} sx={{ ...cellSx, fontWeight: 800, color: MUTED }}>جمع صفحهٔ جاری</TableCell>
-                    <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: accent }}>{formatPersianNumber(pageTotal)}</TableCell>
-                    <TableCell colSpan={3} align="center" sx={{ ...cellSx, fontSize: tableHeadFont, color: MUTED }}>
-                      {toPersianDigits(pageRows.length)} ردیف در این صفحه
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              component="div"
-              count={filtered.length}
+            <ModuleTable
+              tableTheme={moduleTheme.tableTheme}
+              ariaLabel="فهرست صورت‌های هزینهٔ تنخواه"
+              containerRef={tableRef}
+              tableHeight={tableHeight}
+              rowHeight={rowHeight}
+              dimmed={isFetching}
+              rows={rows}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => { if (row.is_editable) onEdit(row); }}
+              emptyText="صورت هزینه‌ای با این شرایط یافت نشد."
+              minWidth={1120}
+              columns={columns}
+            />
+            <ModulePager
+              tableTheme={moduleTheme.tableTheme}
               page={page}
-              onPageChange={(e, value) => setPage(value)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-              rowsPerPageOptions={[25, 50, 100]}
-              labelRowsPerPage="تعداد در صفحه"
-              labelDisplayedRows={({ from, to, count }) => `${toPersianDigits(from)}–${toPersianDigits(to)} از ${toPersianDigits(count)}`}
-              sx={{
-                borderTop: `1px solid ${CARD_BORDER}`, bgcolor: theme.palette.background.paper,
-                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: tableCellFont, color: MUTED },
-                '& .MuiTablePagination-select': { fontSize: tableCellFont },
-                '& .MuiTablePagination-actions button': { color: accent },
-              }}
+              onPage={setPage}
+              totalPages={totalPages}
+              pageNumbers={pageNumbers}
+              total={total}
+              pageSize={PAGE_SIZE}
+              unit="صورت"
             />
           </>
         )}
       </SurfaceCard>
 
-      <Dialog open={!!timeline} onClose={() => setTimeline(null)} fullWidth maxWidth="sm"
-        slotProps={{ paper: { sx: { borderRadius: '18px', background: theme.palette.background.paper, border: `1px solid ${CARD_BORDER}`, boxShadow: 'none' } } }}>
-        <DialogTitle sx={{ p: 2, borderBottom: `1px solid ${CARD_BORDER}` }}>
+      <Dialog open={Boolean(timeline)} onClose={() => setTimeline(null)} fullWidth maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 'var(--hrms-radius-large, 18px)', bgcolor: 'background.paper' } }}>
+        <DialogTitle sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Stack direction="row" alignItems="center" spacing={1} useFlexGap>
             <Box sx={{
               width: 34, height: 34, borderRadius: '10px', bgcolor: alpha(accent, 0.10), color: accent,
@@ -489,8 +471,8 @@ const PettyCashExpensesPage = () => {
               <HistoryIcon sx={{ fontSize: 18 }} />
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: type.cardSize, fontWeight: 900, color: theme.palette.text.primary }}>تایم‌لاین صورت هزینه</Typography>
-              <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: MUTED }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 900 }}>تایم‌لاین صورت هزینه</Typography>
+              <Typography sx={{ fontSize: 11.5, color: MUTED }}>
                 شماره {toPersianDigits(timeline?.number || `#${timeline?.id || ''}`)}
               </Typography>
             </Box>

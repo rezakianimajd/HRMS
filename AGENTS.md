@@ -624,6 +624,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **فهرست صورت ریز هزینه‌ها روی جدول استاندارد استودیو تم بازطراحی شد (۲۰۲۶-۱۱-۱۴):**
+  - `PettyCashExpensesPage` حالا از `ModuleToolbar` + `ModuleTable` + `ModulePager` (کیت قراردادها)
+    استفاده می‌کند؛ جدول تک‌ردیفی (`singleLine`)، **۱۲ ردیف قابل مشاهده** و **۲۰ ردیف در هر صفحه**
+    (مستقل از تنظیم استودیو برای این فهرست)؛ رنگ/فونت/ارتفاع ردیف/هدر/خط جداکننده از توکن‌های تم.
+  - جست‌وجو/فیلتر/مرتب‌سازی **سمت سرور** شد: `search`, `status`, `fund`, `date_from/date_to`,
+    `ordering`, `include_deleted`, `page`, `page_size=20` (قبلاً همهٔ رکوردها یک‌جا گرفته و در
+    کلاینت فیلتر می‌شد).
+  - **ستون عملیات** شامل ویرایش (برای وضعیت‌های قابل‌ویرایش)، پیش‌نمایش/چاپ با موتور چاپ، تایم‌لاین،
+    حذف نرم و بازیابی است.
+  - تست: `pettyCashExpensesSmoke` (۱) + سوئیت‌های `pettyCash` (۷) سبز. باندل زنده:
+    **`main.57693334.js`**.
+
+
 - **داشبورد تنخواه بازطراحی شد؛ چاپ، شمارهٔ دستی و ثبت مستقل بدون حسابداری (۲۰۲۶-۱۱-۱۴):**
   - **داشبورد:** `pages/pettyCash/PettyCashDashboard.jsx` با کیت مشترک داشبورد
     (`Panel`, `MetricTile`, `StatRow`, `Track`, `SchematicRow`, `TrendChart`, `EmptyNote`) و
