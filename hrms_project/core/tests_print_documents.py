@@ -202,6 +202,9 @@ class PettyStatementDocumentTests(SimpleTestCase):
         self.assertIn('pe-statement-page', html)
         self.assertIn('pe-statement-totals', html)
         self.assertIn('جمع نهایی', html)
+        self.assertIn('width:15%;', html)
+        self.assertIn('width:7%;', html)
+        self.assertIn('font-family: inherit;', html)
         self.assertLess(
             html.index('کاغذ A۴'),
             html.index('class="pe-table pe-table-light pe-statement-totals-table"'),

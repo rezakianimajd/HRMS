@@ -7,16 +7,16 @@ from core.print_engine import components as pe
 from core.print_engine.registry import PrintError, _company_info, can_print
 
 LINE_COLUMNS = [
-    {'key': 'line_no', 'label': '#', 'width': '4%', 'align': 'center', 'headerAlign': 'center', 'format': 'digits'},
+    {'key': 'line_no', 'label': '#', 'width': '3%', 'align': 'center', 'headerAlign': 'center', 'format': 'digits'},
     {'key': 'account', 'label': 'کد معین / سرفصل', 'width': '14%', 'align': 'center', 'headerAlign': 'center'},
-    {'key': 'aux1', 'label': 'کد تفصیل ۱', 'width': '10%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'aux2', 'label': 'کد تفصیل ۲', 'width': '10%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'description', 'label': 'شرح هزینه', 'width': '19%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'supplier', 'label': 'فروشنده / طرف حساب', 'width': '14%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
-    {'key': 'invoice_number', 'label': 'شماره فاکتور', 'width': '9%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '7.5pt'},
-    {'key': 'base', 'label': 'مبلغ پایه', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
-    {'key': 'vat', 'label': 'ارزش افزوده', 'width': '6%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
-    {'key': 'total', 'label': 'جمع ردیف', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
+    {'key': 'aux1', 'label': 'کد تفصیل ۱', 'width': '9%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'aux2', 'label': 'کد تفصیل ۲', 'width': '9%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'description', 'label': 'شرح هزینه', 'width': '15%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'supplier', 'label': 'فروشنده / طرف حساب', 'width': '13%', 'align': 'right', 'headerAlign': 'center', 'fontSize': '8pt'},
+    {'key': 'invoice_number', 'label': 'شماره فاکتور', 'width': '7%', 'align': 'center', 'headerAlign': 'center', 'fontSize': '7.5pt'},
+    {'key': 'base', 'label': 'مبلغ پایه', 'width': '12%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
+    {'key': 'vat', 'label': 'ارزش افزوده', 'width': '8%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
+    {'key': 'total', 'label': 'جمع ردیف', 'width': '10%', 'format': 'money', 'unit': '', 'align': 'left', 'headerAlign': 'center'},
 ]
 
 ROWS_PER_PAGE = 10

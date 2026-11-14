@@ -100,7 +100,7 @@ body {
   padding: 4px 5px;
 }
 .pe-statement-totals-table td.pe-total-label { text-align: right; color: #334155; }
-.pe-statement-totals-table td.pe-total-value { text-align: left; font-family: 'Consolas', monospace; }
+.pe-statement-totals-table td.pe-total-value { text-align: left; font-family: inherit; }
 .pe-statement-totals-table tr.pe-grand-total td { background: #e2e8f0; color: #0f172a; }
 .pe-sign-row { display: flex; gap: 10px; margin-top: 14px; page-break-inside: avoid; }
 .pe-sign {
