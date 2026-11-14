@@ -26,9 +26,8 @@ def statement_document(data):
     status = data.get('status_display') or data.get('status') or ''
 
     identity = pe.field_grid([
-        ('شماره صورت', data.get('number')),
+        ('شماره صورت / تنخواه', data.get('number')),
         ('تنخواه', data.get('fund')),
-        ('شماره تنخواه', data.get('fund_code')),
         ('تنخواه‌دار', data.get('custodian')),
         ('تاریخ صورت', pe.jalali(data.get('date'))),
         ('روش پرداخت', data.get('payment_method')),
@@ -123,7 +122,6 @@ def load_statement(payload, options=None, request=None):
         'number': statement.number or statement.pk,
         'date': statement.date,
         'fund': statement.fund.title if statement.fund_id else '',
-        'fund_code': statement.fund.code if statement.fund_id else '',
         'custodian': statement.custodian.full_name if statement.custodian_id else '',
         'status': statement.status,
         'status_display': statement.get_status_display(),

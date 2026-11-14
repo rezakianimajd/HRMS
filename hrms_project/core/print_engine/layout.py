@@ -98,6 +98,7 @@ body {
 .pe-footer .pe-sign-name { margin-top: 6px; font-size: 8pt; }
 .pe-footer-meta { display: flex; gap: 10px; font-size: 7.5pt; color: #64748b; margin-top: 1mm; }
 .pe-page-number::after { content: counter(page); }
+@media screen { .pe-page-number::after { content: '۱'; } }
 .pe-screen-toolbar {
   position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 20;
   background: #0f172a; padding: 6px; border-radius: 10px;
@@ -141,7 +142,9 @@ def _page_margin(options):
     footer = options.get('footer') or {}
     if footer.get('enabled') is False:
         return margin
-    bottom = '22mm' if footer.get('signatures', True) else '10mm'
+    bottom = str(options.get('margin_bottom') or '') or (
+        '22mm' if footer.get('signatures', True) else '10mm'
+    )
     parts = margin.split()
     if len(parts) >= 4:
         parts[2] = bottom
@@ -236,7 +239,11 @@ def _footer(document, options):
     if show_page is None:
         show_page = options.get('show_page_number', True)
     if show_page:
-        bits.append('صفحهٔ <span class="pe-page-number"></span>')
+        page_text = options.get('page_number_text')
+        bits.append(
+            f'صفحهٔ {esc(page_text)}' if page_text
+            else 'صفحهٔ <span class="pe-page-number"></span>'
+        )
     align = config.get('align') or 'center'
     justify = {
         'right': 'flex-start',

@@ -224,7 +224,7 @@ const PettyCashExpensesPage = () => {
   const openPrint = (row) => print.openDocument({
     document: 'petty-statement',
     payload: { id: row.id },
-    options: { paper: 'A4', orientation: 'landscape' },
+    options: { paper: 'A4', orientation: 'landscape', margin_bottom: '6mm', page_number_text: '۱' },
   });
 
   const onEdit = (row) => {

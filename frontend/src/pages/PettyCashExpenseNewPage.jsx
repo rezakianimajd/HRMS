@@ -503,7 +503,7 @@ const PettyCashExpenseNewPage = () => {
           onClick={() => print.openDocument({
             document: 'petty-statement',
             payload: { id: editingId },
-            options: { paper: 'A4', orientation: 'landscape' },
+            options: { paper: 'A4', orientation: 'landscape', margin_bottom: '6mm', page_number_text: '۱' },
           })}>
           پیش‌نمایش و چاپ
         </Button>

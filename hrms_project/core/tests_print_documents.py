@@ -176,7 +176,6 @@ class PettyStatementDocumentTests(SimpleTestCase):
         html = render_document(document, {'paper': 'A4', 'orientation': 'landscape'})
         self.assertIn('صورت ریز هزینهٔ تنخواه', html)
         self.assertIn('PC-EXP-2026-0001', html)
-        self.assertIn('PC-01', html)
         self.assertIn('101 — واحد مالی', html)
         self.assertIn('202 — دفتر مرکزی', html)
         self.assertIn('کاغذ A4', html)
