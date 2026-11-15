@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -34,8 +34,8 @@ import {
   statusOf, summarizeInsurances,
 } from './supplementaryInsuranceHelpers';
 import DependentRows from './supplementaryInsurance/DependentList';
-import DependentDialog from './supplementaryInsurance/DependentDialog';
 import InsuranceEditorDialog from './supplementaryInsurance/InsuranceEditorDialog';
+import { useFamilyMembers } from '../core/hooks/useFamilyMembers';
 import { printElement } from '../core/print/printEngine';
 
 const ACCENT = '#7c3aed';
@@ -52,19 +52,7 @@ const EMPTY_FORM = {
   monthly_amount: '',
   total_amount: '',
   dependents: [],
-};
-const EMPTY_DEP = {
-  id: null,
-  first_name: '',
-  last_name: '',
-  relation: 'spouse',
-  national_id: '',
-  birth_date: '',
-  attachment: null,
-  attachment_url: '',
-  attachment_name: '',
-  attachment_size_display: '',
-  removeAttachment: false,
+  familyMemberIds: [],
 };
 
 const money = (value) => `${formatPersianNumber(Number(value) || 0)} ریال`;
@@ -211,10 +199,6 @@ const SupplementaryInsurancePage = () => {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [depDialog, setDepDialog] = useState(false);
-  const [depIndex, setDepIndex] = useState(null);
-  const [depForm, setDepForm] = useState(EMPTY_DEP);
-  const [depError, setDepError] = useState('');
 
   const insuranceQuery = useQuery({
     queryKey: ['all-supplementary-insurances'],
@@ -232,6 +216,26 @@ const SupplementaryInsurancePage = () => {
   const employees = Array.isArray(employeesQuery.data)
     ? employeesQuery.data
     : employeesQuery.data?.results || [];
+
+  const familyQuery = useFamilyMembers(form.employee);
+  const familyMembers = useMemo(
+    () => (Array.isArray(familyQuery.data) ? familyQuery.data : []),
+    [familyQuery.data],
+  );
+
+  useEffect(() => {
+    if (!editorOpen || editingItem) return;
+    const nextIds = familyMembers
+      .filter((member) => member.is_dependent !== false)
+      .map((member) => String(member.id));
+    setForm((previous) => {
+      const current = previous.familyMemberIds || [];
+      if (nextIds.length === current.length && nextIds.every((id, index) => id === current[index])) {
+        return previous;
+      }
+      return { ...previous, familyMemberIds: nextIds };
+    });
+  }, [familyMembers, editorOpen, editingItem]);
 
   const moduleTheme = useModuleTheme();
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
@@ -294,43 +298,24 @@ const SupplementaryInsurancePage = () => {
       }
 
       const originalDependents = editingItem?.dependents || [];
-      const currentDependents = payload.dependents || [];
-      const currentIds = new Set(
-        currentDependents.filter((dependent) => dependent.id).map((dependent) => Number(dependent.id)),
-      );
+      const selectedIds = new Set((payload.familyMemberIds || []).map(String));
       for (const original of originalDependents) {
-        if (original.id && !currentIds.has(Number(original.id))) {
+        const familyId = original.family_member ? String(original.family_member) : '';
+        if (original.id && (!familyId || !selectedIds.has(familyId))) {
           await axiosInstance.delete(`/supplementary-insurance-dependents/${original.id}/`);
         }
       }
-
-      for (const dependent of currentDependents) {
-        const dependentBody = new FormData();
-        dependentBody.append('insurance', insuranceId);
-        dependentBody.append('first_name', String(dependent.first_name || '').trim());
-        dependentBody.append('last_name', String(dependent.last_name || '').trim());
-        dependentBody.append('relation', dependent.relation || 'other');
-        if (String(dependent.national_id || '').trim()) {
-          dependentBody.append('national_id', String(dependent.national_id).trim());
-        }
-        if (dependent.birth_date) {
-          dependentBody.append('birth_date', String(dependent.birth_date));
-        }
-        if (dependent.attachment instanceof File) {
-          dependentBody.append('attachment', dependent.attachment);
-        }
-        if (dependent.removeAttachment && dependent.id) {
-          dependentBody.append('remove_attachment', 'true');
-        }
-        if (dependent.id) {
-          await axiosInstance.patch(`/supplementary-insurance-dependents/${dependent.id}/`, dependentBody, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
-        } else {
-          await axiosInstance.post('/supplementary-insurance-dependents/', dependentBody, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
-        }
+      const linkedFamilies = new Set(
+        originalDependents
+          .filter((dependent) => dependent.id && dependent.family_member)
+          .map((dependent) => String(dependent.family_member)),
+      );
+      for (const familyId of selectedIds) {
+        if (linkedFamilies.has(familyId)) continue;
+        await axiosInstance.post('/supplementary-insurance-dependents/', {
+          insurance: insuranceId,
+          family_member: Number(familyId),
+        });
       }
       return insuranceId;
     },
@@ -371,7 +356,7 @@ const SupplementaryInsurancePage = () => {
   const openAdd = () => {
     setEditingItem(null);
     setDetail(null);
-    setForm({ ...EMPTY_FORM, start_date: todayIso(), dependents: [] });
+    setForm({ ...EMPTY_FORM, start_date: todayIso(), dependents: [], familyMemberIds: [] });
     setError('');
     setEditorOpen(true);
   };
@@ -379,6 +364,11 @@ const SupplementaryInsurancePage = () => {
   const openEdit = (item) => {
     setEditingItem(item);
     setDetail(null);
+    const dependents = (item.dependents || []).map((dependent) => ({
+      ...dependent,
+      attachment: null,
+      removeAttachment: false,
+    }));
     setForm({
       id: item.id,
       employee: String(item.employee || ''),
@@ -389,11 +379,11 @@ const SupplementaryInsurancePage = () => {
       end_date: item.end_date || '',
       monthly_amount: item.monthly_amount ?? '',
       total_amount: item.total_amount ?? '',
-      dependents: (item.dependents || []).map((dependent) => ({
-        ...dependent,
-        attachment: null,
-        removeAttachment: false,
-      })),
+      dependents,
+      familyMemberIds: dependents
+        .map((dependent) => dependent.family_member)
+        .filter(Boolean)
+        .map(String),
     });
     setError('');
     setEditorOpen(true);
@@ -407,52 +397,15 @@ const SupplementaryInsurancePage = () => {
     setError('');
   };
 
-  const openDependentAdd = () => {
-    setDepIndex(null);
-    setDepForm({ ...EMPTY_DEP });
-    setDepError('');
-    setDepDialog(true);
-  };
-  const openDependentEdit = (index) => {
-    setDepIndex(index);
-    setDepForm({
-      ...EMPTY_DEP,
-      ...(form.dependents || [])[index],
-      attachment: null,
-      removeAttachment: false,
-    });
-    setDepError('');
-    setDepDialog(true);
-  };
-  const removeDependent = (index) => setForm((previous) => ({
-    ...previous,
-    dependents: (previous.dependents || []).filter((_, itemIndex) => itemIndex !== index),
-  }));
-  const saveDependent = () => {
-    if (!String(depForm.first_name || '').trim() || !String(depForm.last_name || '').trim()) {
-      setDepError('نام و نام خانوادگی فرد تحت تکفل الزامی است.');
-      return;
-    }
-    const nationalId = String(depForm.national_id || '').trim();
-    if (nationalId && !/^\d{10}$/.test(nationalId)) {
-      setDepError('کد ملی باید ۱۰ رقم باشد.');
-      return;
-    }
+  const toggleFamilyMember = (member) => {
+    const id = String(member.id);
     setForm((previous) => {
-      const dependents = [...(previous.dependents || [])];
-      const cleaned = {
-        ...depForm,
-        first_name: String(depForm.first_name).trim(),
-        last_name: String(depForm.last_name).trim(),
-        national_id: nationalId,
-        birth_date: depForm.birth_date || '',
-      };
-      if (depIndex === null) dependents.push(cleaned);
-      else dependents[depIndex] = cleaned;
-      return { ...previous, dependents };
+      const current = (previous.familyMemberIds || []).map(String);
+      const next = current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id];
+      return { ...previous, familyMemberIds: next };
     });
-    setDepDialog(false);
-    setDepError('');
   };
 
   const submit = () => {
@@ -470,13 +423,6 @@ const SupplementaryInsurancePage = () => {
     }
     if (form.end_date && String(form.end_date) < String(form.start_date)) {
       setError('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد.');
-      return;
-    }
-    const invalidDependent = (form.dependents || []).find(
-      (dependent) => !String(dependent.first_name || '').trim() || !String(dependent.last_name || '').trim(),
-    );
-    if (invalidDependent) {
-      setError('نام و نام خانوادگی همهٔ افراد تحت تکفل را کامل کنید.');
       return;
     }
     setError('');
@@ -843,20 +789,10 @@ const SupplementaryInsurancePage = () => {
         error={error}
         setError={setError}
         onSave={submit}
-        onOpenDependent={openDependentAdd}
-        onEditDependent={openDependentEdit}
-        onRemoveDependent={removeDependent}
-      />
-
-      <DependentDialog
-        open={depDialog}
-        onClose={() => setDepDialog(false)}
-        form={depForm}
-        setForm={setDepForm}
-        onSave={saveDependent}
-        error={depError}
-        setError={setDepError}
-        editing={depIndex !== null}
+        familyMembers={familyMembers}
+        selectedFamilyIds={form.familyMemberIds || []}
+        onToggleFamilyMember={toggleFamilyMember}
+        familyLoading={familyQuery.isLoading}
       />
 
       <Dialog open={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>

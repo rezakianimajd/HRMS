@@ -1,10 +1,9 @@
 import React from 'react';
 import {
-  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, Grid, IconButton, Stack, TextField,
+  Alert, Autocomplete, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, Divider, Grid, IconButton, Paper, Stack, TextField,
   Typography, alpha,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CloseIcon from '@mui/icons-material/Close';
@@ -16,8 +15,7 @@ import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../../core/components/ui/MoneyInput';
 import EmployeeAvatar from '../../core/components/ui/EmployeeAvatar';
 import { toPersianDigits } from '../../core/utils/numberUtils';
-import { dependentHasAttachment } from '../supplementaryInsuranceHelpers';
-import DependentRows from './DependentList';
+import { toJalali } from '../../core/utils/dateUtils';
 
 const ACCENT = '#7c3aed';
 const BLUE = '#2563eb';
@@ -50,12 +48,13 @@ const Section = ({ icon: Icon, title, color = ACCENT, badge, action, children })
 /** دیالوگ استاندارد ثبت/ویرایش بیمه تکمیلی با زبان طراحی استودیو. */
 const InsuranceEditorDialog = ({
   open, onClose, form, setForm, employees, saving, error, setError, onSave,
-  onOpenDependent, onEditDependent, onRemoveDependent,
+  familyMembers = [], selectedFamilyIds = [], onToggleFamilyMember, familyLoading = false,
 }) => {
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
   const selectedEmployee = employees.find((employee) => String(employee.id) === String(form.employee)) || null;
-  const dependents = form.dependents || [];
-  const attached = dependents.filter(dependentHasAttachment).length;
+  const selectedIds = new Set((selectedFamilyIds || []).map(String));
+  const dependents = familyMembers.filter((member) => selectedIds.has(String(member.id)));
+  const attached = dependents.filter((member) => member.has_attachment).length;
 
   return (
     <Dialog
@@ -204,42 +203,67 @@ const InsuranceEditorDialog = ({
 
           <Section
             icon={FamilyRestroomIcon}
-            title="افراد تحت تکفل"
+            title="افراد تحت تکفل (از پروندهٔ پرسنلی ← خانواده)"
             color={RED}
             badge={(
               <Stack direction="row" spacing={0.4}>
-                <Chip
-                  size="small"
-                  icon={<PeopleAltIcon sx={{ fontSize: 12 }} />}
+                <Chip size="small" icon={<PeopleAltIcon sx={{ fontSize: 12 }} />}
                   label={toPersianDigits(dependents.length)}
-                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }}
-                />
-                <Chip
-                  size="small"
-                  icon={<AttachFileIcon sx={{ fontSize: 12 }} />}
+                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
+                <Chip size="small" icon={<AttachFileIcon sx={{ fontSize: 12 }} />}
                   label={toPersianDigits(attached)}
-                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }}
-                />
+                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
               </Stack>
             )}
-            action={(
-              <Button
-                size="small"
-                startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                onClick={onOpenDependent}
-                variant="outlined"
-                sx={{ fontSize: 11, borderRadius: '9px', borderColor: alpha(RED, 0.35), color: RED }}
-              >
-                افزودن فرد
-              </Button>
-            )}
           >
-            <DependentRows
-              dependents={dependents}
-              onEdit={onEditDependent}
-              onDelete={onRemoveDependent}
-              emptyText="برای این بیمه هنوز فرد تحت تکفلی اضافه نشده است."
-            />
+            {familyLoading ? (
+              <Box sx={{ py: 2, textAlign: 'center' }}>
+                <CircularProgress size={20} sx={{ color: RED }} />
+              </Box>
+            ) : familyMembers.length ? (
+              <Stack spacing={0.6}>
+                {familyMembers.map((member) => {
+                  const selected = selectedIds.has(String(member.id));
+                  return (
+                    <Paper
+                      key={member.id}
+                      variant="outlined"
+                      onClick={() => onToggleFamilyMember?.(member)}
+                      sx={{
+                        p: 0.75, display: 'flex', alignItems: 'center', gap: 0.7, cursor: 'pointer',
+                        borderRadius: '10px',
+                        borderColor: selected ? alpha(RED, 0.45) : '#e8edf4',
+                        bgcolor: selected ? alpha(RED, 0.04) : '#fff',
+                      }}
+                    >
+                      <Checkbox
+                        size="small" checked={selected} onChange={() => onToggleFamilyMember?.(member)}
+                        onClick={(event) => event.stopPropagation()} sx={{ p: 0.4 }}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
+                          {member.full_name || `${member.first_name || ''} ${member.last_name || ''}`}
+                        </Typography>
+                        <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                          {[member.relation_display, member.birth_date
+                            ? `تولد ${toJalali(member.birth_date)}` : '', member.phone ? toPersianDigits(member.phone) : '']
+                            .filter(Boolean).join(' · ') || '—'}
+                        </Typography>
+                      </Box>
+                      {member.has_attachment ? (
+                        <Chip size="small" icon={<AttachFileIcon sx={{ fontSize: 11 }} />} label="پیوست"
+                          sx={{ height: 19, fontSize: 10, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+                      ) : null}
+                    </Paper>
+                  );
+                })}
+              </Stack>
+            ) : (
+              <Typography sx={{ fontSize: 12, color: MUTED, py: 1.2, textAlign: 'center' }}>
+                در پروندهٔ پرسنلی این شخص عضوی در بخش «خانواده» ثبت نشده است.
+                ابتدا از پروندهٔ پرسنل → تب خانواده عضو اضافه کنید.
+              </Typography>
+            )}
           </Section>
 
           {error ? <Alert severity="error" onClose={() => setError('')}>{error}</Alert> : null}

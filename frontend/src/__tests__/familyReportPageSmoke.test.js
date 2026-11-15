@@ -96,15 +96,16 @@ test('family report reads the personnel-file family section and shows insurance 
   expect(container.textContent).toContain('سارا احمدی');
   expect(container.textContent).toContain('فرزند');
   expect(container.textContent).toContain('همسر');
-  expect(container.textContent).toContain('بیمه تکمیلی');
+  expect(container.textContent).not.toContain('منبع');
   expect(container.textContent).toContain('درمان تکمیلی');
   expect(container.textContent).toContain('بدون بیمه');
   expect(container.querySelector('img[src="https://example.test/maryam.jpg"]')).not.toBeNull();
 
   const head = container.querySelector('thead').textContent;
   ['عکس', 'پرسنل', 'عضو خانواده', 'نسبت', 'کد ملی', 'تاریخ تولد', 'سن',
-    'تحت تکفل', 'منبع', 'بیمهٔ تکمیلی', 'پیوست']
+    'تحت تکفل', 'بیمهٔ تکمیلی', 'پیوست']
     .forEach((label) => { expect(head).toContain(label); });
+  expect(head).not.toContain('منبع');
 
   expect(container.textContent).toContain('کل اعضای خانواده');
   expect(container.textContent).toContain('تحت تکفل');

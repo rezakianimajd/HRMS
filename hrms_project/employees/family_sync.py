@@ -105,15 +105,27 @@ def sync_employee_family_from_insurance(employee, insurance=None) -> dict:
     if insurance is not None:
         queryset = queryset.filter(insurance_id=getattr(insurance, 'pk', insurance))
 
-    seen_keys = set()
     for dependent in queryset:
         key = dependent_source_key(dependent)
-        seen_keys.add(key)
         defaults = _family_defaults_from_dependent(dependent)
         company_id = getattr(dependent.insurance, 'company_id', None) or employee.company_id
         existing = EmployeeFamilyMember.objects.filter(
             employee_id=employee.pk, source_key=key,
         ).first()
+        if existing is None:
+            # اگر عضو خانواده از قبل (دستی یا از بیمهٔ دیگر) ثبت شده باشد،
+            # دوباره ساخته نمی‌شود و همان رکورد به بیمه متصل می‌شود.
+            existing = EmployeeFamilyMember.objects.filter(
+                employee_id=employee.pk,
+            ).filter(
+                Q(national_id=defaults['national_id'])
+                if defaults.get('national_id')
+                else Q(
+                    first_name__iexact=defaults['first_name'],
+                    last_name__iexact=defaults['last_name'],
+                    relation=defaults['relation'],
+                )
+            ).first()
         if existing:
             if not existing.is_active:
                 # کاربر این عضو را از پرونده حذف کرده است؛ دوباره ساخته نمی‌شود.
@@ -144,14 +156,7 @@ def sync_employee_family_from_insurance(employee, insurance=None) -> dict:
             dependent.save(update_fields=['family_member'])
             summary['linked'] += 1
 
-    stale = EmployeeFamilyMember.objects.filter(
-        employee_id=employee.pk,
-        source=EmployeeFamilyMember.Source.SUPPLEMENTARY_INSURANCE,
-    ).exclude(source_key__in=seen_keys)
-    if stale.exists():
-        summary['removed'] = stale.count()
-        stale.delete()
-
+    # اعضای خانواده حتی با حذف بیمه حذف نمی‌شوند؛ پروندهٔ پرسنلی منبع اصلی است.
     return summary
 
 
@@ -195,6 +200,7 @@ def sync_insurance_from_family(member) -> dict:
             family_member__isnull=True,
             first_name=base['first_name'],
             last_name=base['last_name'],
+            relation=base['relation'],
         ).first()
         if orphan:
             orphan.family_member = member

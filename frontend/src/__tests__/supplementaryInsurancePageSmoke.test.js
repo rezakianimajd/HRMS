@@ -55,6 +55,12 @@ beforeEach(() => {
     if (String(url).includes('/employees/')) {
       return Promise.resolve({ data: [{ id: 1, full_name: 'مریم رضایی', employee_id: '1002', gender: 'female', photo_url: 'https://example.test/maryam.jpg' }] });
     }
+    if (String(url).includes('/family-members/')) {
+      return Promise.resolve({ data: [{
+        id: 5, employee: 1, full_name: 'نیما رضایی', first_name: 'نیما', last_name: 'رضایی',
+        relation: 'child', relation_display: 'فرزند', is_dependent: true, has_attachment: true,
+      }] });
+    }
     return Promise.resolve({ data: [] });
   });
 });
@@ -141,15 +147,9 @@ test('supplementary insurance dialogs expose standard fields including dependent
   expect(document.body.textContent).not.toContain('مثلاً طرح خانواده، طلایی، ویژه');
 
   const addDependent = buttonByText(document.body, 'افزودن فرد');
-  expect(addDependent).toBeTruthy();
-  await act(async () => { addDependent.click(); await wait(260); });
-
-  expect(document.body.textContent).toContain('افزودن فرد تحت تکفل');
-  expect(document.body.textContent).toContain('کد ملی');
-  expect(document.body.textContent).toContain('تاریخ تولد');
-  expect(document.body.textContent).toContain('نام خانوادگی *');
-  expect(document.body.textContent).toContain('پیوست مدارک');
-  expect(document.body.textContent).not.toContain('مشخصات و مدارک پیوست فرد را وارد کنید');
+  expect(addDependent).toBeUndefined();
+  expect(document.body.textContent).toContain('از پروندهٔ پرسنلی ← خانواده');
+  expect(document.body.textContent).toContain('در پروندهٔ پرسنلی این شخص عضوی در بخش «خانواده» ثبت نشده است');
 
   root.unmount();
   container.remove();

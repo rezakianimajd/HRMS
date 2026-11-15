@@ -23,7 +23,7 @@ import {
   ModulePager, ModuleTable, ModuleToolbar, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import {
-  FAMILY_RELATIONS, FAMILY_SOURCES, familyAgeOf, relationColor, relationLabel, sourceColor, sourceLabel,
+  FAMILY_RELATIONS, familyAgeOf, relationColor, relationLabel,
 } from '../core/utils/familyMembers';
 
 const ACCENT = '#be185d';
@@ -46,11 +46,6 @@ const dateLabel = (value) => (value ? toJalali(String(value).slice(0, 10)) : '�
 const RELATION_FILTER_OPTIONS = [
   { value: 'all', label: 'همه' },
   ...FAMILY_RELATIONS.map((item) => ({ value: item.value, label: item.label })),
-];
-
-const SOURCE_FILTER_OPTIONS = [
-  { value: 'all', label: 'همه' },
-  ...Object.entries(FAMILY_SOURCES).map(([value, meta]) => ({ value, label: meta.label })),
 ];
 
 const STATUS_FILTER_OPTIONS = [
@@ -91,8 +86,6 @@ const reportRows = (members = []) => members.map((member) => ({
   birthDateLabel: dateLabel(member.birth_date),
   age: member.age ?? familyAgeOf(member.birth_date),
   isDependent: member.is_dependent !== false,
-  source: member.source || 'manual',
-  sourceLabel: member.source_display || sourceLabel(member.source),
   phone: member.phone || '',
   notes: member.notes || '',
   employeeName: member.employee_name || '',
@@ -114,7 +107,7 @@ const reportRows = (members = []) => members.map((member) => ({
 
 const searchTextOf = (row) => [
   row.employeeName, row.employeeCode, row.department, row.jobTitle,
-  row.memberName, row.nationalId, row.phone, row.relationLabel, row.sourceLabel,
+  row.memberName, row.nationalId, row.phone, row.relationLabel,
   row.insuranceName, row.notes,
 ].filter(Boolean).join(' ').toLowerCase();
 
@@ -126,7 +119,6 @@ const FamilyReportPage = () => {
 
   const [search, setSearch] = useState('');
   const [relationFilter, setRelationFilter] = useState('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dependentFilter, setDependentFilter] = useState('all');
   const [attachmentFilter, setAttachmentFilter] = useState('all');
@@ -187,7 +179,6 @@ const FamilyReportPage = () => {
     const term = search.trim().toLowerCase();
     const result = rows.filter((row) => {
       if (relationFilter !== 'all' && row.relation !== relationFilter) return false;
-      if (sourceFilter !== 'all' && row.source !== sourceFilter) return false;
       if (statusFilter !== 'all' && row.insuranceStatus !== statusFilter) return false;
       if (dependentFilter === 'yes' && !row.isDependent) return false;
       if (dependentFilter === 'no' && row.isDependent) return false;
@@ -215,13 +206,13 @@ const FamilyReportPage = () => {
         || a.memberName.localeCompare(b.memberName, 'fa');
     });
   }, [
-    rows, search, relationFilter, sourceFilter, statusFilter, dependentFilter,
+    rows, search, relationFilter, statusFilter, dependentFilter,
     departmentFilter, attachmentFilter, nationalIdFilter, sortBy,
   ]);
 
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
     filtered.length, pageSize,
-    [search, relationFilter, sourceFilter, statusFilter, dependentFilter, departmentFilter,
+    [search, relationFilter, statusFilter, dependentFilter, departmentFilter,
       attachmentFilter, nationalIdFilter, sortBy, pageSize],
   );
   const pagedRows = useMemo(
@@ -233,9 +224,6 @@ const FamilyReportPage = () => {
   const activeChips = [
     relationFilter !== 'all'
       ? { key: 'relation', label: `نسبت: ${relationLabel(relationFilter)}`, clear: () => setRelationFilter('all') }
-      : null,
-    sourceFilter !== 'all'
-      ? { key: 'source', label: `منبع: ${sourceLabel(sourceFilter)}`, clear: () => setSourceFilter('all') }
       : null,
     statusFilter !== 'all'
       ? {
@@ -266,7 +254,6 @@ const FamilyReportPage = () => {
         params: {
           q: search.trim(),
           relation: relationFilter,
-          source: sourceFilter,
           status: statusFilter,
           dependent: dependentFilter,
           department: departmentFilter,
@@ -391,7 +378,6 @@ const FamilyReportPage = () => {
         onSort={setSortBy}
         filters={[
           { label: 'نسبت', value: relationFilter, options: relationOptions, onChange: setRelationFilter },
-          { label: 'منبع ثبت', value: sourceFilter, options: SOURCE_FILTER_OPTIONS, onChange: setSourceFilter },
           { label: 'وضعیت بیمه', value: statusFilter, options: statusOptions, onChange: setStatusFilter },
           { label: 'تحت تکفل', value: dependentFilter, options: DEPENDENT_FILTER_OPTIONS, onChange: setDependentFilter },
           { label: 'واحد سازمانی', value: departmentFilter, options: departments, onChange: setDepartmentFilter },
@@ -403,7 +389,6 @@ const FamilyReportPage = () => {
         onReset={() => {
           setSearch('');
           setRelationFilter('all');
-          setSourceFilter('all');
           setStatusFilter('all');
           setDependentFilter('all');
           setDepartmentFilter('all');
@@ -549,22 +534,6 @@ const FamilyReportPage = () => {
                     height: 19, fontSize: 10, fontWeight: 800,
                     bgcolor: alpha(row.isDependent ? TEAL : MUTED, 0.09),
                     color: row.isDependent ? TEAL : MUTED,
-                  }}
-                />
-              ),
-            },
-            {
-              key: 'source',
-              label: 'منبع',
-              width: '9%',
-              align: 'center',
-              render: (row) => (
-                <Chip
-                  size="small"
-                  label={row.sourceLabel}
-                  sx={{
-                    height: 19, fontSize: 10, fontWeight: 800,
-                    bgcolor: alpha(sourceColor(row.source), 0.09), color: sourceColor(row.source),
                   }}
                 />
               ),

@@ -1088,6 +1088,32 @@ class SupplementaryInsuranceDependent(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.get_relation_display()})"
+def family_member_attachment_path(instance, filename):
+    """مسیر پیوست مدارک عضو خانواده در بایگانی همان پرسنل."""
+    import uuid
+    from pathlib import Path
+
+    try:
+        from core.engines.archive_storage_engine import resolve_upload_path
+
+        employee = instance.employee
+        fields = {
+            'code': getattr(employee, 'employee_id', '') or '',
+            'name': getattr(employee, 'first_name', '') or '',
+            'last_name': getattr(employee, 'last_name', '') or '',
+            'id': employee.pk,
+            'national_id': getattr(employee, 'national_id', '') or '',
+        }
+        return resolve_upload_path(
+            instance.company_id, 'hr.employees', fields, filename,
+            fallback_dir=f'company_{instance.company_id}/employee_{employee.pk}/family',
+            subfolder='خانواده',
+        )
+    except Exception:  # noqa: BLE001 — مسیر پیش‌فرض امن
+        return f'employees/family_members/{instance.employee_id}/{uuid.uuid4().hex}{Path(filename).suffix.lower()}'
+
+
+
 class EmployeeFamilyMember(BaseModel):
     """عضو خانوادهٔ پرسنل — بخش «خانواده» در پروندهٔ پرسنلی.
 
@@ -1147,6 +1173,14 @@ class EmployeeFamilyMember(BaseModel):
         blank=True,
         null=True,
         verbose_name=_('تلفن همراه'),
+    )
+    attachment = models.FileField(
+        upload_to=family_member_attachment_path,
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name=_('پیوست مدارک'),
+        help_text=_('مدارک هویتی، بیمه‌ای یا سایر پیوست‌های این عضو خانواده'),
     )
     is_dependent = models.BooleanField(
         default=True,

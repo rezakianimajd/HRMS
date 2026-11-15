@@ -60,13 +60,12 @@ def sync_family_after_dependent_delete(sender, instance, **kwargs):
     """حذف رکورد خانوادگی متناظر وقتی فرد تحت تکفل بیمه حذف می‌شود."""
     try:
         from employees.family_sync import (
-            remove_family_member_for_dependent, sync_employee_family_from_insurance, sync_guard,
+            sync_employee_family_from_insurance, sync_guard,
         )
 
         with sync_guard() as allow:
             if not allow:
                 return
-            remove_family_member_for_dependent(instance)
             insurance = getattr(instance, 'insurance', None)
             employee = getattr(insurance, 'employee', None)
             if employee is not None:

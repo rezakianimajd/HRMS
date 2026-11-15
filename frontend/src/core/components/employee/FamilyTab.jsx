@@ -5,27 +5,26 @@ import {
   TextField, Tooltip, Typography, alpha,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
-import SyncIcon from '@mui/icons-material/Sync';
 import JalaliDatePicker from '../ui/JalaliDatePicker';
 import {
   ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../../../pages/contracts/contractModuleUi';
 import {
-  useDeleteFamilyMember, useFamilyMembers, useSaveFamilyMember, useSyncFamilyFromInsurance,
+  useDeleteFamilyMember, useFamilyMembers, useSaveFamilyMember,
 } from '../../hooks/useFamilyMembers';
 import {
   FAMILY_RELATIONS, familyAgeOf, familyBirthDateLabel, familyFullName, familySearchText,
-  familySummary, relationColor, relationLabel, sourceColor, sourceLabel,
+  familySummary, relationColor, relationLabel,
 } from '../../utils/familyMembers';
 import { formatPersianNumber, toPersianDigits } from '../../utils/numberUtils';
 
 const ACCENT = '#be185d';
 const BLUE = '#2563eb';
 const TEAL = '#0f766e';
-const VIOLET = '#7c3aed';
 const INK = '#1e293b';
 const MUTED = '#64748b';
 
@@ -39,6 +38,10 @@ const EMPTY_FORM = {
   phone: '',
   is_dependent: true,
   notes: '',
+  attachment: null,
+  attachment_url: '',
+  attachment_name: '',
+  removeAttachment: false,
 };
 
 const RELATION_FILTER_OPTIONS = [
@@ -46,24 +49,16 @@ const RELATION_FILTER_OPTIONS = [
   ...FAMILY_RELATIONS.map((item) => ({ value: item.value, label: item.label })),
 ];
 
-const SOURCE_FILTER_OPTIONS = [
-  { value: 'all', label: 'همه منابع' },
-  { value: 'supplementary_insurance', label: 'از بیمه تکمیلی' },
-  { value: 'manual', label: 'ثبت دستی' },
-];
-
-/** بخش «خانواده» پروندهٔ پرسنلی: ثبت دستی + انتقال خودکار از بیمهٔ تکمیلی. */
+/** بخش «خانواده» پروندهٔ پرسنلی — تنها مرجع اعضای خانواده و مدارک آن‌ها. */
 const FamilyTab = ({ employeeId }) => {
   const moduleTheme = useModuleTheme();
   const { data: members = [], isLoading, isFetching } = useFamilyMembers(employeeId);
   const save = useSaveFamilyMember(employeeId);
   const remove = useDeleteFamilyMember(employeeId);
-  const sync = useSyncFamilyFromInsurance(employeeId);
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('relation');
   const [relationFilter, setRelationFilter] = useState('all');
-  const [sourceFilter, setSourceFilter] = useState('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -77,8 +72,6 @@ const FamilyTab = ({ employeeId }) => {
     const term = search.trim().toLowerCase();
     const result = rows.filter((row) => {
       if (relationFilter !== 'all' && row.relation !== relationFilter) return false;
-      if (sourceFilter === 'supplementary_insurance' && row.source !== 'supplementary_insurance') return false;
-      if (sourceFilter === 'manual' && row.source === 'supplementary_insurance') return false;
       if (!term) return true;
       return familySearchText(row).includes(term);
     });
@@ -95,7 +88,7 @@ const FamilyTab = ({ employeeId }) => {
       const diff = relationOrder.indexOf(a.relation) - relationOrder.indexOf(b.relation);
       return diff || familyFullName(a).localeCompare(familyFullName(b), 'fa');
     });
-  }, [rows, search, relationFilter, sourceFilter, sortBy]);
+  }, [rows, search, relationFilter, sortBy]);
 
   const summary = useMemo(() => familySummary(rows), [rows]);
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, filtered.length);
@@ -117,6 +110,10 @@ const FamilyTab = ({ employeeId }) => {
       phone: row.phone || '',
       is_dependent: row.is_dependent !== false,
       notes: row.notes || '',
+      attachment: null,
+      attachment_url: row.attachment_url || '',
+      attachment_name: row.attachment_name || '',
+      removeAttachment: false,
     });
     setError('');
     setDialogOpen(true);
@@ -141,6 +138,8 @@ const FamilyTab = ({ employeeId }) => {
         phone: String(form.phone || '').trim(),
         is_dependent: form.is_dependent !== false,
         notes: String(form.notes || '').trim(),
+        attachment: form.attachment,
+        remove_attachment: form.removeAttachment,
       },
       {
         onSuccess: () => {
@@ -161,28 +160,9 @@ const FamilyTab = ({ employeeId }) => {
     );
   };
 
-  const runSync = () => {
-    sync.mutate(undefined, {
-      onSuccess: (data) => {
-        const created = data?.created || 0;
-        setToast(created
-          ? `${toPersianDigits(created)} عضو از بیمهٔ تکمیلی به پروندهٔ خانواده اضافه شد`
-          : 'همهٔ افراد تحت تکفل بیمهٔ تکمیلی قبلاً در پروندهٔ خانواده ثبت شده‌اند');
-      },
-      onError: () => setToast('دریافت اطلاعات از بیمهٔ تکمیلی انجام نشد'),
-    });
-  };
-
   const activeChips = [
     relationFilter !== 'all'
       ? { key: 'relation', label: `نسبت: ${relationLabel(relationFilter)}`, clear: () => setRelationFilter('all') }
-      : null,
-    sourceFilter !== 'all'
-      ? {
-        key: 'source',
-        label: `منبع: ${sourceFilter === 'manual' ? 'ثبت دستی' : 'بیمه تکمیلی'}`,
-        clear: () => setSourceFilter('all'),
-      }
       : null,
   ].filter(Boolean);
 
@@ -202,21 +182,7 @@ const FamilyTab = ({ employeeId }) => {
             sx={{ height: 22, fontWeight: 800, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }} />
           <Chip size="small" label={`تحت تکفل: ${formatPersianNumber(summary.dependents)}`}
             sx={{ height: 22, fontWeight: 800, bgcolor: alpha(TEAL, 0.09), color: TEAL }} />
-          <Chip size="small" label={`از بیمه تکمیلی: ${formatPersianNumber(summary.fromInsurance)}`}
-            sx={{ height: 22, fontWeight: 800, bgcolor: alpha(VIOLET, 0.1), color: VIOLET }} />
-          <Chip size="small" label={`ثبت دستی: ${formatPersianNumber(summary.manual)}`}
-            sx={{ height: 22, fontWeight: 800, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
           <Box sx={{ flex: 1 }} />
-          <Tooltip title="انتقال افراد تحت تکفل بیمهٔ تکمیلی به پروندهٔ خانواده">
-            <span>
-              <Button size="small" variant="outlined"
-                startIcon={sync.isPending ? <CircularProgress size={14} /> : <SyncIcon />}
-                onClick={runSync} disabled={sync.isPending}
-                sx={{ fontSize: 12, borderRadius: '10px', borderColor: alpha(VIOLET, 0.4), color: VIOLET }}>
-                دریافت از بیمه تکمیلی
-              </Button>
-            </span>
-          </Tooltip>
           <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openCreate}
             sx={{ fontSize: 12, borderRadius: '10px', bgcolor: ACCENT, '&:hover': { bgcolor: '#9d174d' } }}>
             عضو خانواده جدید
@@ -238,14 +204,12 @@ const FamilyTab = ({ employeeId }) => {
         onSort={setSortBy}
         filters={[
           { label: 'نسبت', value: relationFilter, options: RELATION_FILTER_OPTIONS, onChange: setRelationFilter },
-          { label: 'منبع ثبت', value: sourceFilter, options: SOURCE_FILTER_OPTIONS, onChange: setSourceFilter },
         ]}
         activeChips={activeChips}
         activeFilterCount={activeChips.length}
         onReset={() => {
           setSearch('');
           setRelationFilter('all');
-          setSourceFilter('all');
           setSortBy('relation');
         }}
         filtersOpen={filtersOpen}
@@ -267,7 +231,7 @@ const FamilyTab = ({ employeeId }) => {
           rows={filtered}
           rowKey={(row) => row.id}
           onRowClick={openEdit}
-          emptyText="برای این پرسنل عضو خانواده‌ای ثبت نشده است؛ با دکمهٔ «عضو خانواده جدید» اضافه کنید یا اطلاعات بیمهٔ تکمیلی را دریافت کنید."
+          emptyText="برای این پرسنل عضو خانواده‌ای ثبت نشده است؛ با دکمهٔ «عضو خانواده جدید» اضافه کنید."
           columns={[
             {
               key: 'name',
@@ -366,16 +330,21 @@ const FamilyTab = ({ employeeId }) => {
               ),
             },
             {
-              key: 'source',
-              label: 'منبع',
-              width: '12%',
+              key: 'attachment',
+              label: 'پیوست',
+              width: '10%',
               align: 'center',
               render: (row) => (
-                <Chip size="small" label={row.source_display || sourceLabel(row.source)}
-                  sx={{
-                    height: 20, fontSize: 10.5, fontWeight: 800,
-                    bgcolor: alpha(sourceColor(row.source), 0.09), color: sourceColor(row.source),
-                  }} />
+                row.attachment_url ? (
+                  <Tooltip title={row.attachment_name || 'مشاهدهٔ پیوست'}>
+                    <IconButton size="small" href={row.attachment_url} target="_blank" rel="noreferrer"
+                      aria-label="مشاهدهٔ پیوست">
+                      <AttachFileIcon sx={{ fontSize: 16, color: BLUE }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : (
+                  <Typography sx={{ fontSize: 11, color: MUTED }}>—</Typography>
+                )
               ),
             },
             {
@@ -461,6 +430,60 @@ const FamilyTab = ({ employeeId }) => {
               />
             </Grid>
             <Grid item xs={12}>
+              <Paper variant="outlined" sx={{ p: 1.2, borderRadius: '12px', borderColor: '#e8edf4' }}>
+                <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
+                  <AttachFileIcon sx={{ fontSize: 18, color: BLUE }} />
+                  <Box sx={{ flex: 1, minWidth: 120 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>پیوست مدارک</Typography>
+                    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                      {form.attachment
+                        ? form.attachment.name
+                        : (form.attachment_url && !form.removeAttachment
+                          ? (form.attachment_name || 'پیوست ثبت‌شده')
+                          : 'PDF یا تصویر — حداکثر ۱۰ مگابایت')}
+                    </Typography>
+                  </Box>
+                  {form.attachment_url && !form.removeAttachment ? (
+                    <Button size="small" href={form.attachment_url} target="_blank" rel="noreferrer"
+                      sx={{ fontSize: 11 }}>مشاهده</Button>
+                  ) : null}
+                  <Button size="small" component="label" variant="outlined"
+                    sx={{ fontSize: 11, borderRadius: '9px' }}>
+                    انتخاب فایل
+                    <input
+                      type="file"
+                      hidden
+                      accept=".pdf,.jpg,.jpeg,.png,.webp"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        const ext = `.${String(file.name || '').split('.').pop()?.toLowerCase()}`;
+                        if (!['.pdf', '.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+                          setError('فرمت پیوست باید PDF یا تصویر باشد.');
+                          return;
+                        }
+                        if (Number(file.size) > 10 * 1024 * 1024) {
+                          setError('حجم پیوست نباید بیشتر از ۱۰ مگابایت باشد.');
+                          return;
+                        }
+                        setError('');
+                        setForm((previous) => ({ ...previous, attachment: file, removeAttachment: false }));
+                        event.target.value = '';
+                      }}
+                    />
+                  </Button>
+                  {form.attachment || (form.attachment_url && !form.removeAttachment) ? (
+                    <IconButton size="small" color="error" aria-label="حذف پیوست"
+                      onClick={() => setForm((previous) => ({
+                        ...previous, attachment: null, removeAttachment: true,
+                      }))}>
+                      <DeleteIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  ) : null}
+                </Stack>
+              </Paper>
+            </Grid>
+            <Grid item xs={12}>
               <TextField fullWidth size="small" label="توضیحات" multiline rows={2} value={form.notes}
                 onChange={(event) => setForm((previous) => ({ ...previous, notes: event.target.value }))} />
             </Grid>
@@ -483,9 +506,6 @@ const FamilyTab = ({ employeeId }) => {
         <DialogContent>
           <Alert severity="warning" sx={{ borderRadius: '10px' }}>
             «{deleteTarget ? familyFullName(deleteTarget) : ''}» از پروندهٔ خانوادهٔ این پرسنل حذف شود؟
-            {deleteTarget?.source === 'supplementary_insurance'
-              ? ' این عضو از بیمهٔ تکمیلی منتقل شده است؛ اطلاعات او در بیمهٔ تکمیلی باقی می‌ماند و فقط از پروندهٔ خانواده پنهان می‌شود.'
-              : ''}
           </Alert>
         </DialogContent>
         <DialogActions>

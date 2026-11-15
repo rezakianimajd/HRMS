@@ -11,8 +11,20 @@ const fetchFamilyMembers = async (employeeId) => {
   return normalizeList(response.data);
 };
 
-const saveFamilyMember = async ({ id, employee, ...payload }) => {
-  const body = { ...payload, employee };
+const saveFamilyMember = async ({ id, employee, attachment, remove_attachment, ...payload }) => {
+  const hasFile = attachment instanceof File;
+  let body = { ...payload, employee };
+  if (hasFile || remove_attachment) {
+    body = new FormData();
+    body.append('employee', employee);
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') return;
+      if (typeof value === 'boolean') body.append(key, value ? 'true' : 'false');
+      else body.append(key, value);
+    });
+    if (hasFile) body.append('attachment', attachment);
+    if (remove_attachment) body.append('remove_attachment', 'true');
+  }
   const response = id
     ? await axiosInstance.patch(`/family-members/${id}/`, body)
     : await axiosInstance.post('/family-members/', body);

@@ -20,11 +20,6 @@ RELATION_LABELS = {
     'other': 'سایر',
 }
 
-SOURCE_LABELS = {
-    'manual': 'ثبت دستی',
-    'supplementary_insurance': 'بیمه تکمیلی',
-}
-
 STATUS_LABELS = {
     'active': 'فعال',
     'expiring': 'نزدیک انقضا',
@@ -45,7 +40,6 @@ HEADERS = [
     'تاریخ تولد',
     'سن',
     'تحت تکفل',
-    'منبع ثبت',
     'تلفن همراه',
     'بیمهٔ تکمیلی',
     'وضعیت بیمه',
@@ -119,7 +113,7 @@ def collect_family_rows(queryset):
             status_key = 'none'
         else:
             status_key = status_of(start, end, today)
-        attachment = getattr(dependent, 'attachment', None)
+        attachment = getattr(member, 'attachment', None) or getattr(dependent, 'attachment', None)
         birth = member.birth_date
         relation = member.relation or 'other'
         rows.append({
@@ -142,8 +136,6 @@ def collect_family_rows(queryset):
             'age': age_of(birth, today),
             'is_dependent': member.is_dependent is not False,
             'dependent_label': 'بله' if member.is_dependent is not False else 'خیر',
-            'source': member.source or 'manual',
-            'source_label': SOURCE_LABELS.get(member.source, 'ثبت دستی'),
             'phone': member.phone or '',
             'notes': member.notes or '',
             'insurance_id': getattr(insurance, 'id', None),
@@ -167,7 +159,7 @@ def collect_family_rows(queryset):
 def _search_text(row):
     return ' '.join(str(row.get(key) or '') for key in (
         'employee_name', 'employee_code', 'department', 'job_title',
-        'member_name', 'national_id', 'phone', 'relation_label', 'source_label',
+        'member_name', 'national_id', 'phone', 'relation_label',
         'insurance_name', 'insurance_type', 'plan', 'notes',
     )).lower()
 
@@ -177,7 +169,6 @@ def apply_family_filters(rows, params):
     relation = (params.get('relation') or 'all').strip()
     status = (params.get('status') or 'all').strip()
     department = (params.get('department') or 'all').strip()
-    source = (params.get('source') or 'all').strip()
     dependency = (params.get('dependent') or 'all').strip()
     attachment = (params.get('attachment') or 'all').strip()
     national_id = (params.get('national_id') or 'all').strip()
@@ -190,8 +181,6 @@ def apply_family_filters(rows, params):
         if status != 'all' and row['status'] != status:
             continue
         if department != 'all' and row['department'] != department:
-            continue
-        if source != 'all' and row['source'] != source:
             continue
         if dependency == 'yes' and not row['is_dependent']:
             continue
@@ -216,8 +205,6 @@ def apply_family_filters(rows, params):
         labels.append(f'وضعیت بیمه: {STATUS_LABELS.get(status, status)}')
     if department != 'all':
         labels.append(f'واحد: {department}')
-    if source != 'all':
-        labels.append(f'منبع: {SOURCE_LABELS.get(source, source)}')
     if dependency != 'all':
         labels.append('تحت تکفل' if dependency == 'yes' else 'بدون تکفل')
     if attachment != 'all':
@@ -291,7 +278,6 @@ def build_family_workbook(rows, filter_labels=None, title='گزارش خانوا
             row.get('birth_date', ''),
             '' if row.get('age') is None else row.get('age'),
             row.get('dependent_label', ''),
-            row.get('source_label', ''),
             row.get('phone', ''),
             row.get('insurance_name', ''),
             row.get('status_label', ''),

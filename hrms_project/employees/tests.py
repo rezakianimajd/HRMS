@@ -186,9 +186,10 @@ class FamilyMemberTests(SimpleTestCase):
         from employees.serializers import EmployeeFamilyMemberSerializer
 
         serializer = EmployeeFamilyMemberSerializer()
-        for field in ('relation', 'relation_display', 'source', 'source_display',
-                      'is_dependent', 'age', 'full_name', 'phone'):
+        for field in ('relation', 'relation_display', 'is_dependent', 'age', 'full_name', 'phone',
+                      'attachment', 'attachment_url', 'has_attachment'):
             self.assertIn(field, serializer.fields)
+        self.assertNotIn('source', serializer.fields)
 
         self.assertEqual(serializer.validate_national_id('۱۲۳۴۵۶۷۸۹۰'), '1234567890')
         self.assertEqual(serializer.validate_national_id(''), '')
@@ -217,7 +218,6 @@ class FamilyReportExportTests(SimpleTestCase):
             'member_name': 'امین اله جعفری', 'relation': 'father', 'relation_label': 'پدر',
             'national_id': '0012345678', 'birth_date': '1345/02/12', 'age': 60,
             'is_dependent': True, 'dependent_label': 'بله',
-            'source': 'supplementary_insurance', 'source_label': 'بیمه تکمیلی',
             'phone': '09120000000', 'notes': '',
             'insurance_name': 'درمان تکمیلی', 'status': 'active', 'status_label': 'فعال',
             'attachment': False, 'attachment_name': '',
@@ -231,8 +231,7 @@ class FamilyReportExportTests(SimpleTestCase):
         rows = [
             self._row(),
             self._row(member_name='سارا احمدی', relation='spouse', relation_label='همسر',
-                      source='manual', source_label='ثبت دستی', is_dependent=False,
-                      dependent_label='خیر', attachment=True, attachment_name='id.pdf'),
+                      is_dependent=False, dependent_label='خیر', attachment=True, attachment_name='id.pdf'),
             self._row(member_name='نیما رضایی', relation='child', relation_label='فرزند',
                       national_id='', department='مالی', status='expired', status_label='منقضی'),
         ]
@@ -241,9 +240,8 @@ class FamilyReportExportTests(SimpleTestCase):
         self.assertEqual([row['member_name'] for row in result], ['نیما رضایی'])
         self.assertIn('نسبت: فرزند', labels)
 
-        result, labels = apply_family_filters(rows, {'source': 'manual', 'dependent': 'no'})
+        result, labels = apply_family_filters(rows, {'dependent': 'no'})
         self.assertEqual([row['member_name'] for row in result], ['سارا احمدی'])
-        self.assertIn('منبع: ثبت دستی', labels)
         self.assertIn('بدون تکفل', labels)
 
         result, labels = apply_family_filters(rows, {'national_id': 'missing'})
@@ -360,5 +358,5 @@ class FamilyReportExportTests(SimpleTestCase):
         self.assertEqual(row['status_label'], 'فعال')
         self.assertEqual(row['insurance_name'], 'بیمه')
         self.assertEqual(row['department'], 'فنی')
-        self.assertEqual(row['source_label'], 'بیمه تکمیلی')
+        self.assertNotIn('source_label', row)
 

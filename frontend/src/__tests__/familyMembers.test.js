@@ -1,6 +1,6 @@
 import {
-  FAMILY_RELATIONS, FAMILY_SOURCES, familyAgeOf, familyBirthDateLabel, familyFullName,
-  familySearchText, familySummary, relationColor, relationLabel, sourceColor, sourceLabel,
+  FAMILY_RELATIONS, familyAgeOf, familyBirthDateLabel, familyFullName,
+  familySearchText, familySummary, relationColor, relationLabel,
 } from '../core/utils/familyMembers';
 
 test('maps every family relation to a Persian label and color', () => {
@@ -13,13 +13,6 @@ test('maps every family relation to a Persian label and color', () => {
   expect(relationLabel('unknown')).toBe('—');
   expect(relationColor('child')).toMatch(/^#/);
   expect(relationColor('unknown')).toBe('#64748b');
-});
-
-test('labels the registration source (manual vs supplementary insurance)', () => {
-  expect(sourceLabel('supplementary_insurance')).toBe('بیمه تکمیلی');
-  expect(sourceLabel('manual')).toBe('ثبت دستی');
-  expect(sourceLabel(undefined)).toBe('ثبت دستی');
-  expect(sourceColor('supplementary_insurance')).toBe(FAMILY_SOURCES.supplementary_insurance.color);
 });
 
 test('builds a full name and a Jalali birth date label', () => {
@@ -38,25 +31,24 @@ test('computes age from the birth date', () => {
   expect(familyAgeOf('not-a-date')).toBeNull();
 });
 
-test('searches across name, national id, phone, relation and source', () => {
+test('searches across name, national id, phone and relation', () => {
   const member = {
     first_name: 'نیما', last_name: 'رضایی', national_id: '0012345678',
-    phone: '09121234567', relation: 'child', source: 'supplementary_insurance',
-    notes: 'دانش‌آموز',
+    phone: '09121234567', relation: 'child', notes: 'دانش‌آموز',
   };
   expect(familySearchText(member)).toContain('نیما');
   expect(familySearchText(member)).toContain('0012345678');
   expect(familySearchText(member)).toContain('فرزند');
-  expect(familySearchText(member)).toContain('بیمه تکمیلی');
   expect(familySearchText(member)).toContain('دانش‌آموز');
+  expect(familySearchText(member)).not.toContain('بیمه تکمیلی');
 });
 
-test('summarizes members by dependency and source', () => {
+test('summarizes members by dependency', () => {
   const summary = familySummary([
-    { is_dependent: true, source: 'supplementary_insurance' },
-    { is_dependent: true, source: 'manual' },
-    { is_dependent: false, source: 'manual' },
+    { is_dependent: true },
+    { is_dependent: true },
+    { is_dependent: false },
   ]);
-  expect(summary).toEqual({ total: 3, dependents: 2, fromInsurance: 1, manual: 2 });
-  expect(familySummary()).toEqual({ total: 0, dependents: 0, fromInsurance: 0, manual: 0 });
+  expect(summary).toEqual({ total: 3, dependents: 2 });
+  expect(familySummary()).toEqual({ total: 0, dependents: 0 });
 });

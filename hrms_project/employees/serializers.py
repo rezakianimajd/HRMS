@@ -292,7 +292,14 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
     attachment_size = serializers.SerializerMethodField()
     attachment_size_display = serializers.SerializerMethodField()
     has_attachment = serializers.SerializerMethodField()
-    family_member = serializers.PrimaryKeyRelatedField(read_only=True)
+    family_member = serializers.PrimaryKeyRelatedField(
+        queryset=EmployeeFamilyMember.objects.all(), required=False, allow_null=True,
+    )
+    family_member_name = serializers.SerializerMethodField()
+    family_member_relation = serializers.SerializerMethodField()
+    family_attachment_url = serializers.SerializerMethodField()
+    family_attachment_name = serializers.SerializerMethodField()
+    family_has_attachment = serializers.SerializerMethodField()
 
     class Meta:
         model = SupplementaryInsuranceDependent
@@ -300,10 +307,17 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
             'id', 'insurance', 'first_name', 'last_name',
             'relation', 'relation_display',
             'national_id', 'birth_date', 'family_member',
+            'family_member_name', 'family_member_relation',
+            'family_attachment_url', 'family_attachment_name', 'family_has_attachment',
             'attachment', 'attachment_url', 'attachment_name',
             'attachment_size', 'attachment_size_display', 'has_attachment',
             'remove_attachment',
         ]
+        extra_kwargs = {
+            'first_name': {'required': False, 'allow_blank': True},
+            'last_name': {'required': False, 'allow_blank': True},
+            'relation': {'required': False},
+        }
 
     def validate_national_id(self, value):
         normalized = str(value or '').translate(
@@ -315,20 +329,29 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('کد ملی باید ۱۰ رقم باشد.')
         return normalized
 
+    def _attachment_file(self, obj):
+        if getattr(obj, 'attachment', None):
+            return obj.attachment
+        member = getattr(obj, 'family_member', None)
+        return getattr(member, 'attachment', None) if member else None
+
     def get_attachment_url(self, obj):
-        if not obj.attachment:
+        attachment = self._attachment_file(obj)
+        if not attachment:
             return ''
         request = self.context.get('request')
-        return request.build_absolute_uri(obj.attachment.url) if request else obj.attachment.url
+        return request.build_absolute_uri(attachment.url) if request else attachment.url
 
     def get_attachment_name(self, obj):
-        return os.path.basename(obj.attachment.name) if obj.attachment else ''
+        attachment = self._attachment_file(obj)
+        return os.path.basename(attachment.name) if attachment else ''
 
     def get_attachment_size(self, obj):
-        if not obj.attachment:
+        attachment = self._attachment_file(obj)
+        if not attachment:
             return 0
         try:
-            return int(obj.attachment.size)
+            return int(attachment.size)
         except Exception:  # noqa: BLE001
             return 0
 
@@ -343,7 +366,56 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
         return f'{size / (1024 * 1024):.2f} MB'
 
     def get_has_attachment(self, obj):
-        return bool(obj.attachment)
+        return bool(self._attachment_file(obj))
+
+    def get_family_member_name(self, obj):
+        member = getattr(obj, 'family_member', None)
+        return getattr(member, 'full_name', '') or ''
+
+    def get_family_member_relation(self, obj):
+        member = getattr(obj, 'family_member', None)
+        return member.get_relation_display() if member else ''
+
+    def _family_attachment(self, obj):
+        member = getattr(obj, 'family_member', None)
+        return getattr(member, 'attachment', None) if member else None
+
+    def get_family_attachment_url(self, obj):
+        attachment = self._family_attachment(obj)
+        if not attachment:
+            return ''
+        request = self.context.get('request')
+        return request.build_absolute_uri(attachment.url) if request else attachment.url
+
+    def get_family_attachment_name(self, obj):
+        attachment = self._family_attachment(obj)
+        return os.path.basename(attachment.name) if attachment else ''
+
+    def get_family_has_attachment(self, obj):
+        return bool(self._family_attachment(obj))
+
+    @staticmethod
+    def _apply_family(validated_data):
+        family = validated_data.get('family_member')
+        if not family:
+            return validated_data
+        validated_data.update({
+            'first_name': (family.first_name or '').strip() or 'بدون نام',
+            'last_name': (family.last_name or '').strip(),
+            'relation': family.relation or 'other',
+            'national_id': (family.national_id or '').strip() or None,
+            'birth_date': family.birth_date,
+        })
+        return validated_data
+
+    def validate(self, attrs):
+        family = attrs.get('family_member') or getattr(self.instance, 'family_member', None)
+        insurance = attrs.get('insurance') or getattr(self.instance, 'insurance', None)
+        if family and insurance and family.employee_id != insurance.employee_id:
+            raise serializers.ValidationError(
+                'عضو خانواده باید متعلق به همان پرسنل بیمه باشد.'
+            )
+        return attrs
 
     @staticmethod
     def _drop_attachment(instance):
@@ -363,20 +435,19 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop('remove_attachment', None)
-        return super().create(validated_data)
+        return super().create(self._apply_family(validated_data))
 
     def update(self, instance, validated_data):
         remove_attachment = validated_data.pop('remove_attachment', False)
         if remove_attachment:
             self._drop_attachment(instance)
-        return super().update(instance, validated_data)
+        return super().update(instance, self._apply_family(validated_data))
 
 
 class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
     """عضو خانوادهٔ پرسنل (پروندهٔ پرسنلی ← خانواده)."""
 
     relation_display = serializers.CharField(source='get_relation_display', read_only=True)
-    source_display = serializers.CharField(source='get_source_display', read_only=True)
     full_name = serializers.CharField(read_only=True)
     age = serializers.IntegerField(read_only=True, allow_null=True)
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
@@ -389,8 +460,11 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
     insurance_status = serializers.SerializerMethodField()
     insurance_status_label = serializers.SerializerMethodField()
     insurance_period = serializers.SerializerMethodField()
+    attachment = serializers.FileField(required=False, allow_null=True)
+    remove_attachment = serializers.BooleanField(write_only=True, required=False, default=False)
     attachment_url = serializers.SerializerMethodField()
     attachment_name = serializers.SerializerMethodField()
+    has_attachment = serializers.SerializerMethodField()
 
     class Meta:
         model = EmployeeFamilyMember
@@ -400,16 +474,16 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'full_name',
             'relation', 'relation_display',
             'national_id', 'birth_date', 'phone',
-            'is_dependent', 'source', 'source_display', 'source_key',
-            'age', 'notes', 'is_active',
+            'is_dependent', 'age', 'notes', 'is_active',
+            'attachment', 'remove_attachment', 'attachment_url', 'attachment_name', 'has_attachment',
             'insurance_name', 'insurance_status', 'insurance_status_label',
-            'insurance_period', 'attachment_url', 'attachment_name',
+            'insurance_period',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'company', 'employee_name', 'employee_code', 'employee_photo_url',
             'employee_gender', 'department_name', 'job_title_name', 'full_name',
-            'relation_display', 'source_display', 'source_key', 'age',
+            'relation_display', 'age', 'has_attachment',
             'insurance_name', 'insurance_status', 'insurance_status_label',
             'insurance_period', 'attachment_url', 'attachment_name',
             'created_at', 'updated_at',
@@ -470,18 +544,46 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
         end = jalali(insurance.end_date) if insurance.end_date else 'اکنون'
         return f'{jalali(insurance.start_date)} تا {end}'
 
-    def get_attachment_url(self, obj):
+    def _attachment_file(self, obj):
+        if getattr(obj, 'attachment', None):
+            return obj.attachment
         _insurance, dependent = self._preferred(obj)
-        attachment = getattr(dependent, 'attachment', None)
+        return getattr(dependent, 'attachment', None)
+
+    def get_attachment_url(self, obj):
+        attachment = self._attachment_file(obj)
         if not attachment:
             return ''
         request = self.context.get('request')
         return request.build_absolute_uri(attachment.url) if request else attachment.url
 
     def get_attachment_name(self, obj):
-        _insurance, dependent = self._preferred(obj)
-        attachment = getattr(dependent, 'attachment', None)
+        attachment = self._attachment_file(obj)
         return str(getattr(attachment, 'name', '') or '').split('/')[-1] if attachment else ''
+
+    def get_has_attachment(self, obj):
+        return bool(self._attachment_file(obj))
+
+    def validate_attachment(self, value):
+        if not value:
+            return value
+        extension = os.path.splitext(getattr(value, 'name', ''))[1].lower()
+        if extension not in self.ALLOWED_ATTACHMENT_EXTENSIONS:
+            raise serializers.ValidationError('فرمت پیوست باید PDF یا تصویر (JPG/PNG/WEBP) باشد.')
+        if int(getattr(value, 'size', 0)) > self.MAX_ATTACHMENT_SIZE:
+            raise serializers.ValidationError('حجم پیوست نباید بیشتر از ۱۰ مگابایت باشد.')
+        return value
+
+    def create(self, validated_data):
+        validated_data.pop('remove_attachment', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        remove_attachment = validated_data.pop('remove_attachment', False)
+        if remove_attachment and instance.attachment:
+            instance.attachment.delete(save=False)
+            instance.attachment = None
+        return super().update(instance, validated_data)
 
 
 class SupplementaryInsuranceSerializer(serializers.ModelSerializer):
