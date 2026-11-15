@@ -21,12 +21,14 @@ import PlaylistAddCheckOutlinedIcon from '@mui/icons-material/PlaylistAddCheckOu
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
+import SubdirectoryArrowLeftIcon from '@mui/icons-material/SubdirectoryArrowLeft';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
+import RichTextEditor from './RichTextEditor';
 import {
   TASK_PRIORITY_META, TASK_PRIORITY_ORDER, TASK_STATUS_META, TASK_STATUS_ORDER,
-  checklistStats, initialsOf, notePalette, tagsFrom, toneColor,
+  checklistStats, htmlToText, initialsOf, notePalette, tagsFrom, toneColor,
 } from './planningTheme';
 
 /* ------------------------------------------------------------------ پوستهٔ دیالوگ */
@@ -163,29 +165,30 @@ export const TagInput = ({ value = [], onChange, label, placeholder, theme }) =>
 };
 
 /* ------------------------------------------------------------------ ورودی چک‌لیست */
-export const ChecklistEditor = ({ value = [], onChange, theme }) => {
-  const rows = Array.isArray(value) ? value : [];
-  const stats = checklistStats(rows);
+const ChecklistRows = ({ rows, onChange, theme, depth = 0 }) => {
   const patchRow = (index, patch) => onChange(
     rows.map((row, position) => (position === index ? { ...row, ...patch } : row)),
   );
+  const addChild = (index) => patchRow(index, {
+    children: [...(rows[index].children || []), { text: '', done: false }],
+  });
   return (
-    <Box>
-      <Stack spacing={0.6}>
-        {rows.map((row, index) => (
-          <Stack key={`check-${index}`} direction="row" alignItems="center" spacing={0.5}>
+    <Stack spacing={0.6}>
+      {rows.map((row, index) => (
+        <Box key={`check-${depth}-${index}`}>
+          <Stack direction="row" alignItems="center" spacing={0.4}>
             <Checkbox
               size="small"
               checked={Boolean(row.done)}
               onChange={(event) => patchRow(index, { done: event.target.checked })}
-              inputProps={{ 'aria-label': `انجام مورد ${index + 1}` }}
+              inputProps={{ 'aria-label': `انجام مورد ${toPersianDigits(index + 1)}` }}
               sx={{ p: 0.4 }}
             />
             <TextField
               size="small"
               fullWidth
               value={row.text || ''}
-              placeholder="شرح مورد…"
+              placeholder={depth ? 'شرح زیرمجموعه…' : 'شرح مورد…'}
               onChange={(event) => patchRow(index, { text: event.target.value })}
               sx={{
                 '& .MuiInputBase-input': {
@@ -194,14 +197,50 @@ export const ChecklistEditor = ({ value = [], onChange, theme }) => {
                 },
               }}
             />
-            <IconButton size="small" aria-label="حذف مورد" onClick={() => onChange(
-              rows.filter((_item, position) => position !== index),
-            )}>
+            {depth < 2 ? (
+              <Tooltip title="افزودن زیرمجموعه">
+                <IconButton
+                  size="small"
+                  aria-label={`افزودن زیرمجموعه به مورد ${toPersianDigits(index + 1)}`}
+                  onClick={() => addChild(index)}
+                >
+                  <SubdirectoryArrowLeftIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            ) : null}
+            <IconButton
+              size="small"
+              aria-label="حذف مورد"
+              onClick={() => onChange(rows.filter((_item, position) => position !== index))}
+            >
               <DeleteOutlineIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Stack>
-        ))}
-      </Stack>
+          {row.children?.length ? (
+            <Box sx={{
+              mt: 0.5, paddingInlineStart: 2,
+              borderInlineStart: '2px solid', borderColor: 'divider',
+            }}>
+              <ChecklistRows
+                rows={row.children}
+                onChange={(children) => patchRow(index, { children })}
+                theme={theme}
+                depth={depth + 1}
+              />
+            </Box>
+          ) : null}
+        </Box>
+      ))}
+    </Stack>
+  );
+};
+
+export const ChecklistEditor = ({ value = [], onChange, theme }) => {
+  const rows = Array.isArray(value) ? value : [];
+  const stats = checklistStats(rows);
+  return (
+    <Box>
+      <ChecklistRows rows={rows} onChange={onChange} theme={theme} />
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.75 }}>
         <Button
           size="small"
@@ -218,7 +257,7 @@ export const ChecklistEditor = ({ value = [], onChange, theme }) => {
           </Typography>
         ) : (
           <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
-            چک‌لیست اختیاری است؛ برای کارهای چندمرحله‌ای مفید است.
+            چک‌لیست اختیاری است؛ با آیکن زیرمجموعه می‌توانید برای هر مورد مرحلهٔ فرعی بسازید.
           </Typography>
         )}
       </Stack>
@@ -298,7 +337,7 @@ export const ColorSwatches = ({ theme, value, onChange }) => (
 /* ------------------------------------------------------------------ دیالوگ یادداشت */
 export const NoteDialog = ({ open, form, setForm, onClose, onSave, saving, theme }) => {
   const color = form.color || theme.accent;
-  const chars = String(form.body || '').length;
+  const chars = htmlToText(form.body).length;
   return (
     <DialogShell
       open={open}
@@ -312,6 +351,7 @@ export const NoteDialog = ({ open, form, setForm, onClose, onSave, saving, theme
         <Chip size="small" label="سنجاق‌شده" sx={{ height: 20, fontSize: 10, fontWeight: 800 }} />
       ) : null}
       maxWidth="sm"
+      testId="planning-note-dialog"
       footer={(
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography sx={{ fontSize: 10, color: 'text.secondary', flex: 1 }}>
@@ -340,13 +380,11 @@ export const NoteDialog = ({ open, form, setForm, onClose, onSave, saving, theme
               value={form.title || ''}
               onChange={(event) => setForm((previous) => ({ ...previous, title: event.target.value }))}
             />
-            <TextField
-              size="small"
-              label="متن یادداشت"
-              multiline
-              minRows={6}
+            <RichTextEditor
+              theme={theme}
               value={form.body || ''}
-              onChange={(event) => setForm((previous) => ({ ...previous, body: event.target.value }))}
+              onChange={(body) => setForm((previous) => ({ ...previous, body }))}
+              placeholder="متن یادداشت… (بولد، ایتالیک، رنگ و لیست از نوار بالا)"
             />
           </Stack>
         </Box>
@@ -438,6 +476,7 @@ export const TaskDialog = ({
         />
       )}
       maxWidth="md"
+      testId="planning-task-dialog"
       footer={(
         <Stack direction="row" spacing={1} alignItems="center">
           <Button

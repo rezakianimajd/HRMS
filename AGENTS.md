@@ -624,6 +624,26 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **ساده‌سازی و غنی‌سازی «یادداشت‌ها و وظایف» (۲۰۲۶-۱۱-۱۵):**
+  - چیدمان: ۵ کارت شاخص حذف شد و تب‌ها زیر هدر آمدند؛ «فقط من/اشتراکی با من/همه»، وضعیت/اولویت،
+    رنگ/برچسب و سنجاق به **پنل فیلتر `ModuleToolbar`** منتقل شدند؛ دکمه‌های «یادداشت جدید/وظیفه جدید»
+    فقط در هدر هستند. «یادداشت سریع»، ردیف عنوان/چیپ بالای شبکهٔ یادداشت‌ها، دکمهٔ «فیلتر پیشرفته»
+    و چیپ‌های وضعیت وظایف حذف شدند. وظایف هم **کارتی** شدند (جدول، تختهٔ کانبان و کلید تغییر نما حذف شد).
+  - **ادیتور متن غنی یادداشت** (`pages/planning/RichTextEditor.jsx`، بدون وابستگی بیرونی):
+    بولد/ایتالیک/زیرخط، لیست نقطه‌ای و شماره‌دار، رنگ از پالت تم و حذف قالب‌بندی. HTML در سرور با
+    `planning/richtext.py::sanitize_html` پاک‌سازی می‌شود (تگ‌های مجاز + فقط رنگ هگز/rgb؛
+    `script`/`on*`/`img` حذف) و کارت یادداشت با `dangerouslySetInnerHTML` همان HTML امن را نشان می‌دهد.
+  - **چک‌لیست تودرتو:** `normalize_checklist`/`checklist_stats` در `planning/richtext.py` و آینهٔ فرانت
+    (`planningTheme.js`)؛ زیرمجموعه تا دو سطح، شمارنده شامل فرزندان و چک‌باکس هر ردیف.
+  - **رفع ریشه‌ای باگ «متن یادداشت پاک می‌شود»:** `NoteSerializer.body` و `TaskSerializer.description`
+    با `SerializerMethodField` تعریف شده بودند (فقط‌خواندنی) و ورودی UI دور ریخته می‌شد؛ حالا
+    `CharField` نوشتنی + `to_representation` برای رمزگشایی. تست `PlanningSerializerFieldTests` قفلش می‌کند.
+  - تست: بک `planning` **۲۸**؛ فرانت `planningSmoke` **۳** (ذخیرهٔ HTML یادداشت + زیرمجموعهٔ چک‌لیست)
+    + `workspaceDock`/`chatSmoke` سبز. باندل زنده: **`main.5b3d94a9.js`**.
+  - تأیید زندهٔ `kpsmi`: POST یادداشت ۲۰۱ با
+    `body=<b>bold</b> <i>it</i><span style="color:#0ea5e9">c</span><ul><li>one</li></ul>`
+    (تگ `script` حذف شد)، چک‌لیست تودرتو در یادداشت و وظیفه ذخیره و برگشت داده شد؛ سپس rollback.
+
 - **صفحهٔ «یادداشت‌ها و وظایف» کامل بازطراحی شد (۲۰۲۶-۱۱-۱۵):**
   - فرانت به پنج ماژول شکسته شد: `pages/planning/planningTheme.js` (توکن‌ها/متادیتا + هِلپرهای
     تاریخ شمسی، وضعیت سررسید و چک‌لیست)، `planningUi.jsx` (`KpiTile`, `NoteCard`, `TaskCard`,

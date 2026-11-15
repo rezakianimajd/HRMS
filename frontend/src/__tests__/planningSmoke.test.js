@@ -108,7 +108,7 @@ test('planning page renders notes and can switch to tasks', async () => {
   container.remove();
 });
 
-test('planning board view and the redesigned dialogs render', async () => {
+test('planning rich text note saves and task checklist supports sub items', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -126,34 +126,68 @@ test('planning board view and the redesigned dialogs render', async () => {
   });
   await act(async () => { await wait(250); });
 
-  // دیالوگ بازطراحی‌شدهٔ یادداشت: بخش‌های رنگ/برچسب و چک‌لیست
+  // دیالوگ یادداشت: ادیتور متن غنی و ذخیرهٔ همان متن (باگ قبلی: متن پاک می‌شد)
   const noteButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.includes('یادداشت جدید'));
   expect(noteButton).toBeTruthy();
   await act(async () => { noteButton.click(); await wait(250); });
-  expect(document.body.textContent).toContain('عنوان و متن یادداشت');
-  expect(document.body.textContent).toContain('رنگ و برچسب');
-  expect(document.body.textContent).toContain('چک‌لیست');
 
-  const cancelButton = Array.from(document.querySelectorAll('button'))
-    .find((button) => button.textContent.trim() === 'انصراف');
-  expect(cancelButton).toBeTruthy();
-  await act(async () => { cancelButton.click(); await wait(200); });
+  const noteDialog = document.querySelector('[data-testid="planning-note-dialog"]');
+  expect(noteDialog).toBeTruthy();
+  expect(noteDialog.textContent).toContain('عنوان و متن یادداشت');
+  expect(noteDialog.textContent).toContain('رنگ و برچسب');
+  expect(noteDialog.querySelector('[aria-label="بولد (Ctrl+B)"]')).toBeTruthy();
 
-  // تختهٔ کانبان وظایف
+  const editor = noteDialog.querySelector('[data-testid="planning-rich-text"]');
+  expect(editor).toBeTruthy();
+  editor.innerHTML = '<b>متن پررنگ</b>';
+  await act(async () => {
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(50);
+  });
+
+  const titleInput = noteDialog.querySelector('input');
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype, 'value',
+  ).set;
+  await act(async () => {
+    valueSetter.call(titleInput, 'یادداشت تست');
+    titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(50);
+  });
+
+  const saveNoteButton = Array.from(noteDialog.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('ساخت یادداشت'));
+  expect(saveNoteButton).toBeTruthy();
+  await act(async () => { saveNoteButton.click(); await wait(200); });
+
+  const noteCall = axiosInstance.post.mock.calls
+    .find(([url]) => url === '/planning/notes/');
+  expect(noteCall).toBeTruthy();
+  expect(noteCall[1].title).toBe('یادداشت تست');
+  expect(noteCall[1].body).toContain('<b>متن پررنگ</b>');
+
+  // وظایف: کارت‌ها به‌جای جدول/تخته + چک‌لیست تودرتو در دیالوگ
   const tasksTab = Array.from(container.querySelectorAll('[role="tab"]'))
     .find((tab) => tab.textContent.includes('وظایف'));
   await act(async () => { tasksTab.click(); await wait(350); });
-  await act(async () => { await wait(250); });
-
-  const boardButton = container.querySelector('[aria-label="نمای تخته"]');
-  expect(boardButton).toBeTruthy();
-  await act(async () => { boardButton.click(); await wait(350); });
-  await act(async () => { await wait(350); });
-
+  await act(async () => { await wait(300); });
   expect(container.querySelectorAll('[data-testid="planning-task-card"]').length).toBeGreaterThan(0);
-  expect(container.textContent).toContain('انجام‌شده');
-  expect(container.textContent).toContain('لغو‌شده');
+
+  const newTaskButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('وظیفه جدید'));
+  await act(async () => { newTaskButton.click(); await wait(250); });
+  const taskDialog = document.querySelector('[data-testid="planning-task-dialog"]');
+  expect(taskDialog).toBeTruthy();
+  expect(taskDialog.textContent).toContain('این وظیفه برای چه کسی است؟');
+
+  const addItemButton = Array.from(taskDialog.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'افزودن مورد');
+  await act(async () => { addItemButton.click(); await wait(80); });
+  const addChildButton = taskDialog.querySelector('[aria-label="افزودن زیرمجموعه به مورد ۱"]');
+  expect(addChildButton).toBeTruthy();
+  await act(async () => { addChildButton.click(); await wait(80); });
+  expect(taskDialog.querySelectorAll('input[placeholder="شرح زیرمجموعه…"]').length).toBe(1);
 
   await act(async () => { root.unmount(); });
   container.remove();

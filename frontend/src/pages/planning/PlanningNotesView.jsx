@@ -1,38 +1,41 @@
 ﻿/**
- * نمای یادداشت‌ها: نوار ابزار تم‌محور + فیلترها + شبکهٔ کارت‌ها + صفحه‌بندی سروری.
+ * نمای یادداشت‌ها: نوار جستجو/فیلتر استاندارد + شبکهٔ کارت‌ها + صفحه‌بندی سروری.
+ *
+ * همهٔ فیلترها (دامنه، رنگ، برچسب، سنجاق) داخل پنل فیلتر نوار ابزار هستند؛
+ * دکمه‌های «افزودن» فقط در هدر صفحه قرار دارند.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Box, Button, Chip, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField,
-  Tooltip, Typography,
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import AddIcon from '@mui/icons-material/Add';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
-import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
+import { Box, Button, Paper } from '@mui/material';
 import axiosInstance from '../../core/api/axiosConfig';
-import { toPersianDigits } from '../../core/utils/numberUtils';
 import { ModulePager, ModuleToolbar } from '../contracts/contractModuleUi';
 import { EmptyState, LoadingBlock, NoteCard } from './planningUi';
-import { NOTE_SORT_OPTIONS, notePalette } from './planningTheme';
+import { NOTE_SORT_OPTIONS, SCOPES, notePalette } from './planningTheme';
+import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
+import AddIcon from '@mui/icons-material/Add';
 
 export const NOTES_PAGE_SIZE = 24;
+
+const COLOR_LABELS = {
+  accent: 'رنگ اصلی',
+  info: 'آبی',
+  success: 'سبز',
+  warning: 'نارنجی',
+  danger: 'قرمز',
+  neutral: 'خنثی',
+};
 
 const pickRows = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
 
 const PlanningNotesView = ({
-  theme, scope, search, apiSearch, onSearch, onCreate, onEdit, onShare, onDelete, onTogglePin,
-  onCreateTask, onQuickAdd,
+  theme, search, apiSearch, onSearch, onCreate, onEdit, onShare, onDelete, onTogglePin,
+  onCreateTask,
 }) => {
+  const [scope, setScope] = useState('mine');
   const [sort, setSort] = useState('-updated_at');
   const [color, setColor] = useState('');
   const [tag, setTag] = useState('');
   const [pinnedOnly, setPinnedOnly] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [quickTitle, setQuickTitle] = useState('');
   const [page, setPage] = useState(0);
 
   useEffect(() => { setPage(0); }, [apiSearch, scope, sort, color, tag, pinnedOnly]);
@@ -67,28 +70,69 @@ const PlanningNotesView = ({
     return Array.from({ length: Math.max(0, end - start) }, (_value, index) => start + index);
   }, [page, totalPages]);
 
+  const palette = notePalette(theme);
   const tagOptions = useMemo(() => {
     const set = new Set();
     rows.forEach((note) => (note.tags || []).forEach((item) => set.add(item)));
-    return Array.from(set).slice(0, 18);
+    return Array.from(set).slice(0, 20);
   }, [rows]);
 
-  const palette = notePalette(theme);
-  const activeFilters = (color ? 1 : 0) + (tag ? 1 : 0) + (pinnedOnly ? 1 : 0);
-  const resetFilters = () => { setColor(''); setTag(''); setPinnedOnly(false); };
+  const activeFilterCount = (scope !== 'mine' ? 1 : 0) + (color ? 1 : 0)
+    + (tag ? 1 : 0) + (pinnedOnly ? 1 : 0);
+  const resetFilters = () => {
+    setScope('mine');
+    setColor('');
+    setTag('');
+    setPinnedOnly(false);
+  };
 
-  const chips = [
-    color ? { key: 'color', label: 'فیلتر رنگ', clear: () => setColor('') } : null,
+  const filters = [
+    {
+      label: 'دامنه',
+      value: scope,
+      options: SCOPES,
+      onChange: setScope,
+    },
+    {
+      label: 'رنگ',
+      value: color,
+      options: [{ value: '', label: 'همهٔ رنگ‌ها' }, ...palette.map((item) => ({
+        value: item.color,
+        label: COLOR_LABELS[item.key] || item.key,
+      }))],
+      onChange: setColor,
+    },
+    {
+      label: 'برچسب',
+      value: tag,
+      options: [{ value: '', label: 'همهٔ برچسب‌ها' }, ...tagOptions.map((item) => ({
+        value: item,
+        label: item,
+      }))],
+      onChange: setTag,
+    },
+    {
+      label: 'سنجاق',
+      value: pinnedOnly ? '1' : '',
+      options: [{ value: '', label: 'همه' }, { value: '1', label: 'فقط سنجاق‌شده' }],
+      onChange: (value) => setPinnedOnly(value === '1'),
+    },
+  ];
+
+  const activeChips = [
+    scope !== 'mine' ? {
+      key: 'scope',
+      label: `دامنه: ${SCOPES.find((item) => item.value === scope)?.label || scope}`,
+      clear: () => setScope('mine'),
+    } : null,
+    color ? {
+      key: 'color',
+      label: 'فیلتر رنگ',
+      clear: () => setColor(''),
+    } : null,
     tag ? { key: 'tag', label: `برچسب: ${tag}`, clear: () => setTag('') } : null,
     pinnedOnly ? { key: 'pinned', label: 'فقط سنجاق‌شده', clear: () => setPinnedOnly(false) } : null,
   ].filter(Boolean);
-
-  const submitQuick = () => {
-    const title = quickTitle.trim();
-    if (!title) return;
-    onQuickAdd(title);
-    setQuickTitle('');
-  };
 
   return (
     <Box>
@@ -96,138 +140,15 @@ const PlanningNotesView = ({
         theme={theme}
         search={search}
         onSearch={onSearch}
-        searchPlaceholder="جستجو در عنوان، متن و برچسب یادداشت‌ها…"
+        searchPlaceholder="جستجو در عنوان و برچسب یادداشت‌ها…"
         sort={sort}
         sortOptions={NOTE_SORT_OPTIONS}
         onSort={setSort}
-        activeChips={chips}
-        activeFilterCount={activeFilters}
+        filters={filters}
+        activeChips={activeChips}
+        activeFilterCount={activeFilterCount}
         onReset={resetFilters}
-        filtersOpen={filtersOpen}
-        setFiltersOpen={setFiltersOpen}
-      >
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<AddIcon fontSize="small" />}
-          onClick={onCreate}
-          sx={{ height: `${theme.toolbar.searchHeight}px !important`, minWidth: 'auto', px: 2 }}
-        >
-          یادداشت جدید
-        </Button>
-      </ModuleToolbar>
-
-      {filtersOpen ? (
-        <Paper elevation={0} sx={{
-          p: 1.25, mb: 1.5, borderRadius: theme.radii.large,
-          border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper',
-        }}>
-          <Box sx={{
-            display: 'grid', gap: 1.25, alignItems: 'center',
-            gridTemplateColumns: { xs: '1fr', md: 'auto 1fr auto' },
-          }}>
-            <Stack direction="row" spacing={0.5} alignItems="center">
-              <Typography sx={{ fontSize: 11, fontWeight: 700, color: theme.tones.muted }}>رنگ:</Typography>
-              {palette.map((item) => (
-                <Tooltip key={item.key} title={item.key}>
-                  <Box
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`فیلتر رنگ ${item.key}`}
-                    onClick={() => setColor(color === item.color ? '' : item.color)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        setColor(color === item.color ? '' : item.color);
-                      }
-                    }}
-                    sx={{
-                      width: 20, height: 20, borderRadius: '50%', bgcolor: item.color, cursor: 'pointer',
-                      border: color === item.color ? `2px solid ${theme.tones.text}` : '2px solid transparent',
-                      boxShadow: color === item.color ? `0 0 0 2px ${alpha(item.color, 0.25)}` : 'none',
-                    }}
-                  />
-                </Tooltip>
-              ))}
-            </Stack>
-            <TextField
-              size="small"
-              select
-              label="برچسب"
-              value={tag}
-              onChange={(event) => setTag(event.target.value)}
-              sx={{ minWidth: { xs: '100%', sm: 200 } }}
-            >
-              <MenuItem value="">همهٔ برچسب‌ها</MenuItem>
-              {tagOptions.map((item) => <MenuItem key={item} value={item}>{item}</MenuItem>)}
-            </TextField>
-            <Stack direction="row" spacing={0.75} alignItems="center">
-              <Button
-                size="small"
-                variant={pinnedOnly ? 'contained' : 'outlined'}
-                startIcon={<PushPinOutlinedIcon fontSize="small" />}
-                onClick={() => setPinnedOnly((previous) => !previous)}
-              >
-                فقط سنجاق‌شده
-              </Button>
-              <IconButton size="small" aria-label="پاک‌کردن فیلترها" onClick={resetFilters}
-                disabled={!activeFilters}>
-                <ClearAllIcon fontSize="small" />
-              </IconButton>
-            </Stack>
-          </Box>
-        </Paper>
-      ) : null}
-
-      <Paper elevation={0} sx={{
-        p: 1, mb: 1.5, borderRadius: theme.radii.large, border: '1px dashed',
-        borderColor: alpha(theme.accent, 0.35), bgcolor: alpha(theme.accent, 0.035),
-      }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
-          <TextField
-            size="small"
-            value={quickTitle}
-            onChange={(event) => setQuickTitle(event.target.value)}
-            onKeyDown={(event) => { if (event.key === 'Enter') submitQuick(); }}
-            placeholder="یادداشت سریع… (Enter برای افزودن)"
-            sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: theme.radii.medium } }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <StickyNote2OutlinedIcon sx={{ fontSize: 17, color: theme.accent }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon />}
-            disabled={!quickTitle.trim()}
-            onClick={submitQuick}
-          >
-            افزودن یادداشت
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1 }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 900, color: theme.tones.text }}>
-          یادداشت‌ها
-        </Typography>
-        <Chip
-          size="small"
-          label={`${toPersianDigits(total)} یادداشت`}
-          sx={{
-            height: 21, fontSize: 10.5, fontWeight: 800,
-            bgcolor: alpha(theme.accent, 0.08), color: theme.accent,
-          }}
-        />
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="text" startIcon={<FilterAltIcon />}
-          onClick={() => setFiltersOpen((value) => !value)}>
-          {filtersOpen ? 'بستن فیلترها' : 'فیلتر پیشرفته'}
-        </Button>
-      </Stack>
+      />
 
       {isLoading && !rows.length ? (
         <LoadingBlock />
@@ -235,10 +156,7 @@ const PlanningNotesView = ({
         <Box sx={{ opacity: isFetching ? 0.65 : 1, transition: 'opacity .15s ease' }}>
           <Box sx={{
             display: 'grid', gap: 1.25,
-            gridTemplateColumns: {
-              xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))',
-              xl: 'repeat(4, minmax(0, 1fr))',
-            },
+            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
           }}>
             {rows.map((note) => (
               <NoteCard
@@ -274,7 +192,7 @@ const PlanningNotesView = ({
           theme={theme}
           icon={StickyNote2OutlinedIcon}
           title="یادداشتی با این شرایط پیدا نشد"
-          hint="اولین یادداشت را از کادر بالا یا دکمهٔ «یادداشت جدید» بسازید؛ یادداشت‌ها رمزنگاری‌شده و خصوصی هستند."
+          hint="برای ساخت یادداشت از دکمهٔ «یادداشت جدید» در بالای صفحه استفاده کنید؛ یادداشت‌ها رمزنگاری‌شده و خصوصی هستند."
           action={(
             <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={onCreate}>
               یادداشت جدید

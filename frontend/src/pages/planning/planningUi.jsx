@@ -293,15 +293,22 @@ export const NoteCard = ({
       </Stack>
 
       {note.body ? (
-        <Typography
+        <Box
+          data-testid="planning-note-body"
           sx={{
-            fontSize: 11, lineHeight: 1.85, color: theme.tones.muted, whiteSpace: 'pre-wrap',
-            display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical',
-            overflow: 'hidden', flex: 1,
+            fontSize: 11, lineHeight: 1.85, color: theme.tones.muted, flex: 1,
+            display: '-webkit-box', WebkitLineClamp: 6, WebkitBoxOrient: 'vertical',
+            overflow: 'hidden', wordBreak: 'break-word',
+            '& p': { margin: 0 },
+            '& ul, & ol': { margin: 0, paddingInlineStart: '18px' },
+            '& blockquote': {
+              margin: '2px 0', paddingInlineStart: 8,
+              borderInlineStart: '3px solid', borderColor: 'divider',
+            },
+            '& a': { color: theme.accent },
           }}
-        >
-          {note.body}
-        </Typography>
+          dangerouslySetInnerHTML={{ __html: note.body }}
+        />
       ) : (
         <Typography sx={{ fontSize: 11, color: theme.tones.muted, flex: 1 }}>—</Typography>
       )}
@@ -356,16 +363,18 @@ export const TaskCard = ({
   theme, task, onEdit, onShare, onDelete, onToggle, onDragStart, dragging,
 }) => {
   const done = task.status === 'done';
+  const draggable = Boolean(onDragStart);
   return (
     <Paper
       elevation={0}
       data-testid="planning-task-card"
-      draggable
-      onDragStart={(event) => onDragStart(task, event)}
+      draggable={draggable}
+      onDragStart={draggable ? (event) => onDragStart(task, event) : undefined}
       sx={{
         p: 1, borderRadius: theme.radii.medium,
         border: '1px solid', borderColor: alpha(theme.tones.neutral, 0.22),
-        bgcolor: 'background.paper', boxShadow: 'none', cursor: 'grab',
+        bgcolor: 'background.paper', boxShadow: 'none',
+        cursor: draggable ? 'grab' : 'default',
         opacity: dragging ? 0.55 : 1,
         transition: 'border-color .16s ease, box-shadow .16s ease',
         '&:hover': { borderColor: alpha(theme.accent, 0.4), boxShadow: theme.shadows.card },

@@ -1,24 +1,18 @@
 ﻿/**
  * صفحهٔ «برنامه‌ریزی شخصی» — یادداشت‌ها و وظایف.
  *
- * ساختار: سرصفحهٔ استودیو + نوار شاخص + انتخاب دامنه + تب‌ها؛ نمای یادداشت‌ها و
- * نمای وظایف (فهرست/تخته) در فایل‌های جدا و دیالوگ‌ها در ``PlanningDialogs``.
+ * چیدمان: هدر → تب‌ها → نوار جستجو/فیلتر استاندارد → کارت‌ها؛ افزودن فقط در هدر.
  * همهٔ رنگ/شعاع/سایه از استودیو تم می‌آید و هیچ مقدار hard-code ندارد.
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Alert, Box, Button, Chip, Stack, ToggleButton, ToggleButtonGroup, Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Chip, Stack } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AddIcon from '@mui/icons-material/Add';
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
-import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import axiosInstance from '../../core/api/axiosConfig';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { TabsCard } from '../../core/components/settings/settingsUi';
@@ -26,10 +20,9 @@ import { toPersianDigits } from '../../core/utils/numberUtils';
 import PlanningNotesView from './PlanningNotesView';
 import PlanningTasksView from './PlanningTasksView';
 import { GroupsDialog, NoteDialog, ShareDialog, TaskDialog } from './PlanningDialogs';
-import { KpiTile } from './planningUi';
 import {
-  EMPTY_NOTE, EMPTY_TASK, TASK_PRIORITY_META, TASK_STATUS_META, normalizeChecklist,
-  usePlanningTheme,
+  EMPTY_NOTE, EMPTY_TASK, TASK_PRIORITY_META, TASK_STATUS_META, htmlToText,
+  normalizeChecklist, usePlanningTheme,
 } from './planningTheme';
 
 const pickRows = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
@@ -41,8 +34,6 @@ const PlanningPanel = ({ initialTab = 0 }) => {
   const [tab, setTab] = useState(Number(initialTab) || 0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [scope, setScope] = useState('mine');
-  const [statusFilter, setStatusFilter] = useState('open');
   const [toast, setToast] = useState(null);
 
   const [noteForm, setNoteForm] = useState(EMPTY_NOTE);
@@ -123,12 +114,6 @@ const PlanningPanel = ({ initialTab = 0 }) => {
     onError: onError('ذخیرهٔ یادداشت انجام نشد'),
   });
 
-  const quickAddNote = useMutation({
-    mutationFn: (title) => axiosInstance.post('/planning/notes/', { title, color: theme.accent }),
-    onSuccess: () => { invalidate(); notify('یادداشت سریع اضافه شد'); },
-    onError: onError('افزودن یادداشت انجام نشد'),
-  });
-
   const toggleNotePin = useMutation({
     mutationFn: (row) => axiosInstance.patch(`/planning/notes/${row.id}/`, {
       is_pinned: !row.is_pinned,
@@ -177,12 +162,6 @@ const PlanningPanel = ({ initialTab = 0 }) => {
   const toggleTask = useMutation({
     mutationFn: (row) => axiosInstance.post(`/planning/tasks/${row.id}/toggle/`),
     onSuccess: invalidate,
-    onError: onError('تغییر وضعیت وظیفه انجام نشد'),
-  });
-
-  const changeStatus = useMutation({
-    mutationFn: ({ row, status }) => axiosInstance.patch(`/planning/tasks/${row.id}/`, { status }),
-    onSuccess: () => { invalidate(); notify('وضعیت وظیفه تغییر کرد'); },
     onError: onError('تغییر وضعیت وظیفه انجام نشد'),
   });
 
@@ -289,7 +268,7 @@ const PlanningPanel = ({ initialTab = 0 }) => {
   };
   const createTaskFromNote = (note) => openTaskNew('todo', {
     title: note.title || 'وظیفه از یادداشت',
-    description: note.body || '',
+    description: htmlToText(note.body),
     tags: Array.isArray(note.tags) ? note.tags : [],
     checklist: normalizeChecklist(note.checklist),
     related_label: `یادداشت: ${note.title || ''}`.trim(),
@@ -316,43 +295,11 @@ const PlanningPanel = ({ initialTab = 0 }) => {
     if (!window.confirm(`${label} «${row.title || row.name || ''}» حذف شود؟`)) return;
     mutation.mutate(row);
   };
-  const goTasks = (filter) => { setTab(1); setStatusFilter(filter); };
   const refreshAll = () => {
     summaryQuery.refetch();
     qc.invalidateQueries({ queryKey: ['planning', 'notes'] });
     qc.invalidateQueries({ queryKey: ['planning', 'tasks'] });
-    qc.invalidateQueries({ queryKey: ['planning', 'board'] });
   };
-
-  const kpis = [
-    {
-      key: 'notes', label: 'یادداشت‌های من', value: summary.notes || 0, tone: 'accent',
-      icon: StickyNote2OutlinedIcon,
-      hint: summary.pinned_notes ? `${toPersianDigits(summary.pinned_notes)} سنجاق‌شده` : 'خصوصی',
-      active: tab === 0, onClick: () => setTab(0),
-    },
-    {
-      key: 'open', label: 'وظایف باز', value: summary.open_tasks || 0, tone: 'info',
-      icon: TaskAltOutlinedIcon,
-      hint: `تکمیل ${toPersianDigits(summary.completion_rate || 0)}٪`,
-      active: tab === 1 && statusFilter === 'open', onClick: () => goTasks('open'),
-    },
-    {
-      key: 'doing', label: 'در حال انجام', value: summary.doing || 0, tone: 'accent',
-      icon: PendingActionsOutlinedIcon,
-      active: tab === 1 && statusFilter === 'doing', onClick: () => goTasks('doing'),
-    },
-    {
-      key: 'today', label: 'سررسید امروز', value: summary.due_today || 0, tone: 'warning',
-      icon: EventOutlinedIcon,
-      active: tab === 1 && statusFilter === 'today', onClick: () => goTasks('today'),
-    },
-    {
-      key: 'overdue', label: 'معوق', value: summary.overdue || 0, tone: 'danger',
-      icon: WarningAmberOutlinedIcon,
-      active: tab === 1 && statusFilter === 'overdue', onClick: () => goTasks('overdue'),
-    },
-  ];
 
   return (
     <Box sx={{ pb: 1 }}>
@@ -421,55 +368,6 @@ const PlanningPanel = ({ initialTab = 0 }) => {
         </Alert>
       ) : null}
 
-      <Box sx={{
-        display: 'grid', gap: 1.25, mb: 1.5,
-        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(5, minmax(0, 1fr))' },
-      }}>
-        {kpis.map((kpi) => (
-          <KpiTile
-            key={kpi.key}
-            theme={theme}
-            icon={kpi.icon}
-            label={kpi.label}
-            value={kpi.value}
-            hint={kpi.hint}
-            tone={kpi.tone}
-            active={kpi.active}
-            onClick={kpi.onClick}
-          />
-        ))}
-      </Box>
-
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={1.25}
-        alignItems={{ sm: 'center' }}
-        sx={{
-          p: 1, mb: 1.5, borderRadius: theme.radii.large, border: '1px solid',
-          borderColor: theme.cardBorderColor, bgcolor: alpha(theme.accent, 0.02),
-        }}
-      >
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={scope}
-          onChange={(_event, next) => { if (next) setScope(next); }}
-          aria-label="دامنهٔ نمایش"
-          sx={{ '& .MuiToggleButton-root': { fontSize: 10.5, py: 0.4, fontWeight: 800, px: 1.25 } }}
-        >
-          <ToggleButton value="mine">فقط من</ToggleButton>
-          <ToggleButton value="shared">اشتراکی با من</ToggleButton>
-          <ToggleButton value="all">همه</ToggleButton>
-        </ToggleButtonGroup>
-        <Typography sx={{ fontSize: 10.5, color: theme.tones.muted }}>
-          {scope === 'mine'
-            ? 'یادداشت‌ها و وظایف شخصی شما (و وظایفی که به شما محول شده است).'
-            : scope === 'shared'
-              ? 'فقط آیتم‌هایی که همکاران با شما به اشتراک گذاشته‌اند.'
-              : 'همهٔ یادداشت‌ها و وظایف مرتبط با شما.'}
-        </Typography>
-      </Stack>
-
       <TabsCard
         dense
         activeColor={theme.accent}
@@ -495,7 +393,6 @@ const PlanningPanel = ({ initialTab = 0 }) => {
       {tab === 0 ? (
         <PlanningNotesView
           theme={theme}
-          scope={scope}
           search={search}
           apiSearch={debouncedSearch}
           onSearch={setSearch}
@@ -505,24 +402,18 @@ const PlanningPanel = ({ initialTab = 0 }) => {
           onDelete={(row) => confirmDelete(removeNote, row, 'یادداشت')}
           onTogglePin={(row) => toggleNotePin.mutate(row)}
           onCreateTask={createTaskFromNote}
-          onQuickAdd={(title) => quickAddNote.mutate(title)}
         />
       ) : (
         <PlanningTasksView
           theme={theme}
-          scope={scope}
           search={search}
           apiSearch={debouncedSearch}
           onSearch={setSearch}
-          statusFilter={statusFilter}
-          onStatusFilter={setStatusFilter}
-          summary={summary}
           onCreate={(status) => openTaskNew(status || 'todo')}
           onEdit={openTaskEdit}
           onShare={(row) => openShare('task', row)}
           onDelete={(row) => confirmDelete(removeTask, row, 'وظیفه')}
           onToggle={(row) => toggleTask.mutate(row)}
-          onStatusChange={(row, status) => changeStatus.mutate({ row, status })}
         />
       )}
 

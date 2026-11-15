@@ -5,8 +5,9 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase, override_settings
 
-from planning import query, services
+from planning import query, richtext, services
 from planning.models import PlanningShare, Task
+from planning.serializers import NoteSerializer, TaskSerializer
 
 
 class PlanningCryptoTests(SimpleTestCase):
@@ -83,6 +84,86 @@ class TaskModelLogicTests(SimpleTestCase):
             )
         self.assertEqual(len(shares), 1)
         notify.assert_called_once()
+
+
+class PlanningRichTextTests(SimpleTestCase):
+    """پاک‌سازی HTML یادداشت و چک‌لیست تودرتو (بدون دیتابیس)."""
+
+    def test_allows_basic_formatting_and_colors(self):
+        value = '<b>پررنگ</b> <i>ایتالیک</i><span style="color:#be123c">رنگ</span>'
+        cleaned = richtext.sanitize_html(value)
+        self.assertIn('<b>پررنگ</b>', cleaned)
+        self.assertIn('<i>ایتالیک</i>', cleaned)
+        self.assertIn('style="color:#be123c"', cleaned)
+
+    def test_strips_scripts_and_handlers(self):
+        cleaned = richtext.sanitize_html(
+            '<script>alert(1)</script><b onclick="x()">متن</b><img src=x onerror=1>',
+        )
+        self.assertNotIn('script', cleaned.lower())
+        self.assertNotIn('onclick', cleaned.lower())
+        self.assertNotIn('<img', cleaned.lower())
+        self.assertIn('<b>متن</b>', cleaned)
+
+    def test_rejects_invalid_color_and_keeps_text(self):
+        cleaned = richtext.sanitize_html(
+            '<span style="color:url(javascript:alert(1))">متن</span>',
+        )
+        self.assertNotIn('javascript', cleaned.lower())
+        self.assertIn('متن', cleaned)
+
+    def test_plain_text_keeps_line_breaks(self):
+        self.assertEqual(richtext.sanitize_html('خط اول\nخط دوم'), 'خط اول<br>خط دوم')
+
+    def test_empty_value_returns_empty_string(self):
+        self.assertEqual(richtext.sanitize_html(''), '')
+        self.assertEqual(richtext.sanitize_html(None), '')
+
+    def test_checklist_normalizes_nested_items(self):
+        rows = richtext.normalize_checklist([
+            {'text': '  مرحله ۱ ', 'done': True, 'children': [
+                {'text': 'زیرمرحله', 'done': False},
+                {'text': '   '},
+            ]},
+            {'text': '', 'done': False},
+            'invalid',
+        ])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['text'], 'مرحله ۱')
+        self.assertTrue(rows[0]['done'])
+        self.assertEqual(rows[0]['children'], [{'text': 'زیرمرحله', 'done': False}])
+
+    def test_checklist_stats_counts_children(self):
+        stats = richtext.checklist_stats([
+            {'text': 'a', 'done': True, 'children': [{'text': 'a1', 'done': False}]},
+            {'text': 'b', 'done': False},
+        ])
+        self.assertEqual(stats['total'], 3)
+        self.assertEqual(stats['done'], 1)
+        self.assertEqual(stats['percent'], 33)
+
+    def test_checklist_depth_is_limited(self):
+        deep = {'text': 'L1', 'children': [
+            {'text': 'L2', 'children': [{'text': 'L3', 'children': [{'text': 'L4'}]}]},
+        ]}
+        rows = richtext.normalize_checklist([deep])
+        level3 = rows[0]['children'][0]['children'][0]
+        self.assertEqual(level3['text'], 'L3')
+        self.assertNotIn('children', level3)
+
+
+class PlanningSerializerFieldTests(SimpleTestCase):
+    """متن یادداشت/توضیح وظیفه باید نوشتنی باشد (باگ: فیلد فقط‌خواندنی بود)."""
+
+    def test_note_body_is_writable(self):
+        serializer = NoteSerializer(data={'title': 'یادداشت', 'body': '<b>متن</b>'})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['body'], '<b>متن</b>')
+
+    def test_task_description_is_writable(self):
+        serializer = TaskSerializer(data={'title': 'وظیفه', 'description': 'توضیح'})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['description'], 'توضیح')
 
 
 class PlanningQueryHelperTests(SimpleTestCase):

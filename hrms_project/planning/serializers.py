@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from planning import services
 from planning.models import Note, PlanningGroup, PlanningShare, Task
+from planning.richtext import normalize_checklist, sanitize_html
 
 
 def _display_name(user):
@@ -112,7 +113,7 @@ class PlanningGroupSerializer(serializers.ModelSerializer):
 
 
 class NoteSerializer(serializers.ModelSerializer):
-    body = serializers.SerializerMethodField()
+    body = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
     owner_name = serializers.SerializerMethodField()
     shares = serializers.SerializerMethodField()
     access = serializers.SerializerMethodField()
@@ -129,8 +130,10 @@ class NoteSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'owner', 'owner_name', 'shares', 'access', 'is_mine',
                             'is_shared', 'created_at', 'updated_at']
 
-    def get_body(self, obj):
-        return services.decrypt_text(obj.body)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['body'] = services.decrypt_text(instance.body)
+        return data
 
     def get_owner_name(self, obj):
         return _display_name(obj.owner)
@@ -148,17 +151,25 @@ class NoteSerializer(serializers.ModelSerializer):
         return bool(user and obj.owner_id == user.pk)
 
     def create(self, validated_data):
-        validated_data['body'] = services.encrypt_text(validated_data.get('body', ''))
+        validated_data['body'] = services.encrypt_text(
+            sanitize_html(validated_data.get('body', '')),
+        )
+        if 'checklist' in validated_data:
+            validated_data['checklist'] = normalize_checklist(validated_data.get('checklist'))
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
         if 'body' in validated_data:
-            validated_data['body'] = services.encrypt_text(validated_data.get('body') or '')
+            validated_data['body'] = services.encrypt_text(
+                sanitize_html(validated_data.get('body') or ''),
+            )
+        if 'checklist' in validated_data:
+            validated_data['checklist'] = normalize_checklist(validated_data.get('checklist'))
         return super().update(instance, validated_data)
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    description = serializers.SerializerMethodField()
+    description = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
     owner_name = serializers.SerializerMethodField()
     shares = serializers.SerializerMethodField()
     access = serializers.SerializerMethodField()
@@ -186,8 +197,10 @@ class TaskSerializer(serializers.ModelSerializer):
                             'updated_at', 'status_display', 'priority_display',
                             'assignees', 'assignee_groups', 'is_private']
 
-    def get_description(self, obj):
-        return services.decrypt_text(obj.description)
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['description'] = services.decrypt_text(instance.description)
+        return data
 
     def get_owner_name(self, obj):
         return _display_name(obj.owner)
@@ -227,6 +240,8 @@ class TaskSerializer(serializers.ModelSerializer):
         validated_data['description'] = services.encrypt_text(
             validated_data.get('description', ''),
         )
+        if 'checklist' in validated_data:
+            validated_data['checklist'] = normalize_checklist(validated_data.get('checklist'))
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
@@ -234,4 +249,6 @@ class TaskSerializer(serializers.ModelSerializer):
             validated_data['description'] = services.encrypt_text(
                 validated_data.get('description') or '',
             )
+        if 'checklist' in validated_data:
+            validated_data['checklist'] = normalize_checklist(validated_data.get('checklist'))
         return super().update(instance, validated_data)

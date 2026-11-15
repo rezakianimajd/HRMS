@@ -126,19 +126,49 @@ export const tagsFrom = (value) => {
     .filter(Boolean);
 };
 
-export const normalizeChecklist = (value) => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((row) => ({ text: String(row?.text || '').trim(), done: Boolean(row?.done) }))
-    .filter((row) => row.text);
+export const normalizeChecklist = (value, depth = 0) => {
+  if (!Array.isArray(value) || depth >= 3) return [];
+  const rows = [];
+  value.forEach((row) => {
+    const text = String(row?.text || '').trim();
+    if (!text) return;
+    const next = { text, done: Boolean(row?.done) };
+    const children = normalizeChecklist(row?.children, depth + 1);
+    if (children.length) next.children = children;
+    rows.push(next);
+  });
+  return rows.slice(0, 100);
 };
 
 export const checklistStats = (value) => {
-  const rows = normalizeChecklist(value);
-  const total = rows.length;
-  const done = rows.filter((row) => row.done).length;
+  const walk = (rows) => {
+    let total = 0;
+    let done = 0;
+    (rows || []).forEach((row) => {
+      total += 1;
+      if (row?.done) done += 1;
+      const child = walk(row?.children);
+      total += child.total;
+      done += child.done;
+    });
+    return { total, done };
+  };
+  const { total, done } = walk(normalizeChecklist(value));
   return { total, done, percent: total ? Math.round((done / total) * 100) : 0 };
 };
+
+export const SCOPES = [
+  { value: 'mine', label: 'فقط من' },
+  { value: 'shared', label: 'اشتراکی با من' },
+  { value: 'all', label: 'همه' },
+];
+
+export const htmlToText = (value) => String(value || '')
+  .replace(/<br\s*\/?>/gi, '\n')
+  .replace(/<\/(p|div|li)>/gi, '\n')
+  .replace(/<[^>]+>/g, '')
+  .replace(/&nbsp;/g, ' ')
+  .trim();
 
 export const formatJalali = (iso) => {
   if (!iso) return '—';
