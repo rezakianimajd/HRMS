@@ -630,6 +630,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **ویرایش/حذف ارجاع توسط ارجاع‌دهنده (۲۰۲۶-۱۱-۱۵):** ارجاع‌دهنده‌ای که مجوز «حذف مکاتبات»
+  دارد می‌تواند همان ارجاع را ویرایش یا حذف کند.
+  - بک‌اند: `LetterReferralViewSet._can_manage_sent_referral` + `permission_bypass` (عبور از گیت
+    منو فقط برای update/destroy و فقط وقتی ارجاع‌دهنده همان کاربر و مجوز delete دارد)،
+    `perform_destroy` با ثبت رویداد `referral_deleted`؛ `from_user`/`from_employee`/`letter`/`parent`
+    در serializer فقط‌خواندنی شدند. مایگریشن `correspondences.0023`.
+  - فرانت: دکمه‌های «ویرایش ارجاع»/«حذف ارجاع» در تایم‌لاین پروندهٔ نامه (فقط برای ارجاع‌دهنده
+    با مجوز حذف)، `ReferDialog` حالت ویرایش، و mutationهای `referralSave`/`referralDelete`.
+  - تست: `correspondences` (**۲۴۷**)، `correspondenceSmoke` (**۱۹**) و تأیید زندهٔ API با کاربر
+    غیرسوپریوزر دارای `correspondence.incoming.delete`: PATCH=200، DELETE=204 و رویداد حذف ثبت شد.
+    باندل زنده: **`main.2cb2995f.js`**.
+
+
 - **رفاهی/بیمه تکمیلی — خانواده منبع واحد (۲۰۲۶-۱۱-۱۵):** اعضای خانواده فقط در پروندهٔ پرسنلی
   (تب «خانواده») ثبت می‌شوند و بیمهٔ تکمیلی آن‌ها را از همان‌جا انتخاب می‌کند.
   - **مدل/مایگریشن:** `EmployeeFamilyMember.attachment` (پیوست مدارک) با

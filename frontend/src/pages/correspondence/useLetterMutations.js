@@ -251,6 +251,32 @@ export const useLetterMutations = ({
     onError: (err) => setError(err?.response?.data?.detail || 'ثبت پاسخ ارجاع انجام نشد.'),
   });
 
+  /** ویرایش ارجاع توسط ارجاع‌دهنده (نیازمند مجوز حذف؛ سمت سرور هم کنترل می‌شود). */
+  const referralSave = useMutation({
+    mutationFn: ({ id, payload }) => axiosInstance
+      .patch(`/letter-referrals/${id}/`, payload)
+      .then((response) => response.data),
+    onSuccess: () => {
+      refreshAll();
+      invalidateDetail();
+      setToast('ارجاع ویرایش شد.');
+      setError('');
+    },
+    onError: (err) => setError(err?.response?.data?.detail || 'ویرایش ارجاع انجام نشد.'),
+  });
+
+  /** حذف ارجاع توسط ارجاع‌دهنده (نیازمند مجوز حذف؛ سمت سرور هم کنترل می‌شود). */
+  const referralDelete = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/letter-referrals/${id}/`),
+    onSuccess: () => {
+      refreshAll();
+      invalidateDetail();
+      setToast('ارجاع حذف شد.');
+      setError('');
+    },
+    onError: (err) => setError(err?.response?.data?.detail || 'حذف ارجاع انجام نشد.'),
+  });
+
   /** حذف نامه (فقط با مجوز حذف مکاتبات) */
   const deleteLetter = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/letters/${id}/`),
@@ -314,6 +340,8 @@ export const useLetterMutations = ({
     letterAction,
     patchDraft,
     referralComplete,
+    referralDelete,
+    referralSave,
     refreshAll,
     rowDirty,
     rowEditing,

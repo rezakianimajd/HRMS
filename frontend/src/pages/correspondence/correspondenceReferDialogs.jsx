@@ -28,7 +28,8 @@ const REFERRAL_PURPOSE_META = {
 };
 
 
-const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
+const ReferDialog = ({ open, letter, referral = null, onClose, onSubmit, pending }) => {
+  const editing = Boolean(referral?.id);
   const [toEmployee, setToEmployee] = useState(null);
   const [extraEmployees, setExtraEmployees] = useState([]);
   const [toName, setToName] = useState('');
@@ -39,6 +40,24 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
 
   useEffect(() => {
     if (!open) return;
+    if (referral?.id) {
+      setToEmployee(personValue(
+        referral.to_employee,
+        referral.to_employee_name,
+        referral.to_employee_code,
+      ));
+      setExtraEmployees((referral.to_employees || []).map((id, index) => personValue(
+        id,
+        referral.to_employees_names?.[index] || '',
+        '',
+      )));
+      setToName(referral.to_name || '');
+      setPurpose(referral.purpose || 'action');
+      setDueDate(referral.due_date || '');
+      setInstruction(referral.instruction || '');
+      setNote(referral.note || '');
+      return;
+    }
     setToEmployee(null);
     setExtraEmployees([]);
     setToName('');
@@ -46,7 +65,11 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
     setDueDate('');
     setInstruction('');
     setNote('');
-  }, [open]);
+  }, [open, referral]);
+
+  const hasRecipient = Boolean(
+    toEmployee || toName.trim() || extraEmployees.length || (editing && referral?.to_user),
+  );
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
@@ -59,7 +82,9 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
           }}>
             <ForwardToInboxIcon sx={{ fontSize: 16 }} />
           </Box>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 900 }}>ارجاع نامه</Typography>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 900 }}>
+            {editing ? 'ویرایش ارجاع' : 'ارجاع نامه'}
+          </Typography>
           {letter?.number ? <Chip size="small" label={letter.number} sx={chipSx(SLATE)} /> : null}
         </Stack>
       </DialogTitle>
@@ -101,18 +126,19 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
         <Button size="small" variant="contained"
-          disabled={pending || (!toEmployee && !toName.trim() && !extraEmployees.length)}
+          disabled={pending || !hasRecipient}
           onClick={() => onSubmit({
-            to_employee: toEmployee?.id || undefined,
+            to_employee: toEmployee?.id || null,
             to_employees: extraEmployees.map((item) => item.id),
+            to_user: toEmployee ? null : (referral?.to_user || undefined),
             to_name: toName,
             purpose,
-            due_date: dueDate || undefined,
+            due_date: dueDate || null,
             instruction,
             note,
           })}
           sx={{ bgcolor: WARN, '&:hover': { bgcolor: '#92400e' } }}>
-          ثبت ارجاع
+          {editing ? 'ذخیره تغییرات' : 'ثبت ارجاع'}
         </Button>
       </DialogActions>
     </Dialog>

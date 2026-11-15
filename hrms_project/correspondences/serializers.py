@@ -541,11 +541,12 @@ class LetterReferralSerializer(serializers.ModelSerializer):
             'is_overdue', 'created_at',
         ]
         read_only_fields = [
-            'id', 'seq', 'referred_on', 'done_at', 'created_at', 'answered_by_name',
-            'from_user_name', 'to_user_name', 'status_display', 'purpose_display',
+            'id', 'letter', 'seq', 'parent', 'referred_on', 'done_at', 'created_at',
+            'from_user', 'from_user_name', 'from_employee', 'from_employee_name',
+            'answered_by_name', 'to_user_name', 'status_display', 'purpose_display',
             'is_overdue', 'letter_number', 'letter_subject', 'letter_direction',
             'letter_priority', 'letter_status', 'to_employee_name', 'to_employee_code',
-            'from_employee_name', 'target_label', 'to_employees_names',
+            'target_label', 'to_employees_names',
         ]
 
     def get_to_employees_names(self, obj):

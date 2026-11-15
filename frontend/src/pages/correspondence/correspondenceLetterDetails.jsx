@@ -55,6 +55,9 @@ const LetterDetailsDialog = ({
   onPrint,
   onRefer,
   onCompleteReferral,
+  onEditReferral,
+  onDeleteReferral,
+  canManageReferral,
   onPreview,
   onUpload,
   uploadRef,
@@ -260,7 +263,13 @@ const LetterDetailsDialog = ({
               ) : null}
 
               {tab === 'referrals' ? (
-                <LetterTimeline letter={letter} onCompleteReferral={onCompleteReferral} />
+                <LetterTimeline
+                  letter={letter}
+                  onCompleteReferral={onCompleteReferral}
+                  onEditReferral={onEditReferral}
+                  onDeleteReferral={onDeleteReferral}
+                  canManageReferral={canManageReferral}
+                />
               ) : null}
 
               {tab === 'attachments' ? (

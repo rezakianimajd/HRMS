@@ -79,6 +79,33 @@ class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             label='ارجاع مکاتبات',
         )
 
+    def _can_manage_sent_referral(self, referral):
+        """آیا کاربر می‌تواند ارجاعی را که خودش داده مدیریت کند؟
+
+        قاعدهٔ محصول: ارجاع‌دهنده با مجوز «حذف» می‌تواند همان ارجاع را ویرایش
+        یا حذف کند؛ سایر کاربران همان مسیر قبلی (ویرایش/حذف ماژول) را دارند.
+        """
+        user = getattr(self.request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        if getattr(user, 'is_superuser', False):
+            return True
+        if referral.from_user_id != user.id:
+            return False
+        return correspondence_has_permission(
+            user, 'delete', menus=menus_for_direction(referral.letter.direction),
+        )
+
+    def permission_bypass(self, drf_action, entry):
+        """اجازهٔ ویرایش/حذف به ارجاع‌دهندهٔ دارای مجوز حذف (پیش از گیت منو)."""
+        if drf_action not in ('update', 'partial_update', 'destroy'):
+            return False
+        pk = self.kwargs.get('pk')
+        if not pk:
+            return False
+        referral = LetterReferral.objects.filter(pk=pk).select_related('letter').first()
+        return bool(referral and self._can_manage_sent_referral(referral))
+
     serializer_class = LetterReferralSerializer
     queryset = LetterReferral.objects.all()
     search_fields = [
@@ -288,7 +315,8 @@ class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
     def perform_update(self, serializer):
         referral = serializer.instance
-        self._require_referral_access(referral, 'edit')
+        if not self._can_manage_sent_referral(referral):
+            self._require_referral_access(referral, 'edit')
         previous_status = referral.status
         data = serializer.validated_data
         new_status = data.get('status', previous_status)
@@ -315,6 +343,23 @@ class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
                 note=summary[:500],
                 meta={'referral_id': referral.id, 'status': new_status},
             )
+
+    def perform_destroy(self, instance):
+        """حذف ارجاع توسط ارجاع‌دهندهٔ دارای مجوز حذف + ثبت در تاریخچهٔ نامه."""
+        if not self._can_manage_sent_referral(instance):
+            raise PermissionDenied(
+                'حذف ارجاع فقط برای ارجاع‌دهنده‌ای مجاز است که مجوز «حذف مکاتبات» دارد.'
+            )
+        _log_event(
+            instance.letter, 'referral_deleted', self.request.user,
+            note=(instance.instruction or instance.note or '')[:500],
+            meta={
+                'referral_id': instance.id,
+                'to_name': instance.target_label,
+                'seq': instance.seq,
+            },
+        )
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):

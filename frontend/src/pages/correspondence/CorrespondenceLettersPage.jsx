@@ -155,6 +155,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [formLetter, setFormLetter] = useState(null);
   const [referLetter, setReferLetter] = useState(null);
+  const [editReferral, setEditReferral] = useState(null);
   const [rowMenu, setRowMenu] = useState(null);
   const [completeReferral, setCompleteReferral] = useState(null);
   const [comment, setComment] = useState('');
@@ -229,6 +230,12 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const canCreateOf = (letter) => letterCan(user, 'create', letter?.direction || activeDirection);
   const canDeleteOf = (letter) => letterCan(user, 'delete', letter?.direction || activeDirection);
 
+  /** ارجاع‌دهنده با مجوز حذف می‌تواند همان ارجاع را ویرایش/حذف کند. */
+  const canManageReferral = (referral) => Boolean(
+    referral && canDeleteOf(activeLetter)
+    && (user?.is_superuser || String(referral.from_user) === String(user?.id)),
+  );
+
 
   const { data: meta } = useQuery({
     queryKey: META_KEY,
@@ -262,7 +269,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   /* ---------- نوشتن: ویرایش درجای ردیف‌ها، ثبت/ارجاع/حذف/آپلود (هوک مستقل) ---------- */
   const {
     bulkSaving, deleteAttachment, deleteLetter, discardAll, discardRow, dirtyCount, draft,
-    editRowId, letterAction, patchDraft, referralComplete, refreshAll, rowDirty, rowEditing,
+    editRowId, letterAction, patchDraft, referralComplete, referralDelete, referralSave,
+    refreshAll, rowDirty, rowEditing,
     saveAllEdits, saveRowEdit, savingIds, startRowEdit, uploadAttachment, uploadRef, uploading,
   } = useLetterMutations({
     activeLetterId: activeLetter?.id,
@@ -1313,6 +1321,16 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         })}
         onRefer={() => setReferLetter(activeLetter)}
         onCompleteReferral={setCompleteReferral}
+        onEditReferral={(referral) => setEditReferral(referral)}
+        onDeleteReferral={(referral) => {
+          if (!referral?.id) return;
+          const label = referral.target_label || referral.to_name
+            || referral.to_user_name || referral.to_employee_name || 'این ارجاع';
+          if (window.confirm(`ارجاع به «${label}» حذف شود؟ این عمل بازگشت‌ناپذیر است.`)) {
+            referralDelete.mutate(referral.id);
+          }
+        }}
+        canManageReferral={canManageReferral}
         onPreview={openPreview}
         onUpload={uploadAttachment}
         uploadRef={uploadRef}
@@ -1387,6 +1405,21 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         onSubmit={(payload) => {
           letterAction.mutate({ id: referLetter.id, action: 'refer', payload });
           setReferLetter(null);
+        }}
+      />
+
+      <ReferDialog
+        open={Boolean(editReferral)}
+        letter={activeLetter}
+        referral={editReferral}
+        pending={referralSave.isPending}
+        onClose={() => setEditReferral(null)}
+        onSubmit={(payload) => {
+          if (!editReferral?.id) return;
+          referralSave.mutate(
+            { id: editReferral.id, payload },
+            { onSuccess: () => setEditReferral(null) },
+          );
         }}
       />
     </Box>

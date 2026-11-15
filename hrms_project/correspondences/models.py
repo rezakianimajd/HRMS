@@ -910,6 +910,7 @@ class LetterEvent(BaseModel):
         ('referral_seen', _('مشاهدهٔ ارجاع')),
         ('referral_note', _('حاشیهٔ ارجاع')),
         ('referral_forwarded', _('ارجاع به سطح بعد')),
+        ('referral_deleted', _('حذف ارجاع')),
         ('request_created', _('ثبت درخواست')),
     ]
 

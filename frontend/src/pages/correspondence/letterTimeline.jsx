@@ -7,6 +7,8 @@
 import React from 'react';
 import { Box, Button, Chip, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditIcon from '@mui/icons-material/Edit';
 import HistoryIcon from '@mui/icons-material/History';
 import ReplyIcon from '@mui/icons-material/Reply';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
@@ -82,11 +84,14 @@ export const buildLetterTimeline = (letter) => {
   });
 };
 
-const ReferralCard = ({ referral, onCompleteReferral }) => {
+const ReferralCard = ({
+  referral, onCompleteReferral, onEditReferral, onDeleteReferral, canManage,
+}) => {
   const meta = REFERRAL_STATUS_META[referral.status] || REFERRAL_STATUS_META.pending;
   const referralDays = daysBetween(referral.due_date);
   const open = !['done', 'canceled'].includes(referral.status);
   const canComplete = open && typeof onCompleteReferral === 'function';
+  const canManageReferral = Boolean(canManage);
   return (
     <Box sx={{
       p: 1.15, borderRadius: '10px', border: '1px solid',
@@ -172,6 +177,20 @@ const ReferralCard = ({ referral, onCompleteReferral }) => {
             ثبت پاسخ و نتیجه
           </Button>
         ) : null}
+        {canManageReferral && typeof onEditReferral === 'function' ? (
+          <Button size="small" variant="outlined" startIcon={<EditIcon />}
+            onClick={() => onEditReferral(referral)}
+            sx={{ fontSize: 11.5, py: 0.2 }}>
+            ویرایش ارجاع
+          </Button>
+        ) : null}
+        {canManageReferral && typeof onDeleteReferral === 'function' ? (
+          <Button size="small" color="error" variant="outlined" startIcon={<DeleteOutlineIcon />}
+            onClick={() => onDeleteReferral(referral)}
+            sx={{ fontSize: 11.5, py: 0.2 }}>
+            حذف ارجاع
+          </Button>
+        ) : null}
       </Stack>
     </Box>
   );
@@ -247,7 +266,10 @@ const EventCard = ({ event }) => {
  * تایم‌لاین روند نامه.
  * `letter` باید پروندهٔ کامل نامه (شامل referrals/events/replies) باشد.
  */
-const LetterTimeline = ({ letter, onCompleteReferral, onOpenReply, emptyText, showSummary = true }) => {
+const LetterTimeline = ({
+  letter, onCompleteReferral, onEditReferral, onDeleteReferral, canManageReferral,
+  onOpenReply, emptyText, showSummary = true,
+}) => {
   const items = buildLetterTimeline(letter);
   const referralCount = (letter?.referrals || []).length;
   const replyCount = (letter?.replies || []).length;
@@ -284,7 +306,15 @@ const LetterTimeline = ({ letter, onCompleteReferral, onOpenReply, emptyText, sh
               <TimelineDot color={color} first={index === 0} last={index === items.length - 1} />
               <Box sx={{ flex: 1, minWidth: 0, pb: 1.1 }}>
                 {item.kind === 'referral' ? (
-                  <ReferralCard referral={item.data} onCompleteReferral={onCompleteReferral} />
+                  <ReferralCard
+                    referral={item.data}
+                    onCompleteReferral={onCompleteReferral}
+                    onEditReferral={onEditReferral}
+                    onDeleteReferral={onDeleteReferral}
+                    canManage={typeof canManageReferral === 'function'
+                      ? canManageReferral(item.data)
+                      : false}
+                  />
                 ) : item.kind === 'reply' ? (
                   <ReplyCard reply={item.data} onOpenReply={onOpenReply} />
                 ) : (

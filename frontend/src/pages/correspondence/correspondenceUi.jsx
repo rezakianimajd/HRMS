@@ -63,6 +63,8 @@ export const EVENT_META = {
   archived: { label: 'بایگانی', color: '#334155' },
   closed: { label: 'بسته شد', color: SLATE },
   commented: { label: 'یادداشت', color: INCOMING },
+  referral_forwarded: { label: 'ارجاع به سطح بعد', color: INTERNAL },
+  referral_deleted: { label: 'حذف ارجاع', color: DANGER },
 };
 
 export const dateLabel = (value) => (value ? toJalali(value) : '—');

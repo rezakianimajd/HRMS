@@ -302,6 +302,49 @@ class ViewsetPermissionMatrixTests(SimpleTestCase):
         for action in ('cartable', 'seen', 'note', 'instruction', 'complete'):
             self.assertNotIn(action, LetterReferralViewSet.permission_matrix, action)
 
+    def test_referral_sender_with_delete_can_manage_own_referral(self):
+        """ارجاع‌دهنده با مجوز حذف باید بتواند ارجاع خودش را ویرایش/حذف کند."""
+        from correspondences.views import LetterReferralViewSet
+
+        view = LetterReferralViewSet()
+        view.request = SimpleNamespace(user=_user(id=7, pk=7))
+        referral = SimpleNamespace(
+            from_user_id=7,
+            letter=SimpleNamespace(direction='incoming'),
+        )
+        with patch(
+            'correspondences.views.referrals.correspondence_has_permission',
+            return_value=True,
+        ) as checker:
+            self.assertTrue(view._can_manage_sent_referral(referral))
+            checker.assert_called_once()
+
+        with patch(
+            'correspondences.views.referrals.correspondence_has_permission',
+            return_value=False,
+        ):
+            self.assertFalse(view._can_manage_sent_referral(referral))
+
+        other = SimpleNamespace(from_user_id=99, letter=referral.letter)
+        self.assertFalse(view._can_manage_sent_referral(other))
+
+    def test_referral_sender_bypass_covers_update_and_destroy_only(self):
+        from correspondences.views import LetterReferralViewSet
+
+        view = LetterReferralViewSet()
+        view.request = SimpleNamespace(user=_user(id=7, pk=7))
+        view.kwargs = {'pk': 5}
+        referral = SimpleNamespace(
+            from_user_id=7,
+            letter=SimpleNamespace(direction='incoming'),
+        )
+        with patch.object(LetterReferralViewSet, '_can_manage_sent_referral', return_value=True), \
+                patch('correspondences.views.referrals.LetterReferral.objects') as manager:
+            manager.filter.return_value.select_related.return_value.first.return_value = referral
+            self.assertTrue(view.permission_bypass('update', ('edit', 'referrals')))
+            self.assertTrue(view.permission_bypass('destroy', ('delete', 'referrals')))
+            self.assertFalse(view.permission_bypass('list', ('view', 'referrals')))
+
     def test_download_action_exists_on_attachment_viewset(self):
         from correspondences.views import LetterAttachmentViewSet
 

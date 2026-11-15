@@ -272,6 +272,14 @@ class CorrespondencePermissionMixin:
         # referrals / attachments → همان منوهای نامه
         return menus_for_direction(self._letter_direction_for_request())
 
+    def permission_bypass(self, drf_action, entry):
+        """امکان عبور از گیت عمومی برای ویوست‌های خاص (پیش‌فرض: خیر).
+
+        مثلاً ارجاع‌دهنده‌ای که فقط مجوز «حذف» دارد باید بتواند ارجاع خودش را
+        ویرایش/حذف کند؛ این ویوست با بازنویسی این متد آن را مجاز می‌کند.
+        """
+        return False
+
     def check_correspondence_permission(self, action, direction=None, menus=None):
         """چک دستی (برای اکشن‌هایی که GET/POST مشترک دارند)."""
         require(
@@ -284,6 +292,8 @@ class CorrespondencePermissionMixin:
         super().initial(request, *args, **kwargs)
         entry = self.permission_matrix.get(self.action)
         if not entry:
+            return
+        if self.permission_bypass(self.action, entry):
             return
         action, scope = entry
         require(
