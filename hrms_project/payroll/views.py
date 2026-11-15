@@ -332,7 +332,26 @@ class EmployeeLoanViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         company = _get_company(self.request)
-        serializer.save(company=company)
+        loan = serializer.save(company=company)
+        try:
+            from payroll.finalization import generate_loan_installments
+
+            generate_loan_installments(loan, self.request.user, self.request)
+        except Exception:  # noqa: BLE001 — failure to schedule must not block the loan
+            pass
+        return loan
+
+    @action(detail=True, methods=['post'])
+    def generate_installments(self, request, pk=None):
+        from payroll.finalization import generate_loan_installments
+
+        loan = self.get_object()
+        rows = generate_loan_installments(loan, request.user, request)
+        return Response({'count': len(rows), 'installments': [
+            {'id': row.pk, 'sequence': row.sequence, 'due_date': row.due_date,
+             'amount': str(row.amount), 'status': row.status}
+            for row in rows
+        ]})
 
 
 class TransactionSummaryViewSet(viewsets.ViewSet):

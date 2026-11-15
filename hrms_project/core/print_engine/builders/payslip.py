@@ -181,3 +181,73 @@ def load_payslip(payload, options=None, request=None):
         'barcode_value': f'PAY-{record.pk}-{record.year}-{record.month}',
         'printed_on': payload.get('printed_on'),
     })
+
+
+def load_payroll_payslip(payload, options=None, request=None):
+    """فیش حقوقی دورهٔ جدید (PayrollEmployeeResult) — بدون افشای اطلاعات بانکی."""
+    from payroll.models import PayrollEmployeeResult
+
+    user = getattr(request, 'user', None)
+    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+    queryset = PayrollEmployeeResult.objects.select_related(
+        'employee', 'employee__department', 'employee__job_title', 'period',
+    ).prefetch_related('items')
+    if company:
+        queryset = queryset.filter(company=company)
+    result = queryset.filter(pk=payload.get('id') or payload.get('result_id')).first()
+    if not result:
+        raise PrintError('فیش حقوقی موردنظر یافت نشد.', 404)
+    own_employee = getattr(getattr(user, 'profile', None), 'employee_id', None)
+    allowed_self = own_employee and own_employee == result.employee_id
+    if not allowed_self and not (can_print(user, 'payroll') or can_print(user, 'hrms')):
+        raise PrintError('برای چاپ این فیش حقوقی مجوز لازم را ندارید.', 403)
+
+    items = list(result.items.all())
+    earnings = [
+        {'label': row.title, 'amount': row.amount}
+        for row in items if row.kind == 'earning'
+    ]
+    deductions = [
+        {'label': row.title, 'amount': row.amount}
+        for row in items if row.kind == 'deduction'
+    ]
+    bank = result.bank_snapshot or {}
+    masked_bank = ''
+    if bank.get('sheba_number'):
+        value = str(bank['sheba_number'])
+        masked_bank = 'IR' + ('*' * max(0, len(value) - 6)) + value[-4:]
+    elif bank.get('account_number'):
+        value = str(bank['account_number'])
+        masked_bank = '*' * max(0, len(value) - 4) + value[-4:]
+    employee = {
+        'name': result.snapshot.get('full_name', '') if result.snapshot else result.employee.full_name,
+        'code': result.snapshot.get('employee_code', '') if result.snapshot else result.employee.employee_id,
+        'national_id': result.snapshot.get('national_id', '') if result.snapshot else result.employee.national_id,
+        'position': result.snapshot.get('job_title', '') if result.snapshot else '',
+        'department': result.snapshot.get('department', '') if result.snapshot else '',
+        'bank_account': masked_bank,
+    }
+    from decimal import Decimal
+
+    total_deductions = sum((row.amount or Decimal('0') for row in items if row.kind == 'deduction'), Decimal('0'))
+    total_employer = sum((row.amount or Decimal('0') for row in items if row.kind == 'employer_cost'), Decimal('0'))
+    return payslip_document({
+        'company': {
+            'name': getattr(company, 'name', '') or '',
+            'subtitle': getattr(company, 'code', '') or '',
+        },
+        'employee': employee,
+        'period_label': result.period.label,
+        'work_days': result.work_days,
+        'overtime_hours': result.overtime_hours,
+        'insurance_subject': result.insurance_base,
+        'employer_insurance': total_employer,
+        'earnings': earnings,
+        'deductions': deductions,
+        'total_benefits': result.gross_amount,
+        'total_deductions': total_deductions,
+        'net_payable': result.net_amount,
+        'note': 'اطلاعات این فیش محرمانه است. این فیش بدون مهر و امضای واحد مالی فاقد اعتبار است.',
+        'barcode_value': f'PAY-{result.pk}-{result.period.year}-{result.period.month or 0}',
+        'printed_on': payload.get('printed_on'),
+    })

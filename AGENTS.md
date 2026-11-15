@@ -630,6 +630,48 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **ماژول جامع حقوق و دستمزد (۲۰۲۶-۱۱-۱۵):** ماژول `payroll` از یک CRUD ساده به یک
+  سیستم دوره‌محور، مؤلفه‌محور و قابل حسابرسی ارتقا یافت. مستند کامل:
+  `docs/payroll-module.md`.
+  - **مدل‌ها:** `PayrollPeriod` (وضعیت Draft→Open→Calculating→Calculated→Under Review→
+    Approved→Payment Pending→Paid→Closed)، `PayrollSettings`، `PayrollInsuranceRate`،
+    `PayrollTaxBracket`، `PayrollComponent` + `PayrollComponentRule`،
+    `EmployeePayrollProfile` (تاریخ‌محور)، `EmployeePayrollComponent`،
+    `PayrollEmployeeResult` + `PayrollItem` (Snapshot کامل)، `PayrollOvertime`،
+    `EmployeeAdvance`، `EmployeeLoanInstallment`، `PayrollCostAllocation`،
+    `PayrollCost`، `PayrollAccountMapping`، `PayrollBankFormat`، `PayrollPaymentBatch`/
+    `Line`، `PayrollSettlement`، `PayrollAdjustment`، `PayrollChangeLog`.
+    مایگریشن `payroll.0008_...` روی همهٔ schemaها اعمال شد.
+  - **موتور محاسبه:** `payroll/engine/formula.py` مفسر امن AST (SUM/MIN/MAX/ROUND/IF/ABS/
+    COALESCE؛ بدون attribute/import/اجرای کد)، `payroll/engine/calculator.py` محاسبات
+    خالص `Decimal` (بیمه، مالیات تصاعدی، اضافه‌کاری، گرد کردن)، `payroll/services.py`
+    محاسبهٔ Batch با کوئری‌های دسته‌ای و تراکنش. نرخ بیمه/مالیات از جدول‌های
+    تاریخ‌محور خوانده می‌شود و هیچ نرخ قانونی در کد hard-code نیست.
+  - **یکپارچگی:** پروفایل حقوقی از HR، حضور/مرخصی برای کارکرد و کسر، اضافه‌کاری تأییدشده،
+    وام/مساعده، تخصیص پروژه/مرکز هزینه (`PayrollCost`)، سند متوازن حسابداری از
+    `PayrollAccountMapping`، درخواست پرداخت خزانه (`source_type='payroll'`)،
+    فایل پرداخت بانکی قابل تعریف (`PayrollBankFormat`)، فیش چاپی `payroll-payslip` در
+    موتور چاپ، جست‌وجوی ماژول (`PayrollPeriod`/`PayrollEmployeeResult`).
+  - **امنیت:** دسترسی با مجوزهای ریز `hrms.payroll-*` (سازگار با `payroll.*`)،
+    فیلتر queryset برای فیش شخصی کارمند (حتی بدون مجوز مدیریت)، ماسک حساب/شبا در API و
+    چاپ، قفل دورهٔ پرداخت‌شده، Audit تغییرات در `PayrollChangeLog`.
+  - **API:** `/api/payroll-periods/` + actions (`calculate`, `recalculate`, `open`,
+    `review`, `approve`, `post-accounting`, `payment-request`, `mark-paid`, `close`,
+    `reopen`, `results`, `summary`)، `/api/payroll-profiles/`، `/components/` + `/rules/`،
+    `/payroll-settings/`، `/payroll-insurance-rates/`، `/payroll-tax-brackets/`،
+    `/payroll-overtimes/`، `/payroll-advances/`، `/payroll-loan-installments/`،
+    `/payroll-cost-allocations/`، `/payroll-costs/`، `/payroll-account-mappings/`،
+    `/payroll-bank-formats/`، `/payroll-payment-batches/`، `/payroll-settlements/`،
+    `/payroll-adjustments/`، `/payroll-change-logs/`، `/api/payroll/dashboard/`،
+    `/api/payroll/options/`، `/api/payroll/reports/`، `/api/payroll/reconciliation/`.
+  - **فرانت:** صفحهٔ `/payroll` با هفت تب (داشبورد، دوره‌ها، محاسبه/فیش، پروفایل حقوقی،
+    تنظیمات/مؤلفه‌ها/نگاشت/قالب بانک، اضافه‌کاری/مساعده/تخصیص، تسویه، گزارش/مغایرت)،
+    منوی «حقوق و دستمزد» با آیتم‌های تازه، فیش چاپی از موتور چاپ مرکزی.
+  - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
+    روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
+    کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
+    باندل زنده: **`main.be983331.js`**.
+
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،
   حساب مقصد خزانه (بانک/صندوق) و شماره پیگیری/فیش.

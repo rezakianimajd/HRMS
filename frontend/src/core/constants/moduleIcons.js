@@ -14,6 +14,7 @@ import FactoryOutlinedIcon from '@mui/icons-material/FactoryOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined';
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 
 /**
  * آیکون‌های واحد و اوت‌لاین ماژول‌ها.
@@ -35,6 +36,7 @@ export const MODULE_ICONS = {
   settings: SettingsOutlinedIcon,
   pettycash: AccountBalanceWalletOutlinedIcon,
   correspondence: MailOutlinedIcon,
+  payroll: PaymentsOutlinedIcon,
 };
 
 export const getModuleIcon = (slug) => MODULE_ICONS[slug] || AppsOutlinedIcon;
@@ -55,6 +57,7 @@ export const MODULE_LANDING_PATHS = {
   settings: '/settings',
   pettycash: '/petty-cash/dashboard',
   correspondence: '/correspondence',
+  payroll: '/payroll',
 };
 
 export const getModuleLandingPath = (slug) => MODULE_LANDING_PATHS[slug] || '/dashboard';

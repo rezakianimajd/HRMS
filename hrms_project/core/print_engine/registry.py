@@ -527,6 +527,13 @@ def build_payslip(payload, options, request=None):
     return load_payslip(payload, options, request)
 
 
+def build_payroll_payslip(payload, options, request=None):
+    """فیش حقوقی دورهٔ جدید مبتنی بر PayrollEmployeeResult."""
+    from core.print_engine.builders.payslip import load_payroll_payslip
+
+    return load_payroll_payslip(payload, options, request)
+
+
 def build_voucher(payload, options, request=None):
     """فیش دریافت / حواله پرداخت / رسید انتقال خزانه‌داری."""
     from core.print_engine.builders.voucher import load_voucher
@@ -543,6 +550,7 @@ def build_petty_statement(payload, options, request=None):
 
 DOCUMENTS.update({
     'payslip': build_payslip,
+    'payroll-payslip': build_payroll_payslip,
     'voucher': build_voucher,
     'petty-statement': build_petty_statement,
 })
@@ -586,6 +594,7 @@ def available_documents():
         {'key': 'letter-list', 'label': 'فهرست مکاتبات'},
         {'key': 'table', 'label': 'گزارش جدولی'},
         {'key': 'payslip', 'label': 'فیش حقوقی'},
+        {'key': 'payroll-payslip', 'label': 'فیش حقوقی دوره'},
         {'key': 'voucher', 'label': 'سند خزانه‌داری'},
         {'key': 'petty-statement', 'label': 'صورت ریز هزینهٔ تنخواه'},
         {'key': 'custom', 'label': 'سند آماده (HTML)'},

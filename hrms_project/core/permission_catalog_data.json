@@ -94,11 +94,51 @@
     ]
    },
    {
-    "title": "مالی",
+    "title": "حقوق و دستمزد",
     "items": [
      {
+      "id": "payroll-dashboard",
+      "title": "داشبورد حقوق",
+      "path": "/payroll?tab=dashboard"
+     },
+     {
+      "id": "payroll-periods",
+      "title": "دوره‌های حقوق",
+      "path": "/payroll?tab=periods"
+     },
+     {
+      "id": "payroll-results",
+      "title": "محاسبه و فیش حقوقی",
+      "path": "/payroll?tab=results"
+     },
+     {
+      "id": "payroll-profiles",
+      "title": "پروفایل حقوقی پرسنل",
+      "path": "/payroll?tab=profiles"
+     },
+     {
+      "id": "payroll-components",
+      "title": "مزایا، کسورات و تنظیمات",
+      "path": "/payroll?tab=components"
+     },
+     {
+      "id": "payroll-operations",
+      "title": "اضافه‌کاری، وام و تخصیص",
+      "path": "/payroll?tab=operations"
+     },
+     {
+      "id": "payroll-settlement",
+      "title": "تسویه حساب",
+      "path": "/payroll?tab=settlement"
+     },
+     {
+      "id": "payroll-reports",
+      "title": "گزارش‌ها و مغایرت",
+      "path": "/payroll?tab=reports"
+     },
+     {
       "id": "payslips",
-      "title": "فیش حقوق",
+      "title": "فیش حقوق (قدیم)",
       "path": "/payslips"
      },
      {

@@ -409,6 +409,21 @@ PROVIDERS['payroll'] = [
         subtitle_display='transaction_type', icon='payroll', color='#8b5cf6',
         select_related=('employee',),
     ),
+    SearchProvider(
+        'payroll.PayrollPeriod',
+        ('title', 'description', 'year'),
+        path=lambda obj: f'/payroll?tab=periods&period={obj.pk}',
+        title_fields=('title',), subtitle_fields=('year', 'month'),
+        subtitle_display='status', icon='payroll', color='#0ea5e9',
+    ),
+    SearchProvider(
+        'payroll.PayrollEmployeeResult',
+        ('employee__first_name', 'employee__last_name', 'employee__employee_id'),
+        path=lambda obj: f'/payroll?tab=results&period={obj.period_id}',
+        title_fields=('employee.full_name',), subtitle_fields=('period.label', 'net_amount'),
+        subtitle_display='status', icon='payroll', color='#10b981',
+        select_related=('employee', 'period'),
+    ),
 ]
 
 PROVIDERS['pettycash'] = [

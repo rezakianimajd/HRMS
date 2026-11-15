@@ -47,3 +47,25 @@ class EmployeeLoanAdmin(admin.ModelAdmin):
     list_select_related = ('employee',)
     raw_id_fields = ('employee',)
     ordering = ('-grant_date',)
+
+
+# New payroll core — registered with a compact dynamic admin.
+from payroll.models import (  # noqa: E402
+    EmployeeAdvance, EmployeeLoanInstallment, EmployeePayrollComponent,
+    EmployeePayrollProfile, PayrollAccountMapping, PayrollAdjustment, PayrollBankFormat,
+    PayrollChangeLog, PayrollComponent, PayrollComponentRule, PayrollCost,
+    PayrollCostAllocation, PayrollEmployeeResult, PayrollInsuranceRate, PayrollItem,
+    PayrollOvertime, PayrollPaymentBatch, PayrollPaymentBatchLine, PayrollPeriod,
+    PayrollSettlement, PayrollSettings, PayrollTaxBracket,
+)
+
+for _model in (
+    PayrollSettings, PayrollInsuranceRate, PayrollTaxBracket, PayrollComponent,
+    PayrollComponentRule, EmployeePayrollProfile, EmployeePayrollComponent, PayrollPeriod,
+    PayrollEmployeeResult, PayrollItem, PayrollOvertime, EmployeeAdvance,
+    EmployeeLoanInstallment, PayrollCostAllocation, PayrollCost, PayrollAccountMapping,
+    PayrollBankFormat, PayrollPaymentBatch, PayrollPaymentBatchLine, PayrollSettlement,
+    PayrollAdjustment, PayrollChangeLog,
+):
+    if not admin.site.is_registered(_model):
+        admin.site.register(_model)

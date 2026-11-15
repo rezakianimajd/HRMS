@@ -16,6 +16,7 @@ import AttendancePage from './pages/AttendancePage';
 import LeavePage from './pages/LeavePage';
 import RequestsPage from './pages/RequestsPage';
 import PayslipsPage from './pages/PayslipsPage';
+import PayrollPage from './pages/PayrollPage';
 import FinanceReportsPage from './pages/FinanceReportsPage';
 import BenefitsPage from './pages/BenefitsPage';
 import DeductionsPage from './pages/DeductionsPage';
@@ -247,6 +248,7 @@ const AppRoutes = () => {
           backward-compatible bookmarks/old links. */}
       <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
       <Route path="/payslips" element={<ProtectedLayout><PayslipsPage /></ProtectedLayout>} />
+      <Route path="/payroll" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
       <Route path="/finance-reports" element={<ProtectedLayout><FinanceReportsPage /></ProtectedLayout>} />
       <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
