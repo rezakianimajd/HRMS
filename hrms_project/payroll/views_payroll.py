@@ -22,6 +22,7 @@ from payroll.models import (
     PayrollChangeLog, PayrollComponent, PayrollComponentRule, PayrollCost,
     PayrollCostAllocation, PayrollEmployeeResult, PayrollInsuranceRate, PayrollOvertime,
     PayrollPaymentBatch, PayrollPeriod, PayrollSettlement, PayrollSettings, PayrollTaxBracket,
+    PayrollWorkData,
 )
 from payroll.serializers_payroll import (
     EmployeeAdvanceSerializer, EmployeeLoanInstallmentSerializer,
@@ -32,6 +33,7 @@ from payroll.serializers_payroll import (
     PayrollEmployeeResultSerializer, PayrollInsuranceRateSerializer, PayrollOvertimeSerializer,
     PayrollPaymentBatchSerializer, PayrollPeriodListSerializer, PayrollPeriodSerializer,
     PayrollSettingsSerializer, PayrollSettlementSerializer, PayrollTaxBracketSerializer,
+    PayrollWorkDataSerializer,
 )
 from payroll.services import PayrollError, calculate_period, open_period, transition_period
 
@@ -444,6 +446,46 @@ class PayrollTaxBracketViewSet(PayrollPermissionMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(company=_company(self.request))
+
+
+class PayrollWorkDataViewSet(PayrollCRUDBase):
+    model = PayrollWorkData
+    serializer_class = PayrollWorkDataSerializer
+    ordering = ['-year', '-month', 'employee__employee_id']
+    search_fields = ['employee__first_name', 'employee__last_name', 'employee__employee_id', 'note']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('employee', 'period')
+        params = self.request.query_params
+        if params.get('employee'):
+            qs = qs.filter(employee_id=params['employee'])
+        if params.get('year'):
+            qs = qs.filter(year=params['year'])
+        if params.get('month'):
+            qs = qs.filter(month=params['month'])
+        if params.get('status'):
+            qs = qs.filter(status=params['status'])
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        from django.utils import timezone
+
+        row = self.get_object()
+        if row.status == PayrollWorkData.Status.APPROVED:
+            return Response(self.get_serializer(row).data)
+        row.status = PayrollWorkData.Status.APPROVED
+        row.approved_by = request.user
+        row.approved_at = timezone.now()
+        row.save(update_fields=['status', 'approved_by', 'approved_at', 'updated_at'])
+        return Response(self.get_serializer(row).data)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        row = self.get_object()
+        row.status = PayrollWorkData.Status.REJECTED
+        row.save(update_fields=['status', 'updated_at'])
+        return Response(self.get_serializer(row).data)
 
 
 class EmployeeAdvanceViewSet(PayrollCRUDBase):

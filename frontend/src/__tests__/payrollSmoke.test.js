@@ -106,6 +106,8 @@ describe('Payroll smoke', () => {
     ['/payroll/insurance-export', 'خروجی بیمهٔ کارکنان'],
     ['/payroll/definitions/activity-centers', 'مراکز اصلی فعالیت'],
     ['/payroll/definitions/employee-status', 'وضعیت کارکنان بر اساس احکام حقوقی'],
+    ['/payroll/profiles', 'احکام پرسنل'],
+    ['/payroll/attendance-entry', 'ورود اطلاعات کارکرد'],
   ])('renders standalone payroll page %s', async (entry, text) => {
     const { container, root } = await renderPage(entry);
     expect(container.textContent).toContain(text);

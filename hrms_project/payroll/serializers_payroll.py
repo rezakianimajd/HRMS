@@ -12,7 +12,7 @@ from payroll.models import (
     PayrollChangeLog, PayrollComponent, PayrollComponentRule, PayrollCost,
     PayrollCostAllocation, PayrollEmployeeResult, PayrollInsuranceRate, PayrollItem,
     PayrollOvertime, PayrollPaymentBatch, PayrollPaymentBatchLine, PayrollPeriod,
-    PayrollSettlement, PayrollSettings, PayrollTaxBracket,
+    PayrollSettlement, PayrollSettings, PayrollTaxBracket, PayrollWorkData,
 )
 
 
@@ -125,6 +125,29 @@ class PayrollOvertimeSerializer(serializers.ModelSerializer):
         model = PayrollOvertime
         fields = '__all__'
         read_only_fields = ['id', 'company', 'approved_by', 'approved_at', 'created_at', 'updated_at']
+
+
+class PayrollWorkDataSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    period_label = serializers.CharField(source='period.label', read_only=True)
+
+    class Meta:
+        model = PayrollWorkData
+        fields = '__all__'
+        read_only_fields = [
+            'id', 'company', 'approved_by', 'approved_at', 'created_at', 'updated_at',
+        ]
+
+    def validate(self, attrs):
+        month = attrs.get('month', getattr(self.instance, 'month', None))
+        year = attrs.get('year', getattr(self.instance, 'year', None))
+        if year and not 1200 <= int(year) <= 1700:
+            raise serializers.ValidationError('سال شمسی نامعتبر است.')
+        if month and not 1 <= int(month) <= 12:
+            raise serializers.ValidationError('ماه شمسی باید بین ۱ تا ۱۲ باشد.')
+        return attrs
 
 
 class EmployeeAdvanceSerializer(serializers.ModelSerializer):

@@ -34,6 +34,7 @@ Draft → Open → Calculating → Calculated → Under Review → Approved
 | `PayrollEmployeeResult` | Snapshot محاسبهٔ هر پرسنل (کارکرد، بیمه، مالیات، خالص، هشدارها، بانک) |
 | `PayrollItem` | سطرهای ریز هر نتیجه (کد/عنوان/مبلغ/نوع/مشمولیت) |
 | `PayrollOvertime` | اضافه‌کاری/شب‌کاری/تعطیل‌کاری/نوبت‌کاری با وضعیت تأیید |
+| `PayrollWorkData` | کارکرد ماهانه (روز کارکرد، اضافه‌کاری، شب‌کاری، مأموریت، غیبت و اقلام) برای محاسبه |
 | `EmployeeAdvance` | مساعده با قسط و مانده و کسر کنترل‌شده |
 | `EmployeeLoanInstallment` | اقساط وام HR با اتصال به دوره و پرداخت |
 | `PayrollCostAllocation` | درصد تخصیص حقوق به پروژه/مرکز هزینه |
@@ -91,6 +92,7 @@ Draft → Open → Calculating → Calculated → Under Review → Approved
 | `/api/payroll-settings/` | تنظیمات شرکت |
 | `/api/payroll-insurance-rates/`، `/tax-brackets/` | نرخ‌های تاریخ‌محور |
 | `/api/payroll-overtimes/` | ثبت/تأیید اضافه‌کاری |
+| `/api/payroll-work-data/` | کارکرد ماهانه + `approve`/`reject` |
 | `/api/payroll-advances/`، `/payroll-loan-installments/` | مساعده و اقساط |
 | `/api/payroll-cost-allocations/`، `/payroll-costs/` | تخصیص و هزینه |
 | `/api/payroll-account-mappings/`، `/payroll-bank-formats/` | نگاشت حساب و قالب بانک |
@@ -123,6 +125,8 @@ Draft → Open → Calculating → Calculated → Under Review → Approved
 
 **وضعیت پیاده‌سازی:** صفحات خانه، مشخصات پرسنل، احکام، وام‌ها، محاسبه، نتایج/فیش،
 خروجی بیمه/مالیات، مساعده، مراکز هزینه و بخش‌های تعاریف به API فعلی متصل‌اند.
+ورود اطلاعات کارکرد از `PayrollWorkData` (`/api/payroll-work-data/`) استفاده می‌کند و
+روز کارکرد/اضافه‌کاری/شب‌کاری/غیبت و اقلام مالی آن در محاسبهٔ دوره لحاظ می‌شود.
 صفحات عیدی، مانده مرخصی و ذخیره سنوات در منو و مسیر مستقل آماده شده‌اند و پیش‌نیازهای
 مدل/قوانین ۱۴۰۵ را نشان می‌دهند؛ محاسبهٔ خودکار آن‌ها نیازمند تکمیل مدل‌های سالانه است.
 هیچ نرخ قانونی در کد hard-code نشده است.

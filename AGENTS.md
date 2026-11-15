@@ -652,8 +652,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `PayrollEmployeeResult` + `PayrollItem` (Snapshot کامل)، `PayrollOvertime`،
     `EmployeeAdvance`، `EmployeeLoanInstallment`، `PayrollCostAllocation`،
     `PayrollCost`، `PayrollAccountMapping`، `PayrollBankFormat`، `PayrollPaymentBatch`/
-    `Line`، `PayrollSettlement`، `PayrollAdjustment`، `PayrollChangeLog`.
-    مایگریشن `payroll.0008_...` روی همهٔ schemaها اعمال شد.
+    `Line`، `PayrollSettlement`، `PayrollAdjustment`، `PayrollChangeLog`،
+    `PayrollWorkData` (کارکرد ماهانه).
+    مایگریشن‌های `payroll.0008_...` و `payroll.0009_...` روی همهٔ schemaها اعمال شد.
   - **موتور محاسبه:** `payroll/engine/formula.py` مفسر امن AST (SUM/MIN/MAX/ROUND/IF/ABS/
     COALESCE؛ بدون attribute/import/اجرای کد)، `payroll/engine/calculator.py` محاسبات
     خالص `Decimal` (بیمه، مالیات تصاعدی، اضافه‌کاری، گرد کردن)، `payroll/services.py`
@@ -676,13 +677,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     `/payroll-bank-formats/`، `/payroll-payment-batches/`، `/payroll-settlements/`،
     `/payroll-adjustments/`، `/payroll-change-logs/`، `/api/payroll/dashboard/`،
     `/api/payroll/options/`، `/api/payroll/reports/`، `/api/payroll/reconciliation/`.
-  - **فرانت:** صفحهٔ `/payroll` با هفت تب (داشبورد، دوره‌ها، محاسبه/فیش، پروفایل حقوقی،
-    تنظیمات/مؤلفه‌ها/نگاشت/قالب بانک، اضافه‌کاری/مساعده/تخصیص، تسویه، گزارش/مغایرت)،
-    منوی «حقوق و دستمزد» با آیتم‌های تازه، فیش چاپی از موتور چاپ مرکزی.
+  - **فرانت:** صفحهٔ `/payroll` دیگر تب‌محور نیست؛ `payrollPages.jsx` هر آیتم منو را به یک
+    صفحهٔ مستقل نگاشت می‌کند (خانه، مشخصات پرسنل، احکام، وام‌ها، محاسبات حقوق، اطلاعات کارکرد،
+    نتایج/فیش، خروجی بیمه/مالیات، عملیات سالانه، مانده مرخص، تعاریف اولیه). صفحهٔ احکام
+    (`PayrollOrderPage`) فرم چندستونهٔ بانکی/رفاهی با پرچم‌های محاسبه/بیمه/مالیات دارد و
+    صفحهٔ کارکرد (`PayrollWorkDataPage`) از `/api/payroll-work-data/` استفاده می‌کند.
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.bf836b1c.js`**.
+    باندل زنده: **`main.9d1afbc3.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،

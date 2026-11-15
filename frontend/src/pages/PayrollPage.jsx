@@ -6,7 +6,8 @@ import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../core/context/Module
 import { useTheme } from '@mui/material/styles';
 import PayrollDashboardPanel from './payroll/PayrollDashboardPanel';
 import PayrollEmployeeSpecsPanel from './payroll/PayrollEmployeeSpecsPanel';
-import PayrollProfilesPanel from './payroll/PayrollProfilesPanel';
+import PayrollOrderPage from './payroll/PayrollOrderPage';
+import PayrollWorkDataPage from './payroll/PayrollWorkDataPage';
 import PayrollLoansPanel from './payroll/PayrollLoansPanel';
 import PayrollPeriodsPanel from './payroll/PayrollPeriodsPanel';
 import PayrollResultsPanel from './payroll/PayrollResultsPanel';
@@ -67,7 +68,8 @@ const PayrollPage = () => {
   const panel = useMemo(() => {
     const common = { accent, theme };
     if (active.panel === 'employees') return <PayrollEmployeeSpecsPanel {...common} />;
-    if (active.panel === 'profiles') return <PayrollProfilesPanel {...common} />;
+    if (active.panel === 'profiles') return <PayrollOrderPage {...common} />;
+    if (active.panel === 'work_data') return <PayrollWorkDataPage {...common} />;
     if (active.panel === 'loans') return <PayrollLoansPanel {...common} />;
     if (active.panel === 'periods') return <PayrollPeriodsPanel {...common} onOpenResults={openResults} />;
     if (active.panel === 'results') return <PayrollResultsPanel {...common} periodId={periodId} setPeriodId={setPeriodId} />;

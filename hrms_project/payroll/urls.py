@@ -11,6 +11,7 @@ from payroll.views_payroll import (
     PayrollChangeLogViewSet, PayrollComponentRuleViewSet, PayrollComponentViewSet,
     PayrollCostAllocationViewSet, PayrollCostViewSet, PayrollDashboardView,
     PayrollEmployeeResultViewSet, PayrollInsuranceRateViewSet, PayrollOptionsView,
+    PayrollWorkDataViewSet,
     PayrollOvertimeViewSet, PayrollPaymentBatchViewSet, PayrollPeriodViewSet,
     PayrollReconciliationView, PayrollReportsView, PayrollSeedView,
     PayrollSettingsViewSet, PayrollSettlementViewSet, PayrollTaxBracketViewSet,
@@ -35,6 +36,7 @@ router.register(r'payroll-profiles', EmployeePayrollProfileViewSet, basename='pa
 router.register(r'payroll-component-assignments', EmployeePayrollComponentViewSet,
                 basename='payroll-component-assignment')
 router.register(r'payroll-overtimes', PayrollOvertimeViewSet, basename='payroll-overtime')
+router.register(r'payroll-work-data', PayrollWorkDataViewSet, basename='payroll-work-data')
 router.register(r'payroll-advances', EmployeeAdvanceViewSet, basename='payroll-advance')
 router.register(r'payroll-loan-installments', EmployeeLoanInstallmentViewSet,
                 basename='payroll-loan-installment')

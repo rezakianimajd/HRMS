@@ -56,7 +56,7 @@ from payroll.models import (  # noqa: E402
     PayrollChangeLog, PayrollComponent, PayrollComponentRule, PayrollCost,
     PayrollCostAllocation, PayrollEmployeeResult, PayrollInsuranceRate, PayrollItem,
     PayrollOvertime, PayrollPaymentBatch, PayrollPaymentBatchLine, PayrollPeriod,
-    PayrollSettlement, PayrollSettings, PayrollTaxBracket,
+    PayrollSettlement, PayrollSettings, PayrollTaxBracket, PayrollWorkData,
 )
 
 for _model in (
@@ -65,7 +65,7 @@ for _model in (
     PayrollEmployeeResult, PayrollItem, PayrollOvertime, EmployeeAdvance,
     EmployeeLoanInstallment, PayrollCostAllocation, PayrollCost, PayrollAccountMapping,
     PayrollBankFormat, PayrollPaymentBatch, PayrollPaymentBatchLine, PayrollSettlement,
-    PayrollAdjustment, PayrollChangeLog,
+    PayrollAdjustment, PayrollChangeLog, PayrollWorkData,
 ):
     if not admin.site.is_registered(_model):
         admin.site.register(_model)

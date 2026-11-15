@@ -3,6 +3,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import BadgeIcon from '@mui/icons-material/Badge';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -58,6 +59,14 @@ export const PAYROLL_PAGES = [
     description: 'وام‌های اعطاشده به پرسنل، اقساط و وضعیت بازپرداخت',
     icon: <AccountBalanceWalletIcon />,
     panel: 'loans',
+  },
+  {
+    key: 'attendance-entry',
+    path: '/payroll/attendance-entry',
+    label: 'ورود اطلاعات کارکرد',
+    description: 'ثبت کارکرد ماهانه، ساعت اضافه‌کاری، شب‌کاری، مأموریت و عوامل مؤثر در محاسبهٔ حقوق',
+    icon: <EditNoteIcon />,
+    panel: 'work_data',
   },
   {
     key: 'calculate',

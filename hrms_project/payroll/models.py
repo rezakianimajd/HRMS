@@ -681,6 +681,13 @@ class EmployeePayrollProfile(BaseModel):
     )
     effective_from = models.DateField(verbose_name=_('معتبر از'))
     effective_to = models.DateField(null=True, blank=True, verbose_name=_('معتبر تا'))
+    order_number = models.CharField(max_length=50, blank=True, verbose_name=_('شمارهٔ حکم'))
+    issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
+    description = models.CharField(max_length=250, blank=True, verbose_name=_('شرح حکم'))
+    calculation_method = models.CharField(
+        max_length=30, default='annual_1405', verbose_name=_('روش محاسبهٔ حکم'),
+        help_text=_('مثال: annual_1405 — قوانین تاریخ‌محور سال ۱۴۰۵'),
+    )
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.ACTIVE, verbose_name=_('وضعیت'))
     base_salary = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('حقوق پایه'))
     housing_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('حق مسکن'))
@@ -688,7 +695,15 @@ class EmployeePayrollProfile(BaseModel):
     seniority_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('پایه سنوات'))
     attraction_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('حق جذب'))
     job_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('فوق‌العاده شغل'))
+    supervision_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('حق سرپرستی'))
+    hardship_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('سختی کار'))
+    workshop_mission_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('ماموریت کارگاهی'))
+    marriage_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('حق تأهل'))
+    child_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('حق اولاد'))
+    travel_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('هزینه سفر'))
+    phone_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('هزینه تلفن'))
     other_allowance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('سایر مزایای ثابت'))
+    component_settings = models.JSONField(default=dict, blank=True, verbose_name=_('تنظیمات اقلام حکم'))
     insurance_eligible = models.BooleanField(default=True, verbose_name=_('مشمول بیمه'))
     tax_eligible = models.BooleanField(default=True, verbose_name=_('مشمول مالیات'))
     direct_labor = models.BooleanField(default=True, verbose_name=_('نیروی کار مستقیم'))
@@ -1044,6 +1059,62 @@ class PayrollOvertime(BaseModel):
 
     def __str__(self):
         return f'{self.employee.full_name} — {self.date} ({self.hours}h)'
+
+
+class PayrollWorkData(BaseModel):
+    """Monthly work/attendance factors entered for payroll calculation."""
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('پیش‌نویس')
+        SUBMITTED = 'submitted', _('ثبت‌شده')
+        APPROVED = 'approved', _('تأییدشده')
+        REJECTED = 'rejected', _('رد‌شده')
+
+    employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.CASCADE,
+        related_name='payroll_work_data', verbose_name=_('پرسنل'),
+    )
+    year = models.PositiveIntegerField(verbose_name=_('سال شمسی'))
+    month = models.PositiveSmallIntegerField(verbose_name=_('ماه شمسی'))
+    period = models.ForeignKey(
+        PayrollPeriod, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='work_data', verbose_name=_('دورهٔ حقوق'),
+    )
+    work_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('کارکرد ماه'))
+    payable_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('روز قابل پرداخت'))
+    insurance_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('روز بیمه'))
+    overtime_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name=_('اضافه‌کاری'))
+    friday_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name=_('جمعه‌کاری'))
+    night_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name=_('شب‌کاری'))
+    shift_hours = models.DecimalField(max_digits=8, decimal_places=2, default=0, verbose_name=_('نوبت‌کاری'))
+    mission_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('روز مأموریت'))
+    paid_leave_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('مرخصی استحقاقی'))
+    unpaid_leave_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('مرخصی بدون حقوق'))
+    absence_days = models.DecimalField(max_digits=6, decimal_places=2, default=0, verbose_name=_('غیبت'))
+    other_earning = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('سایر دریافتی'))
+    other_deduction = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('سایر کسورات'))
+    items = models.JSONField(default=dict, blank=True, verbose_name=_('اقلام کارکرد'))
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
+    note = models.CharField(max_length=250, blank=True, verbose_name=_('توضیح'))
+    approved_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', db_constraint=False, verbose_name=_('تأییدکننده'),
+    )
+    approved_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان تأیید'))
+
+    class Meta:
+        verbose_name = _('کارکرد ماهانه')
+        verbose_name_plural = _('کارکردهای ماهانه')
+        ordering = ['-year', '-month', 'employee__employee_id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'employee', 'year', 'month'],
+                name='uniq_payroll_work_data_employee_month',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.full_name} — {self.year}/{self.month}'
 
 
 class EmployeeAdvance(BaseModel):

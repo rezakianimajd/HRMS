@@ -22,7 +22,7 @@ from payroll.models import (
     EmployeeAdvance, EmployeeLoanInstallment, EmployeePayrollComponent,
     EmployeePayrollProfile, PayrollAdjustment, PayrollChangeLog, PayrollComponent,
     PayrollComponentRule, PayrollCost, PayrollCostAllocation, PayrollEmployeeResult,
-    PayrollItem, PayrollOvertime, PayrollPeriod,
+    PayrollItem, PayrollOvertime, PayrollPeriod, PayrollWorkData,
 )
 from payroll.rates import effective_insurance_rate, effective_tax_brackets, insurance_values
 
@@ -152,6 +152,13 @@ def calculate_period(period, user=None, request=None, recalculate=False, reason=
         company=company, employee_id__in=ids, effective_from__lte=period.end_date,
     ).filter(Q(effective_to__isnull=True) | Q(effective_to__gte=period.start_date)).order_by('employee_id', '-effective_from'):
         profiles.setdefault(profile.employee_id, profile)
+    work_data = {}
+    if period.month:
+        work_data = {
+            row.employee_id: row for row in PayrollWorkData.objects.filter(
+                company=company, employee_id__in=ids, year=period.year, month=period.month,
+            ).exclude(status=PayrollWorkData.Status.REJECTED)
+        }
     attendance = {
         row['employee_id']: row for row in AttendanceRecord.objects.filter(
             company=company, employee_id__in=ids, date__range=(period.start_date, period.end_date),
@@ -234,6 +241,7 @@ def calculate_period(period, user=None, request=None, recalculate=False, reason=
                 prior=prior_results.get(employee.pk),
                 allocations=allocations.get(employee.pk, []),
                 adjustments=adjustments.get(employee.pk, []),
+                work=work_data.get(employee.pk),
             )
             result = PayrollEmployeeResult.objects.create(
                 company=company, period=period, employee=employee,
@@ -342,13 +350,22 @@ def _add_item(items, component, code, title, kind, amount, **kwargs):
 
 def _calculate_employee(*, company, period, employee, profile, settings, components, rules,
                         insurance_cfg, tax_brackets, metrics, overtime_rows, assignments,
-                        advances, installments, prior, allocations, adjustments):
+                        advances, installments, prior, allocations, adjustments, work=None):
     """Build a full snapshot and item lines for one employee."""
     warnings = []
     items = []
     base_salary = calculator.dec(profile.base_salary if profile else 0)
     work_days = calculator.dec(metrics['work_days']) or Decimal('1')
     payable_days = calculator.dec(metrics['payable_days'])
+    if work is not None:
+        entered_work_days = calculator.dec(work.work_days)
+        entered_payable_days = calculator.dec(work.payable_days)
+        if entered_work_days > 0:
+            work_days = entered_work_days
+        if entered_payable_days > 0:
+            payable_days = entered_payable_days
+        elif entered_work_days > 0:
+            payable_days = entered_work_days
     prorated_base = base_salary * payable_days / work_days
     daily = calculator.daily_rate(base_salary, work_days)
     hourly = calculator.hourly_rate(base_salary, work_days, settings.work_hours_per_day)
@@ -395,6 +412,9 @@ def _calculate_employee(*, company, period, employee, profile, settings, compone
         comp = components.get(code)
         if comp is None:
             return
+        flags = (getattr(profile, 'component_settings', None) or {}).get(code, {}) if profile else {}
+        if flags.get('compute') is False:
+            return
         amount = calculator.round_money(calculator.clamp_amount(
             calculator.dec(value), comp.min_amount, comp.max_amount,
         ), settings.rounding_step)
@@ -402,7 +422,8 @@ def _calculate_employee(*, company, period, employee, profile, settings, compone
             _add_item(
                 items, comp, code, comp.title or title,
                 comp.kind or 'earning', amount,
-                is_insurable=comp.is_insurable, is_taxable=comp.is_taxable,
+                is_insurable=flags.get('insurable', comp.is_insurable),
+                is_taxable=flags.get('taxable', comp.is_taxable),
                 project=project, cost_center=cost_center,
             )
 
@@ -413,11 +434,20 @@ def _calculate_employee(*, company, period, employee, profile, settings, compone
         fixed('SENIORITY_ALLOWANCE', 'پایه سنوات', profile.seniority_allowance)
         fixed('ATTRACTION_ALLOWANCE', 'حق جذب', profile.attraction_allowance)
         fixed('JOB_ALLOWANCE', 'فوق‌العاده شغل', profile.job_allowance)
+        fixed('SUPERVISION_ALLOWANCE', 'حق سرپرستی', profile.supervision_allowance)
+        fixed('HARDSHIP_ALLOWANCE', 'سختی کار', profile.hardship_allowance)
+        fixed('WORKSHOP_MISSION', 'ماموریت کارگاهی', profile.workshop_mission_allowance)
+        fixed('MARRIAGE_ALLOWANCE', 'حق تأهل', profile.marriage_allowance)
+        fixed('CHILD_ALLOWANCE', 'حق اولاد', profile.child_allowance)
+        fixed('TRAVEL_ALLOWANCE', 'هزینه سفر', profile.travel_allowance)
+        fixed('PHONE_ALLOWANCE', 'هزینه تلفن', profile.phone_allowance)
         fixed('OTHER_ALLOWANCE', 'سایر مزایای ثابت', profile.other_allowance)
 
     builtin_codes = {
         'BASE_SALARY', 'HOUSING_ALLOWANCE', 'FOOD_ALLOWANCE', 'SENIORITY_ALLOWANCE',
         'ATTRACTION_ALLOWANCE', 'JOB_ALLOWANCE', 'OTHER_ALLOWANCE', 'OVERTIME',
+        'SUPERVISION_ALLOWANCE', 'HARDSHIP_ALLOWANCE', 'WORKSHOP_MISSION',
+        'MARRIAGE_ALLOWANCE', 'CHILD_ALLOWANCE', 'TRAVEL_ALLOWANCE', 'PHONE_ALLOWANCE',
         'EMPLOYEE_INSURANCE', 'INCOME_TAX', 'LOAN_INSTALLMENT', 'ADVANCE',
         'OTHER_DEDUCTION', 'EMPLOYER_INSURANCE',
     }
@@ -525,6 +555,49 @@ def _calculate_employee(*, company, period, employee, profile, settings, compone
         else:
             warnings.append(
                 f'{calculator.dec(remain):g} ساعت اضافه‌کاری تأییدنشده در حضور و غیاب وجود دارد و وارد محاسبه نشد.'
+            )
+
+    if work is not None:
+        work_hours = [
+            ('overtime_hours', settings.overtime_rate, 'اضافه‌کاری کارکرد'),
+            ('friday_hours', settings.holiday_rate, 'جمعه‌کاری'),
+            ('night_hours', settings.night_rate, 'شب‌کاری کارکرد'),
+            ('shift_hours', settings.shift_rate, 'نوبت‌کاری کارکرد'),
+        ]
+        for field, multiplier, title in work_hours:
+            hours = calculator.dec(getattr(work, field, 0))
+            if hours <= 0:
+                continue
+            amount = calculator.round_money(
+                calculator.overtime_amount(
+                    base_salary, work_days, settings.work_hours_per_day, hours, multiplier,
+                ), settings.rounding_step,
+            )
+            if amount:
+                _add_item(
+                    items, overtime_component, 'OVERTIME', title, 'earning', amount,
+                    quantity=hours, rate=hourly * multiplier,
+                    is_insurable=True, is_taxable=True, project=project, cost_center=cost_center,
+                    source_type='work_data', source_id=str(work.pk),
+                    description=f'ورود اطلاعات کارکرد {work.year}/{work.month}',
+                )
+                overtime_hours += hours
+                context['OVERTIME_HOURS'] = overtime_hours
+        extra_earning = calculator.round_money(calculator.dec(work.other_earning), settings.rounding_step)
+        if extra_earning:
+            _add_item(
+                items, components.get('OTHER_ALLOWANCE'), 'WORK_OTHER_EARNING',
+                'سایر دریافتی کارکرد', 'earning', extra_earning,
+                is_insurable=False, is_taxable=False, project=project, cost_center=cost_center,
+                source_type='work_data', source_id=str(work.pk),
+            )
+        extra_deduction = calculator.round_money(calculator.dec(work.other_deduction), settings.rounding_step)
+        if extra_deduction:
+            _add_item(
+                items, components.get('OTHER_DEDUCTION'), 'WORK_OTHER_DEDUCTION',
+                'سایر کسورات کارکرد', 'deduction', extra_deduction,
+                is_insurable=False, is_taxable=False, project=project, cost_center=cost_center,
+                source_type='work_data', source_id=str(work.pk),
             )
 
     summary = calculator.summarize_lines(items)
@@ -646,8 +719,8 @@ def _calculate_employee(*, company, period, employee, profile, settings, compone
         'base_salary': base_salary,
         'work_days': work_days,
         'payable_days': payable_days,
-        'absence_days': calculator.dec(metrics['absence_days']),
-        'unpaid_leave_days': calculator.dec(metrics['unpaid_leave_days']),
+        'absence_days': calculator.dec(work.absence_days if work is not None else metrics['absence_days']),
+        'unpaid_leave_days': calculator.dec(work.unpaid_leave_days if work is not None else metrics['unpaid_leave_days']),
         'overtime_hours': overtime_hours,
         'gross': calculator.round_money(gross, settings.rounding_step),
         'insurance_base': calculator.round_money(insurance_base, settings.rounding_step),

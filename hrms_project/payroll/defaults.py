@@ -32,6 +32,34 @@ BUILTIN_COMPONENTS = [
         'calc_type': 'fixed', 'priority': 25, 'is_insurable': True, 'is_taxable': True,
     },
     {
+        'code': 'SUPERVISION_ALLOWANCE', 'title': 'حق سرپرستی', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 26, 'is_insurable': True, 'is_taxable': True,
+    },
+    {
+        'code': 'HARDSHIP_ALLOWANCE', 'title': 'سختی کار', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 27, 'is_insurable': True, 'is_taxable': True,
+    },
+    {
+        'code': 'WORKSHOP_MISSION', 'title': 'ماموریت کارگاهی', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 28, 'is_insurable': True, 'is_taxable': True,
+    },
+    {
+        'code': 'MARRIAGE_ALLOWANCE', 'title': 'حق تأهل', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 29, 'is_insurable': True, 'is_taxable': True,
+    },
+    {
+        'code': 'CHILD_ALLOWANCE', 'title': 'حق اولاد', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 30, 'is_insurable': True, 'is_taxable': True,
+    },
+    {
+        'code': 'TRAVEL_ALLOWANCE', 'title': 'هزینه سفر', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 31, 'is_insurable': False, 'is_taxable': False,
+    },
+    {
+        'code': 'PHONE_ALLOWANCE', 'title': 'هزینه تلفن', 'kind': 'earning', 'category': 'allowance',
+        'calc_type': 'fixed', 'priority': 32, 'is_insurable': False, 'is_taxable': False,
+    },
+    {
         'code': 'OVERTIME', 'title': 'اضافه‌کاری', 'kind': 'earning', 'category': 'overtime',
         'calc_type': 'overtime', 'priority': 40, 'is_insurable': True, 'is_taxable': True,
     },
