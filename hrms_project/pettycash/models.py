@@ -165,6 +165,86 @@ class PettyCashFund(BaseModel):
         return round(float(max(self.balance, 0)) / float(limit) * 100, 2)
 
 
+class PettyCashPayment(BaseModel):
+    """پرداخت وجه تنخواه (اولیه، علی‌الحساب، شارژ مجدد یا سایر).
+
+    هر پرداخت یک دریافت (credit) در دفتر تنخواه ایجاد می‌کند و با روش پرداخت،
+    حساب مقصد و شماره پیگیری تفکیک می‌شود. دامنهٔ دید/ثبت فقط تنخواه‌های مجاز
+    کاربر است.
+    """
+
+    class Kind(models.TextChoices):
+        INITIAL = 'initial', _('مبلغ اولیهٔ تنخواه')
+        ADVANCE = 'advance', _('علی‌الحساب')
+        RECHARGE = 'recharge', _('شارژ مجدد')
+        OTHER = 'other', _('سایر')
+
+    class Method(models.TextChoices):
+        CASH = 'cash', _('نقدی')
+        DEPOSIT = 'deposit', _('واریز به حساب')
+        SHEBA = 'sheba', _('شبا / انتقال بین‌بانکی')
+        CARD = 'card', _('کارت‌خوان / کارت')
+        CHEQUE = 'cheque', _('چک')
+        OTHER = 'other', _('سایر')
+
+    number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره پرداخت'))
+    fund = models.ForeignKey(
+        PettyCashFund, on_delete=models.PROTECT, related_name='payments',
+        verbose_name=_('تنخواه'),
+    )
+    custodian = models.ForeignKey(
+        'employees.Employee', on_delete=models.PROTECT, related_name='petty_cash_payments',
+        null=True, blank=True, verbose_name=_('تنخواه‌دار'),
+    )
+    kind = models.CharField(
+        max_length=20, choices=Kind.choices, default=Kind.INITIAL,
+        verbose_name=_('نوع پرداخت'),
+    )
+    method = models.CharField(
+        max_length=20, choices=Method.choices, default=Method.CASH,
+        verbose_name=_('روش پرداخت'),
+    )
+    amount = models.DecimalField(max_digits=18, decimal_places=0, verbose_name=_('مبلغ (ریال)'))
+    payment_date = models.DateField(verbose_name=_('تاریخ پرداخت'))
+    destination_entity = models.ForeignKey(
+        'treasury.TreasuryEntity', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='petty_cash_payments', verbose_name=_('حساب مقصد (خزانه)'),
+        help_text=_('حساب بانکی یا صندوقی که پرداخت از/به آن انجام شده است.'),
+    )
+    destination_name = models.CharField(
+        max_length=200, blank=True, verbose_name=_('نام حساب / بانک / صندوق'),
+    )
+    destination_account = models.CharField(
+        max_length=100, blank=True, verbose_name=_('شماره حساب / شبا / شناسه'),
+    )
+    reference = models.CharField(
+        max_length=120, blank=True, verbose_name=_('شماره پیگیری / فیش / سند'),
+    )
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    transaction = models.OneToOneField(
+        'PettyCashTransaction', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='payment', verbose_name=_('تراکنش دفتر تنخواه'),
+    )
+    paid_by = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='petty_cash_payments', db_constraint=False,
+        verbose_name=_('ثبت‌کنندهٔ پرداخت'),
+    )
+
+    class Meta:
+        verbose_name = _('پرداخت تنخواه')
+        verbose_name_plural = _('پرداخت‌های تنخواه')
+        ordering = ['-payment_date', '-id']
+        indexes = [
+            models.Index(fields=['company', 'fund']),
+            models.Index(fields=['company', 'payment_date']),
+        ]
+
+    def __str__(self):
+        return f'{self.number or self.pk} - {self.fund.title if self.fund_id else ""}'
+
+
+
 
 class PettyCashTransaction(BaseModel):
     """تراکنش تنخواه (دریافت/شارژ یا هزینه/پرداخت)."""

@@ -14,6 +14,40 @@ from pettycash import access, services
 
 
 
+class PettyCashPaymentTests(SimpleTestCase):
+    def test_payment_model_has_kind_and_method_choices(self):
+        from pettycash.models import PettyCashPayment
+
+        self.assertIn('initial', {code for code, _label in PettyCashPayment.Kind.choices})
+        self.assertIn('advance', {code for code, _label in PettyCashPayment.Kind.choices})
+        for method in ('cash', 'deposit', 'sheba', 'card', 'cheque'):
+            self.assertIn(method, {code for code, _label in PettyCashPayment.Method.choices})
+
+    def test_payment_serializer_exposes_destination_fields(self):
+        from pettycash.serializers import PettyCashPaymentSerializer
+
+        serializer = PettyCashPaymentSerializer()
+        for field in (
+            'fund', 'kind', 'method', 'amount', 'payment_date',
+            'destination_entity', 'destination_name', 'destination_account',
+            'reference', 'transaction_id', 'paid_by_name',
+        ):
+            self.assertIn(field, serializer.fields)
+        self.assertIn('amount', serializer.fields)
+        self.assertTrue(serializer.fields['transaction_id'].read_only)
+
+
+    def test_scope_queryset_scopes_payments_by_fund(self):
+        from pettycash.models import PettyCashPayment
+
+        qs = MagicMock()
+        qs.model = PettyCashPayment
+        qs.filter.return_value = 'filtered-payments'
+        with patch.object(access, 'accessible_fund_ids', return_value={3, 4}):
+            self.assertEqual(access.scope_queryset(qs, 1, _fake_user()), 'filtered-payments')
+            qs.filter.assert_called_with(fund_id__in=[3, 4])
+
+
 class MoneyHelpersTests(SimpleTestCase):
     def test_none_and_empty_are_zero(self):
         self.assertEqual(services.money(None), Decimal('0'))

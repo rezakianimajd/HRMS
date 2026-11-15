@@ -6,7 +6,7 @@ from pettycash.models import (
     PettyCashExpenseStatement, PettyCashExpenseStatementLine,
     PettyCashApprovalPolicy, PettyCashApprovalStep,
     PettyCashExpenseAttachment, PettyCashSettings,
-    PettyCashRequest, PettyCashSettlement, PettyCashCustodian,
+    PettyCashRequest, PettyCashSettlement, PettyCashCustodian, PettyCashPayment,
 )
 
 
@@ -18,7 +18,72 @@ class PettyCashCategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
+class PettyCashPaymentSerializer(serializers.ModelSerializer):
+    fund_title = serializers.CharField(source='fund.title', read_only=True)
+    fund_code = serializers.CharField(source='fund.code', read_only=True)
+    custodian_name = serializers.CharField(source='custodian.full_name', read_only=True)
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    method_display = serializers.CharField(source='get_method_display', read_only=True)
+    destination_entity_name = serializers.CharField(
+        source='destination_entity.name', read_only=True,
+    )
+    destination_entity_type = serializers.CharField(
+        source='destination_entity.entity_type', read_only=True,
+    )
+    destination_entity_type_display = serializers.CharField(
+        source='destination_entity.get_entity_type_display', read_only=True,
+    )
+    destination_entity_account = serializers.SerializerMethodField()
+    paid_by_name = serializers.CharField(source='paid_by.username', read_only=True)
+    transaction_id = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = PettyCashPayment
+        fields = [
+            'id', 'number', 'fund', 'fund_title', 'fund_code',
+            'custodian', 'custodian_name', 'kind', 'kind_display',
+            'method', 'method_display', 'amount', 'payment_date',
+            'destination_entity', 'destination_entity_name',
+            'destination_entity_type', 'destination_entity_type_display',
+            'destination_entity_account', 'destination_name', 'destination_account',
+            'reference', 'description', 'transaction_id', 'paid_by',
+            'paid_by_name', 'created_at',
+        ]
+        read_only_fields = [
+            'id', 'company', 'is_active', 'number', 'custodian',
+            'paid_by', 'created_at', 'updated_at',
+        ]
+
+    def get_destination_entity_account(self, obj):
+        entity = getattr(obj, 'destination_entity', None)
+        if not entity:
+            return ''
+        return entity.sheba_number or entity.account_number or ''
+
+    def validate_amount(self, value):
+        if value is None or value <= 0:
+            raise serializers.ValidationError('مبلغ پرداخت باید بزرگ‌تر از صفر باشد.')
+        return value
+
+    def validate(self, attrs):
+        fund = attrs.get('fund') or getattr(self.instance, 'fund', None)
+        method = attrs.get('method') or getattr(self.instance, 'method', 'cash')
+        entity = attrs.get('destination_entity') or getattr(self.instance, 'destination_entity', None)
+        if entity and fund and entity.company_id != fund.company_id:
+            raise serializers.ValidationError(
+                {'destination_entity': 'حساب مقصد باید متعلق به همان شرکت باشد.'}
+            )
+        if method in (PettyCashPayment.Method.SHEBA, PettyCashPayment.Method.DEPOSIT):
+            if not (attrs.get('destination_account') or getattr(self.instance, 'destination_account', '')) \
+                    and not entity:
+                raise serializers.ValidationError(
+                    {'destination_account': 'برای واریز/شبا، حساب مقصد یا شماره شبا را وارد کنید.'}
+                )
+        return attrs
+
+
 class PettyCashTransactionSerializer(serializers.ModelSerializer):
+
     entry_type_display = serializers.CharField(source='get_entry_type_display', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     receipt_url = serializers.SerializerMethodField()

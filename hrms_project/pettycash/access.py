@@ -19,6 +19,7 @@ from core.models.user import UserProfile
 from pettycash.models import (
     PettyCashCustodian, PettyCashExpenseStatement, PettyCashFund,
     PettyCashRequest, PettyCashSettlement, PettyCashSettings, PettyCashTransaction,
+    PettyCashPayment,
 )
 
 
@@ -205,7 +206,7 @@ def scope_queryset(qs, company, user, model=None):
     model = model or getattr(qs, 'model', None)
     if model is PettyCashFund:
         return scope_funds(qs, company, user)
-    if model in (PettyCashTransaction, PettyCashExpenseStatement):
+    if model in (PettyCashTransaction, PettyCashExpenseStatement, PettyCashPayment):
         return scope_by_fund(qs, company, user)
     if model in (PettyCashRequest, PettyCashSettlement):
         return scope_by_custodian(qs, company, user)

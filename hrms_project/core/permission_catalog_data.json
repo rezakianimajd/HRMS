@@ -406,6 +406,11 @@
       "id": "petty-cash-settlements",
       "title": "تسویه‌ها",
       "path": "/petty-cash/settlements"
+     },
+     {
+      "id": "petty-cash-payments",
+      "title": "پرداخت‌ها",
+      "path": "/petty-cash/payments"
      }
     ]
    },

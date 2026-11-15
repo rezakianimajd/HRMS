@@ -13,14 +13,14 @@ from pettycash.models import (
     PettyCashExpenseStatement, PettyCashExpenseStatementLine,
     PettyCashApprovalPolicy, PettyCashApprovalStep,
     PettyCashExpenseAttachment, PettyCashSettings,
-    PettyCashRequest, PettyCashSettlement, PettyCashCustodian,
+    PettyCashRequest, PettyCashSettlement, PettyCashCustodian, PettyCashPayment,
 )
 from pettycash.serializers import (
     PettyCashFundSerializer, PettyCashTransactionSerializer, PettyCashCategorySerializer,
     PettyCashExpenseStatementSerializer, PettyCashApprovalPolicySerializer,
     PettyCashApprovalStepSerializer, PettyCashExpenseAttachmentSerializer,
     PettyCashSettingsSerializer, PettyCashRequestSerializer, PettyCashSettlementSerializer,
-    PettyCashCustodianSerializer,
+    PettyCashCustodianSerializer, PettyCashPaymentSerializer,
 )
 from pettycash import access, services
 from pettycash.services import PettyCashError
@@ -1806,7 +1806,97 @@ class PettyCashSettlementViewSet(FinancialViewSet):
 
 
 
+class PettyCashPaymentViewSet(FinancialViewSet):
+    """پرداخت‌های وجه تنخواه — فقط تنخواه‌های مجاز کاربر.
+
+    هر پرداخت یک دریافت (credit) در دفتر تنخواه ثبت می‌کند؛ روش پرداخت و حساب
+    مقصد برای تفکیک و پیگیری نگهداری می‌شود. رکورد مالی قابل ویرایش/حذف نیست.
+    """
+    serializer_class = PettyCashPaymentSerializer
+    queryset = PettyCashPayment.objects.all()
+    http_method_names = ['get', 'post', 'head', 'options']
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        'number', 'reference', 'description', 'fund__title', 'fund__code',
+        'destination_name', 'destination_account',
+    ]
+    ordering = ['-payment_date', '-id']
+
+    METHOD_TO_TRANSACTION = {
+        PettyCashPayment.Method.CASH: 'cash',
+        PettyCashPayment.Method.DEPOSIT: 'bank_transfer',
+        PettyCashPayment.Method.SHEBA: 'bank_transfer',
+        PettyCashPayment.Method.CARD: 'card',
+        PettyCashPayment.Method.CHEQUE: 'cheque',
+        PettyCashPayment.Method.OTHER: 'other',
+    }
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related(
+            'fund', 'fund__custodian', 'custodian', 'destination_entity', 'paid_by',
+        )
+        params = self.request.query_params
+        for key in ('fund', 'kind', 'method'):
+            value = params.get(key)
+            if value:
+                qs = qs.filter(**{key: value})
+        date_from = params.get('date_from')
+        date_to = params.get('date_to')
+        if date_from:
+            qs = qs.filter(payment_date__gte=date_from)
+        if date_to:
+            qs = qs.filter(payment_date__lte=date_to)
+        if params.get('fund') and params.get('fund').isdigit():
+            fund_ids = access.accessible_fund_ids(_company(self.request), self.request.user)
+            if fund_ids is not None:
+                qs = qs.filter(fund_id__in=list(fund_ids))
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        company = _company(request)
+        if not company:
+            return Response({'error': 'شرکت مشخص نیست.'}, status=400)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        fund = data.get('fund')
+        if not _fund_in_scope(request, fund):
+            return Response({'error': 'این تنخواه در دامنهٔ دسترسی شما نیست.'}, status=403)
+        try:
+            with db_transaction.atomic():
+                payment_date = data.get('payment_date') or timezone.localdate()
+                payment = serializer.save(
+                    company=company,
+                    custodian=fund.custodian if fund else None,
+                    paid_by=request.user if getattr(request.user, 'is_authenticated', False) else None,
+                    number=services.next_payment_number(company, payment_date),
+                )
+                method = payment.method
+                tx, _created = services.register_movement(
+                    fund=fund,
+                    entry_type=PettyCashTransaction.EntryType.CREDIT,
+                    amount=payment.amount,
+                    title=f'پرداخت تنخواه {payment.number} — {payment.get_kind_display()}',
+                    date=payment.payment_date,
+                    user=request.user,
+                    description=payment.description,
+                    payment_method=self.METHOD_TO_TRANSACTION.get(method, 'other'),
+                    reference=payment.reference,
+                    unique_key=f'payment:{payment.pk}:credit',
+                )
+                payment.transaction = tx
+                payment.save(update_fields=['transaction', 'updated_at'])
+        except PettyCashError as exc:
+            return Response({'error': str(exc)}, status=400)
+        services.audit('CREATE', payment, user=request.user, description='ثبت پرداخت تنخواه')
+        return Response(
+            self.get_serializer(payment).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class PettyCashReportViewSet(viewsets.ViewSet):
+
     """گزارش‌های تحلیلی تنخواه (فیلترپذیر و قابل خروجی CSV)."""
 
     def _company_or_error(self, request):

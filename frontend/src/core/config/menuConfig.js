@@ -301,6 +301,7 @@ const pettycashMenu = [
       { id: 'petty-cash-ledger', title: 'دفتر تنخواه', icon: <MenuBookIcon />, path: '/petty-cash/ledger', color: '#0ea5e9', primary: true, ready: true },
       { id: 'petty-cash-requests', title: 'درخواست‌ها', icon: <RequestQuoteIcon />, path: '/petty-cash/requests', color: '#f59e0b', primary: true, ready: true },
       { id: 'petty-cash-settlements', title: 'تسویه‌ها', icon: <FactCheckIcon />, path: '/petty-cash/settlements', color: '#10b981', primary: true, ready: true },
+      { id: 'petty-cash-payments', title: 'پرداخت‌ها', icon: <PaymentsIcon />, path: '/petty-cash/payments', color: '#0f766e', primary: true, ready: true },
     ],
   },
   {

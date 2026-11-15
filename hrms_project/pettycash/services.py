@@ -208,6 +208,12 @@ def next_settlement_number(company, date=None):
     return next_number(company, date, PettyCashSettlement, f'{prefix}-STL')
 
 
+def next_payment_number(company, date=None):
+    from pettycash.models import PettyCashPayment
+    prefix = get_settings(company).number_prefix or 'PC'
+    return next_number(company, date, PettyCashPayment, f'{prefix}-PAY')
+
+
 # ---------------------------------------------------------------------------
 # عملیات مالی
 # ---------------------------------------------------------------------------
