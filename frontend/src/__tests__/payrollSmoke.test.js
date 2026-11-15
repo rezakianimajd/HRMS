@@ -101,6 +101,21 @@ describe('Payroll smoke', () => {
     container.remove();
   });
 
+  it('separates work entry and calculation method into two tabs', async () => {
+    const { container, root } = await renderPage('/payroll/attendance-entry');
+    expect(container.textContent).toContain('ورود اطلاعات');
+    expect(container.textContent).toContain('فاکتورهای کارکرد');
+    const tabs = container.querySelectorAll('[role="tab"]');
+    expect(tabs.length).toBe(2);
+    await act(async () => { tabs[1].click(); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
+    expect(container.textContent).toContain('روش محاسبات');
+    expect(container.textContent).toContain('قواعد محاسبهٔ کارکرد سال ۱۴۰۵');
+    expect(container.textContent).toContain('اقلام و تأثیر در محاسبه');
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it.each([
     ['/payroll/loans', 'وام‌های کارکنان'],
     ['/payroll/insurance-export', 'خروجی بیمهٔ کارکنان'],

@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  Alert, Box, Button, Checkbox, Chip, Grid, MenuItem, Paper, Stack, TextField, Typography,
+  Alert, Box, Button, Checkbox, Chip, Grid, MenuItem, Paper, Stack, Tab, Tabs, TextField, Typography,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DownloadIcon from '@mui/icons-material/Download';
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import TuneIcon from '@mui/icons-material/Tune';
 import axiosInstance from '../../core/api/axiosConfig';
 import PrintButton from '../../core/print/PrintButton';
 import { money, payrollCardSx, statusMeta } from './payrollUi';
@@ -58,10 +60,15 @@ const PayrollWorkDataPage = ({ accent }) => {
   const [form, setForm] = useState(emptyWork);
   const [editing, setEditing] = useState(null);
   const [message, setMessage] = useState(null);
+  const [activeTab, setActiveTab] = useState('entry');
 
   const { data: options } = useQuery({
     queryKey: ['payroll-options'],
     queryFn: () => axiosInstance.get('/payroll/options/').then((r) => r.data),
+  });
+  const { data: payrollSettings } = useQuery({
+    queryKey: ['payroll-settings'],
+    queryFn: () => axiosInstance.get('/payroll-settings/').then((r) => r.data),
   });
   const { data, isLoading } = useQuery({
     queryKey: ['payroll-work-data', year, month, selectedEmployee],
@@ -180,6 +187,24 @@ const PayrollWorkDataPage = ({ accent }) => {
         </Grid>
       </Paper>
 
+      <Paper elevation={0} data-testid="payroll-work-tabs" sx={payrollCardSx({ p: 0, overflow: 'hidden' })}>
+        <Tabs
+          value={activeTab}
+          onChange={(event, value) => setActiveTab(value)}
+          variant="fullWidth"
+          aria-label="ورود اطلاعات و روش محاسبات کارکرد"
+          sx={{
+            '& .MuiTab-root': { fontSize: 12.5, fontWeight: 800, minHeight: 50, gap: 0.75 },
+            '& .Mui-selected': { color: `${accent} !important` },
+            '& .MuiTabs-indicator': { backgroundColor: accent },
+          }}
+        >
+          <Tab value="entry" icon={<EditNoteIcon fontSize="small" />} iconPosition="start" label="ورود اطلاعات" />
+          <Tab value="calc" icon={<TuneIcon fontSize="small" />} iconPosition="start" label="روش محاسبات" />
+        </Tabs>
+      </Paper>
+
+      {activeTab === 'entry' && (
       <Paper elevation={0} sx={payrollCardSx({ p: 1.5 })}>
         <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1 }}>
           فاکتورهای کارکرد {selectedEmployee ? `— ${employees.find((row) => String(row.id) === String(selectedEmployee))?.name || ''}` : ''}
@@ -200,8 +225,43 @@ const PayrollWorkDataPage = ({ accent }) => {
             <TextField fullWidth size="small" label="توضیح" value={form.note || ''} onChange={(event) => setField('note', event.target.value)} />
           </Grid>
         </Grid>
+        <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', mt: 2, flexWrap: 'wrap' }}>
+          <Button variant="contained" startIcon={<SaveIcon />} sx={{ bgcolor: accent }} disabled={!selectedEmployee || save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? 'در حال ذخیره…' : 'ذخیرهٔ اطلاعات'}
+          </Button>
+          <Button variant="outlined" startIcon={<CheckCircleIcon />} disabled={!editing || approve.isPending || existing?.status === 'approved'} onClick={() => approve.mutate()}>
+            تأیید کارکرد
+          </Button>
+        </Stack>
       </Paper>
+      )}
 
+      {activeTab === 'calc' && (
+      <>
+      <Paper elevation={0} sx={payrollCardSx({ p: 1.5 })}>
+        <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1 }}>قواعد محاسبهٔ کارکرد سال ۱۴۰۵</Typography>
+        <Grid container spacing={1.5}>
+          {[
+            ['ضریب اضافه‌کاری', payrollSettings?.overtime_rate, ''],
+            ['ضریب شب‌کاری', payrollSettings?.night_rate, ''],
+            ['ضریب تعطیل‌کاری/جمعه', payrollSettings?.holiday_rate, ''],
+            ['ضریب نوبت‌کاری', payrollSettings?.shift_rate, ''],
+            ['ساعت کاری روز', payrollSettings?.work_hours_per_day, 'ساعت'],
+            ['روز کاری ماه', payrollSettings?.work_days_per_month, 'روز'],
+          ].map(([label, value, suffix]) => (
+            <Grid item xs={12} sm={6} md={4} key={label}>
+              <Paper elevation={0} sx={payrollCardSx({ p: 1.25, bgcolor: 'var(--hrms-table-header-bg, #f8fafc)' })}>
+                <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{label}</Typography>
+                <Typography sx={{ fontSize: 15, fontWeight: 800 }}>{value == null || value === '' ? '—' : `${value} ${suffix}`}</Typography>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+        <Typography sx={{ mt: 1.5, fontSize: 11.5, color: 'text.secondary' }}>
+          مبالغ کارکرد بر اساس احکام پرسنلی، ضرایب بالا و نرخ‌های تاریخ‌محور بیمه/مالیات محاسبه می‌شوند.
+          تغییر نرخ‌ها از «تعاریف اولیه» انجام می‌شود.
+        </Typography>
+      </Paper>
 
       <Paper elevation={0} sx={payrollCardSx({ p: 1.5 })}>
         <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1 }}>اقلام و تأثیر در محاسبه</Typography>
@@ -242,13 +302,15 @@ const PayrollWorkDataPage = ({ accent }) => {
             <Typography sx={{ fontSize: 12, fontWeight: 800 }}>جمع کمک‌هزینه‌ها: {money(Number(form.other_earning || 0))} · جمع کسورات: {money(Number(form.other_deduction || 0))}</Typography>
           </Paper>
           <Button variant="contained" startIcon={<SaveIcon />} sx={{ bgcolor: accent }} disabled={!selectedEmployee || save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? 'در حال ذخیره…' : 'ذخیره'}
+            {save.isPending ? 'در حال ذخیره…' : 'ذخیرهٔ روش محاسبه'}
           </Button>
           <Button variant="outlined" startIcon={<CheckCircleIcon />} disabled={!editing || approve.isPending || existing?.status === 'approved'} onClick={() => approve.mutate()}>
             تأیید کارکرد
           </Button>
         </Stack>
       </Paper>
+      </>
+      )}
     </Box>
   );
 };
