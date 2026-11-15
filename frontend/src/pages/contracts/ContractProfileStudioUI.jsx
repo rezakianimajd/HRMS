@@ -674,7 +674,7 @@ export const CoverageCompactCard = ({ summary, coverage, onOpen }) => {
     <SectionCard title="پوشش تعهدات" icon={AccountBalanceIcon} color={color} sx={{ height: '100%' }}
       action={onOpen ? <Chip size="small" label="جزئیات" onClick={onOpen} sx={{ height: 20, fontSize: 11, cursor: 'pointer', color: theme.palette.info.main }} /> : null}>
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 0.4 }}>
-        <FinanceRing percent={percent} color={color} track={theme.palette.divider} label="پوشش" value={percent >= 100 ? 'کامل' : 'نیازمند تکمیل'} />
+        <FinanceRing percent={percent} color={color} track={theme.palette.divider} label="پوشش" value={percent > 100 ? 'بیش از نیاز' : percent >= 100 ? 'کامل' : 'نیازمند تکمیل'} />
       </Box>
       <Box sx={{ mt: 0.6, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.6 }}>
         <StudioFact label="مورد نیاز" value={formatPersianNumber(summary?.required_total || 0)} />
