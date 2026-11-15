@@ -213,3 +213,44 @@ class PlanningGroupMember(BaseModel):
     def __str__(self):
         return f'{self.group_id} · {self.user_id}'
 
+
+class PlanningEvent(BaseModel):
+    """رویداد تقویم شخصی؛ می‌تواند به یک وظیفه یا یادداشت پیوند داشته باشد."""
+
+    class Kind(models.TextChoices):
+        EVENT = 'event', _('رویداد')
+        REMINDER = 'reminder', _('یادآور')
+        MEETING = 'meeting', _('جلسه')
+        DEADLINE = 'deadline', _('مهلت')
+
+    owner = _user_fk('planning_events', _('مالک'), on_delete=models.CASCADE)
+    title = models.CharField(max_length=200, verbose_name=_('عنوان'))
+    description = models.TextField(blank=True, verbose_name=_('توضیح (رمزنگاری‌شده)'))
+    date = models.DateField(db_index=True, verbose_name=_('تاریخ'))
+    start_time = models.TimeField(null=True, blank=True, verbose_name=_('ساعت شروع'))
+    end_time = models.TimeField(null=True, blank=True, verbose_name=_('ساعت پایان'))
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.EVENT,
+                            verbose_name=_('نوع'))
+    color = models.CharField(max_length=20, blank=True, verbose_name=_('رنگ'))
+    is_done = models.BooleanField(default=False, verbose_name=_('انجام‌شده'))
+    task = models.ForeignKey(
+        Task, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='calendar_events', db_constraint=False, verbose_name=_('وظیفهٔ مرتبط'),
+    )
+    note = models.ForeignKey(
+        Note, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='calendar_events', db_constraint=False, verbose_name=_('یادداشت مرتبط'),
+    )
+
+    class Meta:
+        verbose_name = _('رویداد تقویم')
+        verbose_name_plural = _('رویدادهای تقویم')
+        ordering = ['date', 'start_time', 'id']
+        indexes = [
+            models.Index(fields=['company', 'owner', 'date']),
+            models.Index(fields=['company', 'date']),
+        ]
+
+    def __str__(self):
+        return f'{self.date} · {self.title}'
+

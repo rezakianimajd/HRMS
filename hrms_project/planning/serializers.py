@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from planning import services
-from planning.models import Note, PlanningGroup, PlanningShare, Task
+from planning.models import Note, PlanningEvent, PlanningGroup, PlanningShare, Task
 from planning.richtext import normalize_checklist, sanitize_html
 
 
@@ -251,4 +251,71 @@ class TaskSerializer(serializers.ModelSerializer):
             )
         if 'checklist' in validated_data:
             validated_data['checklist'] = normalize_checklist(validated_data.get('checklist'))
+        return super().update(instance, validated_data)
+
+
+class PlanningEventSerializer(serializers.ModelSerializer):
+    """رویداد تقویم شخصی با پیوند اختیاری به وظیفه/یادداشت."""
+
+    description = serializers.CharField(required=False, allow_blank=True, trim_whitespace=False)
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    task_title = serializers.SerializerMethodField()
+    task_status = serializers.SerializerMethodField()
+    note_title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PlanningEvent
+        fields = [
+            'id', 'title', 'description', 'date', 'start_time', 'end_time', 'kind',
+            'kind_display', 'color', 'is_done', 'task', 'task_title', 'task_status',
+            'note', 'note_title', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'kind_display', 'task_title', 'task_status', 'note_title',
+            'created_at', 'updated_at',
+        ]
+
+    def get_task_title(self, obj):
+        return obj.task.title if obj.task_id else ''
+
+    def get_task_status(self, obj):
+        return obj.task.status if obj.task_id else ''
+
+    def get_note_title(self, obj):
+        return obj.note.title if obj.note_id else ''
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['description'] = services.decrypt_text(instance.description)
+        return data
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+        task = attrs.get('task')
+        note = attrs.get('note')
+        if task is not None:
+            if company is not None and task.company_id != company.pk:
+                raise serializers.ValidationError({'task': 'وظیفه از این شرکت نیست.'})
+            if not services.can_view(user, PlanningShare.ItemKind.TASK, task.pk):
+                raise serializers.ValidationError({'task': 'دسترسی به این وظیفه ندارید.'})
+        if note is not None:
+            if company is not None and note.company_id != company.pk:
+                raise serializers.ValidationError({'note': 'یادداشت از این شرکت نیست.'})
+            if not services.can_view(user, PlanningShare.ItemKind.NOTE, note.pk):
+                raise serializers.ValidationError({'note': 'دسترسی به این یادداشت ندارید.'})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data['description'] = services.encrypt_text(
+            validated_data.get('description', ''),
+        )
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if 'description' in validated_data:
+            validated_data['description'] = services.encrypt_text(
+                validated_data.get('description') or '',
+            )
         return super().update(instance, validated_data)

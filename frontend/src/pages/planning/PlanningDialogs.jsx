@@ -13,6 +13,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
@@ -28,6 +29,7 @@ import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInpu
 import RichTextEditor from './RichTextEditor';
 import {
   TASK_PRIORITY_META, TASK_PRIORITY_ORDER, TASK_STATUS_META, TASK_STATUS_ORDER,
+  EVENT_KIND_META, EVENT_KIND_ORDER,
   checklistStats, htmlToText, initialsOf, notePalette, tagsFrom, toneColor,
 } from './planningTheme';
 
@@ -1031,3 +1033,177 @@ export const GroupsDialog = ({
     </DialogShell>
   );
 };
+/* ------------------------------------------------------------------ دیالوگ رویداد تقویم */
+export const EventDialog = ({
+  open, form, setForm, onClose, onSave, saving, theme, tasks = [], notes = [],
+}) => {
+  const patch = (values) => setForm((previous) => ({ ...previous, ...values }));
+  const selectedTask = tasks.find((item) => item.id === form.task) || null;
+  const selectedNote = notes.find((item) => item.id === form.note) || null;
+  return (
+    <DialogShell
+      open={open}
+      onClose={onClose}
+      theme={theme}
+      icon={EventOutlinedIcon}
+      color={theme.accent}
+      title={form.id ? 'ویرایش رویداد تقویم' : 'رویداد تقویم'}
+      subtitle="رویداد می‌تواند به یک وظیفه یا یادداشت پیوند داشته باشد."
+      maxWidth="sm"
+      testId="planning-event-dialog"
+      footer={(
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            size="small"
+            variant={form.is_done ? 'contained' : 'outlined'}
+            startIcon={<TaskAltOutlinedIcon />}
+            onClick={() => patch({ is_done: !form.is_done })}
+          >
+            {form.is_done ? 'انجام شد' : 'انجام نشده'}
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button size="small" onClick={onClose}>انصراف</Button>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={!String(form.title || '').trim() || !form.date || saving}
+            onClick={onSave}
+          >
+            {saving ? 'در حال ذخیره…' : (form.id ? 'ذخیرهٔ تغییرات' : 'ساخت رویداد')}
+          </Button>
+        </Stack>
+      )}
+    >
+      <Stack spacing={1.75}>
+        <Box>
+          <SectionLabel theme={theme} icon={EventOutlinedIcon} title="عنوان و توضیح" color={theme.accent} />
+          <Stack spacing={1}>
+            <TextField
+              size="small"
+              autoFocus
+              label="عنوان رویداد"
+              value={form.title || ''}
+              onChange={(event) => patch({ title: event.target.value })}
+            />
+            <TextField
+              size="small"
+              label="توضیح"
+              multiline
+              minRows={2}
+              value={form.description || ''}
+              onChange={(event) => patch({ description: event.target.value })}
+            />
+          </Stack>
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <SectionLabel theme={theme} icon={AccessTimeOutlinedIcon} title="تاریخ و ساعت" color={theme.accent} />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <Box sx={{ flex: 1 }}>
+              <JalaliMaskedDateInput
+                value={form.date || ''}
+                onChange={(iso) => patch({ date: iso })}
+                label="تاریخ (شمسی)"
+                variant="outlined"
+              />
+            </Box>
+            <TextField
+              size="small"
+              type="time"
+              label="شروع"
+              value={form.start_time || ''}
+              onChange={(event) => patch({ start_time: event.target.value })}
+              sx={{ width: { xs: '100%', sm: 130 } }}
+            />
+            <TextField
+              size="small"
+              type="time"
+              label="پایان"
+              value={form.end_time || ''}
+              onChange={(event) => patch({ end_time: event.target.value })}
+              sx={{ width: { xs: '100%', sm: 130 } }}
+            />
+          </Stack>
+        </Box>
+
+
+        <Divider />
+
+        <Box>
+          <SectionLabel theme={theme} icon={PaletteOutlinedIcon} title="نوع و رنگ" color={theme.accent} />
+          <Stack spacing={1}>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              fullWidth
+              value={form.kind}
+              onChange={(_event, next) => { if (next) patch({ kind: next }); }}
+              sx={{ '& .MuiToggleButton-root': { fontSize: 10.5, py: 0.45, fontWeight: 800 } }}
+            >
+              {EVENT_KIND_ORDER.map((key) => {
+                const meta = EVENT_KIND_META[key];
+                const color = toneColor(theme, meta.tone);
+                return (
+                  <ToggleButton
+                    key={key}
+                    value={key}
+                    sx={{
+                      '&.Mui-selected': {
+                        bgcolor: alpha(color, 0.14), color,
+                        borderColor: alpha(color, 0.35),
+                      },
+                    }}
+                  >
+                    {meta.label}
+                  </ToggleButton>
+                );
+              })}
+            </ToggleButtonGroup>
+            <ColorSwatches
+              theme={theme}
+              value={form.color}
+              onChange={(color) => patch({ color })}
+            />
+          </Stack>
+        </Box>
+
+        <Divider />
+
+        <Box>
+          <SectionLabel
+            theme={theme}
+            icon={ShareOutlinedIcon}
+            title="پیوند به وظیفه یا یادداشت"
+            hint="رویداد پیوندخورده وضعیت همان آیتم را در تقویم نشان می‌دهد."
+            color={theme.accent}
+          />
+          <Stack spacing={1}>
+            <Autocomplete
+              size="small"
+              options={tasks}
+              value={selectedTask}
+              onChange={(_event, next) => patch({ task: next ? next.id : null })}
+              getOptionLabel={(option) => option.title || ''}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              noOptionsText="وظیفه‌ای یافت نشد"
+              renderInput={(params) => <TextField {...params} size="small" label="وظیفهٔ مرتبط" />}
+            />
+            <Autocomplete
+              size="small"
+              options={notes}
+              value={selectedNote}
+              onChange={(_event, next) => patch({ note: next ? next.id : null })}
+              getOptionLabel={(option) => option.title || ''}
+              isOptionEqualToValue={(a, b) => a.id === b.id}
+              noOptionsText="یادداشتی یافت نشد"
+              renderInput={(params) => <TextField {...params} size="small" label="یادداشت مرتبط" />}
+            />
+          </Stack>
+        </Box>
+      </Stack>
+    </DialogShell>
+  );
+};
+

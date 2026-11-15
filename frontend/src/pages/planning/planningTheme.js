@@ -63,6 +63,19 @@ export const EMPTY_TASK = {
   assigneeIds: [], groupIds: [], assignMode: 'me',
 };
 
+export const EMPTY_EVENT = {
+  id: null, title: '', description: '', date: '', start_time: '', end_time: '',
+  kind: 'event', color: '', is_done: false, task: null, note: null,
+};
+
+export const EVENT_KIND_META = {
+  event: { label: 'رویداد', tone: 'accent' },
+  meeting: { label: 'جلسه', tone: 'info' },
+  reminder: { label: 'یادآور', tone: 'warning' },
+  deadline: { label: 'مهلت', tone: 'danger' },
+};
+export const EVENT_KIND_ORDER = ['event', 'meeting', 'reminder', 'deadline'];
+
 /** توکن‌های تم + رنگ‌های معنایی + شعاع/سایهٔ آمادهٔ استفاده. */
 export const usePlanningTheme = () => {
   const module = useModuleTheme();

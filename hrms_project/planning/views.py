@@ -8,10 +8,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from planning import query, services
-from planning.models import Note, PlanningGroup, PlanningGroupMember, PlanningShare, Task
+from planning import calendar_range, query, services
+from planning.models import (
+    Note, PlanningEvent, PlanningGroup, PlanningGroupMember, PlanningShare, Task,
+)
 from planning.serializers import (
-    NoteSerializer, PlanningGroupSerializer, PlanningShareSerializer, TaskSerializer,
+    NoteSerializer, PlanningEventSerializer, PlanningGroupSerializer, PlanningShareSerializer,
+    TaskSerializer,
 )
 
 
@@ -240,6 +243,104 @@ class PlanningGroupViewSet(viewsets.ModelViewSet):
             PlanningGroupMember.objects.get_or_create(
                 company=group.company, group=group, user=user,
             )
+
+
+class PlanningCalendarAPIView(APIView):
+    """دادهٔ تقویم شخصی: وظایف دارای سررسید، یادداشت‌های همان روز و رویدادها.
+
+    هر بخش با **یک** کوئری گرفته می‌شود و دامنهٔ دید (فقط من/اشتراکی/همه) روی
+    وظایف و یادداشت‌ها اعمال می‌شود؛ رویدادها همیشه شخصی‌اند.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        params = request.query_params
+        start_date, end_date = calendar_range.calendar_range(
+            params.get('start'), params.get('end'), timezone.localdate(),
+        )
+        scope = (params.get('scope') or 'mine').lower()
+
+        tasks = services.tasks_for_scope(request.user, scope).filter(
+            due_date__range=(start_date, end_date),
+        ).order_by('due_date', 'due_time', 'id')
+        task_rows = [
+            {
+                'id': task.pk,
+                'title': task.title,
+                'status': task.status,
+                'priority': task.priority,
+                'due_date': task.due_date.isoformat(),
+                'due_time': task.due_time.strftime('%H:%M') if task.due_time else '',
+            }
+            for task in tasks
+        ]
+
+        notes = services.notes_for_scope(request.user, scope).filter(
+            created_at__date__range=(start_date, end_date),
+        ).order_by('-created_at')
+        note_rows = [
+            {
+                'id': note.pk,
+                'title': note.title,
+                'color': note.color or '',
+                'date': timezone.localtime(note.created_at).date().isoformat(),
+            }
+            for note in notes
+        ]
+
+        events = PlanningEvent.objects.filter(
+            company=_company(request), owner=request.user,
+            date__range=(start_date, end_date),
+        ).select_related('task', 'note').order_by('date', 'start_time', 'id')
+        event_rows = PlanningEventSerializer(
+            events, many=True, context={'request': request},
+        ).data
+
+        return Response({
+            'start': start_date.isoformat(),
+            'end': end_date.isoformat(),
+            'tasks': task_rows,
+            'notes': note_rows,
+            'events': event_rows,
+            'counts': {
+                'tasks': len(task_rows),
+                'notes': len(note_rows),
+                'events': len(event_rows),
+            },
+        })
+
+
+class PlanningEventViewSet(viewsets.ModelViewSet):
+    """رویدادهای تقویم شخصی (همیشه خصوصی برای مالک)."""
+
+    serializer_class = PlanningEventSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        params = self.request.query_params
+        queryset = PlanningEvent.objects.filter(
+            company=_company(self.request), owner=self.request.user,
+        ).select_related('task', 'note')
+        date_from = calendar_range.parse_iso_date(params.get('date_from'))
+        date_to = calendar_range.parse_iso_date(params.get('date_to'))
+        if date_from:
+            queryset = queryset.filter(date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(date__lte=date_to)
+        task_id = query.int_list(params.get('task'))
+        if task_id:
+            queryset = queryset.filter(task_id__in=task_id)
+        note_id = query.int_list(params.get('note'))
+        if note_id:
+            queryset = queryset.filter(note_id__in=note_id)
+        term = query.search_term(params)
+        if term:
+            queryset = queryset.filter(title__icontains=term)
+        return queryset.order_by('date', 'start_time', 'id')
+
+    def perform_create(self, serializer):
+        serializer.save(company=_company(self.request), owner=self.request.user)
 
 
 class PlanningSummaryAPIView(APIView):

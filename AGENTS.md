@@ -624,6 +624,21 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **تب «تقویم شخصی» با پیوند دوطرفه به وظایف و یادداشت‌ها (۲۰۲۶-۱۱-۱۵):**
+  - بک‌اند: مدل `PlanningEvent` (تاریخ، ساعت شروع/پایان، نوع `event|meeting|reminder|deadline`، رنگ،
+    انجام‌شده، `task`/`note` اختیاری) + مایگریشن `planning.0004_planningevent`؛
+    `POST/PATCH/DELETE /api/planning/events/` (همیشه خصوصیِ مالک، با اعتبارسنجی شرکت/دسترسی برای پیوند) و
+    `GET /api/planning/calendar/?start&end&scope` که وظایفِ دارای سررسید + یادداشت‌های همان روز + رویدادها
+    را در **سه کوئری** برمی‌گرداند. بازهٔ امن در `planning/calendar_range.py` (حداکثر ۶۲ روز).
+  - فرانت: `pages/planning/planningCalendar.js` (شبکهٔ ماه شمسی شنبه‌محور، طول ماه ۲۹/۳۰/۳۱ با اعتبارسنجی
+    تبدیل، جابه‌جایی ماه) و `PlanningCalendarView.jsx`: ماهانهٔ RTL + چیپ‌های هر روز (رویداد/وظیفه/یادداشت)
+    + پنل روز با ساخت رویداد، ساخت وظیفه با سررسید همان روز، ساخت/ویرایش یادداشت، انجام‌دادن و حذف؛
+    `EventDialog` در `PlanningDialogs` با انتخاب وظیفه/یادداشت مرتبط. هر تغییر کش `planning` را باطل می‌کند.
+  - تست: بک `planning` **۳۳** (شامل `PlanningCalendarTests`)؛ فرانت `planningCalendar` (۴) و
+    `planningSmoke` (۴: یادداشت/وظیفه/فیلتر/تقویم) + `workspaceDock` سبز. باندل زنده: **`main.ab7ea4a4.js`**.
+  - تأیید زندهٔ `kpsmi`: `calendar` ۲۰۰ با `counts`؛ ساخت رویداد پیوندخورده ۲۰۱ با
+    `task_title/task_status`؛ حضور فوری رویداد در تقویم و `is_done=true` پس از toggle؛ سپس rollback.
+
 - **ساده‌سازی و غنی‌سازی «یادداشت‌ها و وظایف» (۲۰۲۶-۱۱-۱۵):**
   - چیدمان: ۵ کارت شاخص حذف شد و تب‌ها زیر هدر آمدند؛ «فقط من/اشتراکی با من/همه»، وضعیت/اولویت،
     رنگ/برچسب و سنجاق به **پنل فیلتر `ModuleToolbar`** منتقل شدند؛ دکمه‌های «یادداشت جدید/وظیفه جدید»

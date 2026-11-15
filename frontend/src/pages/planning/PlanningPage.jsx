@@ -9,6 +9,7 @@ import { Alert, Box, Button, Chip, Stack } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AddIcon from '@mui/icons-material/Add';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
@@ -19,6 +20,7 @@ import { TabsCard } from '../../core/components/settings/settingsUi';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import PlanningNotesView from './PlanningNotesView';
 import PlanningTasksView from './PlanningTasksView';
+import PlanningCalendarView from './PlanningCalendarView';
 import { GroupsDialog, NoteDialog, ShareDialog, TaskDialog } from './PlanningDialogs';
 import {
   EMPTY_NOTE, EMPTY_TASK, TASK_PRIORITY_META, TASK_STATUS_META, htmlToText,
@@ -387,6 +389,12 @@ const PlanningPanel = ({ initialTab = 0 }) => {
             icon: <TaskAltOutlinedIcon />,
             badge: toPersianDigits(summary.open_tasks || 0),
           },
+          {
+            key: 'calendar',
+            label: 'تقویم',
+            icon: <EventOutlinedIcon />,
+            badge: null,
+          },
         ]}
       />
 
@@ -403,7 +411,7 @@ const PlanningPanel = ({ initialTab = 0 }) => {
           onTogglePin={(row) => toggleNotePin.mutate(row)}
           onCreateTask={createTaskFromNote}
         />
-      ) : (
+      ) : tab === 1 ? (
         <PlanningTasksView
           theme={theme}
           search={search}
@@ -414,6 +422,16 @@ const PlanningPanel = ({ initialTab = 0 }) => {
           onShare={(row) => openShare('task', row)}
           onDelete={(row) => confirmDelete(removeTask, row, 'وظیفه')}
           onToggle={(row) => toggleTask.mutate(row)}
+        />
+      ) : (
+        <PlanningCalendarView
+          theme={theme}
+          onCreateTask={(iso) => openTaskNew('todo', iso ? { due_date: iso } : {})}
+          onCreateNote={openNoteNew}
+          onEditTask={openTaskEdit}
+          onEditNote={openNoteEdit}
+          onToggleTask={(row) => toggleTask.mutate(row)}
+          onNotify={notify}
         />
       )}
 

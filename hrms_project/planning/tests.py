@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase, override_settings
 
-from planning import query, richtext, services
+from planning import calendar_range, query, richtext, services
 from planning.models import PlanningShare, Task
-from planning.serializers import NoteSerializer, TaskSerializer
+from planning.serializers import NoteSerializer, PlanningEventSerializer, TaskSerializer
 
 
 class PlanningCryptoTests(SimpleTestCase):
@@ -162,6 +162,37 @@ class PlanningSerializerFieldTests(SimpleTestCase):
 
     def test_task_description_is_writable(self):
         serializer = TaskSerializer(data={'title': 'وظیفه', 'description': 'توضیح'})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['description'], 'توضیح')
+
+
+class PlanningCalendarTests(SimpleTestCase):
+    """بازهٔ تقویم و نوشتنی بودن فیلدهای رویداد (بدون دیتابیس)."""
+
+    def test_default_range_is_symmetric_around_today(self):
+        today = date(2026, 11, 15)
+        start, end = calendar_range.calendar_range(None, None, today)
+        self.assertEqual((today - start).days, calendar_range.DEFAULT_RANGE_DAYS)
+        self.assertEqual((end - today).days, calendar_range.DEFAULT_RANGE_DAYS)
+
+    def test_reversed_range_is_swapped(self):
+        start, end = calendar_range.calendar_range('2026-11-20', '2026-11-01')
+        self.assertEqual(start, date(2026, 11, 1))
+        self.assertEqual(end, date(2026, 11, 20))
+
+    def test_long_range_is_capped(self):
+        start, end = calendar_range.calendar_range('2026-01-01', '2026-12-31')
+        self.assertLessEqual((end - start).days, calendar_range.MAX_RANGE_DAYS)
+        self.assertEqual(end, date(2026, 12, 31))
+
+    def test_invalid_dates_fall_back_to_defaults(self):
+        start, end = calendar_range.calendar_range('bad', None, date(2026, 11, 15))
+        self.assertLessEqual(start, end)
+
+    def test_event_description_is_writable(self):
+        serializer = PlanningEventSerializer(data={
+            'title': 'رویداد', 'date': '2026-11-15', 'description': 'توضیح',
+        })
         self.assertTrue(serializer.is_valid(), serializer.errors)
         self.assertEqual(serializer.validated_data['description'], 'توضیح')
 

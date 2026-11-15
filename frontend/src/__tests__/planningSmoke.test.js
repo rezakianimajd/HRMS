@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApplicationProvider } from '../core/context/ApplicationContext';
 import axiosInstance from '../core/api/axiosConfig';
 import PlanningPage, { TASK_PRIORITY_META, TASK_STATUS_META } from '../pages/planning/PlanningPage';
+import { jalaliMonthGrid, jalaliToday, todayIso } from '../pages/planning/planningCalendar';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -58,6 +59,25 @@ beforeEach(() => {
       return Promise.resolve({ data: { count: tasks.length, results: tasks } });
     }
     if (url === '/chat/directory/') return Promise.resolve({ data: [] });
+    if (url === '/planning/calendar/') {
+      const iso = todayIso();
+      return Promise.resolve({
+        data: {
+          tasks: [{
+            id: 21, title: 'وظیفه تقویم', status: 'todo', priority: 'high',
+            due_date: iso, due_time: '09:00',
+          }],
+          notes: [{ id: 22, title: 'یادداشت تقویم', color: '#0ea5e9', date: iso }],
+          events: [{
+            id: 23, title: 'جلسه تست', date: iso, start_time: '10:00', end_time: '',
+            kind: 'meeting', color: '#6366f1', is_done: false,
+            task: 21, task_title: 'وظیفه تقویم', task_status: 'todo',
+            note: 22, note_title: 'یادداشت تقویم',
+          }],
+          counts: { tasks: 1, notes: 1, events: 1 },
+        },
+      });
+    }
     return Promise.resolve({ data: [] });
   });
 });
@@ -201,3 +221,49 @@ test('planning rich text note saves and task checklist supports sub items', asyn
   await act(async () => { root.unmount(); });
   container.remove();
 });
+
+test('planning calendar tab merges tasks, notes and events', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <PlanningPage />
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(350);
+  });
+  await act(async () => { await wait(200); });
+
+  const calendarTab = Array.from(container.querySelectorAll('[role="tab"]'))
+    .find((tab) => tab.textContent.includes('تقویم'));
+  expect(calendarTab).toBeTruthy();
+  await act(async () => { calendarTab.click(); await wait(350); });
+  await act(async () => { await wait(300); });
+
+  const today = jalaliToday();
+  const grid = jalaliMonthGrid(today.jy, today.jm);
+  expect(container.textContent).toContain(grid.title);
+  expect(container.textContent).toContain('شنبه');
+  expect(container.textContent).toContain('جلسه تست');
+  expect(container.textContent).toContain('وظیفه تقویم');
+  expect(container.textContent).toContain('یادداشت تقویم');
+
+  const eventButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'رویداد');
+  expect(eventButton).toBeTruthy();
+  await act(async () => { eventButton.click(); await wait(250); });
+  const eventDialog = document.querySelector('[data-testid="planning-event-dialog"]');
+  expect(eventDialog).toBeTruthy();
+  expect(eventDialog.textContent).toContain('عنوان رویداد');
+  expect(eventDialog.textContent).toContain('پیوند به وظیفه یا یادداشت');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+

@@ -1,0 +1,556 @@
+/**
+ * تب «تقویم شخصی» — ماهانهٔ شمسی با پیوند دوطرفه به وظایف و یادداشت‌ها.
+ *
+ * وظایف دارای سررسید، یادداشت‌های همان روز و رویدادها روی شبکهٔ ماه نمایش داده
+ * می‌شوند و پنل روز امکان ساخت/ویرایش/انجام‌دادن را می‌دهد. هر تغییر کش
+ * `planning` را باطل می‌کند تا تقویم و فهرست‌ها همیشه هم‌گام باشند.
+ */
+import React, { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Box, Button, Chip, IconButton, Paper, Stack, Tooltip, Typography,
+} from '@mui/material';
+import { alpha } from '@mui/material/styles';
+import AddIcon from '@mui/icons-material/Add';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import TodayIcon from '@mui/icons-material/Today';
+import axiosInstance from '../../core/api/axiosConfig';
+import { toPersianDigits } from '../../core/utils/numberUtils';
+import { EventDialog } from './PlanningDialogs';
+import {
+  EMPTY_EVENT, EVENT_KIND_META, SCOPES, TASK_PRIORITY_META, TASK_STATUS_META, toneColor,
+} from './planningTheme';
+import {
+  JALALI_MONTHS, WEEKDAYS, groupByDate, jalaliDayLabel, jalaliMonthGrid, jalaliToday,
+  shiftJalaliMonth, todayIso,
+} from './planningCalendar';
+
+const pickRows = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
+const timeText = (value) => String(value || '').slice(0, 5);
+
+const taskTone = (task) => {
+  if (task.status === 'done') return 'success';
+  if (task.status === 'cancelled') return 'neutral';
+  if (task.due_date && task.due_date < todayIso()) return 'danger';
+  return TASK_STATUS_META[task.status]?.tone || 'info';
+};
+
+const PlanningCalendarView = ({
+  theme, onCreateTask, onCreateNote, onToggleTask, onEditTask, onEditNote, onNotify,
+}) => {
+  const qc = useQueryClient();
+  const today = useMemo(() => jalaliToday(), []);
+  const [cursor, setCursor] = useState(today || { jy: 1405, jm: 1 });
+  const grid = useMemo(() => jalaliMonthGrid(cursor.jy, cursor.jm), [cursor]);
+  const [selected, setSelected] = useState(todayIso());
+  const [scope, setScope] = useState('mine');
+  const [eventOpen, setEventOpen] = useState(false);
+  const [eventForm, setEventForm] = useState(EMPTY_EVENT);
+
+  const calendarQuery = useQuery({
+    queryKey: ['planning', 'calendar', { start: grid.start, end: grid.end, scope }],
+    queryFn: () => axiosInstance.get('/planning/calendar/', {
+      params: { start: grid.start, end: grid.end, scope },
+    }).then((response) => response.data),
+    placeholderData: (previous) => previous,
+    staleTime: 30000,
+  });
+  const data = calendarQuery.data || {};
+
+  const tasksByDate = useMemo(
+    () => groupByDate(data.tasks || [], (row) => row.due_date),
+    [data.tasks],
+  );
+  const notesByDate = useMemo(
+    () => groupByDate(data.notes || [], (row) => row.date),
+    [data.notes],
+  );
+  const eventsByDate = useMemo(
+    () => groupByDate(data.events || [], (row) => row.date),
+    [data.events],
+  );
+
+  const linkOptionsQuery = useQuery({
+    queryKey: ['planning', 'calendar-links'],
+    queryFn: () => Promise.all([
+      axiosInstance.get('/planning/tasks/', { params: { page_size: 200, ordering: '-created_at' } }),
+      axiosInstance.get('/planning/notes/', { params: { page_size: 200, ordering: '-updated_at' } }),
+    ]).then(([tasksResponse, notesResponse]) => ({
+      tasks: pickRows(tasksResponse.data),
+      notes: pickRows(notesResponse.data),
+    })),
+    enabled: eventOpen,
+    staleTime: 60000,
+  });
+  const linkOptions = linkOptionsQuery.data || { tasks: [], notes: [] };
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['planning'] });
+
+  const saveEvent = useMutation({
+    mutationFn: () => {
+      const body = {
+        title: String(eventForm.title || '').trim(),
+        description: eventForm.description || '',
+        date: eventForm.date,
+        start_time: eventForm.start_time || null,
+        end_time: eventForm.end_time || null,
+        kind: eventForm.kind || 'event',
+        color: eventForm.color || theme.accent,
+        is_done: Boolean(eventForm.is_done),
+        task: eventForm.task || null,
+        note: eventForm.note || null,
+      };
+      return eventForm.id
+        ? axiosInstance.patch(`/planning/events/${eventForm.id}/`, body)
+        : axiosInstance.post('/planning/events/', body);
+    },
+    onSuccess: () => {
+      const editing = Boolean(eventForm.id);
+      setEventOpen(false);
+      setEventForm(EMPTY_EVENT);
+      invalidate();
+      onNotify?.(editing ? 'رویداد به‌روزرسانی شد' : 'رویداد ساخته شد');
+    },
+    onError: (error) => onNotify?.(
+      error?.response?.data?.detail || 'ذخیرهٔ رویداد انجام نشد', false,
+    ),
+  });
+
+  const toggleEvent = useMutation({
+    mutationFn: (row) => axiosInstance.patch(`/planning/events/${row.id}/`, {
+      is_done: !row.is_done,
+    }),
+    onSuccess: invalidate,
+    onError: () => onNotify?.('تغییر وضعیت رویداد انجام نشد', false),
+  });
+
+  const removeEvent = useMutation({
+    mutationFn: (row) => axiosInstance.delete(`/planning/events/${row.id}/`),
+    onSuccess: () => { invalidate(); onNotify?.('رویداد حذف شد'); },
+    onError: () => onNotify?.('حذف رویداد انجام نشد', false),
+  });
+
+  const openEventNew = (iso) => {
+    setEventForm({ ...EMPTY_EVENT, date: iso || selected, color: theme.accent });
+    setEventOpen(true);
+  };
+  const openEventEdit = (row) => {
+    setEventForm({
+      id: row.id,
+      title: row.title || '',
+      description: row.description || '',
+      date: row.date || selected,
+      start_time: timeText(row.start_time),
+      end_time: timeText(row.end_time),
+      kind: row.kind || 'event',
+      color: row.color || theme.accent,
+      is_done: Boolean(row.is_done),
+      task: row.task || null,
+      note: row.note || null,
+    });
+    setEventOpen(true);
+  };
+
+  const openTask = async (row) => {
+    const response = await axiosInstance.get(`/planning/tasks/${row.id}/`);
+    onEditTask?.(response.data);
+  };
+  const openNote = async (row) => {
+    const response = await axiosInstance.get(`/planning/notes/${row.id}/`);
+    onEditNote?.(response.data);
+  };
+  const removeEventWithConfirm = (row) => {
+    if (!window.confirm(`رویداد «${row.title}» حذف شود؟`)) return;
+    removeEvent.mutate(row);
+  };
+
+  const dayTasks = tasksByDate[selected] || [];
+  const dayNotes = notesByDate[selected] || [];
+  const dayEvents = eventsByDate[selected] || [];
+  const selectedWeekday = (() => {
+    const date = new Date(`${selected}T00:00:00Z`);
+    return Number.isNaN(date.getTime()) ? '' : WEEKDAYS[(date.getUTCDay() + 1) % 7];
+  })();
+
+// __END__
+  const cellChips = (iso) => {
+    const items = [
+      ...(eventsByDate[iso] || []).map((row) => ({ key: `e-${row.id}`, row, type: 'event' })),
+      ...(tasksByDate[iso] || []).map((row) => ({ key: `t-${row.id}`, row, type: 'task' })),
+      ...(notesByDate[iso] || []).map((row) => ({ key: `n-${row.id}`, row, type: 'note' })),
+    ];
+    return { items, hidden: Math.max(0, items.length - 3) };
+  };
+  const chipColor = (item) => {
+    if (item.type === 'event') {
+      return item.row.color || toneColor(theme, EVENT_KIND_META[item.row.kind]?.tone || 'accent');
+    }
+    if (item.type === 'task') return toneColor(theme, taskTone(item.row));
+    return item.row.color || theme.tones.neutral;
+  };
+  const monthPart = grid.cells.find((cell) => cell.inMonth) || { jy: cursor.jy, jm: cursor.jm };
+
+  return (
+    <Box>
+      <Paper elevation={0} sx={{
+        p: 1, mb: 1.25, borderRadius: theme.radii.large, border: '1px solid',
+        borderColor: theme.cardBorderColor, bgcolor: 'background.paper',
+      }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }}>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Tooltip title="ماه قبل">
+              <IconButton size="small" aria-label="ماه قبل"
+                onClick={() => setCursor((value) => shiftJalaliMonth(value.jy, value.jm, -1))}>
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Typography sx={{ minWidth: 132, textAlign: 'center', fontSize: 13, fontWeight: 900 }}>
+              {`${JALALI_MONTHS[monthPart.jm - 1]} ${monthPart.jy}`}
+            </Typography>
+            <Tooltip title="ماه بعد">
+              <IconButton size="small" aria-label="ماه بعد"
+                onClick={() => setCursor((value) => shiftJalaliMonth(value.jy, value.jm, 1))}>
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<TodayIcon fontSize="small" />}
+              onClick={() => {
+                const now = jalaliToday();
+                if (now) setCursor(now);
+                setSelected(todayIso());
+              }}
+            >
+              امروز
+            </Button>
+          </Stack>
+          <Box sx={{ flex: 1 }} />
+          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" alignItems="center">
+            <Chip size="small" label={`${toPersianDigits((data.counts || {}).events || 0)} رویداد`}
+              sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+            <Chip size="small" label={`${toPersianDigits((data.counts || {}).tasks || 0)} وظیفه`}
+              sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+            <Chip size="small" label={`${toPersianDigits((data.counts || {}).notes || 0)} یادداشت`}
+              sx={{ height: 22, fontSize: 10.5, fontWeight: 800 }} />
+            <Stack direction="row" spacing={0.25} sx={{ ml: 0.5 }}>
+              {SCOPES.map((item) => (
+                <Chip
+                  key={item.value}
+                  clickable
+                  label={item.label}
+                  onClick={() => setScope(item.value)}
+                  sx={{
+                    height: 24, fontSize: 10, fontWeight: 800,
+                    bgcolor: scope === item.value ? alpha(theme.accent, 0.14) : 'transparent',
+                    color: scope === item.value ? theme.accent : theme.tones.muted,
+                    border: '1px solid',
+                    borderColor: scope === item.value ? alpha(theme.accent, 0.4) : theme.cardBorderColor,
+                  }}
+                />
+              ))}
+            </Stack>
+          </Stack>
+        </Stack>
+      </Paper>
+
+
+      <Paper elevation={0} sx={{
+        borderRadius: theme.radii.large, border: '1px solid', borderColor: theme.cardBorderColor,
+        bgcolor: 'background.paper', overflow: 'hidden',
+        opacity: calendarQuery.isFetching ? 0.75 : 1, transition: 'opacity .15s ease',
+      }}>
+        <Box sx={{
+          display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+          borderBottom: '1px solid', borderColor: 'divider',
+          bgcolor: alpha(theme.tones.neutral, 0.04),
+        }}>
+          {WEEKDAYS.map((day) => (
+            <Typography key={day} sx={{
+              py: 0.75, textAlign: 'center', fontSize: 10.5, fontWeight: 800,
+              color: theme.tones.muted,
+            }}>
+              {day}
+            </Typography>
+          ))}
+        </Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
+          {grid.cells.map((cell) => {
+            const { items, hidden } = cellChips(cell.iso);
+            const active = selected === cell.iso;
+            return (
+              <Box
+                key={cell.iso}
+                role="button"
+                tabIndex={0}
+                aria-label={`روز ${cell.jd} ${JALALI_MONTHS[cell.jm - 1]}`}
+                onClick={() => setSelected(cell.iso)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') setSelected(cell.iso);
+                }}
+                sx={{
+                  minHeight: 82, p: 0.5, cursor: 'pointer', position: 'relative',
+                  borderInlineEnd: '1px solid', borderBottom: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: active
+                    ? alpha(theme.accent, 0.08)
+                    : (cell.inMonth ? 'transparent' : alpha(theme.tones.neutral, 0.05)),
+                  '&:hover': { bgcolor: alpha(theme.accent, 0.05) },
+                }}
+              >
+                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                  <Typography sx={{
+                    fontSize: 11, fontWeight: 900,
+                    color: cell.isToday
+                      ? theme.accent
+                      : (cell.inMonth ? theme.tones.text : theme.tones.muted),
+                  }}>
+                    {toPersianDigits(cell.jd)}
+                  </Typography>
+                  {cell.isToday ? (
+                    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: theme.accent }} />
+                  ) : null}
+                </Stack>
+                <Stack spacing={0.25} sx={{ mt: 0.35 }}>
+                  {items.slice(0, 3).map((item) => (
+                    <Stack key={item.key} direction="row" spacing={0.35} alignItems="center">
+                      <Box sx={{
+                        width: 6, height: 6, borderRadius: '50%',
+                        bgcolor: chipColor(item), flexShrink: 0,
+                      }} />
+                      <Typography noWrap sx={{ fontSize: 8.5, color: theme.tones.muted }}>
+                        {item.row.title || '—'}
+                      </Typography>
+                    </Stack>
+                  ))}
+                  {hidden > 0 ? (
+                    <Typography sx={{ fontSize: 8.5, color: theme.accent, fontWeight: 800 }}>
+                      {`+${toPersianDigits(hidden)} مورد`}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              </Box>
+            );
+          })}
+        </Box>
+      </Paper>
+
+// __END__
+
+
+      <Paper elevation={0} sx={{
+        mt: 1.25, p: 1.25, borderRadius: theme.radii.large, border: '1px solid',
+        borderColor: theme.cardBorderColor, bgcolor: 'background.paper',
+      }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: theme.tones.text }}>
+              {`${selectedWeekday} ${jalaliDayLabel(selected)}`}
+            </Typography>
+            <Typography sx={{ fontSize: 10, color: theme.tones.muted }}>
+              {`${toPersianDigits(dayEvents.length + dayTasks.length + dayNotes.length)} مورد در این روز`}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+            <Button size="small" variant="contained" startIcon={<AddIcon fontSize="small" />}
+              onClick={() => openEventNew(selected)}>
+              رویداد
+            </Button>
+            <Button size="small" variant="outlined" startIcon={<TaskAltOutlinedIcon fontSize="small" />}
+              onClick={() => onCreateTask?.(selected)}>
+              وظیفه
+            </Button>
+            <Button size="small" variant="text" startIcon={<StickyNote2OutlinedIcon fontSize="small" />}
+              onClick={() => onCreateNote?.()}>
+              یادداشت
+            </Button>
+          </Stack>
+        </Stack>
+
+        <Box sx={{ mt: 1.25, display: 'grid', gap: 0.75 }}>
+          {dayEvents.length ? (
+            <Stack spacing={0.6}>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: theme.tones.muted }}>
+                رویدادها
+              </Typography>
+              {dayEvents.map((row) => {
+                const meta = EVENT_KIND_META[row.kind] || EVENT_KIND_META.event;
+                const color = row.color || toneColor(theme, meta.tone);
+                return (
+                  <Stack key={`event-${row.id}`} direction="row" alignItems="center" spacing={0.75}
+                    sx={{
+                      p: 0.75, borderRadius: theme.radii.medium, border: '1px solid',
+                      borderColor: alpha(color, 0.3), bgcolor: alpha(color, 0.05),
+                    }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap sx={{
+                        fontSize: 11.5, fontWeight: 800, color: theme.tones.text,
+                        textDecoration: row.is_done ? 'line-through' : 'none',
+                      }}>
+                        {row.title}
+                      </Typography>
+                      <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
+                        <Chip size="small" label={meta.label}
+                          sx={{ height: 18, fontSize: 9.5, fontWeight: 800, bgcolor: alpha(color, 0.12), color }} />
+                        {row.start_time ? (
+                          <Chip size="small" label={`${timeText(row.start_time)}${row.end_time ? ` تا ${timeText(row.end_time)}` : ''}`}
+                            sx={{ height: 18, fontSize: 9.5 }} />
+                        ) : null}
+                        {row.task_id || row.task ? (
+                          <Chip size="small" label={`وظیفه: ${row.task_title || ''}`}
+                            sx={{ height: 18, fontSize: 9.5, maxWidth: 200 }} />
+                        ) : null}
+                        {row.note_id || row.note ? (
+                          <Chip size="small" label={`یادداشت: ${row.note_title || ''}`}
+                            sx={{ height: 18, fontSize: 9.5, maxWidth: 200 }} />
+                        ) : null}
+                      </Stack>
+                    </Box>
+                    <Tooltip title={row.is_done ? 'بازگرداندن' : 'انجام شد'}>
+                      <IconButton size="small" aria-label={`تغییر وضعیت رویداد ${row.title}`}
+                        onClick={() => toggleEvent.mutate(row)}
+                        sx={{ p: 0.35, color: row.is_done ? theme.tones.success : theme.tones.muted }}>
+                        <TaskAltOutlinedIcon sx={{ fontSize: 16, opacity: row.is_done ? 1 : 0.5 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="ویرایش رویداد">
+                      <IconButton size="small" aria-label={`ویرایش رویداد ${row.title}`}
+                        onClick={() => openEventEdit(row)} sx={{ p: 0.35 }}>
+                        <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="حذف رویداد">
+                      <IconButton size="small" aria-label={`حذف رویداد ${row.title}`}
+                        onClick={() => removeEventWithConfirm(row)}
+                        sx={{ p: 0.35, color: theme.tones.danger }}>
+                        <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          ) : null}
+
+// __END__
+
+
+          {dayTasks.length ? (
+            <Stack spacing={0.6} sx={{ mt: 0.5 }}>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: theme.tones.muted }}>
+                وظایف
+              </Typography>
+              {dayTasks.map((row) => {
+                const meta = TASK_STATUS_META[row.status] || TASK_STATUS_META.todo;
+                const priority = TASK_PRIORITY_META[row.priority] || TASK_PRIORITY_META.normal;
+                return (
+                  <Stack key={`task-${row.id}`} direction="row" alignItems="center" spacing={0.75}
+                    sx={{
+                      p: 0.75, borderRadius: theme.radii.medium, border: '1px solid',
+                      borderColor: alpha(toneColor(theme, taskTone(row)), 0.3),
+                      bgcolor: alpha(toneColor(theme, taskTone(row)), 0.04),
+                    }}>
+                    <TaskAltOutlinedIcon sx={{
+                      fontSize: 16, color: toneColor(theme, meta.tone), flexShrink: 0,
+                      opacity: row.status === 'done' ? 1 : 0.55,
+                    }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap sx={{
+                        fontSize: 11.5, fontWeight: 800, color: theme.tones.text,
+                        textDecoration: row.status === 'done' ? 'line-through' : 'none',
+                      }}>
+                        {row.title}
+                      </Typography>
+                      <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
+                        <Chip size="small" label={meta.label}
+                          sx={{
+                            height: 18, fontSize: 9.5, fontWeight: 800,
+                            bgcolor: alpha(toneColor(theme, meta.tone), 0.12),
+                            color: toneColor(theme, meta.tone),
+                          }} />
+                        <Chip size="small" label={priority.label}
+                          sx={{ height: 18, fontSize: 9.5 }} />
+                        {row.due_time ? (
+                          <Chip size="small" label={`ساعت ${timeText(row.due_time)}`}
+                            sx={{ height: 18, fontSize: 9.5 }} />
+                        ) : null}
+                      </Stack>
+                    </Box>
+                    <Tooltip title={row.status === 'done' ? 'بازگرداندن' : 'انجام شد'}>
+                      <IconButton size="small" aria-label={`تغییر وضعیت وظیفه ${row.title}`}
+                        onClick={() => onToggleTask?.(row)}
+                        sx={{ p: 0.35, color: row.status === 'done' ? theme.tones.success : theme.tones.muted }}>
+                        <TaskAltOutlinedIcon sx={{ fontSize: 16, opacity: row.status === 'done' ? 1 : 0.5 }} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="ویرایش وظیفه">
+                      <IconButton size="small" aria-label={`ویرایش وظیفه ${row.title}`}
+                        onClick={() => openTask(row)} sx={{ p: 0.35 }}>
+                        <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          ) : null}
+
+          {dayNotes.length ? (
+            <Stack spacing={0.6} sx={{ mt: 0.5 }}>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: theme.tones.muted }}>
+                یادداشت‌های این روز
+              </Typography>
+              {dayNotes.map((row) => (
+                <Stack key={`note-${row.id}`} direction="row" alignItems="center" spacing={0.75}
+                  sx={{
+                    p: 0.75, borderRadius: theme.radii.medium, border: '1px solid',
+                    borderColor: 'divider', bgcolor: alpha(theme.tones.neutral, 0.03),
+                  }}>
+                  <Box sx={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    bgcolor: row.color || theme.tones.neutral, flexShrink: 0,
+                  }} />
+                  <Typography noWrap sx={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: theme.tones.text }}>
+                    {row.title || 'بدون عنوان'}
+                  </Typography>
+                  <IconButton size="small" aria-label={`ویرایش یادداشت ${row.title}`}
+                    onClick={() => openNote(row)} sx={{ p: 0.35 }}>
+                    <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Stack>
+              ))}
+            </Stack>
+          ) : null}
+
+          {!dayEvents.length && !dayTasks.length && !dayNotes.length ? (
+            <Typography sx={{ fontSize: 11, color: theme.tones.muted, textAlign: 'center', py: 2 }}>
+              برای این روز چیزی ثبت نشده است؛ با دکمه‌های بالا رویداد، وظیفه یا یادداشت بسازید.
+            </Typography>
+          ) : null}
+        </Box>
+      </Paper>
+
+      <EventDialog
+        open={eventOpen}
+        form={eventForm}
+        setForm={setEventForm}
+        onClose={() => setEventOpen(false)}
+        onSave={() => saveEvent.mutate()}
+        saving={saveEvent.isPending}
+        theme={theme}
+        tasks={linkOptions.tasks}
+        notes={linkOptions.notes}
+      />
+    </Box>
+  );
+};
+
+export default PlanningCalendarView;
+
