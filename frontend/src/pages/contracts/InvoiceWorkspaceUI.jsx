@@ -89,7 +89,7 @@ export const InvoiceDetailDrawer = ({
     : null;
   return (
     <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
-      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden', boxShadow: 'none' } }}>
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '12px', overflow: 'hidden', boxShadow: 'none' } }}>
       <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>

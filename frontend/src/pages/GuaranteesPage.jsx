@@ -573,7 +573,7 @@ const SectionHeading = ({ icon: Icon, title, subtitle, color = '#2563eb', action
   <Stack direction="row" alignItems="center" sx={{ gap: '12px', mb: 1.2, minWidth: 0 }}>
     {Icon ? (
       <Box sx={{
-        width: 31, height: 31, borderRadius: '10px', color, bgcolor: alpha(color, 0.08),
+        width: 31, height: 31, borderRadius: '8px', color, bgcolor: alpha(color, 0.08),
         border: `1px solid ${alpha(color, 0.18)}`, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
@@ -652,7 +652,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
     <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{
         sx: {
-          bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden',
+          bgcolor: SOFT_BG, borderRadius: '12px', overflow: 'hidden',
           boxShadow: theme.shadows[10],
         },
       }}>
@@ -660,7 +660,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <Box sx={{
-              width: 40, height: 40, borderRadius: '12px', flexShrink: 0,
+              width: 40, height: 40, borderRadius: '10px', flexShrink: 0,
               bgcolor: alpha(meta.color, 0.08), color: meta.color,
               border: `1px solid ${alpha(meta.color, 0.16)}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -680,7 +680,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
 
         <Box sx={{ p: 1.5, flex: 1, overflowY: 'auto' }}>
           <Stack spacing={1.5}>
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={PaymentsIcon} title="مشخصات مالی" color={meta.color} />
               <InfoLine label="مبلغ تضمین" value={money(row.amount, currency)} strong ltr />
               {row.amount_rial != null && Number(row.amount_rial) !== Number(row.amount) ? (
@@ -696,7 +696,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
               <InfoLine label="قرارداد" value={row.contract_subject} />
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={ScheduleIcon} title="زمان‌بندی" color={status.color} />
               <InfoLine label="تاریخ صدور" value={dateLabel(row.issue_date)} />
               <InfoLine label={validity.isCheck ? 'تاریخ سررسید چک' : 'تاریخ انقضا'}
@@ -714,7 +714,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
               {row.is_released ? <InfoLine label="تاریخ آزادسازی" value={dateLabel(row.release_date)} /> : null}
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={DescriptionIcon} title="شناسه‌های ابزار" color="#64748b" />
               <InfoLine label="شماره اصلی" value={numberFor(row)} strong />
               {row.check_number ? <InfoLine label="شماره چک" value={row.check_number} /> : null}
@@ -725,20 +725,20 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
             </Paper>
 
             {row.note ? (
-              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={NoteAltIcon} title="یادداشت" color="#7c3aed" />
                 <Typography sx={{ fontSize: 12, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{row.note}</Typography>
               </Paper>
             ) : null}
 
             {(row.documents || []).length ? (
-              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={PictureAsPdfIcon} title="پیوست‌های PDF" color="#be123c" />
                 <AttachmentLinks documents={row.documents} />
               </Paper>
             ) : null}
 
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={HistoryIcon} title="تاریخچهٔ اقدامات" color="#7c3aed"
                 action={(
                   <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
@@ -799,7 +799,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
             </Paper>
 
             {canAct(row) ? (
-              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={LockOpenIcon} title="اقدامات چرخهٔ عمر" color="#2563eb" />
                 <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
                   {Object.entries(ACTION_META).map(([key, action]) => {
@@ -840,11 +840,11 @@ const GuaranteeEditorDialog = ({
   const theme = useTheme();
   const { tokens } = useDesignTokens();
   const surfaces = tokens.surfaces || {};
-  const shape = tokens.shape || {};
   const shadows = tokens.shadows || {};
   const palette = tokens.colors || {};
-  const radiusLarge = shape.large || '16px';
-  const radiusMedium = shape.medium || '12px';
+  /* گوشه‌ها استاندارد و یکدست باشند؛ مقدار بزرگ استودیو دیالوگ را بادکنکی می‌کند */
+  const radiusDialog = 12;
+  const radiusCard = 10;
   const borderColor = palette.border || theme.palette.divider;
   const dialogSurface = surfaces.dialog || theme.palette.background.paper;
   const pageSurface = surfaces.page || theme.palette.background.default;
@@ -852,7 +852,7 @@ const GuaranteeEditorDialog = ({
   const cardShadow = shadows.card || 'none';
   const sectionSx = {
     p: { xs: 1.25, sm: 1.6 },
-    borderRadius: radiusLarge,
+    borderRadius: radiusCard,
     border: `1px solid ${borderColor}`,
     bgcolor: cardSurface,
     boxShadow: cardShadow,
@@ -872,7 +872,7 @@ const GuaranteeEditorDialog = ({
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{
         sx: {
-          borderRadius: radiusLarge, overflow: 'hidden',
+          borderRadius: radiusDialog, overflow: 'hidden',
           bgcolor: pageSurface, border: `1px solid ${borderColor}`,
           boxShadow: shadows.dialog || theme.shadows[8],
         },
@@ -883,7 +883,7 @@ const GuaranteeEditorDialog = ({
         background: `linear-gradient(135deg, ${alpha(accent, 0.11)}, ${alpha(accent, 0.02)})`,
       }}>
         <Box sx={{
-          width: 42, height: 42, borderRadius: '13px', flexShrink: 0,
+          width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
           bgcolor: alpha(accent, 0.1), color: accent, border: `1px solid ${alpha(accent, 0.2)}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
@@ -989,7 +989,7 @@ const GuaranteeEditorDialog = ({
               {foreignCurrency ? (
                 <Grid item xs={12}>
                   <Paper elevation={0} sx={{
-                    p: { xs: 1, sm: 1.25 }, borderRadius: radiusMedium,
+                    p: { xs: 1, sm: 1.25 }, borderRadius: radiusCard,
                     border: `1px dashed ${alpha(accent, 0.45)}`,
                     bgcolor: alpha(accent, 0.035),
                   }}>
@@ -1010,7 +1010,7 @@ const GuaranteeEditorDialog = ({
                           onChange={(_event, value) => value && update('settlement_type', value)}
                           sx={{
                             bgcolor: cardSurface,
-                            borderRadius: '10px',
+                            borderRadius: '8px',
                             '& .MuiToggleButton-root': {
                               px: 1.4, py: 0.45, fontSize: 10.5, fontWeight: 800,
                               borderColor: alpha(accent, 0.22), color: MUTED,
@@ -1124,7 +1124,7 @@ const GuaranteeEditorDialog = ({
         <Button onClick={onClose} sx={{ color: MUTED }}>انصراف</Button>
         <Button variant="contained" disabled={saving || !form.contract || !form.guarantee_type} onClick={onSave}
           sx={{
-            px: 2.4, borderRadius: shape.medium || '10px', fontWeight: 800,
+            px: 2.4, borderRadius: '8px', fontWeight: 800,
             boxShadow: 'none', bgcolor: accent, '&:hover': { bgcolor: accent, filter: 'brightness(0.94)' },
           }}>
           {saving ? <CircularProgress size={18} color="inherit" /> : 'ذخیره تضمین'}

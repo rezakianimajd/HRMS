@@ -1466,7 +1466,7 @@ const AddendumDetailDrawer = ({
   const subjects = rowSubjects(row, new Map(subjectOptions.map((item) => [item.value, item])));
   return (
     <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
-      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden' } }}>
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '12px', overflow: 'hidden' } }}>
       <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{
           p: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper,
