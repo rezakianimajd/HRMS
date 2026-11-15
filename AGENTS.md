@@ -639,7 +639,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     با `SerializerMethodField` تعریف شده بودند (فقط‌خواندنی) و ورودی UI دور ریخته می‌شد؛ حالا
     `CharField` نوشتنی + `to_representation` برای رمزگشایی. تست `PlanningSerializerFieldTests` قفلش می‌کند.
   - تست: بک `planning` **۲۸**؛ فرانت `planningSmoke` **۳** (ذخیرهٔ HTML یادداشت + زیرمجموعهٔ چک‌لیست)
-    + `workspaceDock`/`chatSmoke` سبز. باندل زنده: **`main.5b3d94a9.js`**.
+    + `workspaceDock`/`chatSmoke` سبز. باندل زنده: **`main.655673fd.js`**.
   - تأیید زندهٔ `kpsmi`: POST یادداشت ۲۰۱ با
     `body=<b>bold</b> <i>it</i><span style="color:#0ea5e9">c</span><ul><li>one</li></ul>`
     (تگ `script` حذف شد)، چک‌لیست تودرتو در یادداشت و وظیفه ذخیره و برگشت داده شد؛ سپس rollback.

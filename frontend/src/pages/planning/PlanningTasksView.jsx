@@ -46,6 +46,7 @@ const PlanningTasksView = ({
   const [statusFilter, setStatusFilter] = useState('open');
   const [priority, setPriority] = useState('');
   const [sort, setSort] = useState('default');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
 
   useEffect(() => { setPage(0); }, [apiSearch, scope, statusFilter, priority, sort]);
@@ -135,6 +136,8 @@ const PlanningTasksView = ({
         activeChips={activeChips}
         activeFilterCount={activeFilterCount}
         onReset={resetFilters}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
       />
 
       {isLoading && !rows.length ? (

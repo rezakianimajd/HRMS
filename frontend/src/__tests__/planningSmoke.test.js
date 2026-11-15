@@ -174,6 +174,15 @@ test('planning rich text note saves and task checklist supports sub items', asyn
   await act(async () => { await wait(300); });
   expect(container.querySelectorAll('[data-testid="planning-task-card"]').length).toBeGreaterThan(0);
 
+  // پنل فیلتر استاندارد نوار جستجو باید باز شود (دامنه/وضعیت/اولویت)
+  const filtersButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('فیلترها'));
+  expect(filtersButton).toBeTruthy();
+  await act(async () => { filtersButton.click(); await wait(200); });
+  expect(container.textContent).toContain('دامنه');
+  expect(container.textContent).toContain('وضعیت');
+  expect(container.textContent).toContain('اولویت');
+
   const newTaskButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.includes('وظیفه جدید'));
   await act(async () => { newTaskButton.click(); await wait(250); });

@@ -36,6 +36,7 @@ const PlanningNotesView = ({
   const [color, setColor] = useState('');
   const [tag, setTag] = useState('');
   const [pinnedOnly, setPinnedOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [page, setPage] = useState(0);
 
   useEffect(() => { setPage(0); }, [apiSearch, scope, sort, color, tag, pinnedOnly]);
@@ -148,6 +149,8 @@ const PlanningNotesView = ({
         activeChips={activeChips}
         activeFilterCount={activeFilterCount}
         onReset={resetFilters}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
       />
 
       {isLoading && !rows.length ? (
