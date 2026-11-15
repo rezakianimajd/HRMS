@@ -631,6 +631,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **رفع نمایش‌نشدن الحاقیه‌ها در صفحهٔ فهرست (۲۰۲۶-۱۱-۱۵):** فهرست الحاقیه‌ها در حالت «بدون انتخاب
+  قرارداد» داده را از `addendums` تودرتوی `/external-contracts/options/` می‌خواند که پس از سبک‌سازی
+  options دیگر برگردانده نمی‌شود؛ نتیجه: تعداد ۰ و «چیزی نمایش داده نمی‌شود». حالا
+  `ContractAddendumsPage` همیشه `/contract-addendums/` را می‌خواند (`page_size=1000`؛ با `contract`
+  وقتی قرارداد انتخاب شده) و شمارش/فیلتر «فقط دارای سند» از همان فهرست ساخته می‌شود.
+  تأیید زنده: **۱۰۷ الحاقیه** و قرارداد ۸۶ دارای ۱ الحاقیه در API. تست `contractAddendumsSmoke`
+  دیگر به `addendums` داخل options تکیه نمی‌کند و ستون «تعداد الحاقیه» را می‌سنجد.
+  باندل زنده: **`main.772eabef.js`**.
+
 - **تضامین قرارداد ارزی + معادل ریالی (۲۰۲۶-۱۱-۱۵):** نمایش واحد ارز در ثبت تضمین اصلاح شد و
   امکان «معادل ریالی به نرخ روز» اضافه شد.
   - **مدل/مایگریشن:** `Contract.exchange_rate` (نرخ تسعیر) و روی `Guarantee` فیلدهای `currency`
@@ -666,7 +675,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     فرانت `guaranteesSmoke` (۴، شامل قرارداد یورویی و «دیالوگ بدون چیپ») + `contractGuaranteesMonitorSmoke`
     + `contractProfileSmoke` + `contractStatementsSmoke`/`contractInvoicesSmoke`/`contractPaymentsSmoke`/
     `contractDisputesSmoke`/`contractAddendumsSmoke`/`contractCalendarSmoke`/`contractDocumentsPageSmoke`.
-    باندل زنده: **`main.0aaf8ff6.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
+    باندل زنده: **`main.772eabef.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
     (gunicorn فعال) و روی `kpsmi` تأیید شد: چهار فیلد جدید روی `Guarantee` موجود، ۱۳۰ تضمین،
     و `guarantee_compliance` مقدار پوشش را برمی‌گرداند.
 

@@ -30,7 +30,6 @@ const contract = {
   end_date: '2026-04-20',
   effective_end_date: '2026-07-20',
   has_addendum: true,
-  addendums: [{ id: 7 }],
 };
 
 const addendums = [
@@ -134,6 +133,12 @@ test('contract addendums landing lists contracts with addendum counts and no ava
   expect(container.textContent).toContain('C-۱۰۰');
   expect(container.textContent).toContain('شرکت طرف قرارداد');
   expect(container.textContent).toContain('قرارداد آزمایشی الحاقیه');
+  /* تعداد الحاقیه از فهرست الحاقیه‌ها می‌آید، نه از options قراردادها */
+  const contractRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.textContent.includes('C-۱۰۰'));
+  expect(contractRow).toBeTruthy();
+  const cells = contractRow.querySelectorAll('td');
+  expect(cells[3]?.textContent).toContain('۱');
   expect(container.textContent).not.toContain('فضای کاری الحاقیه‌ها');
   expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
   expect(container.querySelector('[aria-label="فهرست قراردادها برای الحاقیه‌ها"]')).toBeTruthy();

@@ -316,11 +316,13 @@ const ContractAddendumsPage = () => {
   );
 
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['contract-addendums', contractId],
+    queryKey: ['contract-addendums', contractId || 'all'],
     queryFn: () => axiosInstance.get('/contract-addendums/', {
-      params: { contract: contractId, page_size: 500 },
+      params: contractId
+        ? { contract: contractId, page_size: 1000 }
+        : { page_size: 1000 },
     }).then((r) => r.data),
-    enabled: !!contractId,
+    enabled: true,
   });
   const list = Array.isArray(data) ? data : data?.results || [];
 
@@ -410,12 +412,8 @@ const ContractAddendumsPage = () => {
 
   /* ---- صفحهٔ اول (فهرست قراردادها) و صفحه‌بندی جدول تک‌ردیفه ---- */
   const landingAddendums = useMemo(
-    () => contractList.flatMap((contract) => (
-      Array.isArray(contract.addendums)
-        ? contract.addendums.map((row) => ({ ...row, contract: contract.id }))
-        : []
-    )),
-    [contractList],
+    () => (contractId ? [] : list),
+    [contractId, list],
   );
   const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
@@ -713,7 +711,9 @@ const ContractAddendumsPage = () => {
         icon={<EditNoteIcon />}
         title="الحاقیه‌های قرارداد"
         badge={(
-          <Chip size="small" label={contractId ? `${formatPersianNumber(list.length)} الحاقیه` : 'مدیریت تغییرات قرارداد'}
+          <Chip size="small" label={contractId
+            ? `${formatPersianNumber(list.length)} الحاقیه`
+            : `${formatPersianNumber(landingAddendums.length)} الحاقیه ثبت‌شده`}
             sx={{ height: 23, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
         )}
         actions={(
