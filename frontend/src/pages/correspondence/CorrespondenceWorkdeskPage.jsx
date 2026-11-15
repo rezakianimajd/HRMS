@@ -8,10 +8,13 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import axiosInstance from '../../core/api/axiosConfig';
+import AttachmentPreviewDialog from '../../core/components/ui/AttachmentPreviewDialog';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
 import PageHeader from '../../core/components/ui/PageHeader';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import DownloadIcon from '@mui/icons-material/Download';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
@@ -27,6 +30,7 @@ import {
 } from './correspondenceUi';
 import { MultiPersonnelPicker, PersonnelPicker } from './correspondenceLookups';
 import CorrespondenceRequestsPanel from './CorrespondenceRequestsPanel';
+import LetterTimeline from './letterTimeline';
 
 /**
  * کارتابل من: همهٔ ارجاعات رسیده به کاربر/پرسنل او (اقدام، اطلاع، اظهارنظر)
@@ -270,12 +274,17 @@ const ReferralCompleteDialog = ({ open, referral, onClose, onSubmit, pending }) 
   );
 };
 
-const ReferralDetailDialog = ({ open, referral, onClose }) => (
-  <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+const ReferralDetailDialog = ({ open, referral, letter, onClose }) => {
+  const [previewIndex, setPreviewIndex] = useState(null);
+  const attachments = Array.isArray(letter?.attachments) ? letter.attachments : [];
+  const isLoading = !letter;
+
+  return (
+  <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
     PaperProps={{ sx: { borderRadius: '16px' } }}>
     <DialogTitle sx={{ pb: 1 }}>
       <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
-        <Typography sx={{ fontSize: 13.5, fontWeight: 900 }}>جزئیات ارجاع</Typography>
+        <Typography sx={{ fontSize: 13.5, fontWeight: 900 }}>جزئیات ارجاع و روند نامه</Typography>
         {referral?.letter_number ? (
           <Chip size="small" label={toPersianDigits(referral.letter_number)} sx={chipSx(INCOMING)} />
         ) : null}
@@ -286,7 +295,7 @@ const ReferralDetailDialog = ({ open, referral, onClose }) => (
         <Stack spacing={1.25}>
           <Box>
             <Typography sx={{ fontSize: 13, fontWeight: 900 }}>
-              {referral.letter_subject || '—'}
+              {letter?.subject || referral.letter_subject || '—'}
             </Typography>
             <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
               {joinParts(
@@ -359,14 +368,71 @@ const ReferralDetailDialog = ({ open, referral, onClose }) => (
               </Box>
             </>
           ) : null}
+          <Divider />
+          <SectionTitle icon={AttachFileIcon} title="پیوست‌های نامه" color={INCOMING} />
+          {attachments.length ? (
+            <Stack spacing={0.6}>
+              {attachments.map((file, index) => (
+                <Stack key={file.id} direction="row" alignItems="center" spacing={0.75}
+                  sx={{ p: 0.75, border: '1px solid', borderColor: 'divider', borderRadius: '9px', minWidth: 0 }}>
+                  <AttachFileIcon sx={{ fontSize: 17, color: INCOMING, flexShrink: 0 }} />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography noWrap title={file.title} sx={{ fontSize: 12, fontWeight: 800 }}>
+                      {file.title || 'پیوست'}
+                    </Typography>
+                    <Typography noWrap sx={{ fontSize: 11, color: 'text.secondary' }}>
+                      {joinParts(file.kind_display, file.size
+                        ? `${toPersianDigits(Math.max(1, Math.round(file.size / 1024)))} کیلوبایت` : '')}
+                    </Typography>
+                  </Box>
+                  <Tooltip title="مشاهدهٔ پیوست">
+                    <IconButton size="small" aria-label="مشاهدهٔ پیوست" onClick={() => setPreviewIndex(index)}>
+                      <VisibilityOutlinedIcon sx={{ fontSize: 17 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="دریافت">
+                    <IconButton size="small" aria-label="دانلود پیوست"
+                      component="a" href={file.download_url || file.file_url}
+                      target="_blank" rel="noreferrer">
+                      <DownloadIcon sx={{ fontSize: 17 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              ))}
+            </Stack>
+          ) : (
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+              پیوستی برای این نامه ثبت نشده است.
+            </Typography>
+          )}
+
+          <Divider />
+          {isLoading ? (
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+              در حال دریافت روند کامل نامه…
+            </Typography>
+          ) : (
+            <LetterTimeline letter={letter || { referrals: [referral] }} />
+          )}
+
         </Stack>
       ) : null}
     </DialogContent>
     <DialogActions sx={{ px: 2, py: 1.25 }}>
       <Button size="small" onClick={onClose}>بستن</Button>
     </DialogActions>
+    {previewIndex !== null ? (
+      <AttachmentPreviewDialog
+        open
+        items={attachments}
+        index={previewIndex}
+        title={letter?.subject || referral?.letter_subject || ''}
+        onClose={() => setPreviewIndex(null)}
+      />
+    ) : null}
   </Dialog>
-);
+  );
+};
 
 /* ---------------- صفحهٔ کارتابل ---------------- */
 
@@ -399,6 +465,7 @@ const CorrespondenceWorkdeskPage = () => {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [detail, setDetail] = useState(null);
+  const [detailLetter, setDetailLetter] = useState(null);
   const [noteTarget, setNoteTarget] = useState(null);
   const [noteMode, setNoteMode] = useState('note');
   const [forwardTarget, setForwardTarget] = useState(null);
@@ -498,10 +565,22 @@ const CorrespondenceWorkdeskPage = () => {
     },
   });
 
-  const openDetail = (referral) => {
+  const openDetail = async (referral) => {
     setDetail(referral);
+    setDetailLetter(null);
     if (!referral.seen_at) {
       referralAction.mutate({ id: referral.id, action: 'seen' });
+    }
+    if (!referral.letter) return;
+    try {
+      const letterDetail = await qc.fetchQuery({
+        queryKey: ['workdesk-letter', referral.letter],
+        queryFn: () => axiosInstance.get(`/letters/${referral.letter}/`).then((response) => response.data),
+        staleTime: 30_000,
+      });
+      setDetailLetter(letterDetail || null);
+    } catch (fetchError) {
+      setDetailLetter(null);
     }
   };
 
@@ -797,7 +876,8 @@ const CorrespondenceWorkdeskPage = () => {
       <ReferralDetailDialog
         open={Boolean(detail)}
         referral={detail}
-        onClose={() => setDetail(null)}
+        letter={detailLetter}
+        onClose={() => { setDetail(null); setDetailLetter(null); }}
       />
       <ReferralNoteDialog
         open={Boolean(noteTarget)}

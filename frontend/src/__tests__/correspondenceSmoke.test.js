@@ -151,6 +151,26 @@ beforeEach(() => {
       return Promise.resolve({
         data: {
           ...letters[0],
+          referrals: [
+            {
+              id: 501, seq: 1, status: 'pending', purpose: 'action', purpose_display: 'اقدام / انجام کار',
+              from_user_name: 'مدیر مکاتبات', from_employee_name: 'مدیر مکاتبات',
+              to_name: '', to_user_name: '', target_label: 'خانم حقیقی',
+              referred_on: iso(-1), due_date: iso(-2), instruction: 'بررسی و اعلام نظر',
+              note: 'فوری پیگیری شود', seen_at: null, response: '', result: '',
+              answered_on: null, answered_by_name: '',
+            },
+          ],
+          events: [
+            { id: 601, action: 'created', action_display: 'ایجاد', actor_name: 'مدیر سیستم', note: '', created_at: iso(-3) },
+          ],
+          replies: [
+            {
+              id: 801, number: '1404-100-200', subject: 'پاسخ نامه', direction: 'outgoing',
+              direction_display: 'صادره', status: 'answered', status_display: 'پاسخ داده شد',
+              priority: 'normal', letter_date: iso(-1), created_at: iso(-1),
+            },
+          ],
           attachments: [
             {
               id: 71, letter: 1, title: 'scan-1404-100.pdf', kind: 'letter',
@@ -609,7 +629,28 @@ test('workdesk page renders cartable counters, referrals and actions', async () 
 
 
 
+test('workdesk referral detail shows letter attachments and the full timeline', async () => {
+  axiosInstance.post.mockResolvedValue({ data: {} });
+  const { container, root } = await renderPage(<CorrespondenceWorkdeskPage />);
+
+  const viewButton = container.querySelector('[aria-label="مشاهدهٔ ارجاع"]');
+  expect(viewButton).toBeTruthy();
+  await act(async () => { viewButton.click(); await wait(900); });
+
+  expect(document.body.textContent).toContain('جزئیات ارجاع و روند نامه');
+  expect(document.body.textContent).toContain('پیوست‌های نامه');
+  expect(document.body.textContent).toContain('scan-1404-100.pdf');
+  expect(document.body.querySelector('[data-testid="letter-timeline"]')).toBeTruthy();
+  expect(document.body.textContent).toContain('روند نامه (قدیمی → جدید)');
+  expect(document.body.textContent).toContain('پاسخ نامه');
+  expect(document.body.textContent).toContain('ایجاد');
+
+  root.unmount();
+  container.remove();
+});
+
 test('selected letter rows drive print and excel of the selection', async () => {
+
   const { container, root } = await renderPage(<CorrespondenceLettersPage />);
 
   const selectAll = container.querySelector('input[data-testid="letters-select-all"]');

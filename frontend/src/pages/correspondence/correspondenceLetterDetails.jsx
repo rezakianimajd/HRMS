@@ -26,11 +26,12 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import { MUTED } from '../accounting/AccountingDashboardUI';
 import {
-  ACCENT, CONFIDENTIALITY_META, DIRECTION_META, EVENT_META, INCOMING, INTERNAL, OK, OUTGOING,
-  PRIORITY_META, REFERRAL_STATUS_META, SLATE, STATUS_META, WARN, MetaChip, chipSx, dateLabel,
-  dateTimeLabel, daysBetween, daysColor, daysLabel, money, timeLabel,
+  ACCENT, CONFIDENTIALITY_META, DIRECTION_META, EVENT_META, INCOMING, INTERNAL, OUTGOING,
+  PRIORITY_META, SLATE, STATUS_META, WARN, MetaChip, chipSx, dateLabel,
+  dateTimeLabel, daysBetween, daysLabel, money, timeLabel,
 } from './correspondenceUi';
 import { InfoGroup, InfoTable } from './correspondenceFormUi';
+import LetterTimeline from './letterTimeline';
 
 /**
  * پروندهٔ نامه در یک دیالوگ تمام‌صفحه.
@@ -259,90 +260,7 @@ const LetterDetailsDialog = ({
               ) : null}
 
               {tab === 'referrals' ? (
-                <Stack spacing={1}>
-                  {(letter.referrals || []).length ? (letter.referrals || []).map((referral) => {
-                    const meta = REFERRAL_STATUS_META[referral.status] || REFERRAL_STATUS_META.pending;
-                    const referralDays = daysBetween(referral.due_date);
-                    return (
-                      <Box key={referral.id} sx={{
-                        p: 1.1, borderRadius: '12px', border: '1px solid',
-                        borderColor: alpha(meta.color, 0.25), minWidth: 0,
-                        bgcolor: alpha(meta.color, 0.03),
-                      }}>
-                        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
-                          <Chip size="small" label={`سطح ${toPersianDigits(referral.seq)}`} sx={chipSx(SLATE)} />
-                          <MetaChip meta={meta} />
-                          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
-                            {referral.from_user_name ? `از ${referral.from_user_name}` : ''}
-                            {(referral.from_user_name && (referral.to_user_name || referral.to_name)) ? ' → ' : ''}
-                            {referral.to_user_name || referral.to_name || ''}
-                          </Typography>
-                          <Box sx={{ flex: 1 }} />
-                          <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                            {dateLabel(referral.referred_on)}
-                          </Typography>
-                        </Stack>
-
-                        {referral.instruction ? (
-                          <Box sx={{ mt: 0.75 }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>دستور / اقدام درخواستی</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.note ? (
-                          <Box sx={{ mt: 0.5 }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>توضیح</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.note}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.due_date ? (
-                          <Typography sx={{ fontSize: 11.5, mt: 0.4, color: daysColor(referralDays) }}>
-                            مهلت اقدام: {dateLabel(referral.due_date)} ({daysLabel(referralDays)})
-                          </Typography>
-                        ) : null}
-
-                        {referral.response ? (
-                          <Box sx={{ mt: 0.75, p: 0.75, borderRadius: '8px', bgcolor: alpha(OK, 0.05) }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: OK }}>پاسخ / جوابیه</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.response}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.result ? (
-                          <Box sx={{ mt: 0.5, p: 0.75, borderRadius: '8px', bgcolor: alpha(INCOMING, 0.05) }}>
-                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: INCOMING }}>نتیجه</Typography>
-                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.result}</Typography>
-                          </Box>
-                        ) : null}
-                        {referral.result_note && !referral.result ? (
-                          <Typography sx={{ fontSize: 11.5, color: OK, mt: 0.3 }}>
-                            یادداشت نتیجه: {referral.result_note}
-                          </Typography>
-                        ) : null}
-
-                        <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
-                          sx={{ mt: 0.6 }}>
-                          {referral.answered_on ? (
-                            <Typography sx={{ fontSize: 11.5, color: MUTED }}>
-                              پاسخ در {dateLabel(referral.answered_on)}
-                              {referral.answered_by_name ? ` توسط ${referral.answered_by_name}` : ''}
-                            </Typography>
-                          ) : null}
-                          {!['done', 'canceled'].includes(referral.status) ? (
-                            <Button size="small" variant="contained" startIcon={<TaskAltIcon />}
-                              onClick={() => onCompleteReferral(referral)}
-                              sx={{ fontSize: 11.5, py: 0.2, bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>
-                              ثبت پاسخ و نتیجه
-                            </Button>
-                          ) : null}
-                        </Stack>
-                      </Box>
-                    );
-                  }) : (
-                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>
-                      هنوز ارجاعی برای این نامه ثبت نشده است.
-                    </Typography>
-                  )}
-                </Stack>
+                <LetterTimeline letter={letter} onCompleteReferral={onCompleteReferral} />
               ) : null}
 
               {tab === 'attachments' ? (

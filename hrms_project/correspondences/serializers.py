@@ -586,6 +586,25 @@ class LetterEventSerializer(serializers.ModelSerializer):
         return user.get_full_name() or user.get_username()
 
 
+class LetterReplyBriefSerializer(serializers.ModelSerializer):
+    """نسخهٔ خلاصهٔ نامه‌های پاسخ (برای نمایش در روند نامه)."""
+
+    direction_display = serializers.CharField(source='get_direction_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+
+    class Meta:
+        from correspondences.models import Letter
+
+        model = Letter
+        fields = [
+            'id', 'number', 'subject', 'direction', 'direction_display',
+            'status', 'status_display', 'priority', 'priority_display',
+            'letter_date', 'reply_to', 'created_at',
+        ]
+        read_only_fields = fields
+
+
 class LetterSerializer(serializers.ModelSerializer):
     """سریالایزر کامل نامه: مشخصات + ارجاعات + پیوست‌ها + تاریخچه + فیلدهای محاسباتی."""
 
@@ -625,6 +644,7 @@ class LetterSerializer(serializers.ModelSerializer):
     attachments = LetterAttachmentSerializer(many=True, read_only=True)
     referrals = LetterReferralSerializer(many=True, read_only=True)
     events = LetterEventSerializer(many=True, read_only=True)
+    replies = LetterReplyBriefSerializer(many=True, read_only=True)
     attachment_count = serializers.SerializerMethodField()
     referral_count = serializers.SerializerMethodField()
     reply_count = serializers.SerializerMethodField()
@@ -659,7 +679,7 @@ class LetterSerializer(serializers.ModelSerializer):
             'amount', 'currency', 'archive_ref', 'contract_number', 'contract',
             'contract_title', 'tags',
             'reply_to', 'reply_number', 'closed_at', 'archived_at',
-            'attachments', 'referrals', 'events',
+            'attachments', 'referrals', 'events', 'replies',
             'attachment_count', 'referral_count', 'reply_count', 'pending_referrals',
             'last_referral', 'is_overdue', 'days_to_due', 'is_active', 'created_at', 'updated_at',
         ]
