@@ -634,11 +634,17 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 - **ماژول جامع حقوق و دستمزد (۲۰۲۶-۱۱-۱۵):** ماژول `payroll` از یک CRUD ساده به یک
   سیستم دوره‌محور، مؤلفه‌محور و قابل حسابرسی ارتقا یافت و **از منابع انسانی جدا شد**؛ اکنون
   یک Application مستقل با slug `payroll` است (مایگریشن `core.0020`) و از انتخاب‌گر/سوئیچر ماژول
-  انتخاب می‌شود. منوی آن `payrollMenu` در `menuConfig.js` است و مسیرهای مستقل
-  `/payroll/dashboard`، `/payroll/periods`، `/payroll/results`، `/payroll/profiles`،
-  `/payroll/settings`، `/payroll/operations`، `/payroll/settlement` و `/payroll/reports`
-  دارد (تب‌ها deep-link و bookmarkable هستند). مستند کامل: `docs/payroll-module.md`.
-  کاتالوگ مجوز پس از جداسازی: **۱۱ ماژول / ۲۸۰ منو / ۱۱۶۳ کد** (`core/permission_catalog_data.json`).
+  انتخاب می‌شود. منوی آن `payrollMenu` در `menuConfig.js` است و ساختار عملیاتی سال ۱۴۰۵
+  دارد: **خانه / مشخصات پرسنل (مشخصات، احکام پرسنل، وام‌ها) / محاسبات حقوق (دریافت کارکرد،
+  ورود اطلاعات کارکرد، محاسبه حقوق، سند حقوق، گزارشات، خالص پرداختی، اطلاعات حقوق،
+  فیش حقوقی پرسنل، وام کارکنان، مساعده کارکنان، بیمه کارکنان، مالیات کارکنان) /
+  عملیات سالانه (عیدی) / مانده مرخص و ذخیره سنوات / تعاریف اولیه**.
+  هر آیتم مسیر مستقل خودش را دارد (`/payroll/dashboard`، `/payroll/employees`،
+  `/payroll/profiles`، `/payroll/calculate`، `/payroll/results`، `/payroll/payslips`،
+  `/payroll/annual/eidi-*`، `/payroll/leave/*`، `/payroll/definitions/*` و …)؛
+  **هیچ تب داخلی در صفحه وجود ندارد** و هر صفحه deep-link/bookmarkable است.
+  مستند کامل: `docs/payroll-module.md`.
+  کاتالوگ مجوز پس از جداسازی: **۱۱ ماژول / ۳۰۳ منو / ۱۲۷۴ کد** (`core/permission_catalog_data.json`).
   - **مدل‌ها:** `PayrollPeriod` (وضعیت Draft→Open→Calculating→Calculated→Under Review→
     Approved→Payment Pending→Paid→Closed)، `PayrollSettings`، `PayrollInsuranceRate`،
     `PayrollTaxBracket`، `PayrollComponent` + `PayrollComponentRule`،
@@ -676,7 +682,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.1b9703db.js`**.
+    باندل زنده: **`main.bf836b1c.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،

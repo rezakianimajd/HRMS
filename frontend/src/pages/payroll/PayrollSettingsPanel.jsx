@@ -39,7 +39,8 @@ const emptyComponent = () => ({
   min_amount: '', max_amount: '', description: '',
 });
 
-const PayrollSettingsPanel = ({ accent }) => {
+const PayrollSettingsPanel = ({ accent, section }) => {
+  const show = (key) => !section || section === key;
   const qc = useQueryClient();
   const [message, setMessage] = useState(null);
   const [settingsForm, setSettingsForm] = useState(null);
@@ -218,7 +219,7 @@ const PayrollSettingsPanel = ({ accent }) => {
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
       {message && <Alert severity={message.ok ? 'success' : 'error'} onClose={() => setMessage(null)}>{message.text}</Alert>}
-      <Section title="قواعد محاسبه و نرخ‌های پایه" accent={accent} action={<Button size="small" variant="contained" startIcon={<SaveIcon />} sx={{ bgcolor: accent }} disabled={!settingsForm || saveSettings.isPending} onClick={() => saveSettings.mutate(settingsForm)}>{saveSettings.isPending ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}</Button>}>
+      {show('base') && (<Section title="قواعد محاسبه و نرخ‌های پایه" accent={accent} action={<Button size="small" variant="contained" startIcon={<SaveIcon />} sx={{ bgcolor: accent }} disabled={!settingsForm || saveSettings.isPending} onClick={() => saveSettings.mutate(settingsForm)}>{saveSettings.isPending ? 'در حال ذخیره…' : 'ذخیرهٔ تنظیمات'}</Button>}>
         {settingsForm ? (
           <Grid container spacing={1.5}>
             <Grid item xs={12} sm={6} md={3}><TextField fullWidth size="small" label="روز کاری ماه" type="number" value={settingsForm.work_days_per_month ?? ''} onChange={(event) => setSetting('work_days_per_month', event.target.value)} /></Grid>
@@ -238,38 +239,46 @@ const PayrollSettingsPanel = ({ accent }) => {
             <Grid item xs={12} sm={6} md={3}><FormControlLabel control={<Switch checked={Boolean(settingsForm.require_bank_account)} onChange={(event) => setSetting('require_bank_account', event.target.checked)} />} label="الزام حساب/شبا" /></Grid>
           </Grid>
         ) : <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>در حال دریافت تنظیمات…</Typography>}
-      </Section>
+      </Section>)}
 
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
+      {(show('insurance') || show('tax')) && (<Grid container spacing={2}>
+        {show('insurance') && (
+        <Grid item xs={12} md={show('tax') ? 6 : 12}>
           <Section title="نرخ‌های بیمه (تاریخ‌محور)" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => { setRateForm(emptyRate()); setRateOpen(true); }}>نرخ جدید</Button>}>
             <DataTable ariaLabel="نرخ‌های بیمه" rows={rates} columns={rateColumns} themed getRowId={(row) => row.id} emptyText="نرخ بیمه‌ای ثبت نشده است." />
           </Section>
         </Grid>
-        <Grid item xs={12} md={6}>
+        )}
+        {show('tax') && (
+        <Grid item xs={12} md={show('insurance') ? 6 : 12}>
           <Section title="پله‌های مالیات (تاریخ‌محور)" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => { setTaxForm(emptyTax()); setTaxOpen(true); }}>پلهٔ جدید</Button>}>
             <DataTable ariaLabel="پله‌های مالیات" rows={taxes} columns={taxColumns} themed getRowId={(row) => row.id} emptyText="پلهٔ مالیاتی ثبت نشده است." />
           </Section>
         </Grid>
-      </Grid>
+        )}
+      </Grid>)}
 
-      <Section title="مزایا و کسورات (مؤلفه‌محور)" accent={accent} action={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: accent }} onClick={() => { setEditingComponent(null); setComponentForm(emptyComponent()); setComponentOpen(true); }}>مؤلفهٔ جدید</Button>}>
+      {show('components') && (<Section title="مزایا و کسورات (مؤلفه‌محور)" accent={accent} action={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: accent }} onClick={() => { setEditingComponent(null); setComponentForm(emptyComponent()); setComponentOpen(true); }}>مؤلفهٔ جدید</Button>}>
         <DataTable ariaLabel="مؤلفه‌های حقوق" rows={components} columns={componentColumns} themed getRowId={(row) => row.id} emptyText="مؤلفه‌ای ثبت نشده است." />
-      </Section>
+      </Section>)}
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
+      {(show('mapping') || show('formats')) && (<Grid container spacing={2}>
+        {show('mapping') && (
+        <Grid item xs={12} md={show('formats') ? 6 : 12}>
           <Section title="نگاشت حساب‌های حقوق" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => setMappingOpen(true)}>نگاشت جدید</Button>}>
             <DataTable ariaLabel="نگاشت حساب‌ها" rows={mappings} columns={mappingColumns} themed getRowId={(row) => row.id} emptyText="نگاشت حسابی ثبت نشده است؛ قبل از ثبت سند، رویدادهای اصلی را نگاشت کنید." />
           </Section>
         </Grid>
-        <Grid item xs={12} md={6}>
+        )}
+        {show('formats') && (
+        <Grid item xs={12} md={show('mapping') ? 6 : 12}>
           <Section title="قالب‌های فایل پرداخت بانکی" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => setFormatOpen(true)}>قالب جدید</Button>}>
             <DataTable ariaLabel="قالب‌های بانکی" rows={formats} columns={formatColumns} themed getRowId={(row) => row.id} emptyText="قالب فایل پرداختی ثبت نشده است." />
           </Section>
         </Grid>
-      </Grid>
+        )}
+      </Grid>)}
 
 
 

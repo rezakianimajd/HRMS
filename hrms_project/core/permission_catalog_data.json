@@ -1770,97 +1770,212 @@
   "name": "حقوق و دستمزد",
   "groups": [
    {
-    "title": "میزکار حقوق",
+    "title": "خانه",
     "items": [
      {
       "id": "payroll-dashboard",
-      "title": "داشبورد حقوق",
+      "title": "داشبورد",
       "path": "/payroll/dashboard"
      }
     ]
    },
    {
-    "title": "دوره و محاسبه",
+    "title": "مشخصات پرسنل",
     "items": [
      {
-      "id": "payroll-periods",
-      "title": "دوره‌های حقوق",
-      "path": "/payroll/periods"
+      "id": "payroll-employees",
+      "title": "مشخصات",
+      "path": "/payroll/employees"
      },
      {
-      "id": "payroll-results",
-      "title": "محاسبه و فیش حقوقی",
-      "path": "/payroll/results"
-     }
-    ]
-   },
-   {
-    "title": "پرسنل و پرداخت",
-    "items": [
-     {
-      "id": "payroll-profiles",
-      "title": "پروفایل حقوقی پرسنل",
+      "id": "payroll-orders",
+      "title": "احکام پرسنل",
       "path": "/payroll/profiles"
      },
      {
-      "id": "payroll-operations",
-      "title": "اضافه‌کاری، وام و تخصیص",
-      "path": "/payroll/operations"
+      "id": "payroll-loans",
+      "title": "وام‌ها",
+      "path": "/payroll/loans"
+     }
+    ]
+   },
+   {
+    "title": "محاسبات حقوق",
+    "items": [
+     {
+      "id": "payroll-attendance-import",
+      "title": "دریافت کارکرد (ساعت زنی)",
+      "path": "/payroll/attendance-import"
      },
      {
-      "id": "payroll-settlement",
-      "title": "تسویه حساب",
-      "path": "/payroll/settlement"
-     }
-    ]
-   },
-   {
-    "title": "تنظیمات حقوق",
-    "items": [
+      "id": "payroll-attendance-entry",
+      "title": "ورود اطلاعات کارکرد",
+      "path": "/payroll/attendance-entry"
+     },
      {
-      "id": "payroll-settings",
-      "title": "مزایا، کسورات و تنظیمات",
-      "path": "/payroll/settings"
-     }
-    ]
-   },
-   {
-    "title": "گزارش‌ها و مغایرت",
-    "items": [
+      "id": "payroll-calculate",
+      "title": "محاسبه حقوق",
+      "path": "/payroll/calculate"
+     },
+     {
+      "id": "payroll-accounting-doc",
+      "title": "سند حقوق",
+      "path": "/payroll/accounting"
+     },
      {
       "id": "payroll-reports",
-      "title": "گزارش‌ها و مغایرت",
+      "title": "گزارشات",
       "path": "/payroll/reports"
+     },
+     {
+      "id": "payroll-net-payments",
+      "title": "خالص پرداختی",
+      "path": "/payroll/net-payments"
+     },
+     {
+      "id": "payroll-results",
+      "title": "اطلاعات حقوق",
+      "path": "/payroll/results"
+     },
+     {
+      "id": "payroll-payslips",
+      "title": "فیش حقوقی پرسنل",
+      "path": "/payroll/payslips"
+     },
+     {
+      "id": "payroll-employee-loans",
+      "title": "وام کارکنان",
+      "path": "/payroll/employee-loans"
+     },
+     {
+      "id": "payroll-advances",
+      "title": "مساعده کارکنان",
+      "path": "/payroll/advances"
+     },
+     {
+      "id": "payroll-insurance-export",
+      "title": "بیمه کارکنان (خروجی)",
+      "path": "/payroll/insurance-export"
+     },
+     {
+      "id": "payroll-tax-export",
+      "title": "مالیات کارکنان",
+      "path": "/payroll/tax-export"
      }
     ]
    },
    {
-    "title": "ابزارهای مالی مرتبط",
+    "title": "عملیات سالانه (خروجی)",
     "items": [
      {
-      "id": "payroll-payslips-legacy",
-      "title": "فیش حقوق (قدیم)",
-      "path": "/payslips"
+      "id": "payroll-eidi-operations",
+      "title": "عملیات و کارکرد عیدی",
+      "path": "/payroll/annual/eidi-operations"
      },
      {
-      "id": "payroll-benefits",
-      "title": "مزایا و کارانه",
-      "path": "/benefits"
+      "id": "payroll-eidi-calculate",
+      "title": "محاسبه عیدی",
+      "path": "/payroll/annual/eidi-calculate"
      },
      {
-      "id": "payroll-benefit-payments",
-      "title": "پرداخت مزایا",
-      "path": "/benefit-payments"
+      "id": "payroll-eidi-report",
+      "title": "گزارش عیدی",
+      "path": "/payroll/annual/eidi-report"
      },
      {
-      "id": "payroll-deductions",
-      "title": "کسورات",
-      "path": "/deductions"
+      "id": "payroll-eidi-document",
+      "title": "سند عیدی",
+      "path": "/payroll/annual/eidi-document"
+     }
+    ]
+   },
+   {
+    "title": "مانده مرخص",
+    "items": [
+     {
+      "id": "payroll-leave-operations",
+      "title": "عملیات مانده مرخصی",
+      "path": "/payroll/leave/balance-operations"
      },
      {
-      "id": "payroll-finance-reports",
-      "title": "گزارش مالی",
-      "path": "/finance-reports"
+      "id": "payroll-leave-report",
+      "title": "گزارش مانده مرخصی",
+      "path": "/payroll/leave/balance-report"
+     },
+     {
+      "id": "payroll-leave-document",
+      "title": "سند مانده مرخصی",
+      "path": "/payroll/leave/balance-document"
+     },
+     {
+      "id": "payroll-reserve-operations",
+      "title": "عملیات ذخیره سنوات",
+      "path": "/payroll/leave/reserve-operations"
+     },
+     {
+      "id": "payroll-reserve-report",
+      "title": "گزارش ذخیره سنوات",
+      "path": "/payroll/leave/reserve-report"
+     },
+     {
+      "id": "payroll-reserve-document",
+      "title": "سند ذخیره سنوات",
+      "path": "/payroll/leave/reserve-document"
+     }
+    ]
+   },
+   {
+    "title": "تعاریف اولیه",
+    "items": [
+     {
+      "id": "payroll-def-tax",
+      "title": "تعاریف ثابت (اداره دارایی)",
+      "path": "/payroll/definitions/tax-fixed"
+     },
+     {
+      "id": "payroll-def-status",
+      "title": "وضعیت کارکنان",
+      "path": "/payroll/definitions/employee-status"
+     },
+     {
+      "id": "payroll-def-branches",
+      "title": "شعب مالیاتی و بیمه",
+      "path": "/payroll/definitions/branches"
+     },
+     {
+      "id": "payroll-def-components",
+      "title": "متغیرهای سیستم حقوق",
+      "path": "/payroll/definitions/components"
+     },
+     {
+      "id": "payroll-def-insurance",
+      "title": "رنج بیمه",
+      "path": "/payroll/definitions/insurance-rates"
+     },
+     {
+      "id": "payroll-def-tax-brackets",
+      "title": "رنج مالیات",
+      "path": "/payroll/definitions/tax-brackets"
+     },
+     {
+      "id": "payroll-def-activity",
+      "title": "مراکز اصلی فعالیت",
+      "path": "/payroll/definitions/activity-centers"
+     },
+     {
+      "id": "payroll-def-cost-centers",
+      "title": "مراکز هزینه بدهکاران",
+      "path": "/payroll/definitions/cost-centers"
+     },
+     {
+      "id": "payroll-def-expense-debit",
+      "title": "هزینه حقوق (بدهکار)",
+      "path": "/payroll/definitions/expense-debit"
+     },
+     {
+      "id": "payroll-def-expense-credit",
+      "title": "هزینه حقوق (بستانکار)",
+      "path": "/payroll/definitions/expense-credit"
      }
     ]
    }

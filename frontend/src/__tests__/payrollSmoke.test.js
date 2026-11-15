@@ -73,7 +73,6 @@ describe('Payroll smoke', () => {
     const { container, root } = await renderPage();
     expect(container.textContent).toContain('حقوق و دستمزد');
     expect(container.textContent).toContain('حقوق 1405/08');
-    expect(container.textContent).toContain('داشبورد');
     act(() => root.unmount());
     container.remove();
   });
@@ -82,6 +81,34 @@ describe('Payroll smoke', () => {
     const { container, root } = await renderPage('/payroll/periods');
     expect(container.textContent).toContain('دورهٔ جدید');
     expect(container.textContent).toContain('دوره‌های حقوق');
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('renders independent payroll pages without a tab shell', async () => {
+    const { container, root } = await renderPage('/payroll/employees');
+    expect(container.textContent).toContain('مشخصات پرسنل');
+    expect(container.querySelector('input[placeholder="جست‌وجوی نام، کد، واحد یا عنوان شغلی"]')).toBeTruthy();
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('renders annual operation pages as standalone routes', async () => {
+    const { container, root } = await renderPage('/payroll/annual/eidi-operations');
+    expect(container.textContent).toContain('عملیات و کارکرد عیدی');
+    expect(container.textContent).toContain('پیش‌نیازهای این بخش');
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it.each([
+    ['/payroll/loans', 'وام‌های کارکنان'],
+    ['/payroll/insurance-export', 'خروجی بیمهٔ کارکنان'],
+    ['/payroll/definitions/activity-centers', 'مراکز اصلی فعالیت'],
+    ['/payroll/definitions/employee-status', 'وضعیت کارکنان بر اساس احکام حقوقی'],
+  ])('renders standalone payroll page %s', async (entry, text) => {
+    const { container, root } = await renderPage(entry);
+    expect(container.textContent).toContain(text);
     act(() => root.unmount());
     container.remove();
   });

@@ -30,7 +30,10 @@ const Section = ({ title, children, action, accent }) => (
   </Paper>
 );
 
-const PayrollOperationsPanel = ({ accent }) => {
+const PayrollOperationsPanel = ({ accent, mode = 'all' }) => {
+  const showOvertime = mode === 'all' || mode === 'overtime';
+  const showAdvance = mode === 'all' || mode === 'advance';
+  const showAllocation = mode === 'all' || mode === 'allocation';
   const qc = useQueryClient();
   const [message, setMessage] = useState(null);
   const [overtimeOpen, setOvertimeOpen] = useState(false);
@@ -126,20 +129,26 @@ const PayrollOperationsPanel = ({ accent }) => {
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
       {message && <Alert severity={message.ok ? 'success' : 'error'} onClose={() => setMessage(null)}>{message.text}</Alert>}
-      <Section title="اضافه‌کاری، شب‌کاری و تعطیل‌کاری" accent={accent} action={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: accent }} onClick={() => { setOvertimeForm(emptyOvertime()); setOvertimeOpen(true); }}>ثبت مورد جدید</Button>}>
-        <DataTable ariaLabel="فهرست اضافه‌کاری" rows={overtimeRows} columns={overtimeColumns} themed getRowId={(row) => row.id} emptyText="موردی ثبت نشده است." />
-      </Section>
+      {showOvertime && (
+        <Section title="اضافه‌کاری، شب‌کاری و تعطیل‌کاری" accent={accent} action={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: accent }} onClick={() => { setOvertimeForm(emptyOvertime()); setOvertimeOpen(true); }}>ثبت مورد جدید</Button>}>
+          <DataTable ariaLabel="فهرست اضافه‌کاری" rows={overtimeRows} columns={overtimeColumns} themed getRowId={(row) => row.id} emptyText="موردی ثبت نشده است." />
+        </Section>
+      )}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
-          <Section title="مساعده‌های پرسنل" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => { setAdvanceForm(emptyAdvance()); setAdvanceOpen(true); }}>مساعدهٔ جدید</Button>}>
-            <DataTable ariaLabel="فهرست مساعده‌ها" rows={advanceRows} columns={advanceColumns} themed getRowId={(row) => row.id} emptyText="مساعده‌ای ثبت نشده است." />
-          </Section>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Section title="تخصیص هزینه به پروژه و مرکز هزینه" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => { setAllocationForm(emptyAllocation()); setAllocationOpen(true); }}>تخصیص جدید</Button>}>
-            <DataTable ariaLabel="تخصیص هزینه" rows={allocationRows} columns={allocationColumns} themed getRowId={(row) => row.id} emptyText="تخصیصی ثبت نشده است." />
-          </Section>
-        </Grid>
+        {showAdvance && (
+          <Grid item xs={12} md={showAllocation ? 6 : 12}>
+            <Section title="مساعده‌های پرسنل" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => { setAdvanceForm(emptyAdvance()); setAdvanceOpen(true); }}>مساعدهٔ جدید</Button>}>
+              <DataTable ariaLabel="فهرست مساعده‌ها" rows={advanceRows} columns={advanceColumns} themed getRowId={(row) => row.id} emptyText="مساعده‌ای ثبت نشده است." />
+            </Section>
+          </Grid>
+        )}
+        {showAllocation && (
+          <Grid item xs={12} md={showAdvance ? 6 : 12}>
+            <Section title="تخصیص هزینه به پروژه و مرکز هزینه" accent={accent} action={<Button size="small" startIcon={<AddIcon />} onClick={() => { setAllocationForm(emptyAllocation()); setAllocationOpen(true); }}>تخصیص جدید</Button>}>
+              <DataTable ariaLabel="تخصیص هزینه" rows={allocationRows} columns={allocationColumns} themed getRowId={(row) => row.id} emptyText="تخصیصی ثبت نشده است." />
+            </Section>
+          </Grid>
+        )}
       </Grid>
 
 

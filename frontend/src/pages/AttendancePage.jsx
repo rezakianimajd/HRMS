@@ -42,7 +42,7 @@ const STATUS_META = {
   holiday: { label: 'تعطیل', color: '#94a3b8', icon: <HolidayVillageIcon fontSize="small" /> },
 };
 
-const AttendancePage = () => {
+const AttendancePage = ({ pageTitle = 'حضور و غیاب', pageSubtitle = '' }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -128,7 +128,8 @@ const AttendancePage = () => {
     <Box>
       <PageHeader
         icon={<AccessTimeIcon />}
-        title="حضور و غیاب"
+        title={pageTitle}
+        subtitle={pageSubtitle || undefined}
         actions={(
           <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
             ثبت رکورد حضور

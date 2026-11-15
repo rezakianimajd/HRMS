@@ -1,141 +1,60 @@
 import React, { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Paper, Tab, Tabs, Typography } from '@mui/material';
-import PaymentsIcon from '@mui/icons-material/Payments';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import BadgeIcon from '@mui/icons-material/Badge';
-import TuneIcon from '@mui/icons-material/Tune';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import LogoutIcon from '@mui/icons-material/Logout';
+import { Box } from '@mui/material';
 import PageHeader from '../core/components/ui/PageHeader';
 import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../core/context/ModulePaletteContext';
 import { useTheme } from '@mui/material/styles';
 import PayrollDashboardPanel from './payroll/PayrollDashboardPanel';
+import PayrollEmployeeSpecsPanel from './payroll/PayrollEmployeeSpecsPanel';
+import PayrollProfilesPanel from './payroll/PayrollProfilesPanel';
+import PayrollLoansPanel from './payroll/PayrollLoansPanel';
 import PayrollPeriodsPanel from './payroll/PayrollPeriodsPanel';
 import PayrollResultsPanel from './payroll/PayrollResultsPanel';
 import PayrollSettingsPanel from './payroll/PayrollSettingsPanel';
 import PayrollOperationsPanel from './payroll/PayrollOperationsPanel';
-import PayrollProfilesPanel from './payroll/PayrollProfilesPanel';
 import PayrollReportsPanel from './payroll/PayrollReportsPanel';
 import PayrollSettlementPanel from './payroll/PayrollSettlementPanel';
-import { payrollCardSx } from './payroll/payrollUi';
+import PayrollExportPanel from './payroll/PayrollExportPanel';
+import PayrollCentersPanel from './payroll/PayrollCentersPanel';
+import PayrollStatusPanel from './payroll/PayrollStatusPanel';
+import PayrollPlaceholderPanel from './payroll/PayrollPlaceholderPanel';
+import { PAYROLL_PAGES } from './payroll/payrollPages';
 
-export const PAYROLL_TABS = [
-  {
-    key: 'dashboard',
-    path: '/payroll/dashboard',
-    label: 'داشبورد',
-    icon: <DashboardIcon fontSize="small" />,
-    description: 'نمای کلی دورهٔ جاری، روند حقوق، هشدارهای محاسباتی و شاخص‌های هزینه',
-  },
-  {
-    key: 'periods',
-    path: '/payroll/periods',
-    label: 'دوره‌های حقوق',
-    icon: <CalendarMonthIcon fontSize="small" />,
-    description: 'ایجاد دوره، اجرای محاسبه، بررسی، تأیید، ثبت سند و گردش پرداخت',
-  },
-  {
-    key: 'results',
-    path: '/payroll/results',
-    label: 'محاسبه و فیش‌ها',
-    icon: <ReceiptLongIcon fontSize="small" />,
-    description: 'نتایج محاسبهٔ هر پرسنل، اقلام حقوق و چاپ فیش حقوقی',
-  },
-  {
-    key: 'profiles',
-    path: '/payroll/profiles',
-    label: 'پروفایل حقوقی',
-    icon: <BadgeIcon fontSize="small" />,
-    description: 'پروفایل حقوقی تاریخ‌محور پرسنل؛ منبع Snapshot هر دوره',
-  },
-  {
-    key: 'components',
-    path: '/payroll/settings',
-    label: 'مزایا، کسورات و تنظیمات',
-    icon: <TuneIcon fontSize="small" />,
-    description: 'مؤلفه‌ها و قوانین محاسبه، نرخ بیمه، پله‌های مالیات، نگاشت حساب و قالب بانکی',
-  },
-  {
-    key: 'operations',
-    path: '/payroll/operations',
-    label: 'اضافه‌کاری، وام و تخصیص',
-    icon: <FactCheckIcon fontSize="small" />,
-    description: 'ثبت اضافه‌کاری، مساعده/وام و تخصیص هزینه به پروژه و مرکز هزینه',
-  },
-  {
-    key: 'settlement',
-    path: '/payroll/settlement',
-    label: 'تسویه حساب',
-    icon: <LogoutIcon fontSize="small" />,
-    description: 'تسویه حساب پایان همکاری و محاسبهٔ مزایای پایان خدمت',
-  },
-  {
-    key: 'reports',
-    path: '/payroll/reports',
-    label: 'گزارش‌ها و مغایرت',
-    icon: <AssessmentIcon fontSize="small" />,
-    description: 'گزارش روند، تفکیک هزینه، مغایرت حسابداری/خزانه و فایل پرداخت بانکی',
-  },
-];
-
-const TAB_BY_KEY = Object.fromEntries(PAYROLL_TABS.map((tab) => [tab.key, tab]));
-const TAB_BY_PATH = Object.fromEntries(PAYROLL_TABS.map((tab) => [tab.path, tab.key]));
-
-const tabFromLocation = (pathname, searchParams) => {
-  if (TAB_BY_PATH[pathname]) return TAB_BY_PATH[pathname];
-  const legacy = searchParams.get('tab');
-  if (pathname === '/payroll' && TAB_BY_KEY[legacy]) return legacy;
-  return 'dashboard';
-};
+const PAGE_BY_PATH = Object.fromEntries(PAYROLL_PAGES.map((page) => [page.path, page]));
 
 const PayrollPage = () => {
-
   const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { getPalette } = useModulePalette();
-  const active = tabFromLocation(location.pathname, searchParams);
-  const activeMeta = TAB_BY_KEY[active] || PAYROLL_TABS[0];
+  const active = PAGE_BY_PATH[location.pathname] || PAYROLL_PAGES[0];
   const accent = getPalette('payroll')?.accent || MODULE_DEFAULT_ACCENTS.payroll || theme.palette.primary.main;
   const periodId = searchParams.get('period') || '';
 
-  // مسیر قدیمی `/payroll?tab=...` و ورود از خانهٔ ماژول را به صفحهٔ مستقل همان تب هدایت می‌کند.
+  // مسیر قدیمی `/payroll` و مسیرهای ناشناخته را به صفحهٔ خانهٔ ماژول هدایت می‌کند.
   useEffect(() => {
     if (location.pathname === '/payroll') {
-      const next = new URLSearchParams(searchParams);
-      next.delete('tab');
-      navigate({
-        pathname: activeMeta.path,
-        search: next.toString() ? `?${next.toString()}` : '',
-      }, { replace: true });
+      const legacyTab = searchParams.get('tab');
+      const target = legacyTab === 'periods' ? '/payroll/calculate'
+        : legacyTab === 'results' ? '/payroll/results'
+          : legacyTab === 'profiles' ? '/payroll/profiles'
+            : legacyTab === 'components' ? '/payroll/definitions/components'
+              : '/payroll/dashboard';
+      navigate(target, { replace: true });
       return;
     }
-    if (!TAB_BY_PATH[location.pathname]) {
+    if (!PAGE_BY_PATH[location.pathname]) {
       navigate('/payroll/dashboard', { replace: true });
     }
-  }, [activeMeta.path, location.pathname, navigate, searchParams]);
-
-  const setTab = (tabKey) => {
-    const target = TAB_BY_KEY[tabKey];
-    if (!target) return;
-    const next = new URLSearchParams(searchParams);
-    next.delete('tab');
-    navigate({
-      pathname: target.path,
-      search: next.toString() ? `?${next.toString()}` : '',
-    });
-  };
+  }, [location.pathname, navigate, searchParams]);
 
   const setPeriodId = (id) => {
     const next = new URLSearchParams(searchParams);
     if (id) next.set('period', id);
     else next.delete('period');
-    setSearchParams(next, { replace: true });
+    const search = next.toString();
+    navigate({ pathname: location.pathname, search: search ? `?${search}` : '' }, { replace: true });
   };
 
   const openResults = (id) => {
@@ -146,72 +65,51 @@ const PayrollPage = () => {
   };
 
   const panel = useMemo(() => {
-    if (active === 'periods') {
-      return <PayrollPeriodsPanel accent={accent} theme={theme} onOpenResults={openResults} />;
-    }
-    if (active === 'results') {
-      return <PayrollResultsPanel accent={accent} theme={theme} periodId={periodId} setPeriodId={setPeriodId} />;
-    }
-    if (active === 'components') {
-      return <PayrollSettingsPanel accent={accent} theme={theme} />;
-    }
-    if (active === 'profiles') {
-      return <PayrollProfilesPanel accent={accent} theme={theme} />;
-    }
-    if (active === 'operations') {
-      return <PayrollOperationsPanel accent={accent} theme={theme} periodId={periodId} />;
-    }
-    if (active === 'settlement') {
-      return <PayrollSettlementPanel accent={accent} theme={theme} />;
-    }
-    if (active === 'reports') {
-      return <PayrollReportsPanel accent={accent} theme={theme} periodId={periodId} />;
+    const common = { accent, theme };
+    if (active.panel === 'employees') return <PayrollEmployeeSpecsPanel {...common} />;
+    if (active.panel === 'profiles') return <PayrollProfilesPanel {...common} />;
+    if (active.panel === 'loans') return <PayrollLoansPanel {...common} />;
+    if (active.panel === 'periods') return <PayrollPeriodsPanel {...common} onOpenResults={openResults} />;
+    if (active.panel === 'results') return <PayrollResultsPanel {...common} periodId={periodId} setPeriodId={setPeriodId} />;
+    if (active.panel === 'settings') return <PayrollSettingsPanel {...common} section={active.section} />;
+    if (active.panel === 'operations') return <PayrollOperationsPanel {...common} periodId={periodId} mode={active.mode || 'all'} />;
+    if (active.panel === 'settlement') return <PayrollSettlementPanel {...common} />;
+    if (active.panel === 'reports') return <PayrollReportsPanel {...common} periodId={periodId} />;
+    if (active.panel === 'export') return <PayrollExportPanel {...common} periodId={periodId} setPeriodId={setPeriodId} kind={active.kind || 'insurance'} />;
+    if (active.panel === 'centers') return <PayrollCentersPanel {...common} mode={active.mode || 'projects'} />;
+    if (active.panel === 'status') return <PayrollStatusPanel {...common} />;
+    if (active.panel === 'placeholder') {
+      return (
+        <PayrollPlaceholderPanel
+          accent={accent}
+          description={active.description}
+          requirements={active.requirements}
+          related={active.related}
+        />
+      );
     }
     return (
       <PayrollDashboardPanel
-        accent={accent}
-        theme={theme}
-        onOpenPeriods={() => setTab('periods')}
+        {...common}
+        onOpenPeriods={() => navigate('/payroll/calculate')}
         onOpenResults={openResults}
       />
     );
-  }, [active, accent, periodId, theme]);
+  }, [active, accent, location.pathname, periodId, searchParams, theme]);
 
   return (
     <Box sx={{ direction: 'rtl', pb: 4 }}>
       <PageHeader
-        icon={<PaymentsIcon />}
-        title="حقوق و دستمزد"
-        subtitle={activeMeta.description}
+        icon={active.icon}
+        title={active.key === 'home' ? 'حقوق و دستمزد' : `حقوق و دستمزد — ${active.label}`}
+        subtitle={active.description}
         color={accent}
         actions={(
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TuneIcon sx={{ color: 'text.secondary', fontSize: 18 }} />
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-              اطلاعات حقوقی محرمانه است؛ دسترسی بر اساس مجوز ماژول و مالکیت فیش اعمال می‌شود.
-            </Typography>
+          <Box sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.9 }}>
+            قوانین و نرخ‌ها تاریخ‌محور هستند؛ نرخ‌های سال ۱۴۰۵ را در تعاریف اولیه وارد کنید.
           </Box>
         )}
       />
-      <Paper elevation={0} data-testid="payroll-tabs" sx={payrollCardSx({ mb: 2.5, p: 0, overflow: 'hidden' })}>
-        <Tabs
-          value={active}
-          onChange={(event, value) => setTab(value)}
-          variant="scrollable"
-          allowScrollButtonsMobile
-          aria-label="صفحه‌های حقوق و دستمزد"
-          sx={{
-            px: 1,
-            '& .MuiTab-root': { fontSize: 12.5, fontWeight: 700, minHeight: 52, gap: 0.75 },
-            '& .Mui-selected': { color: `${accent} !important` },
-            '& .MuiTabs-indicator': { backgroundColor: accent },
-          }}
-        >
-          {PAYROLL_TABS.map((row) => (
-            <Tab key={row.key} value={row.key} icon={row.icon} iconPosition="start" label={row.label} />
-          ))}
-        </Tabs>
-      </Paper>
       {panel}
     </Box>
   );

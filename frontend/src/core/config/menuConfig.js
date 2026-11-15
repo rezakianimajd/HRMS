@@ -33,6 +33,12 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
+import BadgeIcon from '@mui/icons-material/Badge';
+import PaidIcon from '@mui/icons-material/Paid';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import SavingsIcon from '@mui/icons-material/Savings';
+import CallMadeIcon from '@mui/icons-material/CallMade';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import SendIcon from '@mui/icons-material/Send';
 import AltRouteIcon from '@mui/icons-material/AltRoute';
@@ -996,60 +1002,88 @@ const correspondenceMenu = [
  * این ماژول از منابع انسانی جدا است و فقط در انتخاب‌گر/سوئیچر ماژول دیده می‌شود.
  * هر آیتم مسیر مستقل خودش را دارد تا صفحه‌ها deep-link و bookmarkable باشند.
  */
+
+/**
+ * منوی مستقل ماژول حقوق و دستمزد — ساختار عملیاتی سال ۱۴۰۵.
+ * هر آیتم یک صفحهٔ مستقل دارد؛ هیچ‌کدام از این آیتم‌ها در منوی منابع انسانی نیست.
+ */
 const payrollMenu = [
   {
     id: 'payroll-home',
-    title: 'میزکار حقوق',
+    title: 'خانه',
     color: '#3b82f6',
     items: [
-      { id: 'payroll-dashboard', title: 'داشبورد حقوق', icon: <PaymentsIcon />, path: '/payroll/dashboard', color: '#3b82f6', primary: true, ready: true },
+      { id: 'payroll-dashboard', title: 'داشبورد', icon: <DashboardIcon />, path: '/payroll/dashboard', color: '#3b82f6', primary: true, ready: true },
     ],
   },
   {
-    id: 'payroll-cycle',
-    title: 'دوره و محاسبه',
-    color: '#0ea5e9',
-    items: [
-      { id: 'payroll-periods', title: 'دوره‌های حقوق', icon: <CalendarMonthIcon />, path: '/payroll/periods', color: '#0ea5e9', primary: true, ready: true },
-      { id: 'payroll-results', title: 'محاسبه و فیش حقوقی', icon: <ReceiptLongIcon />, path: '/payroll/results', color: '#6366f1', primary: false, ready: true },
-    ],
-  },
-  {
-    id: 'payroll-people',
-    title: 'پرسنل و پرداخت',
+    id: 'payroll-personnel',
+    title: 'مشخصات پرسنل',
     color: '#ec4899',
     items: [
-      { id: 'payroll-profiles', title: 'پروفایل حقوقی پرسنل', icon: <PeopleIcon />, path: '/payroll/profiles', color: '#ec4899', primary: false, ready: true },
-      { id: 'payroll-operations', title: 'اضافه‌کاری، وام و تخصیص', icon: <FactCheckIcon />, path: '/payroll/operations', color: '#f59e0b', primary: false, ready: true },
-      { id: 'payroll-settlement', title: 'تسویه حساب', icon: <PlaylistAddCheckIcon />, path: '/payroll/settlement', color: '#ef4444', primary: false, ready: true },
+      { id: 'payroll-employees', title: 'مشخصات', icon: <PeopleIcon />, path: '/payroll/employees', color: '#ec4899', primary: true, ready: true },
+      { id: 'payroll-orders', title: 'احکام پرسنل', icon: <DescriptionIcon />, path: '/payroll/profiles', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-loans', title: 'وام‌ها', icon: <AccountBalanceWalletIcon />, path: '/payroll/loans', color: '#10b981', primary: false, ready: true },
     ],
   },
   {
-    id: 'payroll-config',
-    title: 'تنظیمات حقوق',
+    id: 'payroll-calculations',
+    title: 'محاسبات حقوق',
+    color: '#0ea5e9',
+    items: [
+      { id: 'payroll-attendance-import', title: 'دریافت کارکرد (ساعت زنی)', icon: <AccessTimeFilledIcon />, path: '/payroll/attendance-import', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'payroll-attendance-entry', title: 'ورود اطلاعات کارکرد', icon: <EditNoteIcon />, path: '/payroll/attendance-entry', color: '#6366f1', primary: false, ready: true },
+      { id: 'payroll-calculate', title: 'محاسبه حقوق', icon: <CalculateIcon />, path: '/payroll/calculate', color: '#f59e0b', primary: true, ready: true },
+      { id: 'payroll-accounting-doc', title: 'سند حقوق', icon: <AccountBalanceIcon />, path: '/payroll/accounting', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-reports', title: 'گزارشات', icon: <BarChartOutlinedIcon />, path: '/payroll/reports', color: '#10b981', primary: false, ready: true },
+      { id: 'payroll-net-payments', title: 'خالص پرداختی', icon: <PaidIcon />, path: '/payroll/net-payments', color: '#14b8a6', primary: false, ready: true },
+      { id: 'payroll-results', title: 'اطلاعات حقوق', icon: <ReceiptLongIcon />, path: '/payroll/results', color: '#3b82f6', primary: false, ready: true },
+      { id: 'payroll-payslips', title: 'فیش حقوقی پرسنل', icon: <ReceiptLongIcon />, path: '/payroll/payslips', color: '#0f766e', primary: false, ready: true },
+      { id: 'payroll-employee-loans', title: 'وام کارکنان', icon: <AccountBalanceWalletIcon />, path: '/payroll/employee-loans', color: '#10b981', primary: false, ready: true },
+      { id: 'payroll-advances', title: 'مساعده کارکنان', icon: <PaymentsIcon />, path: '/payroll/advances', color: '#f97316', primary: false, ready: true },
+      { id: 'payroll-insurance-export', title: 'بیمه کارکنان (خروجی)', icon: <HealthAndSafetyIcon />, path: '/payroll/insurance-export', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'payroll-tax-export', title: 'مالیات کارکنان', icon: <GavelIcon />, path: '/payroll/tax-export', color: '#be123c', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'payroll-annual',
+    title: 'عملیات سالانه (خروجی)',
     color: '#8b5cf6',
     items: [
-      { id: 'payroll-settings', title: 'مزایا، کسورات و تنظیمات', icon: <TuneIcon />, path: '/payroll/settings', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-eidi-operations', title: 'عملیات و کارکرد عیدی', icon: <CardGiftcardIcon />, path: '/payroll/annual/eidi-operations', color: '#8b5cf6', primary: true, ready: true },
+      { id: 'payroll-eidi-calculate', title: 'محاسبه عیدی', icon: <CalculateIcon />, path: '/payroll/annual/eidi-calculate', color: '#6366f1', primary: false, ready: true },
+      { id: 'payroll-eidi-report', title: 'گزارش عیدی', icon: <BarChartOutlinedIcon />, path: '/payroll/annual/eidi-report', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'payroll-eidi-document', title: 'سند عیدی', icon: <AccountBalanceIcon />, path: '/payroll/annual/eidi-document', color: '#10b981', primary: false, ready: true },
     ],
   },
   {
-    id: 'payroll-reporting',
-    title: 'گزارش‌ها و مغایرت',
-    color: '#10b981',
+    id: 'payroll-leave',
+    title: 'مانده مرخص',
+    color: '#f59e0b',
     items: [
-      { id: 'payroll-reports', title: 'گزارش‌ها و مغایرت', icon: <BarChartOutlinedIcon />, path: '/payroll/reports', color: '#10b981', primary: false, ready: true },
+      { id: 'payroll-leave-operations', title: 'عملیات مانده مرخصی', icon: <EventBusyIcon />, path: '/payroll/leave/balance-operations', color: '#f59e0b', primary: true, ready: true },
+      { id: 'payroll-leave-report', title: 'گزارش مانده مرخصی', icon: <BarChartOutlinedIcon />, path: '/payroll/leave/balance-report', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'payroll-leave-document', title: 'سند مانده مرخصی', icon: <AccountBalanceIcon />, path: '/payroll/leave/balance-document', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-reserve-operations', title: 'عملیات ذخیره سنوات', icon: <SavingsIcon />, path: '/payroll/leave/reserve-operations', color: '#10b981', primary: false, ready: true },
+      { id: 'payroll-reserve-report', title: 'گزارش ذخیره سنوات', icon: <BarChartOutlinedIcon />, path: '/payroll/leave/reserve-report', color: '#14b8a6', primary: false, ready: true },
+      { id: 'payroll-reserve-document', title: 'سند ذخیره سنوات', icon: <AccountBalanceIcon />, path: '/payroll/leave/reserve-document', color: '#6366f1', primary: false, ready: true },
     ],
   },
   {
-    id: 'payroll-legacy',
-    title: 'ابزارهای مالی مرتبط',
+    id: 'payroll-definitions',
+    title: 'تعاریف اولیه',
     color: '#64748b',
     items: [
-      { id: 'payroll-payslips-legacy', title: 'فیش حقوق (قدیم)', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: false, ready: true },
-      { id: 'payroll-benefits', title: 'مزایا و کارانه', icon: <CardGiftcardIcon />, path: '/benefits', color: '#10b981', primary: false, ready: true },
-      { id: 'payroll-benefit-payments', title: 'پرداخت مزایا', icon: <CardGiftcardIcon />, path: '/benefit-payments', color: '#14b8a6', primary: false, ready: true },
-      { id: 'payroll-deductions', title: 'کسورات', icon: <PaymentsIcon />, path: '/deductions', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'payroll-finance-reports', title: 'گزارش مالی', icon: <BarChartOutlinedIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
+      { id: 'payroll-def-tax', title: 'تعاریف ثابت (اداره دارایی)', icon: <SettingsIcon />, path: '/payroll/definitions/tax-fixed', color: '#64748b', primary: true, ready: true },
+      { id: 'payroll-def-status', title: 'وضعیت کارکنان', icon: <BadgeIcon />, path: '/payroll/definitions/employee-status', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-def-branches', title: 'شعب مالیاتی و بیمه', icon: <BusinessIcon />, path: '/payroll/definitions/branches', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'payroll-def-components', title: 'متغیرهای سیستم حقوق', icon: <TuneIcon />, path: '/payroll/definitions/components', color: '#6366f1', primary: false, ready: true },
+      { id: 'payroll-def-insurance', title: 'رنج بیمه', icon: <HealthAndSafetyIcon />, path: '/payroll/definitions/insurance-rates', color: '#10b981', primary: false, ready: true },
+      { id: 'payroll-def-tax-brackets', title: 'رنج مالیات', icon: <GavelIcon />, path: '/payroll/definitions/tax-brackets', color: '#be123c', primary: false, ready: true },
+      { id: 'payroll-def-activity', title: 'مراکز اصلی فعالیت', icon: <AccountTreeIcon />, path: '/payroll/definitions/activity-centers', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-def-cost-centers', title: 'مراکز هزینه بدهکاران', icon: <SwapHorizIcon />, path: '/payroll/definitions/cost-centers', color: '#f59e0b', primary: false, ready: true },
+      { id: 'payroll-def-expense-debit', title: 'هزینه حقوق (بدهکار)', icon: <CallReceivedIcon />, path: '/payroll/definitions/expense-debit', color: '#0f766e', primary: false, ready: true },
+      { id: 'payroll-def-expense-credit', title: 'هزینه حقوق (بستانکار)', icon: <CallMadeIcon />, path: '/payroll/definitions/expense-credit', color: '#6366f1', primary: false, ready: true },
     ],
   },
 ];

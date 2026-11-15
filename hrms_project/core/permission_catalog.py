@@ -4,7 +4,7 @@
 و عملیات استاندارد: view / create / edit / delete / approve / export.
 
 منبع داده: ``core/permission_catalog_data.json`` که از ``menuConfig.js``
-استخراج شده است (۱۰ ماژول، ۷۵ گروه، ۲۵۹ منو). برای افزودن منوی جدید:
+استخراج شده است (۱۱ ماژول، ۸۲ گروه، ۳۰۳ منو). برای افزودن منوی جدید:
 ابتدا منو را در ``menuConfig.js`` بسازید، سپس JSON را بازتولید کنید.
 """
 import json

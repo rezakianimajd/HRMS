@@ -20,14 +20,26 @@ test('payroll is a standalone module menu, not part of the HRMS menu', () => {
 
   expect(payrollItems.map((item) => item.path)).toEqual(expect.arrayContaining([
     '/payroll/dashboard',
-    '/payroll/periods',
-    '/payroll/results',
+    '/payroll/employees',
     '/payroll/profiles',
-    '/payroll/settings',
-    '/payroll/operations',
-    '/payroll/settlement',
+    '/payroll/loans',
+    '/payroll/calculate',
+    '/payroll/accounting',
     '/payroll/reports',
+    '/payroll/net-payments',
+    '/payroll/results',
+    '/payroll/payslips',
+    '/payroll/employee-loans',
+    '/payroll/advances',
+    '/payroll/insurance-export',
+    '/payroll/tax-export',
+    '/payroll/annual/eidi-operations',
+    '/payroll/leave/balance-operations',
+    '/payroll/definitions/components',
   ]));
+  expect(getMenuForApp('payroll').map((group) => group.title)).toEqual([
+    'خانه', 'مشخصات پرسنل', 'محاسبات حقوق', 'عملیات سالانه (خروجی)', 'مانده مرخص', 'تعاریف اولیه',
+  ]);
   expect(payrollItems.some((item) => item.id.startsWith('payroll-'))).toBe(true);
 
   expect(hrItems.some((item) => String(item.path || '').startsWith('/payroll'))).toBe(false);
