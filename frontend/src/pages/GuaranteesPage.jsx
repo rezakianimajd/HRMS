@@ -11,7 +11,6 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AddIcon from '@mui/icons-material/Add';
 import BlockIcon from '@mui/icons-material/Block';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -41,7 +40,6 @@ import SortIcon from '@mui/icons-material/Sort';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import UndoIcon from '@mui/icons-material/Undo';
 import UpdateIcon from '@mui/icons-material/Update';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
@@ -65,6 +63,7 @@ const EMPTY = {
   id: null, contract: '', contract_guarantee_index: null,
   guarantee_type: 'performance', instrument_type: 'check',
   number: '', amount: '', issue_date: '', expiry_date: '', bank: '',
+  currency: '', exchange_rate: '', settlement_type: 'instrument', rial_amount: '',
   check_number: '', check_bank: '', check_due_date: '',
   promissory_number: '', promissory_due_date: '',
   guarantee_number: '', guarantee_expiry_date: '', note: '',
@@ -72,12 +71,12 @@ const EMPTY = {
 };
 
 const INSTRUMENT_META = {
-  check: { label: 'چک', color: '#b45309', icon: ReceiptLongIcon },
-  promissory: { label: 'سفته', color: '#7c3aed', icon: NoteAltIcon },
-  bank_guarantee: { label: 'ضمانت‌نامه بانکی', color: '#0f766e', icon: AccountBalanceIcon },
-  undertaking_guarantee: { label: 'ضمانت‌نامه تعهدی', color: '#0e7490', icon: VerifiedUserIcon },
-  check_and_guarantee: { label: 'چک + ضمانت‌نامه', color: '#2563eb', icon: AccountBalanceWalletIcon },
-  promissory_and_guarantee: { label: 'سفته + ضمانت‌نامه', color: '#be185d', icon: AccountBalanceWalletIcon },
+  check: { label: 'چک', color: '#b45309' },
+  promissory: { label: 'سفته', color: '#7c3aed' },
+  bank_guarantee: { label: 'ضمانت‌نامه بانکی', color: '#0f766e' },
+  undertaking_guarantee: { label: 'ضمانت‌نامه تعهدی', color: '#0e7490' },
+  check_and_guarantee: { label: 'چک + ضمانت‌نامه', color: '#2563eb' },
+  promissory_and_guarantee: { label: 'سفته + ضمانت‌نامه', color: '#be185d' },
 };
 
 // ابزارهایی که عملیات تمدید و تقلیل برای آن‌ها مجاز است (هم‌راستا با بک‌اند)
@@ -130,6 +129,10 @@ const allowedActions = (instrumentType) => {
 
 const dateLabel = (value) => (value ? toJalali(value) : '—');
 const money = (value, currency = 'ریال') => `${formatPersianNumber(Number(value) || 0)} ${currency}`;
+const contractCurrencyLabel = (contract) => normalizeCurrencyLabel(
+  contract?.currency_name || contract?.currency_symbol || 'ریال',
+);
+const isRialLabel = (label) => /ریال/.test(String(label || ''));
 const dueOf = (row) => guaranteeDueDate(row);
 /* اعتبار: چک ۵ سال از تاریخ صدور معتبر است؛ سررسید ≠ انقضا */
 const validityOf = (row) => guaranteeValidity(row);
@@ -225,9 +228,6 @@ const GuaranteeArchiveTable = ({
       </TableHead>
       <TableBody>
         {rows.map((row, index) => {
-          const instrument = INSTRUMENT_META[row.instrument_type]
-            || { label: row.instrument_type_display || '—', color: '#475569', icon: ReceiptLongIcon };
-          const InstrumentIcon = instrument.icon;
           const status = statusOf(row);
           const due = dueOf(row);
           const remaining = daysOf(row);
@@ -266,10 +266,9 @@ const GuaranteeArchiveTable = ({
                 </Typography>
               </TableCell>
               <TableCell align="right">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                  <InstrumentIcon sx={{ fontSize: 15, color: instrument.color, flexShrink: 0 }} />
-                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>{instrument.label}</Typography>
-                </Box>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                  {INSTRUMENT_META[row.instrument_type]?.label || row.instrument_type_display || '—'}
+                </Typography>
               </TableCell>
               <TableCell align="right">
                 <Typography noWrap title={row.bank || row.check_bank} sx={{ fontSize: 11.5 }}>
@@ -277,9 +276,17 @@ const GuaranteeArchiveTable = ({
                 </Typography>
               </TableCell>
               <TableCell align="right">
-                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                  {money(row.amount, currencyFor(row))}
-                </Typography>
+                <Stack spacing={0.1} alignItems="flex-start">
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                    {money(row.amount, currencyFor(row))}
+                  </Typography>
+                  {row.amount_rial != null && Number(row.amount_rial) !== Number(row.amount) ? (
+                    <Typography noWrap title={`نرخ تسعیر: ${formatPersianNumber(row.exchange_rate || 0)}`}
+                      sx={{ fontSize: 9.5, color: MUTED, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      ≈ {formatPersianNumber(row.amount_rial)} ریال
+                    </Typography>
+                  ) : null}
+                </Stack>
               </TableCell>
               <TableCell align="right">
                 <Typography noWrap sx={{
@@ -587,9 +594,8 @@ const StatusChip = ({ row }) => {
 
 const InstrumentPill = ({ row }) => {
   const meta = instrumentMeta(row);
-  const Icon = meta.icon;
   return (
-    <Chip size="small" icon={<Icon sx={{ fontSize: 12 }} />} label={meta.label}
+    <Chip size="small" label={meta.label}
       sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(meta.color, 0.07), color: meta.color }} />
   );
 };
@@ -616,7 +622,7 @@ const LifecycleActions = ({ row, onAction, compact = false }) => {
 };
 
 const instrumentMeta = (row) => INSTRUMENT_META[row.instrument_type] || {
-  label: row.instrument_type_display || 'تضمین', color: '#64748b', icon: LockIcon,
+  label: row.instrument_type_display || 'تضمین', color: '#64748b',
 };
 
 const uploadGuaranteeFiles = async (guaranteeId, contractId, files = []) => {
@@ -635,7 +641,6 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
   const theme = useTheme();
   if (!row) return null;
   const meta = instrumentMeta(row);
-  const Icon = meta.icon;
   const status = statusOf(row);
   const validity = validityOf(row);
   const days = validity.days;
@@ -650,7 +655,7 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
               bgcolor: alpha(meta.color, 0.08), color: meta.color,
               border: `1px solid ${alpha(meta.color, 0.16)}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}><Icon sx={{ fontSize: 21 }} /></Box>
+            }}><LockIcon sx={{ fontSize: 21 }} /></Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{numberFor(row)}</Typography>
               <Typography sx={{ fontSize: 12, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
@@ -669,6 +674,15 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={PaymentsIcon} title="مشخصات مالی" color={meta.color} />
               <InfoLine label="مبلغ تضمین" value={money(row.amount, currency)} strong ltr />
+              {row.amount_rial != null && Number(row.amount_rial) !== Number(row.amount) ? (
+                <InfoLine label="معادل ریالی" value={`${formatPersianNumber(row.amount_rial)} ریال`} strong />
+              ) : null}
+              {Number(row.exchange_rate) > 0 ? (
+                <InfoLine label="نرخ تسعیر" value={`${formatPersianNumber(row.exchange_rate)} ریال`} />
+              ) : null}
+              {row.settlement_type === 'cash_equivalent' ? (
+                <InfoLine label="نحوهٔ تأمین" value="معادل ریالی نقدی" />
+              ) : null}
               <InfoLine label="بانک صادرکننده" value={row.bank} />
               <InfoLine label="قرارداد" value={row.contract_subject} />
             </Paper>
@@ -812,10 +826,20 @@ const GuaranteeEditorDialog = ({
   open, onClose, form, setForm, contractList, contractGuaranteeItems,
   guaranteeItemLabel, applyGuaranteeLink, needsInstrument, needsPromissory,
   needsGuarantee, onSave, saving, error, setError, accent, currencyLabel,
-  onAddFiles, onRemovePending,
+  currencyForContract, onAddFiles, onRemovePending,
 }) => {
   const theme = useTheme();
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+  const dialogContract = contractList.find((item) => String(item.id) === String(form.contract)) || null;
+  const dialogCurrency = currencyForContract
+    ? currencyForContract(dialogContract)
+    : currencyLabel;
+  const contractRate = Number(dialogContract?.exchange_rate) || 0;
+  const foreignCurrency = !isRialLabel(dialogCurrency);
+  const effectiveRate = Number(form.exchange_rate) || contractRate;
+  const rialEquivalent = effectiveRate > 0
+    ? Math.round((Number(form.amount) || 0) * effectiveRate)
+    : null;
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{ sx: { borderRadius: '16px', boxShadow: 'none' } }}>
@@ -845,9 +869,23 @@ const GuaranteeEditorDialog = ({
                 <FormControl size="small" fullWidth>
                   <InputLabel>قرارداد مرتبط *</InputLabel>
                   <Select value={form.contract || ''} label="قرارداد مرتبط *"
-                    onChange={(event) => setForm((previous) => ({
-                      ...previous, contract: event.target.value, contract_guarantee_index: null,
-                    }))}>
+                    onChange={(event) => {
+                      const nextId = event.target.value;
+                      const nextContract = contractList.find(
+                        (item) => String(item.id) === String(nextId),
+                      ) || null;
+                      const nextForeign = !isRialLabel(contractCurrencyLabel(nextContract));
+                      setForm((previous) => ({
+                        ...previous,
+                        contract: nextId,
+                        contract_guarantee_index: null,
+                        exchange_rate: nextForeign
+                          ? String(nextContract?.exchange_rate || '')
+                          : '',
+                        settlement_type: nextForeign ? previous.settlement_type : 'instrument',
+                        rial_amount: nextForeign ? previous.rial_amount : '',
+                      }));
+                    }}>
                     {contractList.map((contract) => (
                       <MenuItem key={contract.id} value={String(contract.id)}>{contract.subject || contract.number}</MenuItem>
                     ))}
@@ -882,16 +920,14 @@ const GuaranteeEditorDialog = ({
                 <Box sx={{ display: 'flex', gap: 0.65, flexWrap: 'wrap' }}>
                   {Object.entries(INSTRUMENT_META).map(([key, meta]) => {
                     const active = form.instrument_type === key;
-                    const Icon = meta.icon;
                     return (
-                      <Chip key={key} icon={<Icon sx={{ fontSize: 13 }} />} label={meta.label}
+                      <Chip key={key} label={meta.label}
                         onClick={() => update('instrument_type', key)}
                         sx={{
                           cursor: 'pointer', borderRadius: '9px', fontWeight: 800, fontSize: 12,
                           bgcolor: active ? meta.color : alpha(meta.color, 0.07),
                           color: active ? '#fff' : meta.color,
                           border: `1px solid ${active ? meta.color : alpha(meta.color, 0.25)}`,
-                          '& .MuiChip-icon': { color: active ? '#fff' : meta.color },
                         }} />
                     );
                   })}
@@ -904,11 +940,77 @@ const GuaranteeEditorDialog = ({
           <Box>
             <SectionHeading icon={PaymentsIcon} title="مشخصات مالی و زمانی" color="#2563eb" />
             <Grid container spacing={1.25}>
-              <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label={`مبلغ (${currencyLabel})`} value={form.amount} onChange={(value) => update('amount', value)} /></Grid>
+              <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label={`مبلغ (${dialogCurrency})`} value={form.amount} onChange={(value) => update('amount', value)} /></Grid>
               <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ صدور" value={form.issue_date} onChange={(value) => update('issue_date', value)} /></Grid>
               <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک صادرکننده" value={form.bank} onChange={(event) => update('bank', event.target.value)} /></Grid>
               <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره / مرجع" value={form.number} onChange={(event) => update('number', event.target.value)} /></Grid>
               <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ انقضا / سررسید" value={form.expiry_date} onChange={(value) => update('expiry_date', value)} /></Grid>
+
+              {foreignCurrency ? (
+                <Grid item xs={12}>
+                  <Paper elevation={0} sx={{
+                    p: 1, borderRadius: '12px', border: '1px dashed',
+                    borderColor: alpha('#0ea5e9', 0.4), bgcolor: alpha('#0ea5e9', 0.04),
+                  }}>
+                    <Stack spacing={0.9}>
+                      <Stack direction="row" spacing={0.5} alignItems="center" useFlexGap flexWrap="wrap">
+                        <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: '#0e7490' }}>
+                          {`قرارداد ارزی (${dialogCurrency})`}
+                        </Typography>
+                        <Box sx={{ flex: 1 }} />
+                        {[
+                          { value: 'instrument', label: 'ابزار تضمین (به ارز)' },
+                          { value: 'cash_equivalent', label: 'معادل ریالی نقدی' },
+                        ].map((option) => {
+                          const active = (form.settlement_type || 'instrument') === option.value;
+                          return (
+                            <Chip
+                              key={option.value}
+                              clickable
+                              label={option.label}
+                              onClick={() => update('settlement_type', option.value)}
+                              sx={{
+                                height: 24, fontSize: 10.5, fontWeight: 800,
+                                bgcolor: active ? '#0e7490' : 'transparent',
+                                color: active ? '#fff' : '#0e7490',
+                                border: `1px solid ${active ? '#0e7490' : alpha('#0e7490', 0.3)}`,
+                              }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+                        <MoneyInput
+                          size="small"
+                          label="نرخ تسعیر (ریال به ازای هر واحد)"
+                          value={form.exchange_rate ?? ''}
+                          onChange={(value) => update('exchange_rate', value)}
+                          sx={{ width: { xs: '100%', sm: 250 } }}
+                        />
+                        <MoneyInput
+                          size="small"
+                          allowDecimals={false}
+                          label="معادل ریالی دریافتی (اختیاری)"
+                          value={form.rial_amount ?? ''}
+                          onChange={(value) => update('rial_amount', value)}
+                          sx={{ width: { xs: '100%', sm: 230 } }}
+                        />
+                        <Box sx={{ flex: 1 }} />
+                        <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>
+                          {rialEquivalent != null
+                            ? `معادل ریالی: ${formatPersianNumber(Number(form.rial_amount) || rialEquivalent)} ریال`
+                            : 'نرخ تسعیر را وارد کنید'}
+                        </Typography>
+                      </Stack>
+                      {contractRate > 0 ? (
+                        <Typography sx={{ fontSize: 10, color: MUTED }}>
+                          {`نرخ ثبت‌شده در قرارداد: ${formatPersianNumber(contractRate)} ریال — برای نرخ روز قابل تغییر است.`}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  </Paper>
+                </Grid>
+              ) : null}
             </Grid>
           </Box>
 
@@ -1381,6 +1483,11 @@ const GuaranteesPage = () => {
     return map;
   }, [contractList]);
 
+  const guaranteeCurrency = (row) => normalizeCurrencyLabel(
+    row?.currency_name || row?.currency_symbol || row?.contract_currency_name
+    || currencyByContract.get(String(row?.contract)) || currencyLabel,
+  );
+
   const warnings = guaranteeStatus?.warnings || [];
 
 
@@ -1400,6 +1507,12 @@ const GuaranteesPage = () => {
     instrument_type: payload.instrument_type || 'check',
     number: payload.number || '',
     amount: payload.amount === '' || payload.amount == null ? 0 : Number(payload.amount),
+    currency: payload.currency || null,
+    exchange_rate: payload.exchange_rate === '' || payload.exchange_rate == null
+      ? null : Number(payload.exchange_rate),
+    settlement_type: payload.settlement_type || 'instrument',
+    rial_amount: payload.rial_amount === '' || payload.rial_amount == null
+      ? null : Number(payload.rial_amount),
     issue_date: payload.issue_date || null,
     expiry_date: payload.expiry_date || null,
     bank: payload.bank || '',
@@ -1503,6 +1616,9 @@ const GuaranteesPage = () => {
       ...row,
       contract: String(row.contract || ''),
       contract_guarantee_index: row.contract_guarantee_index ?? null,
+      exchange_rate: row.exchange_rate ?? '',
+      settlement_type: row.settlement_type || 'instrument',
+      rial_amount: row.rial_amount ?? '',
       pendingFiles: [],
       documents: row.documents || [],
     });
@@ -1847,7 +1963,7 @@ const GuaranteesPage = () => {
                 tableHeight={tableHeight}
                 rowHeight={effectiveRowPx}
                 dimmed={isFetching || statusLoading}
-                currencyFor={(row) => currencyByContract.get(String(row.contract)) || currencyLabel}
+                currencyFor={guaranteeCurrency}
                 onView={setDetail}
                 onEdit={openEdit}
                 onDelete={setConfirmDelete}
@@ -1893,7 +2009,10 @@ const GuaranteesPage = () => {
                     dimmed={isFetching}
                     guaranteeCounts={guaranteeCountByContract}
                     guaranteeAmounts={guaranteeAmountByContract}
-                    currencyFor={(contract) => currencyByContract.get(String(contract.id)) || 'ریال'}
+                    currencyFor={(contract) => normalizeCurrencyLabel(
+                      contract.currency_name || contract.currency_symbol
+                      || currencyByContract.get(String(contract.id)) || 'ریال',
+                    )}
                     onOpen={selectContract}
                   />
                   <GuaranteePager
@@ -1916,7 +2035,7 @@ const GuaranteesPage = () => {
       <GuaranteeDetailDrawer row={detail} onClose={() => setDetail(null)}
         onEdit={openEdit} onDelete={setConfirmDelete}
         onAction={({ row, action }) => openLifecycle(row, action)}
-        currency={currencyLabel} accent={accent} />
+        currency={detail ? guaranteeCurrency(detail) : currencyLabel} accent={accent} />
 
       <GuaranteeEditorDialog
         open={dialog} onClose={closeEditor} form={form} setForm={setForm}
@@ -1924,7 +2043,8 @@ const GuaranteesPage = () => {
         guaranteeItemLabel={guaranteeItemLabel} applyGuaranteeLink={applyGuaranteeLink}
         needsInstrument={needsInstrument} needsPromissory={needsPromissory} needsGuarantee={needsGuarantee}
         onSave={submit} saving={save.isLoading} error={error} setError={setError} accent={accent}
-        currencyLabel={currencyLabel} onAddFiles={addGuaranteeFiles} onRemovePending={removePendingFile}
+        currencyLabel={currencyLabel} currencyForContract={contractCurrencyLabel}
+        onAddFiles={addGuaranteeFiles} onRemovePending={removePendingFile}
       />
 
       <Dialog open={Boolean(actionDialog)} onClose={closeActionDialog} maxWidth="xs" fullWidth>

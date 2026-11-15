@@ -73,6 +73,8 @@ beforeEach(() => {
   }));
   axiosInstance.get.mockImplementation((url) => {
     if (url === '/external-contracts/') return Promise.resolve({ data: [contract] });
+    if (url === '/external-contracts/options/') return Promise.resolve({ data: [contract] });
+
     if (url === '/contract-guarantees/') return Promise.resolve({ data: guarantees });
     if (url === '/external-contracts/1/guarantees-status/') {
       return Promise.resolve({
@@ -251,6 +253,8 @@ test('undertaking guarantee shows reduction history and renamed number in the dr
 
   axiosInstance.get.mockImplementation((url) => {
     if (url === '/external-contracts/') return Promise.resolve({ data: [contract] });
+    if (url === '/external-contracts/options/') return Promise.resolve({ data: [contract] });
+
     if (url === '/contract-guarantees/') return Promise.resolve({ data: [undertaking] });
     if (url === '/external-contracts/1/guarantees-status/') {
       return Promise.resolve({
@@ -333,5 +337,110 @@ test('undertaking guarantee shows reduction history and renamed number in the dr
 
   root.unmount();
   container.remove();
+});
+
+
+test('eur contracts show their currency, rate and rial equivalent in the guarantee editor', async () => {
+  const euroContract = {
+    id: 2,
+    number: 'C-EUR',
+    subject: 'قرارداد یورویی',
+    party_name: 'شرکت اروپایی',
+    status_display: 'در حال اجرا',
+    amount: 100000,
+    currency_name: 'یورو',
+    currency_symbol: '€',
+    exchange_rate: 920000,
+    guarantee_items: [{ type: 'performance', percent: 10 }],
+  };
+  const euroGuarantee = {
+    id: 21,
+    contract: 2,
+    contract_subject: euroContract.subject,
+    guarantee_type: 'performance',
+    guarantee_type_display: 'ضمانت حسن انجام کار',
+    instrument_type: 'bank_guarantee',
+    instrument_type_display: 'ضمانت‌نامه بانکی',
+    number: 'EUR-1',
+    amount: 1500,
+    currency_name: 'یورو',
+    exchange_rate: 920000,
+    settlement_type: 'instrument',
+    rial_amount: null,
+    amount_rial: 1380000000,
+    last_action: '',
+    is_released: false,
+  };
+  axiosInstance.get.mockImplementation((url) => {
+    if (url === '/contract-guarantees/') return Promise.resolve({ data: [euroGuarantee] });
+    if (url === '/external-contracts/options/') return Promise.resolve({ data: [euroContract] });
+    if (url === '/external-contracts/') return Promise.resolve({ data: [euroContract] });
+    if (url === '/external-contracts/2/guarantees-status/') {
+      return Promise.resolve({
+        data: {
+          effective_amount: euroContract.amount,
+          requirements: [],
+          summary: {},
+          warnings: [],
+        },
+      });
+    }
+    if (url === '/external-contracts/2/') return Promise.resolve({ data: euroContract });
+    return Promise.resolve({ data: [] });
+  });
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-guarantees?contract=2']}>
+            <GuaranteesPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  }
+
+  /* مبلغ تضمین به ارز قرارداد + معادل ریالی در فهرست */
+  expect(container.textContent).toContain('۱٬۵۰۰ یورو');
+  expect(container.textContent).toContain('≈ ۱٬۳۸۰٬۰۰۰٬۰۰۰ ریال');
+
+  const newButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('تضمین جدید'));
+  expect(newButton).toBeTruthy();
+  await act(async () => { newButton.click(); });
+  for (let index = 0; index < 2; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  }
+
+  const dialog = Array.from(document.querySelectorAll('[role="dialog"]'))
+    .find((element) => element.textContent.includes('ثبت تضمین جدید'));
+  expect(dialog).toBeTruthy();
+  expect(dialog.textContent).toContain('مبلغ (یورو)');
+  expect(dialog.textContent).toContain('قرارداد ارزی (یورو)');
+  expect(dialog.textContent).toContain('نرخ تسعیر (ریال به ازای هر واحد)');
+  expect(dialog.textContent).toContain('معادل ریالی دریافتی (اختیاری)');
+
+  /* آیکن نوع ابزار تضمین حذف شده است */
+  const instrumentChip = Array.from(dialog.querySelectorAll('.MuiChip-root'))
+    .find((chip) => chip.textContent.trim() === 'چک');
+  expect(instrumentChip).toBeTruthy();
+  expect(instrumentChip.querySelector('svg')).toBeNull();
+
+  root.unmount();
 });
 

@@ -624,6 +624,26 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **تضامین قرارداد ارزی + معادل ریالی (۲۰۲۶-۱۱-۱۵):** نمایش واحد ارز در ثبت تضمین اصلاح شد و
+  امکان «معادل ریالی به نرخ روز» اضافه شد.
+  - **مدل/مایگریشن:** `Contract.exchange_rate` (نرخ تسعیر) و روی `Guarantee` فیلدهای `currency`
+    (خالی = ارز قرارداد)، `exchange_rate`، `settlement_type` (`instrument|cash_equivalent`) و
+    `rial_amount` (معادل دریافتی اختیاری) — مایگریشن `contracts.0047`. در `save()` ارز/نرخ از قرارداد
+    و برای ارز ریالی نرخ ۱ مقدار می‌گیرد.
+  - **موتور خالص:** `contracts/guarantee_amounts.py` → `currency_is_rial` و `guarantee_rial_amount`
+    (اولویت: معادل دریافتی → ارز ریالی → مبلغ×نرخ؛ بدون نرخ → `None`). serializerها،
+    `ContractGuaranteeBriefSerializer`، `guarantee_status.guarantee_payload` و گزینه‌های قرارداد
+    (`/external-contracts/options/`) همین را برمی‌گردانند (`amount_rial`، `currency_name`، `contract_currency_name`).
+  - **فرانت:** `GuaranteesPage` در دیالوگ، ارز قرارداد انتخاب‌شده را نشان می‌دهد (نه «ریال» ثابت) و برای
+    قرارداد ارزی بخش «قرارداد ارزی» با نرخ تسعیر (پیش‌فرض نرخ قرارداد، قابل تغییر برای نرخ روز)،
+    انتخاب «ابزار تضمین / معادل ریالی نقدی»، معادل ریالی زنده و فیلد اختیاری «معادل ریالی دریافتی» دارد.
+    آیکن‌های نوع ابزار تضمین حذف شدند. فهرست تضامین، پروندهٔ قرارداد و صفحهٔ پایش مبلغ ارزی + `≈ … ریال`
+    را نشان می‌دهند و KPI پایش روی معادل ریالی جمع می‌زند.
+  - تست: `contracts.tests_guarantee_amounts` (۷، DB-free) + سوئیت DB-free قراردادها (۶۷)؛ فرانت
+    `guaranteesSmoke` (۴، شامل قرارداد یورویی) + `contractGuaranteesMonitorSmoke` + `contractProfileSmoke`.
+    باندل زنده: **`main.389845ee.js`**. فایل‌های بک‌اند در `/var/tmp/hrms-guarantee` آماده‌اند؛
+    اجرای `migrate_schemas` + restart نیازمند رمز sudo است (اسکریپت `apply.sh` همان‌جا).
+
 - **تب «تقویم شخصی» با پیوند دوطرفه به وظایف و یادداشت‌ها (۲۰۲۶-۱۱-۱۵):**
   - بک‌اند: مدل `PlanningEvent` (تاریخ، ساعت شروع/پایان، نوع `event|meeting|reminder|deadline`، رنگ،
     انجام‌شده، `task`/`note` اختیاری) + مایگریشن `planning.0004_planningevent`؛

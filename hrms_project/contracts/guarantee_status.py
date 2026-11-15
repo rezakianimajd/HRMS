@@ -54,9 +54,19 @@ def guarantee_payload(guarantee):
     نکته: برای چک، ``days_to_expiry`` بر اساس **سرآمد اعتبار ۵ ساله** محاسبه می‌شود،
     نه تاریخ سررسید؛ تاریخ سررسید جداگانه در ``due_date`` برمی‌گردد.
     """
+    from contracts.guarantee_amounts import guarantee_rial_amount, currency_is_rial
     from contracts.guarantee_validity import guarantee_validity
 
     validity = guarantee_validity(guarantee)
+    currency = getattr(guarantee, 'currency', None)
+    contract = getattr(guarantee, 'contract', None)
+    contract_currency = getattr(contract, 'currency', None) if contract else None
+    rial = guarantee_rial_amount(
+        getattr(guarantee, 'amount', None),
+        getattr(guarantee, 'exchange_rate', None),
+        getattr(guarantee, 'rial_amount', None),
+        currency,
+    )
     return {
         'id': getattr(guarantee, 'id', None),
         'contract_guarantee_index': getattr(guarantee, 'contract_guarantee_index', None),
@@ -66,6 +76,14 @@ def guarantee_payload(guarantee):
         'instrument': getattr(guarantee, 'instrument_type', '') or '',
         'instrument_label': _display(guarantee, 'instrument_type'),
         'amount': _num(getattr(guarantee, 'amount', None)) or 0.0,
+        'currency_name': getattr(currency, 'name', '') or '',
+        'currency_code': getattr(currency, 'code', '') or '',
+        'exchange_rate': _num(getattr(guarantee, 'exchange_rate', None)) or 0.0,
+        'settlement_type': getattr(guarantee, 'settlement_type', '') or 'instrument',
+        'rial_amount': _num(getattr(guarantee, 'rial_amount', None)) or None,
+        'amount_rial': float(rial) if rial is not None else None,
+        'is_rial_currency': currency_is_rial(currency),
+        'contract_currency_name': getattr(contract_currency, 'name', '') or '',
         'bank': getattr(guarantee, 'bank', '') or '',
         'issue_date': _iso(getattr(guarantee, 'issue_date', None)),
         'expiry_date': _iso(getattr(guarantee, 'expiry_date', None)),
@@ -137,9 +155,12 @@ def _load_guarantees(contract, guarantees):
     if not callable(fetcher):
         return []
     try:
-        return list(fetcher())
+        return list(fetcher().select_related('currency', 'contract__currency'))
     except Exception:  # noqa: BLE001
-        return []
+        try:
+            return list(fetcher())
+        except Exception:  # noqa: BLE001
+            return []
 
 
 def _effective_amount(contract, effective_amount):

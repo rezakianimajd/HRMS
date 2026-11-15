@@ -161,10 +161,13 @@ class ContractViewSet(BaseContractViewSet):
                 Prefetch('payments', queryset=Payment.objects.only(
                     'id', 'contract_id', 'reference', 'date', 'amount',
                 )),
-                Prefetch('guarantees', queryset=Guarantee.objects.only(
+                Prefetch('guarantees', queryset=Guarantee.objects.select_related(
+                    'currency', 'contract__currency',
+                ).only(
                     'id', 'contract_id', 'number', 'guarantee_type', 'amount', 'is_released',
                     'issue_date', 'expiry_date', 'guarantee_expiry_date', 'check_due_date',
-                    'promissory_due_date',
+                    'promissory_due_date', 'currency_id', 'exchange_rate',
+                    'settlement_type', 'rial_amount',
                 )),
                 Prefetch('disputes', queryset=ContractDispute.objects.only(
                     'id', 'contract_id', 'title', 'opened_date', 'claim_amount', 'status',
@@ -306,7 +309,7 @@ class ContractViewSet(BaseContractViewSet):
             )
         ).values(
             'id', 'number', 'subject', 'amount', 'status',
-            'start_date', 'end_date',
+            'start_date', 'end_date', 'exchange_rate',
             'currency_id', 'currency__code', 'currency__name', 'currency__symbol',
             'currency__exchange_rate',
             'party_id', 'party__name', 'project_id', 'project__name',
@@ -324,7 +327,8 @@ class ContractViewSet(BaseContractViewSet):
                 'currency_code': row['currency__code'],
                 'currency_name': row['currency__name'],
                 'currency_symbol': row['currency__symbol'],
-                'exchange_rate': row['currency__exchange_rate'],
+                'exchange_rate': row['exchange_rate'] if row['exchange_rate'] is not None
+                else row['currency__exchange_rate'],
                 'party': row['party_id'],
                 'party_name': row['party__name'],
                 'project': row['project_id'],
@@ -683,7 +687,7 @@ class GuaranteeViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().select_related(
-            'contract', 'contract__party',
+            'contract', 'contract__party', 'contract__currency', 'currency',
         ).prefetch_related('documents', 'actions')
         contract_id = self.request.query_params.get('contract')
         if contract_id:

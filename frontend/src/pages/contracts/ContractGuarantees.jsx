@@ -39,7 +39,16 @@ const GuaranteeRow = ({ item, currencyLabel }) => (
       )}
     </Stack>
     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap sx={{ mt: 0.45 }}>
-      <Typography sx={{ fontSize: 12, color: '#334155', fontWeight: 700 }}>{formatPersianNumber(item.amount)} {currencyLabel}</Typography>
+      <Stack spacing={0.1}>
+        <Typography sx={{ fontSize: 12, color: '#334155', fontWeight: 700 }}>
+          {formatPersianNumber(item.amount)} {item.currency_name || currencyLabel}
+        </Typography>
+        {item.amount_rial != null && Number(item.amount_rial) !== Number(item.amount) ? (
+          <Typography sx={{ fontSize: 10, color: MUTED }}>
+            {`≈ ${formatPersianNumber(item.amount_rial)} ریال`}
+          </Typography>
+        ) : null}
+      </Stack>
       <Typography sx={{ fontSize: 12, color: MUTED }}>
         {item.is_check ? 'سررسید: ' : 'انقضا: '}{toJalali(item.due_date || item.expiry_date)}
         {item.is_check && item.valid_until
@@ -145,8 +154,15 @@ const ContractGuarantees = ({ status, currencyLabel, fallbackItems = [], fallbac
           ))}
           {fallbackGuarantees.map((g) => (
             <Box key={g.id} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, p: 1.2, borderRadius: '11px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{g.instrument_type_display || g.guarantee_type_display}</Typography>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#b45309' }}>{formatPersianNumber(g.amount || 0)} {currencyLabel}</Typography>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{g.instrument_type_display || g.guarantee_type_display}</Typography>
+                {g.amount_rial != null && Number(g.amount_rial) !== Number(g.amount) ? (
+                  <Typography sx={{ fontSize: 10, color: MUTED }}>{`≈ ${formatPersianNumber(g.amount_rial)} ریال`}</Typography>
+                ) : null}
+              </Box>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#b45309', whiteSpace: 'nowrap' }}>
+                {formatPersianNumber(g.amount || 0)} {g.currency_name || currencyLabel}
+              </Typography>
             </Box>
           ))}
         </Stack>

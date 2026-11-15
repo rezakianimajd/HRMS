@@ -13,7 +13,7 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import HandshakeIcon from '@mui/icons-material/Handshake';
-import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { useDesignTokens } from '../../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../../core/theme/tableStyles';
@@ -936,6 +936,9 @@ export const GuaranteesTab = ({ ctx }) => {
   const unrequired = report?.unrequired || [];
   const summary = report?.summary || {};
   const warnings = report?.warnings || [];
+  const contractCurrency = normalizeCurrencyLabel(
+    ctx.contract?.currency_name || ctx.contract?.currency_symbol || 'ریال',
+  );
   const coverage = Number(summary.coverage_percent ?? ctx.coveragePercent ?? 0);
   const coverageColor = coverage >= 100 ? theme.palette.success.main
     : coverage > 0 ? theme.palette.warning.main : theme.palette.error.main;
@@ -974,14 +977,14 @@ export const GuaranteesTab = ({ ctx }) => {
               <CoverageGauge percent={coverage} color={coverageColor} label="پوشش"
                 value={`${toPersianDigits(summary.provided_count || 0)} از ${toPersianDigits(summary.required_count || 0)} قلم`} />
               <Stack spacing={0.75} sx={{ flex: 1, minWidth: 150 }}>
-                <MoneyTile label="نیاز کل" value={money(summary.required_total, 'ریال')} />
-                <MoneyTile label="تأمین‌شده" value={money(summary.provided_total, 'ریال')} color={theme.palette.success.main} />
+                <MoneyTile label="نیاز کل" value={money(summary.required_total, contractCurrency)} />
+                <MoneyTile label="تأمین‌شده" value={money(summary.provided_total, contractCurrency)} color={theme.palette.success.main} />
               </Stack>
             </Stack>
             <Box sx={{ mt: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75 }}>
-              <MoneyTile label="کمبود" value={money(summary.balance_total, 'ریال')}
+              <MoneyTile label="کمبود" value={money(summary.balance_total, contractCurrency)}
                 color={Number(summary.balance_total || 0) > 0 ? theme.palette.error.main : MUTED} />
-              <MoneyTile label="آزادشده" value={money(summary.released_total, 'ریال')} color={MUTED} />
+              <MoneyTile label="آزادشده" value={money(summary.released_total, contractCurrency)} color={MUTED} />
             </Box>
             <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
               <Typography sx={{ fontSize: 10.5, color: MUTED }}>
@@ -1006,7 +1009,7 @@ export const GuaranteesTab = ({ ctx }) => {
               <Grid container spacing={1.5}>
                 {requirements.map((requirement, index) => (
                   <Grid item xs={12} md={6} key={`${requirement.type}-${requirement.index ?? index}`}>
-                    <RequirementCoverage requirement={requirement} currencyLabel="ریال" />
+                    <RequirementCoverage requirement={requirement} currencyLabel={contractCurrency} />
                   </Grid>
                 ))}
               </Grid>
@@ -1048,7 +1051,16 @@ export const GuaranteesTab = ({ ctx }) => {
             },
             {
               key: 'amount', label: 'مبلغ', width: '14%',
-              render: (row) => <CellText strong>{money(row.amount, 'ریال')}</CellText>,
+              render: (row) => (
+                <Stack spacing={0.1} alignItems="flex-start">
+                  <CellText strong>{money(row.amount, normalizeCurrencyLabel(row.currency_name || contractCurrency))}</CellText>
+                  {row.amount_rial != null && Number(row.amount_rial) !== Number(row.amount) ? (
+                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>
+                      {`≈ ${formatPersianNumber(row.amount_rial)} ریال`}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              ),
             },
             {
               key: 'coverage', label: 'پوشش از قلم', width: '12%',

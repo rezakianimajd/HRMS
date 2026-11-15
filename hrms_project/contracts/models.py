@@ -129,6 +129,11 @@ class Contract(BaseModel):
         'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='external_contracts', verbose_name=_('واحد ارز'),
     )
+    exchange_rate = models.DecimalField(
+        max_digits=18, decimal_places=6, null=True, blank=True,
+        verbose_name=_('نرخ تسعیر به ریال'),
+        help_text=_('برای قراردادهای ارزی: معادل ریالی هر واحد ارز'),
+    )
     start_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ شروع'))
     end_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ پایان'))
     signing_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ امضا'))
@@ -191,6 +196,12 @@ class Contract(BaseModel):
 
     def __str__(self):
         return f'{self.number or "—"} - {self.subject}'
+
+    def save(self, *args, **kwargs):
+        """نرخ تسعیر پیش‌فرض از ارز انتخاب‌شده (اگر خالی باشد)."""
+        if not self.exchange_rate and self.currency_id:
+            self.exchange_rate = getattr(self.currency, 'exchange_rate', None)
+        super().save(*args, **kwargs)
 
 
 def contract_document_upload_path(instance, filename):
@@ -586,7 +597,29 @@ class Guarantee(BaseModel):
     guarantee_type = models.CharField(max_length=20, choices=GuaranteeType.choices, default=GuaranteeType.PERFORMANCE, verbose_name=_('نوع تضمین'))
     instrument_type = models.CharField(max_length=40, choices=InstrumentType.choices, default=InstrumentType.CHECK, verbose_name=_('نوع ابزار تضمین'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره'))
-    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
+    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (به ارز تضمین)'))
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_guarantees', verbose_name=_('ارز تضمین'),
+        help_text=_('خالی = ارز قرارداد'),
+    )
+    exchange_rate = models.DecimalField(
+        max_digits=18, decimal_places=6, null=True, blank=True,
+        verbose_name=_('نرخ تسعیر به ریال'),
+        help_text=_('معادل ریالی هر واحد ارز در تاریخ ثبت/تسویه'),
+    )
+    settlement_type = models.CharField(
+        max_length=20,
+        choices=[('instrument', _('ابزار تضمین (به ارز قرارداد)')),
+                 ('cash_equivalent', _('معادل ریالی نقدی'))],
+        default='instrument', verbose_name=_('نحوهٔ تأمین تضمین'),
+        help_text=_('طرف قرارداد می‌تواند به‌جای ابزار ارزی، معادل ریالی بدهد'),
+    )
+    rial_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('معادل ریالی دریافتی'),
+        help_text=_('خالی = محاسبه از مبلغ × نرخ تسعیر'),
+    )
     issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
     expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
     bank = models.CharField(max_length=100, blank=True, verbose_name=_('بانک صادرکننده'))
@@ -614,6 +647,19 @@ class Guarantee(BaseModel):
 
     def __str__(self):
         return f'{self.get_guarantee_type_display()} - {self.number or "—"}'
+
+    def save(self, *args, **kwargs):
+        """ارز/نرخ پیش‌فرض از قرارداد و نرخ ۱ برای ارز ریالی."""
+        if self.contract_id:
+            contract = self.contract
+            if self.currency_id is None:
+                self.currency_id = contract.currency_id
+            if not self.exchange_rate and contract.exchange_rate:
+                self.exchange_rate = contract.exchange_rate
+        from contracts.guarantee_amounts import currency_is_rial
+        if currency_is_rial(self.currency) and not self.exchange_rate:
+            self.exchange_rate = 1
+        super().save(*args, **kwargs)
 
 
 class GuaranteeAction(BaseModel):

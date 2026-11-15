@@ -1183,6 +1183,17 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     expiry_kind = serializers.SerializerMethodField()
     validity_years = serializers.SerializerMethodField()
     is_check = serializers.SerializerMethodField()
+    # ارز تضمین و معادل ریالی (قراردادهای ارزی)
+    currency_name = serializers.SerializerMethodField()
+    currency_code = serializers.SerializerMethodField()
+    currency_symbol = serializers.SerializerMethodField()
+    contract_currency_name = serializers.SerializerMethodField()
+    contract_currency_code = serializers.SerializerMethodField()
+    contract_exchange_rate = serializers.SerializerMethodField()
+    settlement_type_display = serializers.CharField(
+        source='get_settlement_type_display', read_only=True,
+    )
+    amount_rial = serializers.SerializerMethodField()
 
     class Meta:
         model = Guarantee
@@ -1191,6 +1202,10 @@ class GuaranteeSerializer(serializers.ModelSerializer):
             'contract_status_display', 'contract_guarantee_index', 'contract_guarantee_label',
             'guarantee_type', 'guarantee_type_display',
             'instrument_type', 'instrument_type_display', 'number', 'amount',
+            'currency', 'currency_name', 'currency_code', 'currency_symbol',
+            'exchange_rate', 'settlement_type', 'settlement_type_display',
+            'rial_amount', 'amount_rial',
+            'contract_currency_name', 'contract_currency_code', 'contract_exchange_rate',
             'issue_date', 'expiry_date', 'bank', 'is_released', 'release_date',
             'check_number', 'check_bank', 'check_due_date',
             'promissory_number', 'promissory_due_date',
@@ -1202,6 +1217,33 @@ class GuaranteeSerializer(serializers.ModelSerializer):
             'last_extension_date', 'last_reduction_date',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_currency_name(self, obj):
+        return getattr(obj.currency, 'name', '') if obj.currency_id else ''
+
+    def get_currency_code(self, obj):
+        return getattr(obj.currency, 'code', '') if obj.currency_id else ''
+
+    def get_currency_symbol(self, obj):
+        return getattr(obj.currency, 'symbol', '') if obj.currency_id else ''
+
+    def get_contract_currency_name(self, obj):
+        contract = obj.contract
+        return getattr(contract.currency, 'name', '') if contract.currency_id else ''
+
+    def get_contract_currency_code(self, obj):
+        contract = obj.contract
+        return getattr(contract.currency, 'code', '') if contract.currency_id else ''
+
+    def get_contract_exchange_rate(self, obj):
+        return obj.contract.exchange_rate
+
+    def get_amount_rial(self, obj):
+        from contracts.guarantee_amounts import guarantee_rial_amount
+
+        return guarantee_rial_amount(
+            obj.amount, obj.exchange_rate, obj.rial_amount, obj.currency,
+        )
 
     def _action_rows(self, obj):
         cache = getattr(obj, '_prefetched_objects_cache', None) or {}
@@ -1648,7 +1690,9 @@ class ContractSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
-    exchange_rate = serializers.DecimalField(source='currency.exchange_rate', max_digits=18, decimal_places=6, read_only=True)
+    exchange_rate = serializers.DecimalField(
+        max_digits=18, decimal_places=6, required=False, allow_null=True,
+    )
 
     # مبلغ/پایان مؤثر با احتساب الحاقیه‌ها (برای فهرست قراردادها — بدون N+1)
     effective_amount = serializers.SerializerMethodField()
@@ -1800,14 +1844,26 @@ class ContractPaymentBriefSerializer(serializers.ModelSerializer):
 
 class ContractGuaranteeBriefSerializer(serializers.ModelSerializer):
     guarantee_type_display = serializers.CharField(source='get_guarantee_type_display', read_only=True)
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_code = serializers.CharField(source='currency.code', read_only=True)
+    amount_rial = serializers.SerializerMethodField()
 
     class Meta:
         model = Guarantee
         fields = [
             'id', 'guarantee_type', 'guarantee_type_display', 'number', 'amount',
+            'currency', 'currency_name', 'currency_code', 'exchange_rate',
+            'settlement_type', 'rial_amount', 'amount_rial',
             'issue_date', 'expiry_date', 'guarantee_expiry_date', 'check_due_date',
             'promissory_due_date', 'is_released',
         ]
+
+    def get_amount_rial(self, obj):
+        from contracts.guarantee_amounts import guarantee_rial_amount
+
+        return guarantee_rial_amount(
+            obj.amount, obj.exchange_rate, obj.rial_amount, obj.currency,
+        )
 
 
 class ContractAddendumBriefSerializer(serializers.ModelSerializer):

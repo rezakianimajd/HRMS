@@ -212,6 +212,8 @@ const ContractGuaranteesMonitorPage = () => {
       isCheck: validity.isCheck,
       expired: validity.expired,
       amount: Number(guarantee.amount) || 0,
+      currency: guarantee.currency_name || guarantee.contract_currency_name || 'ریال',
+      rialAmount: Number(guarantee.amount_rial ?? guarantee.amount) || 0,
       number: numberFor(guarantee),
       status: statusOf(guarantee),
     };
@@ -225,12 +227,12 @@ const ContractGuaranteesMonitorPage = () => {
   }), [rows]);
 
   const totals = useMemo(() => rows.reduce((acc, row) => {
-    acc.all += row.amount;
-    if (row.status.key === 'released' || row.status.key === 'returned') acc.released += row.amount;
-    else acc.active += row.amount;
-    if (row.days !== null && row.days < 0) acc.expired += row.amount;
+    acc.all += row.rialAmount;
+    if (row.status.key === 'released' || row.status.key === 'returned') acc.released += row.rialAmount;
+    else acc.active += row.rialAmount;
+    if (row.days !== null && row.days < 0) acc.expired += row.rialAmount;
     if (row.days !== null && row.days >= 0 && row.days <= 30 && row.g.last_action !== 'released') {
-      acc.risk += row.amount;
+      acc.risk += row.rialAmount;
     }
     return acc;
   }, { all: 0, active: 0, released: 0, expired: 0, risk: 0 }), [rows]);
@@ -456,7 +458,7 @@ const ContractGuaranteesMonitorPage = () => {
         },
         gap: 1, mb: 1.25, minWidth: 0,
       }}>
-        <KpiTile label="کل مبلغ تضامین" value={compactMoney(totals.all, currency)}
+        <KpiTile label="کل مبلغ تضامین (معادل ریالی)" value={compactMoney(totals.all, currency)}
           hint={`${formatPersianNumber(rows.length)} سند`} color={SLATE} icon={VerifiedUserIcon} />
         <KpiTile label="تضامین فعال" value={compactMoney(totals.active, currency)}
           hint={`${formatPersianNumber(rows.length - (counts.released || 0) - (counts.returned || 0))} سند جاری`}
@@ -559,13 +561,20 @@ const ContractGuaranteesMonitorPage = () => {
                     {row.isCheck && row.validUntil ? ` · اعتبار تا ${dateLabel(row.validUntil)}` : ''}
                   </Typography>
                 </Box>
-                <Typography noWrap title={`${money(row.amount)} ${currency}`}
-                  sx={{
-                    flex: '0 0 auto', maxWidth: '30%', fontSize: 10, fontWeight: 800,
-                    color: daysColor(row.days), fontFamily: 'var(--hrms-table-number-font, inherit)',
-                  }}>
-                  {money(row.amount)}
-                </Typography>
+                <Stack spacing={0.1} alignItems="flex-end">
+                  <Typography noWrap title={`${money(row.amount)} ${row.currency}`}
+                    sx={{
+                      flex: '0 0 auto', fontSize: 10, fontWeight: 800,
+                      color: daysColor(row.days), fontFamily: 'var(--hrms-table-number-font, inherit)',
+                    }}>
+                    {money(row.amount)} {row.currency}
+                  </Typography>
+                  {row.rialAmount !== row.amount ? (
+                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
+                      {`≈ ${money(row.rialAmount)} ریال`}
+                    </Typography>
+                  ) : null}
+                </Stack>
               </Box>
             ))}
           </Box>
@@ -689,10 +698,18 @@ const ContractGuaranteesMonitorPage = () => {
                 {
                   key: 'amount', label: 'مبلغ', width: '11%', align: 'center',
                   render: (row) => (
-                    <Typography noWrap title={`${money(row.amount)} ${currency}`}
-                      sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {money(row.amount)}
-                    </Typography>
+                    <Stack spacing={0.1} alignItems="center">
+                      <Typography noWrap title={`${money(row.amount)} ${row.currency}`}
+                        sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                        {money(row.amount)} {row.currency}
+                      </Typography>
+                      {row.rialAmount !== row.amount ? (
+                        <Typography noWrap title="معادل ریالی با نرخ تسعیر ثبت‌شده"
+                          sx={{ fontSize: 9, color: MUTED, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                          {`≈ ${money(row.rialAmount)} ریال`}
+                        </Typography>
+                      ) : null}
+                    </Stack>
                   ),
                 },
                 {
