@@ -30,6 +30,8 @@ export const MODULE_DEFAULT_ACCENTS = {
   production: '#a855f7',
   settings: '#64748b',
   pettycash: '#f59e0b',
+  payroll: '#3b82f6',
+  correspondence: '#0ea5e9',
 };
 
 const AppearanceContext = createContext({

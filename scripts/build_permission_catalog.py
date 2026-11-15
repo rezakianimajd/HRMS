@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 SRC = Path(r'C:\HRMS\frontend\src\core\config\menuConfig.js')
-OUT = Path(r'C:\HRMS\_menu_catalog.json')
+OUT = Path(r'C:\HRMS\hrms_project\core\permission_catalog_data.json')
 
 MODULES = {
     'menuConfig': ('hrms', 'منابع انسانی'),
@@ -17,6 +17,7 @@ MODULES = {
     'contractsMenu': ('contracts', 'قراردادها'),
     'documentsMenu': ('documents', 'مدیریت اسناد'),
     'correspondenceMenu': ('correspondence', 'مکاتبات'),
+    'payrollMenu': ('payroll', 'حقوق و دستمزد'),
 }
 
 text = SRC.read_text(encoding='utf-8')

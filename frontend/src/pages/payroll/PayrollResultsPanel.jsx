@@ -12,7 +12,7 @@ import DataTable from '../../core/components/ui/DataTable';
 import InfoCard from '../../core/components/ui/InfoCard';
 import { usePrintDocument } from '../../core/print/usePrintDocument';
 import PrintPreviewDialog from '../../core/print/PrintPreviewDialog';
-import { money, number, statusMeta } from './payrollUi';
+import { money, number, payrollCardSx, statusMeta } from './payrollUi';
 
 const PayrollResultsPanel = ({ accent, periodId, setPeriodId }) => {
   const [search, setSearch] = useState('');
@@ -72,7 +72,7 @@ const PayrollResultsPanel = ({ accent, periodId, setPeriodId }) => {
 
   return (
     <Box>
-      <Paper elevation={0} sx={{ p: 1.5, mb: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Paper elevation={0} sx={payrollCardSx({ p: 1.5, mb: 2, display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' })}>
         <TextField select size="small" label="دوره" value={activePeriod} onChange={(event) => setPeriodId(event.target.value)} sx={{ minWidth: 230 }}>
           {periods.map((row) => <MenuItem key={row.id} value={String(row.id)}>{row.title || row.label} — {row.status_display || statusMeta(row.status).label}</MenuItem>)}
         </TextField>

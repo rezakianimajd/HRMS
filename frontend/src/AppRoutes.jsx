@@ -249,6 +249,14 @@ const AppRoutes = () => {
       <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
       <Route path="/payslips" element={<ProtectedLayout><PayslipsPage /></ProtectedLayout>} />
       <Route path="/payroll" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/dashboard" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/periods" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/results" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/profiles" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/settings" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/operations" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/settlement" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
+      <Route path="/payroll/reports" element={<ProtectedLayout><PayrollPage /></ProtectedLayout>} />
       <Route path="/finance-reports" element={<ProtectedLayout><FinanceReportsPage /></ProtectedLayout>} />
       <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />

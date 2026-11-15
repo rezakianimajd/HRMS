@@ -17,7 +17,7 @@ import axiosInstance from '../../core/api/axiosConfig';
 import DataTable from '../../core/components/ui/DataTable';
 import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
-import { dateLabel, money, number, statusMeta } from './payrollUi';
+import { dateLabel, money, number, payrollCardSx, statusMeta } from './payrollUi';
 
 const currentJalali = () => {
   const date = new Date();
@@ -135,7 +135,7 @@ const PayrollPeriodsPanel = ({ accent, onOpenResults }) => {
 
   return (
     <Box>
-      <Paper elevation={0} sx={{ p: 1.5, mb: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+      <Paper elevation={0} sx={payrollCardSx({ p: 1.5, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' })}>
         <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 800 }}>دوره‌های حقوق</Typography>
         <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(emptyForm()); setOpen(true); }} sx={{ bgcolor: accent }}>
           دورهٔ جدید

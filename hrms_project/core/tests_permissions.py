@@ -14,7 +14,7 @@ class PermissionCatalogTests(SimpleTestCase):
         slugs = [module['slug'] for module in modules]
         for slug in ('hrms', 'treasury', 'accounting', 'documents',
                      'correspondence', 'contracts', 'projects',
-                     'procurement', 'pettycash', 'settings'):
+                     'procurement', 'pettycash', 'payroll', 'settings'):
             self.assertIn(slug, slugs)
 
         menus = sum(module['menu_count'] for module in modules)
@@ -53,7 +53,7 @@ class PermissionCatalogTests(SimpleTestCase):
 
     def test_stats_shape(self):
         stats = catalog_mod.stats()
-        self.assertEqual(stats['modules'], 10)
+        self.assertEqual(stats['modules'], 11)
         self.assertGreaterEqual(stats['menus'], 250)
         self.assertEqual(stats['codes'], len(catalog_mod.codes_for()))
         self.assertEqual(

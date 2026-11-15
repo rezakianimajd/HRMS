@@ -37,6 +37,21 @@ export const dateLabel = (value) => (value ? toPersianDigits(toJalali(value)) : 
 
 export const statusMeta = (status) => PAYROLL_STATUS[status] || { label: status || '—', tone: 'default' };
 
+/**
+ * پوستهٔ کارت‌های ماژول حقوق دقیقاً از توکن‌های استودیو تم می‌آید.
+ * متغیرهای CSS هنگام رندر توسط Theme Studio ست می‌شوند و fallback امن دارند.
+ */
+export const PAYROLL_CARD_SX = {
+  p: 2,
+  borderRadius: 'var(--hrms-radius-large, 16px)',
+  border: 'var(--hrms-border-card, 1px solid #e8edf4)',
+  bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
+  boxShadow: 'var(--hrms-shadow-card, none)',
+};
+
+export const payrollCardSx = (extra = {}) => ({ ...PAYROLL_CARD_SX, ...extra });
+
+
 export const toneColor = (theme, tone) => {
   if (tone === 'success') return theme.palette.success.main;
   if (tone === 'warning') return theme.palette.warning.main;

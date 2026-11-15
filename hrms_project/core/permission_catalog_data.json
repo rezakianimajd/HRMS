@@ -94,76 +94,6 @@
     ]
    },
    {
-    "title": "حقوق و دستمزد",
-    "items": [
-     {
-      "id": "payroll-dashboard",
-      "title": "داشبورد حقوق",
-      "path": "/payroll?tab=dashboard"
-     },
-     {
-      "id": "payroll-periods",
-      "title": "دوره‌های حقوق",
-      "path": "/payroll?tab=periods"
-     },
-     {
-      "id": "payroll-results",
-      "title": "محاسبه و فیش حقوقی",
-      "path": "/payroll?tab=results"
-     },
-     {
-      "id": "payroll-profiles",
-      "title": "پروفایل حقوقی پرسنل",
-      "path": "/payroll?tab=profiles"
-     },
-     {
-      "id": "payroll-components",
-      "title": "مزایا، کسورات و تنظیمات",
-      "path": "/payroll?tab=components"
-     },
-     {
-      "id": "payroll-operations",
-      "title": "اضافه‌کاری، وام و تخصیص",
-      "path": "/payroll?tab=operations"
-     },
-     {
-      "id": "payroll-settlement",
-      "title": "تسویه حساب",
-      "path": "/payroll?tab=settlement"
-     },
-     {
-      "id": "payroll-reports",
-      "title": "گزارش‌ها و مغایرت",
-      "path": "/payroll?tab=reports"
-     },
-     {
-      "id": "payslips",
-      "title": "فیش حقوق (قدیم)",
-      "path": "/payslips"
-     },
-     {
-      "id": "benefits",
-      "title": "مزایا و کارانه",
-      "path": "/benefits"
-     },
-     {
-      "id": "benefit-payments",
-      "title": "پرداخت مزایا",
-      "path": "/benefit-payments"
-     },
-     {
-      "id": "deductions",
-      "title": "کسورات",
-      "path": "/deductions"
-     },
-     {
-      "id": "finance-reports",
-      "title": "گزارش مالی",
-      "path": "/finance-reports"
-     }
-    ]
-   },
-   {
     "title": "رفاهی و تسهیلات",
     "items": [
      {
@@ -1830,6 +1760,107 @@
       "id": "correspondence-settings",
       "title": "تنظیمات مکاتبات",
       "path": "/correspondence/settings"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "slug": "payroll",
+  "name": "حقوق و دستمزد",
+  "groups": [
+   {
+    "title": "میزکار حقوق",
+    "items": [
+     {
+      "id": "payroll-dashboard",
+      "title": "داشبورد حقوق",
+      "path": "/payroll/dashboard"
+     }
+    ]
+   },
+   {
+    "title": "دوره و محاسبه",
+    "items": [
+     {
+      "id": "payroll-periods",
+      "title": "دوره‌های حقوق",
+      "path": "/payroll/periods"
+     },
+     {
+      "id": "payroll-results",
+      "title": "محاسبه و فیش حقوقی",
+      "path": "/payroll/results"
+     }
+    ]
+   },
+   {
+    "title": "پرسنل و پرداخت",
+    "items": [
+     {
+      "id": "payroll-profiles",
+      "title": "پروفایل حقوقی پرسنل",
+      "path": "/payroll/profiles"
+     },
+     {
+      "id": "payroll-operations",
+      "title": "اضافه‌کاری، وام و تخصیص",
+      "path": "/payroll/operations"
+     },
+     {
+      "id": "payroll-settlement",
+      "title": "تسویه حساب",
+      "path": "/payroll/settlement"
+     }
+    ]
+   },
+   {
+    "title": "تنظیمات حقوق",
+    "items": [
+     {
+      "id": "payroll-settings",
+      "title": "مزایا، کسورات و تنظیمات",
+      "path": "/payroll/settings"
+     }
+    ]
+   },
+   {
+    "title": "گزارش‌ها و مغایرت",
+    "items": [
+     {
+      "id": "payroll-reports",
+      "title": "گزارش‌ها و مغایرت",
+      "path": "/payroll/reports"
+     }
+    ]
+   },
+   {
+    "title": "ابزارهای مالی مرتبط",
+    "items": [
+     {
+      "id": "payroll-payslips-legacy",
+      "title": "فیش حقوق (قدیم)",
+      "path": "/payslips"
+     },
+     {
+      "id": "payroll-benefits",
+      "title": "مزایا و کارانه",
+      "path": "/benefits"
+     },
+     {
+      "id": "payroll-benefit-payments",
+      "title": "پرداخت مزایا",
+      "path": "/benefit-payments"
+     },
+     {
+      "id": "payroll-deductions",
+      "title": "کسورات",
+      "path": "/deductions"
+     },
+     {
+      "id": "payroll-finance-reports",
+      "title": "گزارش مالی",
+      "path": "/finance-reports"
      }
     ]
    }

@@ -12,10 +12,10 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import axiosInstance from '../../core/api/axiosConfig';
 import InfoCard from '../../core/components/ui/InfoCard';
-import { dateLabel, money, number, statusMeta } from './payrollUi';
+import { dateLabel, money, number, payrollCardSx, statusMeta } from './payrollUi';
 
 const Section = ({ title, children, action, color }) => (
-  <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+  <Paper elevation={0} sx={payrollCardSx({ height: '100%' })}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
       <Box sx={{ width: 4, height: 22, borderRadius: 2, bgcolor: color || 'primary.main' }} />
       <Typography sx={{ flex: 1, fontSize: 14, fontWeight: 800 }}>{title}</Typography>

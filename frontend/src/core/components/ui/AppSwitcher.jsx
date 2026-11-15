@@ -8,7 +8,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import AppsOutlinedIcon from '@mui/icons-material/AppsOutlined';
 import { useApplication } from '../../context/ApplicationContext';
-import { useModulePalette } from '../../context/ModulePaletteContext';
+import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../../context/ModulePaletteContext';
 import { toPersianDigits } from '../../utils/numberUtils';
 import { MODULE_ICONS, getModuleLandingPath } from '../../constants/moduleIcons';
 
@@ -34,7 +34,7 @@ const AppSwitcher = () => {
   const navigate = useNavigate();
   const { applications, currentApp, loadApplications, switchApplication } = useApplication();
   const { getPalette } = useModulePalette();
-  const currentAccent = getPalette(currentApp?.slug)?.accent || null;
+  const currentAccent = getPalette(currentApp?.slug)?.accent || MODULE_DEFAULT_ACCENTS[currentApp?.slug] || null;
   const [anchor, setAnchor] = useState(null);
 
   useEffect(() => {

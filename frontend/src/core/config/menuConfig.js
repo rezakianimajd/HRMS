@@ -115,26 +115,6 @@ const menuConfig = [
     ],
   },
   {
-    id: 'payroll',
-    title: 'حقوق و دستمزد',
-    color: '#3b82f6',
-    items: [
-      { id: 'payroll-dashboard', title: 'داشبورد حقوق', icon: <PaymentsIcon />, path: '/payroll?tab=dashboard', color: '#3b82f6', primary: true, ready: true },
-      { id: 'payroll-periods', title: 'دوره‌های حقوق', icon: <CalendarMonthIcon />, path: '/payroll?tab=periods', color: '#0ea5e9', primary: false, ready: true },
-      { id: 'payroll-results', title: 'محاسبه و فیش حقوقی', icon: <ReceiptLongIcon />, path: '/payroll?tab=results', color: '#6366f1', primary: false, ready: true },
-      { id: 'payroll-profiles', title: 'پروفایل حقوقی پرسنل', icon: <PeopleIcon />, path: '/payroll?tab=profiles', color: '#ec4899', primary: false, ready: true },
-      { id: 'payroll-components', title: 'مزایا، کسورات و تنظیمات', icon: <TuneIcon />, path: '/payroll?tab=components', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'payroll-operations', title: 'اضافه‌کاری، وام و تخصیص', icon: <FactCheckIcon />, path: '/payroll?tab=operations', color: '#f59e0b', primary: false, ready: true },
-      { id: 'payroll-settlement', title: 'تسویه حساب', icon: <PlaylistAddCheckIcon />, path: '/payroll?tab=settlement', color: '#ef4444', primary: false, ready: true },
-      { id: 'payroll-reports', title: 'گزارش‌ها و مغایرت', icon: <BarChartOutlinedIcon />, path: '/payroll?tab=reports', color: '#10b981', primary: false, ready: true },
-      { id: 'payslips', title: 'فیش حقوق (قدیم)', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: false, ready: true },
-      { id: 'benefits', title: 'مزایا و کارانه', icon: <CardGiftcardIcon />, path: '/benefits', color: '#10b981', primary: false, ready: true },
-      { id: 'benefit-payments', title: 'پرداخت مزایا', icon: <CardGiftcardIcon />, path: '/benefit-payments', color: '#14b8a6', primary: false, ready: true },
-      { id: 'deductions', title: 'کسورات', icon: <PaymentsIcon />, path: '/deductions', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'finance-reports', title: 'گزارش مالی', icon: <BarChartOutlinedIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
-    ],
-  },
-  {
     id: 'welfare',
     title: 'رفاهی و تسهیلات',
     color: '#10b981',
@@ -1012,6 +992,69 @@ const correspondenceMenu = [
 ];
 
 /**
+ * منوی مستقل ماژول حقوق و دستمزد.
+ * این ماژول از منابع انسانی جدا است و فقط در انتخاب‌گر/سوئیچر ماژول دیده می‌شود.
+ * هر آیتم مسیر مستقل خودش را دارد تا صفحه‌ها deep-link و bookmarkable باشند.
+ */
+const payrollMenu = [
+  {
+    id: 'payroll-home',
+    title: 'میزکار حقوق',
+    color: '#3b82f6',
+    items: [
+      { id: 'payroll-dashboard', title: 'داشبورد حقوق', icon: <PaymentsIcon />, path: '/payroll/dashboard', color: '#3b82f6', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'payroll-cycle',
+    title: 'دوره و محاسبه',
+    color: '#0ea5e9',
+    items: [
+      { id: 'payroll-periods', title: 'دوره‌های حقوق', icon: <CalendarMonthIcon />, path: '/payroll/periods', color: '#0ea5e9', primary: true, ready: true },
+      { id: 'payroll-results', title: 'محاسبه و فیش حقوقی', icon: <ReceiptLongIcon />, path: '/payroll/results', color: '#6366f1', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'payroll-people',
+    title: 'پرسنل و پرداخت',
+    color: '#ec4899',
+    items: [
+      { id: 'payroll-profiles', title: 'پروفایل حقوقی پرسنل', icon: <PeopleIcon />, path: '/payroll/profiles', color: '#ec4899', primary: false, ready: true },
+      { id: 'payroll-operations', title: 'اضافه‌کاری، وام و تخصیص', icon: <FactCheckIcon />, path: '/payroll/operations', color: '#f59e0b', primary: false, ready: true },
+      { id: 'payroll-settlement', title: 'تسویه حساب', icon: <PlaylistAddCheckIcon />, path: '/payroll/settlement', color: '#ef4444', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'payroll-config',
+    title: 'تنظیمات حقوق',
+    color: '#8b5cf6',
+    items: [
+      { id: 'payroll-settings', title: 'مزایا، کسورات و تنظیمات', icon: <TuneIcon />, path: '/payroll/settings', color: '#8b5cf6', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'payroll-reporting',
+    title: 'گزارش‌ها و مغایرت',
+    color: '#10b981',
+    items: [
+      { id: 'payroll-reports', title: 'گزارش‌ها و مغایرت', icon: <BarChartOutlinedIcon />, path: '/payroll/reports', color: '#10b981', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'payroll-legacy',
+    title: 'ابزارهای مالی مرتبط',
+    color: '#64748b',
+    items: [
+      { id: 'payroll-payslips-legacy', title: 'فیش حقوق (قدیم)', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: false, ready: true },
+      { id: 'payroll-benefits', title: 'مزایا و کارانه', icon: <CardGiftcardIcon />, path: '/benefits', color: '#10b981', primary: false, ready: true },
+      { id: 'payroll-benefit-payments', title: 'پرداخت مزایا', icon: <CardGiftcardIcon />, path: '/benefit-payments', color: '#14b8a6', primary: false, ready: true },
+      { id: 'payroll-deductions', title: 'کسورات', icon: <PaymentsIcon />, path: '/deductions', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'payroll-finance-reports', title: 'گزارش مالی', icon: <BarChartOutlinedIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
+    ],
+  },
+];
+
+/**
  * حذف آیتم‌های منو که کاربر مجوز «مشاهده» آنها را ندارد.
  *
  * قاعدهٔ سازگاری: اگر کاربر برای این ماژول هیچ کد ریز فعالی نداشته باشد
@@ -1053,6 +1096,7 @@ export function getMenuForApp(appSlug, options = {}) {
   else if (appSlug === 'procurement') menu = procurementMenu;
   else if (appSlug === 'treasury') menu = treasuryMenu;
   else if (appSlug === 'correspondence') menu = correspondenceMenu;
+  else if (appSlug === 'payroll') menu = payrollMenu;
   else menu = menuConfig;
 
   return filterMenuByPermissions(menu, appSlug, options.permissions);

@@ -10,7 +10,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import axiosInstance from '../../core/api/axiosConfig';
 import DataTable from '../../core/components/ui/DataTable';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
-import { money, statusMeta } from './payrollUi';
+import { money, payrollCardSx, statusMeta } from './payrollUi';
 
 const today = () => {
   const d = new Date();
@@ -68,7 +68,7 @@ const PayrollProfilesPanel = ({ accent }) => {
 
   return (
     <Box>
-      <Paper elevation={0} sx={{ p: 1.5, mb: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Paper elevation={0} sx={payrollCardSx({ p: 1.5, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 })}>
         <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 800 }}>پروفایل حقوقی پرسنل (Snapshot دوره از این پروفایل گرفته می‌شود)</Typography>
         <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: accent }} onClick={() => { setEditing(null); setForm(empty()); setOpen(true); }}>پروفایل جدید</Button>
       </Paper>

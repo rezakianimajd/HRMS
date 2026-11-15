@@ -57,7 +57,7 @@ export const MODULE_LANDING_PATHS = {
   settings: '/settings',
   pettycash: '/petty-cash/dashboard',
   correspondence: '/correspondence',
-  payroll: '/payroll',
+  payroll: '/payroll/dashboard',
 };
 
 export const getModuleLandingPath = (slug) => MODULE_LANDING_PATHS[slug] || '/dashboard';

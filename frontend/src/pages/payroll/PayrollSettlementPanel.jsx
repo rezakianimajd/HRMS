@@ -11,7 +11,7 @@ import PaidIcon from '@mui/icons-material/Paid';
 import axiosInstance from '../../core/api/axiosConfig';
 import DataTable from '../../core/components/ui/DataTable';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
-import { money, number, statusMeta } from './payrollUi';
+import { money, number, payrollCardSx, statusMeta } from './payrollUi';
 
 const today = () => {
   const d = new Date();
@@ -61,7 +61,7 @@ const PayrollSettlementPanel = ({ accent }) => {
 
   return (
     <Box>
-      <Paper elevation={0} sx={{ p: 1.5, mb: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Paper elevation={0} sx={payrollCardSx({ p: 1.5, mb: 2, display: 'flex', alignItems: 'center', gap: 1.5 })}>
         <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 800 }}>تسویه حساب پایان همکاری</Typography>
         <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: accent }} onClick={() => { setForm(empty()); setOpen(true); }}>تسویهٔ جدید</Button>
       </Paper>

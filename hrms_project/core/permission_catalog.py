@@ -43,6 +43,7 @@ MODULE_META = {
     'treasury': {'name': 'خزانه‌داری', 'slug': 'treasury', 'color': '#14b8a6'},
     'procurement': {'name': 'تدارکات و انبار', 'slug': 'procurement', 'color': '#3b82f6'},
     'pettycash': {'name': 'تنخواه', 'slug': 'pettycash', 'color': '#f59e0b'},
+    'payroll': {'name': 'حقوق و دستمزد', 'slug': 'payroll', 'color': '#3b82f6'},
     'correspondence': {'name': 'مکاتبات', 'slug': 'correspondence', 'color': '#0ea5e9'},
     'settings': {'name': 'تنظیمات و تعاریف', 'slug': 'settings', 'color': '#64748b'},
 }

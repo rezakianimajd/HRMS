@@ -14,6 +14,7 @@ jest.mock('../core/api/axiosConfig', () => ({
 jest.mock('../core/context/ModulePaletteContext', () => ({
   __esModule: true,
   useModulePalette: () => ({ getPalette: () => null, typography: {} }),
+  MODULE_DEFAULT_ACCENTS: { payroll: '#3b82f6' },
 }));
 
 jest.mock('../core/context/ApplicationContext', () => ({
@@ -39,7 +40,7 @@ const dashboard = {
   pending_periods: 1,
 };
 
-const renderPage = async (entry = '/payroll?tab=dashboard') => {
+const renderPage = async (entry = '/payroll/dashboard') => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -78,7 +79,7 @@ describe('Payroll smoke', () => {
   });
 
   it('opens the periods tab with the create action', async () => {
-    const { container, root } = await renderPage('/payroll?tab=periods');
+    const { container, root } = await renderPage('/payroll/periods');
     expect(container.textContent).toContain('دورهٔ جدید');
     expect(container.textContent).toContain('دوره‌های حقوق');
     act(() => root.unmount());

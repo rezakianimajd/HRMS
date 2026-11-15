@@ -9,7 +9,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import axiosInstance from '../../core/api/axiosConfig';
 import InfoCard from '../../core/components/ui/InfoCard';
 import PrintButton from '../../core/print/PrintButton';
-import { money, number, statusMeta } from './payrollUi';
+import { money, number, payrollCardSx, statusMeta } from './payrollUi';
 
 const PayrollReportsPanel = ({ accent, periodId }) => {
   const qc = useQueryClient();
@@ -48,7 +48,7 @@ const PayrollReportsPanel = ({ accent, periodId }) => {
   return (
     <Box sx={{ display: 'grid', gap: 2 }}>
       {message && <Alert severity={message.ok ? 'success' : 'error'} onClose={() => setMessage(null)}>{message.text}</Alert>}
-      <Paper elevation={0} sx={{ p: 1.5, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Paper elevation={0} sx={payrollCardSx({ p: 1.5, display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' })}>
         <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 800 }}>گزارش‌های دورهٔ {summary?.period?.label || '—'}</Typography>
         <PrintButton target="main" title="گزارش حقوق و دستمزد" orientation="landscape" />
       </Paper>
@@ -64,7 +64,7 @@ const PayrollReportsPanel = ({ accent, periodId }) => {
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={7}>
-          <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Paper elevation={0} sx={payrollCardSx()}>
             <Typography sx={{ fontSize: 14, fontWeight: 800, mb: 1 }}>هزینهٔ نیروی کار به تفکیک پروژه / مرکز هزینه</Typography>
             <Box sx={{ overflowX: 'auto' }}>
               <Table size="small">
@@ -83,7 +83,7 @@ const PayrollReportsPanel = ({ accent, periodId }) => {
           </Paper>
         </Grid>
         <Grid item xs={12} md={5}>
-          <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Paper elevation={0} sx={payrollCardSx()}>
             <Typography sx={{ fontSize: 14, fontWeight: 800, mb: 1 }}>فایل پرداخت بانکی</Typography>
             <Stack spacing={1.25}>
               <TextField select size="small" label="قالب بانک" value={selectedFormat} onChange={(event) => setSelectedFormat(event.target.value)}>
@@ -103,7 +103,7 @@ const PayrollReportsPanel = ({ accent, periodId }) => {
       </Grid>
 
 
-      <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={payrollCardSx()}>
         <Typography sx={{ fontSize: 14, fontWeight: 800, mb: 1 }}>روند دوره‌ها</Typography>
         <Box sx={{ overflowX: 'auto' }}>
           <Table size="small">

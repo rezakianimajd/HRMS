@@ -87,7 +87,8 @@ C:\HRMS
 
 | Module slug | Backend app(s) | Frontend landing | Accent fallback |
 |---|---|---|---|
-| `hrms` | employees, leaves, attendance, payroll, lifecycle, appraisal, recruitment, orgchart, notifications | `/dashboard` | `#6366f1` |
+| `hrms` | employees, leaves, attendance, lifecycle, appraisal, recruitment, orgchart, notifications | `/dashboard` | `#6366f1` |
+| **`payroll`** | **payroll** | **`/payroll/dashboard`** | `#3b82f6` |
 | `contracts` | contracts | `/contracts-dashboard` | `#f59e0b` |
 | `documents` | documents (+ settings_app profiles) | `/document-management` | `#0f766e` |
 | `projects` | projects | `/projects/dashboard` | `#8b5cf6` |
@@ -99,7 +100,7 @@ C:\HRMS
 | `settings` | settings_app | `/settings` (+ `/appearance`) | `#64748b` |
 
 - مسیرها/آیکون‌ها: `frontend/src/core/constants/moduleIcons.js` (`MODULE_LANDING_PATHS`)، منوها: `frontend/src/core/config/menuConfig.js` (`getMenuForApp(slug)`).
-- accent پیش‌فرض هر ماژول: `MODULE_DEFAULT_ACCENTS` در `core/context/ModulePaletteContext.jsx` (توجه: `correspondence` در این نقشه نیست؛ fallback رنگ در خود کامپوننت‌ها مثل `correspondenceUi.ACCENT` است).
+- accent پیش‌فرض هر ماژول: `MODULE_DEFAULT_ACCENTS` در `core/context/ModulePaletteContext.jsx` (شامل `payroll` و `correspondence`).
 - `getPalette(slug)` فقط وقتی چیزی در استودیو ذخیره شده باشد مقدار می‌دهد، وگرنه `null` → همیشه fallback بگذارید.
 
 
@@ -631,8 +632,13 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 - **ماژول جامع حقوق و دستمزد (۲۰۲۶-۱۱-۱۵):** ماژول `payroll` از یک CRUD ساده به یک
-  سیستم دوره‌محور، مؤلفه‌محور و قابل حسابرسی ارتقا یافت. مستند کامل:
-  `docs/payroll-module.md`.
+  سیستم دوره‌محور، مؤلفه‌محور و قابل حسابرسی ارتقا یافت و **از منابع انسانی جدا شد**؛ اکنون
+  یک Application مستقل با slug `payroll` است (مایگریشن `core.0020`) و از انتخاب‌گر/سوئیچر ماژول
+  انتخاب می‌شود. منوی آن `payrollMenu` در `menuConfig.js` است و مسیرهای مستقل
+  `/payroll/dashboard`، `/payroll/periods`، `/payroll/results`، `/payroll/profiles`،
+  `/payroll/settings`، `/payroll/operations`، `/payroll/settlement` و `/payroll/reports`
+  دارد (تب‌ها deep-link و bookmarkable هستند). مستند کامل: `docs/payroll-module.md`.
+  کاتالوگ مجوز پس از جداسازی: **۱۱ ماژول / ۲۸۰ منو / ۱۱۶۳ کد** (`core/permission_catalog_data.json`).
   - **مدل‌ها:** `PayrollPeriod` (وضعیت Draft→Open→Calculating→Calculated→Under Review→
     Approved→Payment Pending→Paid→Closed)، `PayrollSettings`، `PayrollInsuranceRate`،
     `PayrollTaxBracket`، `PayrollComponent` + `PayrollComponentRule`،
@@ -670,7 +676,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.be983331.js`**.
+    باندل زنده: **`main.1b9703db.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،

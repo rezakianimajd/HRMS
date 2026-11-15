@@ -12,10 +12,10 @@ import SaveIcon from '@mui/icons-material/Save';
 import axiosInstance from '../../core/api/axiosConfig';
 import DataTable from '../../core/components/ui/DataTable';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
-import { money, number } from './payrollUi';
+import { money, number, payrollCardSx } from './payrollUi';
 
 const Section = ({ title, children, action, accent }) => (
-  <Paper elevation={0} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+  <Paper elevation={0} sx={payrollCardSx()}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
       <Box sx={{ width: 4, height: 22, borderRadius: 2, bgcolor: accent }} />
       <Typography sx={{ flex: 1, fontSize: 14, fontWeight: 800 }}>{title}</Typography>

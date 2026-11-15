@@ -98,9 +98,16 @@ Draft → Open → Calculating → Calculated → Under Review → Approved
 | `/api/payroll-settlements/` | تسویه + `calculate`/`approve`/`mark-paid` |
 | `/api/payroll-adjustments/`، `/payroll-change-logs/` | اصلاح و Audit |
 
+> ماژول حقوق از منابع انسانی جدا است: Application مستقل با slug `payroll` (مایگریشن `core.0020`)
+> و مسیرهای مستقل `frontend/src/pages/PayrollPage.jsx` روی
+> `/payroll/dashboard|periods|results|profiles|settings|operations|settlement|reports`.
+> منوی آن `payrollMenu` است و کارت‌های آن از توکن‌های استودیو تم (`payrollCardSx`) پیروی می‌کنند.
+> برای دیدن ماژول در انتخاب‌گر، در **کاربران و نقش‌ها → ماژول‌های مجاز** گزینهٔ «حقوق و دستمزد»
+> را برای کاربر فعال کنید؛ سوپریوزر همهٔ ماژول‌ها را می‌بیند.
+
 ## 6. امنیت و حریم خصوصی
 
-* مجوزهای ریز منو (`hrms.payroll-*` و سازگار با `payroll.*`) از موتور مجوز Kian.
+* مجوزهای ریز منو (`payroll.*` و سازگار با `hrms.payroll-*`) از موتور مجوز Kian.
 * کاربر غیرمدیر فقط نتیجهٔ پرسنل متصل به خود را می‌بیند؛ `PayrollEmployeeResultViewSet`
   در سطح queryset فیلتر می‌کند (نه فقط فرانت) و چاپ فیش نیز مالکیت را بررسی می‌کند.
 * اطلاعات بانکی در serializer ماسک می‌شود؛ چاپ فقط شبا/حساب ماسک‌شده را نشان می‌دهد.

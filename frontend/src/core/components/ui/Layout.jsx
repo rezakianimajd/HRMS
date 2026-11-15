@@ -81,7 +81,7 @@ import { libraryModuleForApplication, libraryModuleLabel } from '../../config/do
 import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 import { useThemeMode } from '../../context/ThemeContext';
-import { useModulePalette } from '../../context/ModulePaletteContext';
+import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../../context/ModulePaletteContext';
 
 const RAIL_WIDTH = 68;
 const PANEL_WIDTH = 268;
@@ -210,7 +210,7 @@ const Layout = ({ children }) => {
   const { mode, setMode } = useThemeMode();
   const { getPalette } = useModulePalette();
   const isAccounting = location.pathname.startsWith('/accounting') || location.pathname.startsWith('/petty-cash');
-  const moduleAccent = getPalette(currentApp?.slug)?.accent || null;
+  const moduleAccent = getPalette(currentApp?.slug)?.accent || MODULE_DEFAULT_ACCENTS[currentApp?.slug] || null;
   const moduleLibraryKey = libraryModuleForApplication(currentApp?.slug) || '';
   const moduleLibraryTitle = currentApp?.slug === 'documents'
     ? 'مدیریت اسناد و مدارک'
