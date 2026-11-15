@@ -657,8 +657,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     فرانت `guaranteesSmoke` (۴، شامل قرارداد یورویی و «دیالوگ بدون چیپ») + `contractGuaranteesMonitorSmoke`
     + `contractProfileSmoke` + `contractStatementsSmoke`/`contractInvoicesSmoke`/`contractPaymentsSmoke`/
     `contractDisputesSmoke`/`contractAddendumsSmoke`/`contractCalendarSmoke`/`contractDocumentsPageSmoke`.
-    باندل زنده: **`main.5233ddba.js`**. فایل‌های بک‌اند در `/var/tmp/hrms-guarantee` آماده‌اند؛
-    اجرای `migrate_schemas` + restart نیازمند رمز sudo است (اسکریپت `apply.sh` همان‌جا).
+    باندل زنده: **`main.5233ddba.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
+    (gunicorn فعال) و روی `kpsmi` تأیید شد: چهار فیلد جدید روی `Guarantee` موجود، ۱۳۰ تضمین،
+    و `guarantee_compliance` مقدار پوشش را برمی‌گرداند.
 
 - **تب «تقویم شخصی» با پیوند دوطرفه به وظایف و یادداشت‌ها (۲۰۲۶-۱۱-۱۵):**
   - بک‌اند: مدل `PlanningEvent` (تاریخ، ساعت شروع/پایان، نوع `event|meeting|reminder|deadline`، رنگ،
