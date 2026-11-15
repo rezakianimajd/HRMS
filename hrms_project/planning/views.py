@@ -264,6 +264,20 @@ class PlanningCalendarAPIView(APIView):
         tasks = services.tasks_for_scope(request.user, scope).filter(
             due_date__range=(start_date, end_date),
         ).order_by('due_date', 'due_time', 'id')
+        notes = services.notes_for_scope(request.user, scope).filter(
+            created_at__date__range=(start_date, end_date),
+        ).order_by('-created_at')
+        events = PlanningEvent.objects.filter(
+            company=_company(request), owner=request.user,
+            date__range=(start_date, end_date),
+        ).select_related('task', 'note').order_by('date', 'start_time', 'id')
+
+        term = query.search_term(params)
+        if term:
+            tasks = tasks.filter(title__icontains=term)
+            notes = notes.filter(title__icontains=term)
+            events = events.filter(title__icontains=term)
+
         task_rows = [
             {
                 'id': task.pk,
@@ -276,9 +290,6 @@ class PlanningCalendarAPIView(APIView):
             for task in tasks
         ]
 
-        notes = services.notes_for_scope(request.user, scope).filter(
-            created_at__date__range=(start_date, end_date),
-        ).order_by('-created_at')
         note_rows = [
             {
                 'id': note.pk,
@@ -289,10 +300,6 @@ class PlanningCalendarAPIView(APIView):
             for note in notes
         ]
 
-        events = PlanningEvent.objects.filter(
-            company=_company(request), owner=request.user,
-            date__range=(start_date, end_date),
-        ).select_related('task', 'note').order_by('date', 'start_time', 'id')
         event_rows = PlanningEventSerializer(
             events, many=True, context={'request': request},
         ).data

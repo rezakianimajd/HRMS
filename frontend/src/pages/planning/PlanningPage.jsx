@@ -426,6 +426,9 @@ const PlanningPanel = ({ initialTab = 0 }) => {
       ) : (
         <PlanningCalendarView
           theme={theme}
+          search={search}
+          apiSearch={debouncedSearch}
+          onSearch={setSearch}
           onCreateTask={(iso) => openTaskNew('todo', iso ? { due_date: iso } : {})}
           onCreateNote={openNoteNew}
           onEditTask={openTaskEdit}

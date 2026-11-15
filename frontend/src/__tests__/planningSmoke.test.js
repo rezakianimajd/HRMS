@@ -253,6 +253,7 @@ test('planning calendar tab merges tasks, notes and events', async () => {
   expect(container.textContent).toContain('جلسه تست');
   expect(container.textContent).toContain('وظیفه تقویم');
   expect(container.textContent).toContain('یادداشت تقویم');
+  expect(container.textContent).not.toContain('__END__');
 
   const eventButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.trim() === 'رویداد');
