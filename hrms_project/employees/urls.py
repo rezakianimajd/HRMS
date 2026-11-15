@@ -58,6 +58,7 @@ urlpatterns = [
     path('reports/contracts-expiring/', report_views.contracts_expiring),
     path('reports/leave-balance-summary/', report_views.leave_balance_summary),
     path('reports/upcoming-birthdays/', report_views.upcoming_birthdays),
+    path('reports/events/', report_views.events_report),
     path('reports/correspondences-summary/', report_views.correspondences_summary),
     path('reports/salary-benefits-summary/', report_views.salary_and_benefits_summary),
 

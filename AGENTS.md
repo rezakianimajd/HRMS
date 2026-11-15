@@ -631,6 +631,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 
+- **گزارش «رویدادها» در منابع انسانی (۲۰۲۶-۱۱-۱۵):** صفحهٔ جدید `/reports/events` زیر گروه
+  گزارشات با تولد پرسنل، تولد تحت تکفل، سالگرد استخدام و پایان قرارداد.
+  - **بک‌اند:** `GET /api/reports/events/` (نه `/api/employees/reports/...`) با فیلترهای
+    `kinds`, `scope=all|employees|dependents`, `relation`, `employee` (پرسنل اصلی)،
+    `department`, `month` (ماه شمسی)، `within_days`, `from/to`, `q` و `export=xlsx`.
+    منطق خالص در `employees/events.py` (`next_anniversary`, `collect_event_rows`) و اکسل
+    در `employees/events_export.py`؛ هر ردیف شامل شخص/نسبت/پرسنل اصلی/کد/واحد/عنوان/موبایل،
+    تاریخ شمسی، روزهای مانده، سن/سابقه و رنگ نوع رویداد است.
+  - **فرانت:** `pages/EventsReportPage.jsx` با `PageHeader`، پنج KPI، `ModuleToolbar` (نوع رویداد،
+    شخص، نسبت، پرسنل اصلی، واحد، ماه، بازه)، `ModuleTable`/`ModulePager`، `PrintButton`
+    (افقی و با سربرگ استاندارد استودیو) و خروجی اکسل از همان اندپوینت. منو:
+    `hr-events-report` در `hr-reports` و مسیر در `AppRoutes.jsx`.
+  - کاتالوگ مجوز با `scripts/build_permission_catalog.py` بازتولید و در
+    `core/permission_catalog_data.json` جای‌گذاری شد.
+  - تست: `employees.tests_events` (**۵**، شامل فیلترها و ساخت اکسل) و فرانت
+    `eventsReportSmoke` (۱). تأیید زندهٔ `kpsmi`: ۱۰۰ رویداد (۶۹ پرسنل + ۳۰ تحت تکفل)،
+    ۵ تولد این ماه، ۸ رویداد ۳۰ روز آینده؛ خروجی اکسل ۲۰۰ (۸٫۸KB).
+    باندل زنده: **`main.7af38e3e.js`**.
+
 - **روند کامل نامه در پرونده و کارتابل (۲۰۲۶-۱۱-۱۵):** ارجاعات، پاسخ‌ها و رویدادهای هر نامه
   در یک تایم‌لاین واحد و مرتب (قدیمی → جدید) نمایش داده می‌شوند.
   - **بک‌اند:** `LetterReplyBriefSerializer` و فیلد `replies` در `LetterSerializer` (prefetch

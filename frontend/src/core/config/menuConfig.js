@@ -141,6 +141,7 @@ const menuConfig = [
     color: '#0ea5e9',
     items: [
       { id: 'family-report', title: 'گزارش خانواده پرسنل', icon: <FamilyRestroomIcon />, path: '/reports/family', color: '#be185d', primary: false, ready: true },
+      { id: 'hr-events-report', title: 'رویدادها', icon: <EventAvailableIcon />, path: '/reports/events', color: '#0ea5e9', primary: false, ready: true },
     ],
   },
   {

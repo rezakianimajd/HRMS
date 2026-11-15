@@ -145,6 +145,11 @@
       "id": "family-report",
       "title": "گزارش خانواده پرسنل",
       "path": "/reports/family"
+     },
+     {
+      "id": "hr-events-report",
+      "title": "رویدادها",
+      "path": "/reports/events"
      }
     ]
    },

@@ -328,6 +328,86 @@ def upcoming_birthdays(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def events_report(request):
+    """گزارش رویدادها: تولد پرسنل/تحت تکفل، سالگرد استخدام و پایان قرارداد.
+
+    پارامترها: ``kinds`` (با کاما)، ``scope``، ``relation``، ``employee``،
+    ``department``، ``month``، ``within_days``، ``from``/``to``، ``q`` و
+    ``export=xlsx`` برای خروجی اکسل.
+    """
+    from employees.events import EVENT_KINDS, USER_RELATION_LABELS, collect_event_rows
+    from employees.events_export import events_workbook_response
+    from employees.models import EmployeeFamilyMember
+
+    company = _get_company(request)
+    employees = Employee.objects.filter(is_active=True).select_related('department', 'job_title')
+    family = EmployeeFamilyMember.objects.filter(
+        is_active=True, birth_date__isnull=False, employee__is_active=True,
+    ).select_related('employee', 'employee__department', 'employee__job_title')
+    if company:
+        employees = employees.filter(company=company)
+        family = family.filter(company=company)
+
+    params = request.query_params
+    raw_kinds = [item.strip() for item in (params.get('kinds') or '').split(',') if item.strip()]
+    kinds = [item for item in raw_kinds if item in EVENT_KINDS] or None
+
+    def _int(name):
+        try:
+            return int(params.get(name))
+        except (TypeError, ValueError):
+            return None
+
+    relation = (params.get('relation') or '').strip()
+    employee_id = (params.get('employee') or '').strip()
+    department = (params.get('department') or '').strip()
+    scope = (params.get('scope') or 'all').strip()
+    search = (params.get('q') or '').strip()
+
+    rows, summary = collect_event_rows(
+        employees,
+        family,
+        kinds=kinds,
+        scope=scope,
+        relation=relation,
+        employee=employee_id or None,
+        department=department or None,
+        month=_int('month'),
+        within_days=_int('within_days'),
+        date_from=params.get('from'),
+        date_to=params.get('to'),
+        search=search,
+        today=date.today(),
+    )
+
+    if (params.get('export') or '').lower() in ('xlsx', 'excel', '1', 'true'):
+        labels = []
+        if kinds:
+            labels.append('، '.join(EVENT_KINDS[item]['label'] for item in kinds))
+        scope_labels = {'employees': 'فقط پرسنل', 'dependents': 'فقط تحت تکفل'}
+        if scope in scope_labels:
+            labels.append(scope_labels[scope])
+        if relation:
+            labels.append(f'نسبت: {USER_RELATION_LABELS.get(relation, relation)}')
+        if search:
+            labels.append(f'جست‌وجو: {search}')
+        if _int('month'):
+            labels.append(f'ماه: {_int("month")}')
+        if _int('within_days'):
+            labels.append(f'تا {_int("within_days")} روز آینده')
+        return events_workbook_response(rows, filter_labels=labels)
+
+    return Response({
+        'results': rows,
+        'count': len(rows),
+        'summary': summary,
+        'kinds': EVENT_KINDS,
+        'relation_labels': USER_RELATION_LABELS,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def correspondences_summary(request):
     """Count of incoming/outgoing letters, announcements, and forms."""
     from correspondences.models import IncomingLetter, OutgoingLetter, Announcement, Form

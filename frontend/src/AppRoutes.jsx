@@ -44,6 +44,7 @@ import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
 import SupplementaryInsurancePage from './pages/SupplementaryInsurancePage';
 import FamilyReportPage from './pages/FamilyReportPage';
+import EventsReportPage from './pages/EventsReportPage';
 import LoansPage from './pages/LoansPage';
 import CalendarPage from './pages/CalendarPage';
 import AssetsPage from './pages/AssetsPage';
@@ -278,6 +279,7 @@ const AppRoutes = () => {
       {/* legacy routes removed - import cleanup */}
       <Route path="/insurance" element={<ProtectedLayout><SupplementaryInsurancePage /></ProtectedLayout>} />
       <Route path="/reports/family" element={<ProtectedLayout><FamilyReportPage /></ProtectedLayout>} />
+      <Route path="/reports/events" element={<ProtectedLayout><EventsReportPage /></ProtectedLayout>} />
       <Route path="/insurance/dependents" element={<ProtectedLayout><FamilyReportPage /></ProtectedLayout>} />
       <Route path="/loans" element={<ProtectedLayout><LoansPage /></ProtectedLayout>} />
       <Route path="/attendance" element={<ProtectedLayout><AttendancePage /></ProtectedLayout>} />
