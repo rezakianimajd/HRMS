@@ -642,6 +642,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     از `/petty-cash-funds/` نمایش داده می‌شود. منوی «پرداخت‌ها» در گروه عملیات تنخواه.
   - تست: `pettycash` (**۳۲**) و فرانت `pettyCashPaymentsSmoke` (**۱**)؛ باندل زنده
     **`main.118be2e3.js`**.
+- **رفع ۵۰۰ افزودن عضو خانواده و ثبت تنخواه در ادمین (۲۰۲۶-۱۱-۱۵):**
+  - `pettycash/admin.py` ساخته شد و همهٔ مدل‌های تنخواه (از جمله `PettyCashPayment`) در ادمین ثبت شدند.
+  - خطای ۵۰۰ هنگام افزودن عضو خانواده با **پیوست** رفع شد: `ALLOWED_ATTACHMENT_EXTENSIONS` و
+    `MAX_ATTACHMENT_SIZE` به `EmployeeFamilyMemberSerializer` اضافه شد (قبلاً `validate_attachment`
+    به این attributeها دسترسی نداشت → `AttributeError`).
+  - عضو خانوادهٔ تازه با `is_active=True` ساخته می‌شود تا بلافاصله در فهرست و انتخابگر بیمه دیده شود.
+  - تست: `employees` (**۳۶**) و تأیید زندهٔ multipart: وضعیت **۲۰۱** با پیوست و `is_active=True`.
+
+
 
 
 

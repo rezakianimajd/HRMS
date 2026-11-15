@@ -505,6 +505,14 @@ class EmployeeFamilyMemberViewSet(BaseCompanyViewSet):
             qs = qs.filter(is_dependent=True)
         return qs
 
+    def perform_create(self, serializer):
+        company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
+        raw_active = self.request.data.get('is_active') if hasattr(self.request, 'data') else None
+        is_active = True
+        if raw_active is not None:
+            is_active = str(raw_active).lower() in ('1', 'true', 'on', 'yes')
+        serializer.save(company=company, is_active=is_active)
+
     def perform_destroy(self, instance):
         """اعضای آمده از بیمهٔ تکمیلی غیرفعال می‌شوند تا همگام‌سازی دوباره نسازد."""
         if instance.source == EmployeeFamilyMember.Source.SUPPLEMENTARY_INSURANCE:

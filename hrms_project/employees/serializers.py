@@ -447,6 +447,9 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
 class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
     """عضو خانوادهٔ پرسنل (پروندهٔ پرسنلی ← خانواده)."""
 
+    ALLOWED_ATTACHMENT_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png', '.webp'}
+    MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
+
     relation_display = serializers.CharField(source='get_relation_display', read_only=True)
     full_name = serializers.CharField(read_only=True)
     age = serializers.IntegerField(read_only=True, allow_null=True)
@@ -504,6 +507,12 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
         if not name:
             raise serializers.ValidationError('نام عضو خانواده الزامی است.')
         return name
+
+    def create(self, validated_data):
+        # اعضای خانواده‌ای که از این فرم ساخته می‌شوند باید فعال باشند تا
+        # بلافاصله در فهرست و انتخابگر بیمه دیده شوند (مگر اینکه صریحاً false باشد).
+        validated_data.setdefault('is_active', True)
+        return super().create(validated_data)
 
     def get_employee_photo_url(self, obj):
         employee = getattr(obj, 'employee', None)

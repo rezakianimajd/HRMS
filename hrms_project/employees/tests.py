@@ -1,4 +1,6 @@
 """تست‌های واحد ماژول منابع انسانی (بدون نیاز به دیتابیس)."""
+from types import SimpleNamespace
+
 from django.test import SimpleTestCase
 
 
@@ -190,6 +192,13 @@ class FamilyMemberTests(SimpleTestCase):
                       'attachment', 'attachment_url', 'has_attachment'):
             self.assertIn(field, serializer.fields)
         self.assertNotIn('source', serializer.fields)
+
+        file = SimpleNamespace(name='family-doc.pdf', size=1024)
+        self.assertIs(serializer.validate_attachment(file), file)
+        with self.assertRaises(ValidationError):
+            serializer.validate_attachment(SimpleNamespace(name='family-doc.exe', size=10))
+        with self.assertRaises(ValidationError):
+            serializer.validate_attachment(SimpleNamespace(name='family-doc.pdf', size=11 * 1024 * 1024))
 
         self.assertEqual(serializer.validate_national_id('۱۲۳۴۵۶۷۸۹۰'), '1234567890')
         self.assertEqual(serializer.validate_national_id(''), '')
