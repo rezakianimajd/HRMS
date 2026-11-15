@@ -149,7 +149,7 @@ const PaymentDetailDialog = ({ payment, currency, contractRate = 1, contract, on
   const typeMeta = paymentTypeOf(row);
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
-      PaperProps={{ sx: { bgcolor: '#f8fafc', borderRadius: '12px', overflow: 'hidden' } }}>
+      PaperProps={{ sx: { bgcolor: '#f8fafc', borderRadius: '12px !important', overflow: 'hidden', '& .MuiPaper-root': { borderRadius: '10px !important' } } }}>
       {payment ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: { xs: '92vh', sm: '86vh' } }}>
           <Box sx={{

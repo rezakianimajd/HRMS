@@ -439,6 +439,8 @@ test('eur contracts show their currency, rate and rial equivalent in the guarant
   expect(dialog.querySelector('.MuiChip-root')).toBeNull();
   expect(dialog.textContent).toContain('نوع ابزار تضمین');
   expect(dialog.querySelector('button[aria-label="بستن"]')).toBeTruthy();
+  /* شعاع گوشهٔ استاندارد دیالوگ (inline تا استایل استودیو آن را بازنویسی نکند) */
+  expect(dialog.style.borderRadius).toBe('12px');
 
   root.unmount();
 });

@@ -650,9 +650,15 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
   const days = validity.days;
   return (
     <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      sx={{
+        '& .MuiDialog-paper': { borderRadius: '12px !important' },
+        '& .MuiPaper-root': { borderRadius: '10px !important' },
+      }}
       PaperProps={{
+        style: { borderRadius: 12 },
         sx: {
-          bgcolor: SOFT_BG, borderRadius: '12px', overflow: 'hidden',
+          bgcolor: SOFT_BG, borderRadius: '12px !important', overflow: 'hidden',
+          '& .MuiPaper-root': { borderRadius: '10px !important' },
           boxShadow: theme.shadows[10],
         },
       }}>
@@ -678,7 +684,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
           </Stack>
         </Box>
 
-        <Box sx={{ p: 1.5, flex: 1, overflowY: 'auto' }}>
+        <Box sx={{ p: 1.5, flex: 1, overflowY: 'auto', '& .MuiPaper-root': { borderRadius: '10px !important' } }}>
           <Stack spacing={1.5}>
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={PaymentsIcon} title="مشخصات مالی" color={meta.color} />
@@ -843,7 +849,6 @@ const GuaranteeEditorDialog = ({
   const shadows = tokens.shadows || {};
   const palette = tokens.colors || {};
   /* گوشه‌ها استاندارد و یکدست باشند؛ مقدار بزرگ استودیو دیالوگ را بادکنکی می‌کند */
-  const radiusDialog = 12;
   const radiusCard = 10;
   const borderColor = palette.border || theme.palette.divider;
   const dialogSurface = surfaces.dialog || theme.palette.background.paper;
@@ -870,9 +875,15 @@ const GuaranteeEditorDialog = ({
     : null;
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
+      sx={{
+        '& .MuiDialog-paper': { borderRadius: '12px !important' },
+        '& .MuiPaper-root': { borderRadius: '10px !important' },
+      }}
       PaperProps={{
+        style: { borderRadius: 12 },
         sx: {
-          borderRadius: radiusDialog, overflow: 'hidden',
+          borderRadius: '12px !important', overflow: 'hidden',
+          '& .MuiPaper-root': { borderRadius: '10px !important' },
           bgcolor: pageSurface, border: `1px solid ${borderColor}`,
           boxShadow: shadows.dialog || theme.shadows[8],
         },
@@ -906,7 +917,10 @@ const GuaranteeEditorDialog = ({
         </IconButton>
       </Box>
 
-      <DialogContent sx={{ p: { xs: 1.5, sm: 2 }, maxHeight: '72vh', bgcolor: pageSurface }}>
+      <DialogContent sx={{
+        p: { xs: 1.5, sm: 2 }, maxHeight: '72vh', bgcolor: pageSurface,
+        '& .MuiPaper-root': { borderRadius: '10px !important' },
+      }}>
         <Stack spacing={1.5}>
           <Box sx={sectionSx}>
             <SectionHeading icon={DescriptionIcon} title="قرارداد و نوع تضمین" color={accent}
@@ -988,8 +1002,8 @@ const GuaranteeEditorDialog = ({
 
               {foreignCurrency ? (
                 <Grid item xs={12}>
-                  <Paper elevation={0} sx={{
-                    p: { xs: 1, sm: 1.25 }, borderRadius: radiusCard,
+                  <Box sx={{
+                    p: { xs: 1, sm: 1.25 }, borderRadius: '10px',
                     border: `1px dashed ${alpha(accent, 0.45)}`,
                     bgcolor: alpha(accent, 0.035),
                   }}>
@@ -1054,7 +1068,7 @@ const GuaranteeEditorDialog = ({
                         </Typography>
                       ) : null}
                     </Stack>
-                  </Paper>
+                  </Box>
                 </Grid>
               ) : null}
             </Grid>

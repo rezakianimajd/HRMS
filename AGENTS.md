@@ -617,6 +617,13 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
    سریالایزر فیلد را نبیند و سطرها بی‌صدا حذف شوند (یا ۴۰۰ بدهد). کلید فایل هم `lines[0]attachment`
    است. helper `pages/pettyCashExpenseForm.js::buildStatementFormData` و تست
    `pettycash/tests.py::MultipartNestedLineKeyTests` همین را قفل می‌کنند.
+29. **`MuiPaper`/`MuiDialog` styleOverrides استودیو روی `sx` را می‌بلعد:** تم (`themeAdapter.js`) برای
+   `MuiPaper.root` و `MuiDialog.paper` شعاع را از `surfaces.card/dialog.radius` می‌گذارد؛ اگر کاربر
+   در استودیو عدد بزرگ (مثلاً ۴۰) ذخیره کند، `borderRadius` داخل `sx` کارت/دیالوگ بی‌اثر می‌شود.
+   راه‌حل: برای پوستهٔ دیالوگ `PaperProps={{ style: { borderRadius: 12 } }}` (inline) و برای
+   Paperهای داخلی `'& .MuiPaper-root': { borderRadius: '10px !important' }` روی `DialogContent`
+   یا والد مستقیم. نمونه: `GuaranteesPage` (دیالوگ ویرایش/جزئیات تضمین) و تست `guaranteesSmoke` که
+   `dialog.style.borderRadius === '12px'` را چک می‌کند.
 
 
 
@@ -658,7 +665,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     فرانت `guaranteesSmoke` (۴، شامل قرارداد یورویی و «دیالوگ بدون چیپ») + `contractGuaranteesMonitorSmoke`
     + `contractProfileSmoke` + `contractStatementsSmoke`/`contractInvoicesSmoke`/`contractPaymentsSmoke`/
     `contractDisputesSmoke`/`contractAddendumsSmoke`/`contractCalendarSmoke`/`contractDocumentsPageSmoke`.
-    باندل زنده: **`main.8e518e71.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
+    باندل زنده: **`main.9c17b4bf.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
     (gunicorn فعال) و روی `kpsmi` تأیید شد: چهار فیلد جدید روی `Guarantee` موجود، ۱۳۰ تضمین،
     و `guarantee_compliance` مقدار پوشش را برمی‌گرداند.
 
