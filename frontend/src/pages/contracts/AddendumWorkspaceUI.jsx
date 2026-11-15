@@ -271,7 +271,7 @@ export const AttachmentPicker = ({
   buttonLabel = 'افزودن PDF الحاقیه', emptyText = 'فایل PDF الحاقیه را اینجا پیوست کنید.',
   documentLabel = 'الحاقیه', accept = 'application/pdf,.pdf',
   hint = 'فقط PDF · حداکثر ۲۵ مگابایت برای هر فایل',
-  icon: DocumentIcon = PictureAsPdfIcon,
+  icon: DocumentIcon = PictureAsPdfIcon, radius,
 }) => {
   const { theme } = useAddendumStyle();
   const handleFiles = (event) => {
@@ -302,7 +302,7 @@ export const AttachmentPicker = ({
       ) : (
         <Stack spacing={0.6}>
           {documents.map((document) => (
-            <Paper key={`doc-${document.id}`} elevation={0} sx={{
+            <Paper key={`doc-${document.id}`} elevation={0} style={radius ? { borderRadius: radius } : undefined} sx={{
               p: 0.85, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`,
               display: 'flex', alignItems: 'center', gap: 0.75,
             }}>
@@ -329,7 +329,7 @@ export const AttachmentPicker = ({
             </Paper>
           ))}
           {pendingFiles.map((file, index) => (
-            <Paper key={`pending-${file.name}-${index}`} elevation={0} sx={{
+            <Paper key={`pending-${file.name}-${index}`} elevation={0} style={radius ? { borderRadius: radius } : undefined} sx={{
               p: 0.85, borderRadius: '10px', border: `1px dashed ${alpha(accent || theme.palette.primary.main, 0.35)}`,
               bgcolor: alpha(accent || theme.palette.primary.main, 0.025),
               display: 'flex', alignItems: 'center', gap: 0.75,

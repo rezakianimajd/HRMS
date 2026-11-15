@@ -651,8 +651,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     آیکن ۴۲px و فاصلهٔ `14px` تا عنوان (RTL-safe با `gap`)، بدنهٔ بخش‌بندی‌شده به کارت‌های تم‌محور با
     زیرعنوان، فوتر چسبان با دکمهٔ accent. **هیچ چیپی در دیالوگ نیست**: نوع ابزار و ضمانت با `Select`
     و «ابزار تضمین / معادل ریالی نقدی» با `ToggleButtonGroup`. فاصلهٔ آیکن/عنوان همهٔ `SectionHeading`ها
-    با `gap: 12px` و آیکن ۳۱px یکدست شد. **شعاع گوشه‌ها استاندارد شد**: دیالوگ ۱۲px، کارت‌های داخلی
-    ۱۰px، آیکن‌ها ۸–۱۰px و دکمه‌ها ۸px (مقدار بزرگ استودیو دیگر دیالوگ را بادکنکی نمی‌کند).
+    با `gap: 12px` و آیکن ۳۱px یکدست شد. **شعاع گوشه‌ها استاندارد شد**: دیالوگ ۱۲px (inline)،
+    کارت‌های داخلی ۱۰px (inline روی Box/Paper و `radius={10}` برای AttachmentPicker)، آیکن‌ها
+    ۸–۱۰px و دکمه‌ها ۸px (مقدار بزرگ استودیو دیگر دیالوگ/کارت‌ها را بادکنکی نمی‌کند).
   - **پوشش بیش از ۱۰۰٪ (۲۰۲۶-۱۱-۱۵):** `guarantee_status` دیگر `coverage_percent` را سقف نمی‌زند؛
     تضمین ۱۲۰٪ یا ۲۰۰٪ همان عدد را نشان می‌دهد (status `provided`، کمبود ۰). `CoverageGauge` کمان را
     برای نمایش در ۱۰۰٪ نگه می‌دارد اما عدد واقعی را می‌نویسد، و «پوشش هر قلم/پوشش از قلم» و KPIها
@@ -665,7 +666,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     فرانت `guaranteesSmoke` (۴، شامل قرارداد یورویی و «دیالوگ بدون چیپ») + `contractGuaranteesMonitorSmoke`
     + `contractProfileSmoke` + `contractStatementsSmoke`/`contractInvoicesSmoke`/`contractPaymentsSmoke`/
     `contractDisputesSmoke`/`contractAddendumsSmoke`/`contractCalendarSmoke`/`contractDocumentsPageSmoke`.
-    باندل زنده: **`main.9c17b4bf.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
+    باندل زنده: **`main.0aaf8ff6.js`**. مایگریشن `contracts.0047` روی همهٔ schemaها اعمال شد
     (gunicorn فعال) و روی `kpsmi` تأیید شد: چهار فیلد جدید روی `Guarantee` موجود، ۱۳۰ تضمین،
     و `guarantee_compliance` مقدار پوشش را برمی‌گرداند.
 

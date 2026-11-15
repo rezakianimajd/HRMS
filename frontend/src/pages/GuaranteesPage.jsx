@@ -686,7 +686,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
 
         <Box sx={{ p: 1.5, flex: 1, overflowY: 'auto', '& .MuiPaper-root': { borderRadius: '10px !important' } }}>
           <Stack spacing={1.5}>
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={PaymentsIcon} title="مشخصات مالی" color={meta.color} />
               <InfoLine label="مبلغ تضمین" value={money(row.amount, currency)} strong ltr />
               {row.amount_rial != null && Number(row.amount_rial) !== Number(row.amount) ? (
@@ -702,7 +702,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
               <InfoLine label="قرارداد" value={row.contract_subject} />
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={ScheduleIcon} title="زمان‌بندی" color={status.color} />
               <InfoLine label="تاریخ صدور" value={dateLabel(row.issue_date)} />
               <InfoLine label={validity.isCheck ? 'تاریخ سررسید چک' : 'تاریخ انقضا'}
@@ -720,7 +720,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
               {row.is_released ? <InfoLine label="تاریخ آزادسازی" value={dateLabel(row.release_date)} /> : null}
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={DescriptionIcon} title="شناسه‌های ابزار" color="#64748b" />
               <InfoLine label="شماره اصلی" value={numberFor(row)} strong />
               {row.check_number ? <InfoLine label="شماره چک" value={row.check_number} /> : null}
@@ -731,20 +731,20 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
             </Paper>
 
             {row.note ? (
-              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+              <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={NoteAltIcon} title="یادداشت" color="#7c3aed" />
                 <Typography sx={{ fontSize: 12, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{row.note}</Typography>
               </Paper>
             ) : null}
 
             {(row.documents || []).length ? (
-              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+              <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={PictureAsPdfIcon} title="پیوست‌های PDF" color="#be123c" />
                 <AttachmentLinks documents={row.documents} />
               </Paper>
             ) : null}
 
-            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+            <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={HistoryIcon} title="تاریخچهٔ اقدامات" color="#7c3aed"
                 action={(
                   <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
@@ -805,7 +805,7 @@ const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, curre
             </Paper>
 
             {canAct(row) ? (
-              <Paper elevation={0} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
+              <Paper elevation={0} style={{ borderRadius: 10 }} sx={{ p: 1.4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={LockOpenIcon} title="اقدامات چرخهٔ عمر" color="#2563eb" />
                 <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
                   {Object.entries(ACTION_META).map(([key, action]) => {
@@ -922,7 +922,7 @@ const GuaranteeEditorDialog = ({
         '& .MuiPaper-root': { borderRadius: '10px !important' },
       }}>
         <Stack spacing={1.5}>
-          <Box sx={sectionSx}>
+          <Box sx={sectionSx} style={{ borderRadius: 10 }}>
             <SectionHeading icon={DescriptionIcon} title="قرارداد و نوع تضمین" color={accent}
               subtitle="قرارداد مرتبط، قلم ضمانت و ابزار تأمین تضمین" />
             <Grid container spacing={1.25}>
@@ -990,7 +990,7 @@ const GuaranteeEditorDialog = ({
             </Grid>
           </Box>
 
-          <Box sx={sectionSx}>
+          <Box sx={sectionSx} style={{ borderRadius: 10 }}>
             <SectionHeading icon={PaymentsIcon} title="مشخصات مالی و زمانی" color="#2563eb"
               subtitle={foreignCurrency ? `مبلغ به ${dialogCurrency} و معادل ریالی با نرخ تسعیر` : `مبلغ به ${dialogCurrency}`} />
             <Grid container spacing={1.25}>
@@ -1002,7 +1002,7 @@ const GuaranteeEditorDialog = ({
 
               {foreignCurrency ? (
                 <Grid item xs={12}>
-                  <Box sx={{
+                  <Box style={{ borderRadius: 10 }} sx={{
                     p: { xs: 1, sm: 1.25 }, borderRadius: '10px',
                     border: `1px dashed ${alpha(accent, 0.45)}`,
                     bgcolor: alpha(accent, 0.035),
@@ -1075,7 +1075,7 @@ const GuaranteeEditorDialog = ({
           </Box>
 
           {needsInstrument(form.instrument_type) ? (
-            <Box sx={sectionSx}>
+            <Box sx={sectionSx} style={{ borderRadius: 10 }}>
               <SectionHeading icon={ReceiptLongIcon} title="اطلاعات چک" color="#b45309" />
               <Grid container spacing={1.25}>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره چک" value={form.check_number} onChange={(event) => update('check_number', event.target.value)} /></Grid>
@@ -1086,7 +1086,7 @@ const GuaranteeEditorDialog = ({
           ) : null}
 
           {needsPromissory(form.instrument_type) ? (
-            <Box sx={sectionSx}>
+            <Box sx={sectionSx} style={{ borderRadius: 10 }}>
               <SectionHeading icon={NoteAltIcon} title="اطلاعات سفته" color="#7c3aed" />
               <Grid container spacing={1.25}>
                 <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره سفته" value={form.promissory_number} onChange={(event) => update('promissory_number', event.target.value)} /></Grid>
@@ -1096,7 +1096,7 @@ const GuaranteeEditorDialog = ({
           ) : null}
 
           {needsGuarantee(form.instrument_type) ? (
-            <Box sx={sectionSx}>
+            <Box sx={sectionSx} style={{ borderRadius: 10 }}>
               <SectionHeading icon={AccountBalanceIcon} title="اطلاعات ضمانت‌نامه" color="#0f766e" />
               <Grid container spacing={1.25}>
                 <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره ضمانت‌نامه" value={form.guarantee_number} onChange={(event) => update('guarantee_number', event.target.value)} /></Grid>
@@ -1105,7 +1105,7 @@ const GuaranteeEditorDialog = ({
             </Box>
           ) : null}
 
-          <Box sx={sectionSx}>
+          <Box sx={sectionSx} style={{ borderRadius: 10 }}>
             <SectionHeading icon={PictureAsPdfIcon} title="پیوست PDF تضمین" color="#be123c"
               subtitle="فقط PDF · حداکثر ۲۵ مگابایت برای هر فایل" />
             <AttachmentPicker
@@ -1117,10 +1117,11 @@ const GuaranteeEditorDialog = ({
               buttonLabel="افزودن PDF تضمین"
               emptyText="فایل PDF تضمین را اینجا پیوست کنید."
               documentLabel="تضمین"
+              radius={10}
             />
           </Box>
 
-          <Box sx={sectionSx}>
+          <Box sx={sectionSx} style={{ borderRadius: 10 }}>
             <SectionHeading icon={NoteAltIcon} title="یادداشت" color={MUTED} />
             <TextField size="small" fullWidth multiline rows={2} label="یادداشت" value={form.note}
               onChange={(event) => update('note', event.target.value)} />
