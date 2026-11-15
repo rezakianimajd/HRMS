@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { Button } from '@mui/material';
 
 import axiosInstance from '../core/api/axiosConfig';
+import { ApplicationProvider } from '../core/context/ApplicationContext';
 import WorkspaceDockProvider, { useWorkspaceDock } from '../core/components/ui/WorkspaceDock';
 
 jest.mock('../core/api/axiosConfig', () => ({
@@ -69,11 +70,13 @@ test('workspace dock opens chat and planning as dialogs without leaving the page
   await act(async () => {
     root.render(
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/dashboard']}>
-          <WorkspaceDockProvider>
-            <Probe />
-          </WorkspaceDockProvider>
-        </MemoryRouter>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/dashboard']}>
+            <WorkspaceDockProvider>
+              <Probe />
+            </WorkspaceDockProvider>
+          </MemoryRouter>
+        </ApplicationProvider>
       </QueryClientProvider>,
     );
     await wait(200);

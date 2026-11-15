@@ -3,6 +3,7 @@ import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import { ApplicationProvider } from '../core/context/ApplicationContext';
 import axiosInstance from '../core/api/axiosConfig';
 import PlanningPage, { TASK_PRIORITY_META, TASK_STATUS_META } from '../pages/planning/PlanningPage';
 
@@ -75,7 +76,9 @@ test('planning page renders notes and can switch to tasks', async () => {
   await act(async () => {
     root.render(
       <QueryClientProvider client={client}>
-        <PlanningPage />
+        <ApplicationProvider>
+          <PlanningPage />
+        </ApplicationProvider>
       </QueryClientProvider>,
     );
     await wait(400);
@@ -89,7 +92,8 @@ test('planning page renders notes and can switch to tasks', async () => {
   const tasksTab = Array.from(container.querySelectorAll('[role="tab"]'))
     .find((tab) => tab.textContent.includes('وظایف'));
   expect(tasksTab).toBeTruthy();
-  await act(async () => { tasksTab.click(); await wait(200); });
+  await act(async () => { tasksTab.click(); await wait(400); });
+  await act(async () => { await wait(300); });
   expect(container.textContent).toContain('بررسی صورت‌وضعیت شماره ۴');
 
   // دیالوگ ساخت وظیفه باید بدون خطا باز شود و بخش «محول به» را نشان دهد
@@ -99,6 +103,57 @@ test('planning page renders notes and can switch to tasks', async () => {
   await act(async () => { newTaskButton.click(); await wait(250); });
   expect(document.body.textContent).toContain('این وظیفه برای چه کسی است؟');
   expect(document.body.textContent).toContain('فقط خودم');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
+test('planning board view and the redesigned dialogs render', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <PlanningPage />
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(350);
+  });
+  await act(async () => { await wait(250); });
+
+  // دیالوگ بازطراحی‌شدهٔ یادداشت: بخش‌های رنگ/برچسب و چک‌لیست
+  const noteButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('یادداشت جدید'));
+  expect(noteButton).toBeTruthy();
+  await act(async () => { noteButton.click(); await wait(250); });
+  expect(document.body.textContent).toContain('عنوان و متن یادداشت');
+  expect(document.body.textContent).toContain('رنگ و برچسب');
+  expect(document.body.textContent).toContain('چک‌لیست');
+
+  const cancelButton = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'انصراف');
+  expect(cancelButton).toBeTruthy();
+  await act(async () => { cancelButton.click(); await wait(200); });
+
+  // تختهٔ کانبان وظایف
+  const tasksTab = Array.from(container.querySelectorAll('[role="tab"]'))
+    .find((tab) => tab.textContent.includes('وظایف'));
+  await act(async () => { tasksTab.click(); await wait(350); });
+  await act(async () => { await wait(250); });
+
+  const boardButton = container.querySelector('[aria-label="نمای تخته"]');
+  expect(boardButton).toBeTruthy();
+  await act(async () => { boardButton.click(); await wait(350); });
+  await act(async () => { await wait(350); });
+
+  expect(container.querySelectorAll('[data-testid="planning-task-card"]').length).toBeGreaterThan(0);
+  expect(container.textContent).toContain('انجام‌شده');
+  expect(container.textContent).toContain('لغو‌شده');
 
   await act(async () => { root.unmount(); });
   container.remove();

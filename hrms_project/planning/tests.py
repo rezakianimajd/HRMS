@@ -1,10 +1,11 @@
 """تست‌های واحد ماژول برنامه‌ریزی شخصی (بدون دیتابیس)."""
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, override_settings
 
-from planning import services
+from planning import query, services
 from planning.models import PlanningShare, Task
 
 
@@ -82,3 +83,83 @@ class TaskModelLogicTests(SimpleTestCase):
             )
         self.assertEqual(len(shares), 1)
         notify.assert_called_once()
+
+
+class PlanningQueryHelperTests(SimpleTestCase):
+    """پارس فیلتر/مرتب‌سازی/خلاصهٔ فهرست‌ها (بدون دیتابیس)."""
+
+    def test_csv_list_filters_unknown_values(self):
+        self.assertEqual(
+            query.csv_list('todo, UNKNOWN ,done,todo', query.TASK_STATUSES),
+            ['todo', 'done'],
+        )
+        self.assertEqual(query.csv_list('', query.TASK_STATUSES), [])
+
+    def test_int_list_ignores_invalid_tokens(self):
+        self.assertEqual(query.int_list('3, x,5,3'), [3, 5])
+        self.assertEqual(query.int_list(None), [])
+
+    def test_task_filters_open_and_status_precedence(self):
+        filters = query.task_filters({'open': '1'})
+        self.assertEqual(filters['status__in'], ['todo', 'doing'])
+        filters = query.task_filters({'open': '1', 'status': 'done'})
+        self.assertEqual(filters['status__in'], ['done'])
+
+    def test_task_filters_due_presets(self):
+        today = date(2026, 11, 15)
+        self.assertEqual(query.task_filters({'due': 'today'}, today)['due_date'], today)
+        self.assertEqual(
+            query.task_filters({'due': 'overdue'}, today)['due_date__lt'], today,
+        )
+        week = query.task_filters({'due': 'week'}, today)['due_date__range']
+        self.assertEqual(week, (today, date(2026, 11, 22)))
+        self.assertEqual(
+            query.task_filters({'due_from': '2026-11-01', 'due_to': '2026-11-30'}, today),
+            {'due_date__range': (date(2026, 11, 1), date(2026, 11, 30))},
+        )
+
+    def test_task_filters_tag_group_and_pinned(self):
+        filters = query.task_filters({'tag': 'مالی', 'group': '2,4', 'pinned': 'true'})
+        self.assertEqual(filters['tags__icontains'], 'مالی')
+        self.assertEqual(filters['assignee_groups__id__in'], [2, 4])
+        self.assertTrue(filters['is_pinned'])
+
+    def test_note_filters_and_ordering(self):
+        filters = query.note_filters({'color': '#6366F1', 'tag': 'قرارداد', 'pinned': '1'})
+        self.assertEqual(filters['color__iexact'], '#6366F1')
+        self.assertEqual(filters['tags__icontains'], 'قرارداد')
+        self.assertTrue(filters['is_pinned'])
+        self.assertEqual(
+            query.note_ordering('title'), ['-is_pinned', 'title'],
+        )
+        self.assertEqual(
+            query.note_ordering('unknown-value'), ['-is_pinned', '-updated_at'],
+        )
+
+    def test_task_ordering_includes_priority_rank(self):
+        self.assertIn('priority_rank', query.task_ordering('priority'))
+        self.assertEqual(
+            query.task_ordering(None), ['-is_pinned', 'due_date', '-created_at'],
+        )
+
+    def test_summary_payload_counts_and_completion(self):
+        payload = query.summary_payload(
+            note_total=4, note_pinned=1,
+            status_counts={'todo': 3, 'doing': 1, 'done': 4, 'cancelled': 2},
+            due_today=2, overdue=1, shared_notes=2, shared_tasks=3,
+            today=date(2026, 11, 15),
+        )
+        self.assertEqual(payload['tasks'], 10)
+        self.assertEqual(payload['open_tasks'], 4)
+        self.assertEqual(payload['done_tasks'], 4)
+        self.assertEqual(payload['completion_rate'], 40)
+        self.assertEqual(payload['due_today'], 2)
+        self.assertEqual(payload['shared_notes'], 2)
+        self.assertEqual(payload['notes_shared_with_me'], 2)
+        self.assertEqual(payload['today'], '2026-11-15')
+
+    def test_summary_payload_is_safe_without_tasks(self):
+        payload = query.summary_payload()
+        self.assertEqual(payload['tasks'], 0)
+        self.assertEqual(payload['completion_rate'], 0)
+        self.assertEqual(payload['todo'], 0)

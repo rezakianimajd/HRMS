@@ -1,7 +1,7 @@
 # AGENTS.md — handoff brief for the next coding agent
 
 **Repo:** `C:\HRMS` (Kian ERP / HRMS) · **Remote:** `https://github.com/rezakianimajd/HRMS.git` (branch `main`)
-**Last updated:** 2026-11-08 · **Baseline commit:** `32d0d0e09`
+**Last updated:** 2026-11-15 · **Baseline commit:** `8514a1431`
 
 > هدف این سند: هر ایجنتی که تازه به پروژه می‌آید، بدون کشف دوباره، سریع و امن کار کند.
 > Structure/headings are English; explanations and warnings are Persian; all code/commands are English and copy‑paste ready.
@@ -623,6 +623,37 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+
+- **صفحهٔ «یادداشت‌ها و وظایف» کامل بازطراحی شد (۲۰۲۶-۱۱-۱۵):**
+  - فرانت به پنج ماژول شکسته شد: `pages/planning/planningTheme.js` (توکن‌ها/متادیتا + هِلپرهای
+    تاریخ شمسی، وضعیت سررسید و چک‌لیست)، `planningUi.jsx` (`KpiTile`, `NoteCard`, `TaskCard`,
+    `ChecklistBar`, `AssigneeStack`, `TagChipList`, `EmptyState`)، `PlanningNotesView` (نوار ابزار
+    تم‌محور + فیلتر رنگ/برچسب/سنجاق + «یادداشت سریع» + شبکهٔ کارت + صفحه‌بندی سروری)،
+    `PlanningTasksView` (فهرست روی `ModuleTable` استودیو + تختهٔ کانبان با drag & drop و ستون‌های
+    توکن‌محور)، `PlanningDialogs` (`DialogShell` بخش‌بندی‌شده برای یادداشت/وظیفه/اشتراک/گروه‌ها).
+  - `PlanningPage.jsx`: `PageHeader` + نوار ۵ شاخص کلیک‌پذیر + انتخاب دامنه (فقط من / اشتراکی با من /
+    همه) + تب‌های `TabsCard` + جست‌وجوی ۳۵۰ms + توست فارسی؛ هیچ رنگ/شعاع/سایهٔ hard-code ندارد.
+  - دیالوگ‌ها: یادداشت (عنوان/متن/رنگ از `notePalette`/برچسب‌ها/چک‌لیست/سنجاق)، وظیفه (وضعیت و
+    اولویت segmented، سررسید شمسی + ساعت، برچسب/چک‌لیست، «این وظیفه برای چه کسی است؟» با سه حالت
+    «فقط خودم/افراد/گروه»)، اشتراک‌گذاری (فهرست دسترسی‌ها + حذف + افزودن با سطح مشاهده/ویرایش)،
+    گروه‌ها (فهرست/ویرایش/حذف + انتخاب اعضا).
+  - بک‌اند: `planning/query.py` (خالص: `csv_list`، `task_filters`، `note_filters`، `due_lookup`،
+    `task_ordering`/`note_ordering`، `summary_payload`) + فیلترهای سروری `status` چندمقداری،
+    `priority`، `due=today|tomorrow|week|overdue`، `due_from/due_to`، `tag`، `pinned`، `group`،
+    `ordering` (شامل `priority` با `Case/When`) و `summary` با شمارندهٔ هر وضعیت در ۶ کوئری.
+  - **رفع باگ قدیمی:** `NoteSerializer.shares`/`TaskSerializer.shares` به رابطهٔ ORM اشاره می‌کرد که
+    وجود ندارد (`PlanningShare` با `item_kind/item_id` وصل است و reverse relation ندارد)؛ حالا
+    `SerializerMethodField` است و اشتراک‌ها/دسترسی/مسئولانِ صفحهٔ جاری در **یک** کوئری context
+    کش می‌شوند (`_prime_shares`) — بدون N+1.
+  - «فقط خودم» حالا واقعاً دسترسی مسئولان قبلی را می‌گیرد: `services.assign_task` اشتراک‌های
+    `role=assignee` خارج از فهرست جدید را حذف و `is_shared` را از اشتراک‌های باقی‌مانده می‌سازد.
+  - تست: بک `planning` (۱۸، شامل `PlanningQueryHelperTests`)؛ فرانت `planningSmoke` (۳، شامل تختهٔ
+    کانبان و دیالوگ بازطراحی‌شده) + `workspaceDock`/`chatSmoke` سبز. باندل زندهٔ فرانت:
+    **`main.b5363cff.js`**.
+  - تأیید زندهٔ `kpsmi` (APIClient با `HTTP_HOST=192.168.1.63`): `summary` ۲۰۰ با کلیدهای جدید؛
+    `tasks?open=1` ۲۰۰؛ `due=today`/`priority` ۲۰۰؛ ساخت وظیفه با مسئول ۲۰۱ (`assignees=1`,
+    `is_private=false`, `tags=['verify']`)؛ `PATCH assignees:[]` ⇒ `assignees_after=0`,
+    `is_private=true`؛ `status=todo,doing&ordering=priority` ۲۰۰؛ سپس rollback (دادهٔ تست پاک).
 
 - **فهرست صورت ریز هزینه‌ها روی جدول استاندارد استودیو تم بازطراحی شد (۲۰۲۶-۱۱-۱۴):**
   - `PettyCashExpensesPage` حالا از `ModuleToolbar` + `ModuleTable` + `ModulePager` (کیت قراردادها)

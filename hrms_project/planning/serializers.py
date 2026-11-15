@@ -14,6 +14,56 @@ def _display_name(user):
         return ''
 
 
+def _items_of(serializer):
+    instance = serializer.instance
+    if isinstance(instance, (list, tuple)):
+        return [item for item in instance if item is not None]
+    return [instance] if instance is not None else []
+
+
+def _prime_shares(serializer, kind):
+    """اشتراک‌های صفحهٔ جاری را با **یک** کوئری در context کش می‌کند (رفع N+1).
+
+    ``PlanningShare`` با کلید عمومی (``item_kind``/``item_id``) به آیتم وصل است و
+    رابطهٔ معکوس ORM ندارد؛ بنابراین گروه‌بندی در پایتون انجام می‌شود.
+    """
+    context = serializer.context
+    cache = context.setdefault('_shares_cache', {})
+    if cache.get('__primed__'):
+        return cache
+    cache['__primed__'] = True
+    grouped: dict = {}
+    ids = [getattr(item, 'pk', None) for item in _items_of(serializer)]
+    ids = [pk for pk in ids if pk]
+    if ids:
+        rows = PlanningShare.objects.filter(
+            item_kind=kind, item_id__in=ids,
+        ).select_related('shared_with').order_by('id')
+        for share in rows:
+            grouped.setdefault(share.item_id, []).append(share)
+    cache['by_item'] = grouped
+    return cache
+
+
+def _shares_of(serializer, obj, kind):
+    if obj is None:
+        return []
+    return _prime_shares(serializer, kind)['by_item'].get(obj.pk, [])
+
+
+def _access_for(serializer, obj, kind):
+    request = serializer.context.get('request')
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False) or obj is None:
+        return None
+    if getattr(user, 'is_superuser', False) or obj.owner_id == getattr(user, 'pk', None):
+        return 'owner'
+    for share in _shares_of(serializer, obj, kind):
+        if share.shared_with_id == getattr(user, 'pk', None):
+            return share.permission
+    return None
+
+
 class PlanningShareSerializer(serializers.ModelSerializer):
     shared_with_name = serializers.SerializerMethodField()
     permission_display = serializers.CharField(source='get_permission_display', read_only=True)
@@ -42,37 +92,29 @@ class PlanningGroupSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'color', 'member_count', 'members', 'created_at']
         read_only_fields = ['id', 'member_count', 'members', 'created_at']
 
+    def _members(self, obj):
+        """اعضا از prefetch (بدون کوئری هر گروه خوانده می‌شوند)."""
+        cache = self.context.setdefault('_group_members', {})
+        if obj.pk in cache:
+            return cache[obj.pk]
+        rows = []
+        for member in obj.member_rows.all():
+            user = member.user
+            rows.append({'id': member.user_id, 'name': _display_name(user)})
+        cache[obj.pk] = rows
+        return rows
+
     def get_member_count(self, obj):
-        rows = self.context.setdefault('_group_members', {})
-        if obj.pk not in rows:
-            rows[obj.pk] = list(
-                obj.member_rows.select_related('user').values(
-                    'user_id', 'user__first_name', 'user__last_name',
-                ),
-            )
-        return len(rows[obj.pk])
+        return len(self._members(obj))
 
     def get_members(self, obj):
-        rows = self.context.setdefault('_group_members', {})
-        if obj.pk not in rows:
-            rows[obj.pk] = list(
-                obj.member_rows.select_related('user').values(
-                    'user_id', 'user__first_name', 'user__last_name',
-                ),
-            )
-        return [
-            {
-                'id': row['user_id'],
-                'name': f"{row['user__first_name'] or ''} {row['user__last_name'] or ''}".strip(),
-            }
-            for row in rows[obj.pk]
-        ]
+        return self._members(obj)
 
 
 class NoteSerializer(serializers.ModelSerializer):
     body = serializers.SerializerMethodField()
     owner_name = serializers.SerializerMethodField()
-    shares = PlanningShareSerializer(many=True, read_only=True)
+    shares = serializers.SerializerMethodField()
     access = serializers.SerializerMethodField()
     is_mine = serializers.SerializerMethodField()
 
@@ -93,10 +135,12 @@ class NoteSerializer(serializers.ModelSerializer):
     def get_owner_name(self, obj):
         return _display_name(obj.owner)
 
+    def get_shares(self, obj):
+        rows = _shares_of(self, obj, PlanningShare.ItemKind.NOTE)
+        return PlanningShareSerializer(rows, many=True).data
+
     def get_access(self, obj):
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        return services.permission_for(user, PlanningShare.ItemKind.NOTE, obj.pk)
+        return _access_for(self, obj, PlanningShare.ItemKind.NOTE)
 
     def get_is_mine(self, obj):
         request = self.context.get('request')
@@ -116,7 +160,7 @@ class NoteSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     description = serializers.SerializerMethodField()
     owner_name = serializers.SerializerMethodField()
-    shares = PlanningShareSerializer(many=True, read_only=True)
+    shares = serializers.SerializerMethodField()
     access = serializers.SerializerMethodField()
     is_mine = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
@@ -148,10 +192,12 @@ class TaskSerializer(serializers.ModelSerializer):
     def get_owner_name(self, obj):
         return _display_name(obj.owner)
 
+    def get_shares(self, obj):
+        rows = _shares_of(self, obj, PlanningShare.ItemKind.TASK)
+        return PlanningShareSerializer(rows, many=True).data
+
     def get_access(self, obj):
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        return services.permission_for(user, PlanningShare.ItemKind.TASK, obj.pk)
+        return _access_for(self, obj, PlanningShare.ItemKind.TASK)
 
     def get_is_mine(self, obj):
         request = self.context.get('request')
@@ -159,10 +205,17 @@ class TaskSerializer(serializers.ModelSerializer):
         return bool(user and obj.owner_id == user.pk)
 
     def get_assignees(self, obj):
+        """مسئولان از کش اشتراک‌های صفحه خوانده می‌شوند (بدون کوئری هر ردیف)."""
         cache = self.context.setdefault('_assignee_cache', {})
-        if obj.pk not in cache:
-            cache[obj.pk] = services.task_assignees(obj)
-        return cache[obj.pk]
+        if obj.pk in cache:
+            return cache[obj.pk]
+        rows = [
+            {'id': share.shared_with_id, 'name': _display_name(share.shared_with)}
+            for share in _shares_of(self, obj, PlanningShare.ItemKind.TASK)
+            if share.role == PlanningShare.Role.ASSIGNEE and share.shared_with_id
+        ]
+        cache[obj.pk] = rows
+        return rows
 
     def get_assignee_groups(self, obj):
         return services.assignee_groups(obj)

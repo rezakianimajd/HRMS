@@ -155,8 +155,17 @@ def assign_task(company, task, actor, user_ids=(), group_ids=(), notify=True):
         )
         created.append(share)
 
+    # مسئولانی که از فهرست حذف شده‌اند دسترسی «مسئول انجام» خود را از دست می‌دهند؛
+    # دسترسی‌های اشتراک‌گذاری صریح (viewer/editor) دست‌نخورده می‌مانند.
+    PlanningShare.objects.filter(
+        item_kind=PlanningShare.ItemKind.TASK, item_id=task.pk,
+        role=PlanningShare.Role.ASSIGNEE,
+    ).exclude(shared_with_id__in=valid_ids).delete()
+
     task.assignee_groups.set(groups)
-    task.is_shared = bool(created) or bool(groups)
+    task.is_shared = PlanningShare.objects.filter(
+        item_kind=PlanningShare.ItemKind.TASK, item_id=task.pk,
+    ).exists()
     task.save(update_fields=['is_shared', 'updated_at'])
 
     if created and notify:

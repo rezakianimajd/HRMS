@@ -1,5 +1,6 @@
 """API ماژول برنامه‌ریزی شخصی (یادداشت‌ها و وظایف)."""
-from django.db.models import Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -7,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from planning import services
+from planning import query, services
 from planning.models import Note, PlanningGroup, PlanningGroupMember, PlanningShare, Task
 from planning.serializers import (
     NoteSerializer, PlanningGroupSerializer, PlanningShareSerializer, TaskSerializer,
@@ -23,6 +24,18 @@ class PlanningBaseViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     item_kind = PlanningShare.ItemKind.NOTE
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['item_kind'] = self.item_kind
+        return context
+
+    def _with_relations(self, queryset):
+        """روابط لازم سریالایزر (مالک/گروه‌های مسئول) بدون N+1."""
+        queryset = queryset.select_related('owner')
+        if self.item_kind == PlanningShare.ItemKind.TASK:
+            queryset = queryset.prefetch_related('assignee_groups')
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(company=_company(self.request), owner=self.request.user)
@@ -90,19 +103,21 @@ class NoteViewSet(PlanningBaseViewSet):
     item_kind = PlanningShare.ItemKind.NOTE
 
     def get_queryset(self):
-        user = self.request.user
-        scope = (self.request.query_params.get('scope') or 'mine').lower()
-        qs = services.notes_for_scope(user, scope).select_related('owner').order_by(
-            '-is_pinned', '-updated_at',
-        )
         params = self.request.query_params
-        query = (params.get('q') or params.get('search') or '').strip()
-        if query:
-            qs = qs.filter(
-                Q(title__icontains=query) | Q(related_label__icontains=query)
-                | Q(tags__icontains=query),
+        scope = (params.get('scope') or 'mine').lower()
+        queryset = services.notes_for_scope(self.request.user, scope)
+        filters = query.note_filters(params)
+        if filters:
+            queryset = queryset.filter(**filters)
+        term = query.search_term(params)
+        if term:
+            queryset = queryset.filter(
+                Q(title__icontains=term) | Q(related_label__icontains=term)
+                | Q(tags__icontains=term),
             )
-        return qs
+        return self._with_relations(queryset).order_by(
+            *query.note_ordering(params.get('ordering')),
+        )
 
 
 class TaskViewSet(PlanningBaseViewSet):
@@ -138,25 +153,29 @@ class TaskViewSet(PlanningBaseViewSet):
         self._apply_assignments(serializer.instance)
 
     def get_queryset(self):
-        user = self.request.user
         params = self.request.query_params
         scope = (params.get('scope') or 'mine').lower()
-        qs = services.tasks_for_scope(user, scope).select_related('owner')
-        state = params.get('status')
-        if state in ('todo', 'doing', 'done', 'cancelled'):
-            qs = qs.filter(status=state)
-        elif params.get('open') in ('1', 'true'):
-            qs = qs.exclude(status__in=(Task.Status.DONE, Task.Status.CANCELLED))
-        if params.get('due') in ('1', 'true'):
-            from django.utils import timezone
-
-            qs = qs.filter(due_date__lte=timezone.localdate()).exclude(
-                status__in=(Task.Status.DONE, Task.Status.CANCELLED),
+        queryset = services.tasks_for_scope(self.request.user, scope)
+        filters = query.task_filters(params, today=timezone.localdate())
+        if filters:
+            queryset = queryset.filter(**filters)
+            if 'assignee_groups__id__in' in filters:
+                queryset = queryset.distinct()
+        term = query.search_term(params)
+        if term:
+            queryset = queryset.filter(
+                Q(title__icontains=term) | Q(related_label__icontains=term)
+                | Q(tags__icontains=term),
             )
-        query = (params.get('q') or params.get('search') or '').strip()
-        if query:
-            qs = qs.filter(Q(title__icontains=query) | Q(related_label__icontains=query))
-        return qs.order_by('-is_pinned', 'status', 'due_date', '-created_at')
+        ordering = query.task_ordering(params.get('ordering'))
+        if 'priority_rank' in ordering:
+            queryset = queryset.annotate(priority_rank=Case(
+                When(priority=Task.Priority.URGENT, then=Value(0)),
+                When(priority=Task.Priority.HIGH, then=Value(1)),
+                When(priority=Task.Priority.NORMAL, then=Value(2)),
+                default=Value(3), output_field=IntegerField(),
+            ))
+        return self._with_relations(queryset).order_by(*ordering)
 
     @action(detail=True, methods=['post'], url_path='toggle')
     def toggle(self, request, pk=None):
@@ -177,10 +196,10 @@ class PlanningGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = PlanningGroup.objects.filter(company=_company(self.request))
-        if getattr(self.request.user, 'is_superuser', False):
-            return qs.prefetch_related('member_rows')
-        return qs.filter(created_by=self.request.user).prefetch_related('member_rows')
+        queryset = PlanningGroup.objects.filter(company=_company(self.request))
+        if not getattr(self.request.user, 'is_superuser', False):
+            queryset = queryset.filter(created_by=self.request.user)
+        return queryset.prefetch_related('member_rows__user')
 
     def perform_create(self, serializer):
         group = serializer.save(company=_company(self.request), created_by=self.request.user)
@@ -189,6 +208,14 @@ class PlanningGroupViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         group = serializer.save()
         self._sync_members(group)
+
+    def perform_destroy(self, instance):
+        owner_id = instance.created_by_id
+        if owner_id not in (None, getattr(self.request.user, 'pk', None)) and not getattr(
+            self.request.user, 'is_superuser', False,
+        ):
+            raise PermissionDenied('فقط سازندهٔ گروه می‌تواند آن را حذف کند.')
+        instance.delete()
 
     @staticmethod
     def _id_list(value):
@@ -216,26 +243,36 @@ class PlanningGroupViewSet(viewsets.ModelViewSet):
 
 
 class PlanningSummaryAPIView(APIView):
-    """خلاصهٔ برنامه‌ریزی برای نشان سایدبار/داشبورد."""
+    """خلاصهٔ برنامه‌ریزی برای نشان سایدبار/داشبورد و نوار شاخص صفحه.
+
+    شمارنده‌ها در چند کوئری تجمیعی گرفته می‌شوند (بدون N+1) و محاسبهٔ نهایی در
+    ``planning.query.summary_payload`` انجام می‌شود.
+    """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from django.utils import timezone
-
         user = request.user
-        notes = services.notes_for_scope(user, 'mine')
-        tasks = services.tasks_for_scope(user, 'mine')
         today = timezone.localdate()
-        open_states = (Task.Status.DONE, Task.Status.CANCELLED)
-        return Response({
-            'notes': notes.count(),
-            'shared_notes': services.notes_for_scope(user, 'shared').count(),
-            'tasks': tasks.count(),
-            'open_tasks': tasks.exclude(status__in=open_states).count(),
-            'done_tasks': tasks.filter(status=Task.Status.DONE).count(),
-            'due_today': tasks.filter(due_date=today).exclude(status__in=open_states).count(),
-            'overdue': tasks.filter(due_date__lt=today).exclude(status__in=open_states).count(),
-            'shared_tasks': services.tasks_for_scope(user, 'shared').count(),
-        })
+        notes = services.notes_for_scope(user, 'mine')
+        note_stats = notes.aggregate(
+            total=Count('pk'), pinned=Count('pk', filter=Q(is_pinned=True)),
+        )
+        tasks = services.tasks_for_scope(user, 'mine')
+        status_counts = {
+            row['status']: row['total']
+            for row in tasks.order_by().values('status').annotate(total=Count('pk'))
+        }
+        open_tasks = tasks.exclude(status__in=(Task.Status.DONE, Task.Status.CANCELLED))
+        payload = query.summary_payload(
+            note_total=note_stats['total'] or 0,
+            note_pinned=note_stats['pinned'] or 0,
+            status_counts=status_counts,
+            due_today=open_tasks.filter(due_date=today).count(),
+            overdue=open_tasks.filter(due_date__lt=today).count(),
+            shared_notes=services.notes_for_scope(user, 'shared').count(),
+            shared_tasks=services.tasks_for_scope(user, 'shared').count(),
+            today=today,
+        )
+        return Response(payload)
 
