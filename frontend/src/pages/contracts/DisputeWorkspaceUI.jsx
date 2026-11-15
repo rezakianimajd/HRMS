@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, Drawer, FormControl,
+  DialogActions, DialogContent, DialogTitle, Divider, FormControl,
   Grid, IconButton, InputLabel, MenuItem, Paper, Select, Stack, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
   Tooltip, Typography,
@@ -229,9 +229,9 @@ export const DisputeDetailDrawer = ({ row, contract, onClose, onEdit, onDelete }
   const severity = severityMeta(row);
   const StatusIcon = status.icon;
   return (
-    <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 440 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden', boxShadow: 'none' } }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <Box sx={{ width: 40, height: 40, borderRadius: '12px', flexShrink: 0, bgcolor: alpha(severity.color, 0.08), color: severity.color, border: `1px solid ${alpha(severity.color, 0.16)}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -294,7 +294,7 @@ export const DisputeDetailDrawer = ({ row, contract, onClose, onEdit, onDelete }
           <Tooltip title="حذف"><Button color="error" variant="outlined" onClick={() => onDelete(row)} sx={{ minWidth: 40, px: 1 }}><DeleteOutlineIcon fontSize="small" /></Button></Tooltip>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 

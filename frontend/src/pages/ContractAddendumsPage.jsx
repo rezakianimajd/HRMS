@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, Drawer, FormControl, Grid, IconButton, InputAdornment,
+  DialogTitle, Divider, FormControl, Grid, IconButton, InputAdornment,
   InputLabel, MenuItem, Paper, Select, Snackbar, Stack, Table, TableBody, TableCell,
   TableHead, TableRow, TextField,
   Tooltip, Typography,
@@ -1465,9 +1465,9 @@ const AddendumDetailDrawer = ({
     || { value: typeValue, label: typeValue, group: 'other', fields: [] };
   const subjects = rowSubjects(row, new Map(subjectOptions.map((item) => [item.value, item])));
   return (
-    <Drawer anchor="right" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 540 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden' } }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Stack direction="row" alignItems="center" spacing={1} sx={{
           p: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper,
         }}>
@@ -1591,7 +1591,7 @@ const AddendumDetailDrawer = ({
           <Button color="error" variant="outlined" onClick={() => onDelete(row)}><DeleteIcon fontSize="small" /></Button>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 

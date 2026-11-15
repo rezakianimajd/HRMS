@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import {
-  Box, Button, Chip, Divider, Drawer,
+  Box, Button, Chip, Dialog, Divider,
   IconButton, Paper, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
@@ -247,9 +247,9 @@ export const StatementDetailDrawer = ({
   const foreign = hasForeignAmount(row, fallbackRate);
   const documents = Array.isArray(row.documents) ? row.documents : [];
   return (
-    <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 445 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden', boxShadow: 'none' } }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <Box sx={{
@@ -355,7 +355,7 @@ export const StatementDetailDrawer = ({
           <Tooltip title="حذف"><Button color="error" variant="outlined" onClick={() => onDelete(row)} sx={{ minWidth: 40, px: 1 }}><DeleteOutlineIcon fontSize="small" /></Button></Tooltip>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 

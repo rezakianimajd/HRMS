@@ -435,11 +435,10 @@ test('eur contracts show their currency, rate and rial equivalent in the guarant
   expect(dialog.textContent).toContain('نرخ تسعیر (ریال به ازای هر واحد)');
   expect(dialog.textContent).toContain('معادل ریالی دریافتی (اختیاری)');
 
-  /* آیکن نوع ابزار تضمین حذف شده است */
-  const instrumentChip = Array.from(dialog.querySelectorAll('.MuiChip-root'))
-    .find((chip) => chip.textContent.trim() === 'چک');
-  expect(instrumentChip).toBeTruthy();
-  expect(instrumentChip.querySelector('svg')).toBeNull();
+  /* دیالوگ کاملاً بدون چیپ است و نوع ابزار با Select انتخاب می‌شود */
+  expect(dialog.querySelector('.MuiChip-root')).toBeNull();
+  expect(dialog.textContent).toContain('نوع ابزار تضمین');
+  expect(dialog.querySelector('button[aria-label="بستن"]')).toBeTruthy();
 
   root.unmount();
 });

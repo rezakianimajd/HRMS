@@ -4,10 +4,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, Drawer, FormControl, FormHelperText,
+  DialogContent, DialogTitle, Divider, FormControl, FormHelperText,
   Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
   Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Tooltip, Typography,
+  TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -569,17 +569,21 @@ const InfoLine = ({ label, value, strong, ltr }) => {
   );
 };
 
-const SectionHeading = ({ icon: Icon, title, color = '#2563eb', action }) => (
-  <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.8 }}>
+const SectionHeading = ({ icon: Icon, title, subtitle, color = '#2563eb', action }) => (
+  <Stack direction="row" alignItems="center" sx={{ gap: '12px', mb: 1.2, minWidth: 0 }}>
     {Icon ? (
       <Box sx={{
-        width: 27, height: 27, borderRadius: '8px', color, bgcolor: alpha(color, 0.08),
+        width: 31, height: 31, borderRadius: '10px', color, bgcolor: alpha(color, 0.08),
+        border: `1px solid ${alpha(color, 0.18)}`, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Icon sx={{ fontSize: 15 }} />
+        <Icon sx={{ fontSize: 17 }} />
       </Box>
     ) : null}
-    <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>{title}</Typography>
+    <Box sx={{ flex: 1, minWidth: 0 }}>
+      <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK, lineHeight: 1.55 }}>{title}</Typography>
+      {subtitle ? <Typography sx={{ fontSize: 10.5, color: MUTED, lineHeight: 1.6 }}>{subtitle}</Typography> : null}
+    </Box>
     {action || null}
   </Stack>
 );
@@ -637,7 +641,7 @@ const uploadGuaranteeFiles = async (guaranteeId, contractId, files = []) => {
 };
 
 
-const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, currency, accent }) => {
+const GuaranteeDetailDialog = ({ row, onClose, onEdit, onDelete, onAction, currency, accent }) => {
   const theme = useTheme();
   if (!row) return null;
   const meta = instrumentMeta(row);
@@ -645,9 +649,14 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
   const validity = validityOf(row);
   const days = validity.days;
   return (
-    <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 430 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{
+        sx: {
+          bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden',
+          boxShadow: theme.shadows[10],
+        },
+      }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <Box sx={{
@@ -816,7 +825,7 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
           <Button fullWidth variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => onDelete(row)}>حذف</Button>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 
@@ -829,6 +838,25 @@ const GuaranteeEditorDialog = ({
   currencyForContract, onAddFiles, onRemovePending,
 }) => {
   const theme = useTheme();
+  const { tokens } = useDesignTokens();
+  const surfaces = tokens.surfaces || {};
+  const shape = tokens.shape || {};
+  const shadows = tokens.shadows || {};
+  const palette = tokens.colors || {};
+  const radiusLarge = shape.large || '16px';
+  const radiusMedium = shape.medium || '12px';
+  const borderColor = palette.border || theme.palette.divider;
+  const dialogSurface = surfaces.dialog || theme.palette.background.paper;
+  const pageSurface = surfaces.page || theme.palette.background.default;
+  const cardSurface = surfaces.card || theme.palette.background.paper;
+  const cardShadow = shadows.card || 'none';
+  const sectionSx = {
+    p: { xs: 1.25, sm: 1.6 },
+    borderRadius: radiusLarge,
+    border: `1px solid ${borderColor}`,
+    bgcolor: cardSurface,
+    boxShadow: cardShadow,
+  };
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
   const dialogContract = contractList.find((item) => String(item.id) === String(form.contract)) || null;
   const dialogCurrency = currencyForContract
@@ -842,28 +870,47 @@ const GuaranteeEditorDialog = ({
     : null;
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
-      PaperProps={{ sx: { borderRadius: '16px', boxShadow: 'none' } }}>
-      <DialogTitle sx={{
-        display: 'flex', alignItems: 'center', gap: 1.2, px: 2.25, py: 1.6,
-        borderBottom: `1px solid ${theme.palette.divider}`,
+      PaperProps={{
+        sx: {
+          borderRadius: radiusLarge, overflow: 'hidden',
+          bgcolor: pageSurface, border: `1px solid ${borderColor}`,
+          boxShadow: shadows.dialog || theme.shadows[8],
+        },
+      }}>
+      <Box sx={{
+        px: 2.25, py: 1.6, display: 'flex', alignItems: 'center', gap: '14px',
+        borderBottom: `1px solid ${borderColor}`,
+        background: `linear-gradient(135deg, ${alpha(accent, 0.11)}, ${alpha(accent, 0.02)})`,
       }}>
         <Box sx={{
-          width: 37, height: 37, borderRadius: '11px', flexShrink: 0,
-          bgcolor: alpha(accent, 0.08), color: accent, border: `1px solid ${alpha(accent, 0.16)}`,
+          width: 42, height: 42, borderRadius: '13px', flexShrink: 0,
+          bgcolor: alpha(accent, 0.1), color: accent, border: `1px solid ${alpha(accent, 0.2)}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <LockIcon sx={{ fontSize: 19 }} />
+          <LockIcon sx={{ fontSize: 21 }} />
         </Box>
-        <Typography sx={{ flex: 1, fontSize: 13, fontWeight: 900, color: INK }}>
-          {form.id ? 'ویرایش تضمین' : 'ثبت تضمین جدید'}
-        </Typography>
-        <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
-      </DialogTitle>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 900, color: INK, lineHeight: 1.6 }}>
+            {form.id ? 'ویرایش تضمین' : 'ثبت تضمین جدید'}
+          </Typography>
+          <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+            {`ارز قرارداد: ${dialogCurrency}`}
+            {foreignCurrency && contractRate > 0
+              ? ` · نرخ تسعیر قرارداد: ${formatPersianNumber(contractRate)} ریال`
+              : ''}
+          </Typography>
+        </Box>
+        <IconButton size="small" aria-label="بستن" onClick={onClose}
+          sx={{ color: MUTED, bgcolor: alpha(theme.palette.text.primary, 0.04) }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
 
-      <DialogContent sx={{ p: 2.25 }}>
-        <Stack spacing={2}>
-          <Box>
-            <SectionHeading icon={DescriptionIcon} title="قرارداد و نوع تضمین" color={accent} />
+      <DialogContent sx={{ p: { xs: 1.5, sm: 2 }, maxHeight: '72vh', bgcolor: pageSurface }}>
+        <Stack spacing={1.5}>
+          <Box sx={sectionSx}>
+            <SectionHeading icon={DescriptionIcon} title="قرارداد و نوع تضمین" color={accent}
+              subtitle="قرارداد مرتبط، قلم ضمانت و ابزار تأمین تضمین" />
             <Grid container spacing={1.25}>
               <Grid item xs={12} md={6}>
                 <FormControl size="small" fullWidth>
@@ -915,30 +962,23 @@ const GuaranteeEditorDialog = ({
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12}>
-                <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.6 }}>نوع ابزار تضمین</Typography>
-                <Box sx={{ display: 'flex', gap: 0.65, flexWrap: 'wrap' }}>
-                  {Object.entries(INSTRUMENT_META).map(([key, meta]) => {
-                    const active = form.instrument_type === key;
-                    return (
-                      <Chip key={key} label={meta.label}
-                        onClick={() => update('instrument_type', key)}
-                        sx={{
-                          cursor: 'pointer', borderRadius: '9px', fontWeight: 800, fontSize: 12,
-                          bgcolor: active ? meta.color : alpha(meta.color, 0.07),
-                          color: active ? '#fff' : meta.color,
-                          border: `1px solid ${active ? meta.color : alpha(meta.color, 0.25)}`,
-                        }} />
-                    );
-                  })}
-                </Box>
+              <Grid item xs={12} md={6}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>نوع ابزار تضمین</InputLabel>
+                  <Select value={form.instrument_type} label="نوع ابزار تضمین"
+                    onChange={(event) => update('instrument_type', event.target.value)}>
+                    {Object.entries(INSTRUMENT_META).map(([key, meta]) => (
+                      <MenuItem key={key} value={key}>{meta.label}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
           </Box>
 
-          <Divider />
-          <Box>
-            <SectionHeading icon={PaymentsIcon} title="مشخصات مالی و زمانی" color="#2563eb" />
+          <Box sx={sectionSx}>
+            <SectionHeading icon={PaymentsIcon} title="مشخصات مالی و زمانی" color="#2563eb"
+              subtitle={foreignCurrency ? `مبلغ به ${dialogCurrency} و معادل ریالی با نرخ تسعیر` : `مبلغ به ${dialogCurrency}`} />
             <Grid container spacing={1.25}>
               <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label={`مبلغ (${dialogCurrency})`} value={form.amount} onChange={(value) => update('amount', value)} /></Grid>
               <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ صدور" value={form.issue_date} onChange={(value) => update('issue_date', value)} /></Grid>
@@ -949,35 +989,41 @@ const GuaranteeEditorDialog = ({
               {foreignCurrency ? (
                 <Grid item xs={12}>
                   <Paper elevation={0} sx={{
-                    p: 1, borderRadius: '12px', border: '1px dashed',
-                    borderColor: alpha('#0ea5e9', 0.4), bgcolor: alpha('#0ea5e9', 0.04),
+                    p: { xs: 1, sm: 1.25 }, borderRadius: radiusMedium,
+                    border: `1px dashed ${alpha(accent, 0.45)}`,
+                    bgcolor: alpha(accent, 0.035),
                   }}>
-                    <Stack spacing={0.9}>
-                      <Stack direction="row" spacing={0.5} alignItems="center" useFlexGap flexWrap="wrap">
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: '#0e7490' }}>
-                          {`قرارداد ارزی (${dialogCurrency})`}
-                        </Typography>
-                        <Box sx={{ flex: 1 }} />
-                        {[
-                          { value: 'instrument', label: 'ابزار تضمین (به ارز)' },
-                          { value: 'cash_equivalent', label: 'معادل ریالی نقدی' },
-                        ].map((option) => {
-                          const active = (form.settlement_type || 'instrument') === option.value;
-                          return (
-                            <Chip
-                              key={option.value}
-                              clickable
-                              label={option.label}
-                              onClick={() => update('settlement_type', option.value)}
-                              sx={{
-                                height: 24, fontSize: 10.5, fontWeight: 800,
-                                bgcolor: active ? '#0e7490' : 'transparent',
-                                color: active ? '#fff' : '#0e7490',
-                                border: `1px solid ${active ? '#0e7490' : alpha('#0e7490', 0.3)}`,
-                              }}
-                            />
-                          );
-                        })}
+                    <Stack spacing={1}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} useFlexGap>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: accent }}>
+                            {`قرارداد ارزی (${dialogCurrency})`}
+                          </Typography>
+                          <Typography sx={{ fontSize: 10.5, color: MUTED, lineHeight: 1.7 }}>
+                            طرف قرارداد می‌تواند ابزار ارزی یا معادل ریالی به نرخ روز بدهد.
+                          </Typography>
+                        </Box>
+                        <ToggleButtonGroup
+                          exclusive
+                          size="small"
+                          value={form.settlement_type || 'instrument'}
+                          onChange={(_event, value) => value && update('settlement_type', value)}
+                          sx={{
+                            bgcolor: cardSurface,
+                            borderRadius: '10px',
+                            '& .MuiToggleButton-root': {
+                              px: 1.4, py: 0.45, fontSize: 10.5, fontWeight: 800,
+                              borderColor: alpha(accent, 0.22), color: MUTED,
+                              '&.Mui-selected': {
+                                bgcolor: alpha(accent, 0.1), color: accent,
+                                borderColor: alpha(accent, 0.35),
+                                '&:hover': { bgcolor: alpha(accent, 0.14) },
+                              },
+                            },
+                          }}>
+                          <ToggleButton value="instrument">ابزار تضمین (به ارز)</ToggleButton>
+                          <ToggleButton value="cash_equivalent">معادل ریالی نقدی</ToggleButton>
+                        </ToggleButtonGroup>
                       </Stack>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
                         <MoneyInput
@@ -1015,48 +1061,39 @@ const GuaranteeEditorDialog = ({
           </Box>
 
           {needsInstrument(form.instrument_type) ? (
-            <>
-              <Divider />
-              <Box>
-                <SectionHeading icon={ReceiptLongIcon} title="اطلاعات چک" color="#b45309" />
-                <Grid container spacing={1.25}>
-                  <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره چک" value={form.check_number} onChange={(event) => update('check_number', event.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک چک" value={form.check_bank} onChange={(event) => update('check_bank', event.target.value)} /></Grid>
-                  <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ سررسید چک" value={form.check_due_date} onChange={(value) => update('check_due_date', value)} /></Grid>
-                </Grid>
-              </Box>
-            </>
+            <Box sx={sectionSx}>
+              <SectionHeading icon={ReceiptLongIcon} title="اطلاعات چک" color="#b45309" />
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره چک" value={form.check_number} onChange={(event) => update('check_number', event.target.value)} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک چک" value={form.check_bank} onChange={(event) => update('check_bank', event.target.value)} /></Grid>
+                <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ سررسید چک" value={form.check_due_date} onChange={(value) => update('check_due_date', value)} /></Grid>
+              </Grid>
+            </Box>
           ) : null}
 
           {needsPromissory(form.instrument_type) ? (
-            <>
-              <Divider />
-              <Box>
-                <SectionHeading icon={NoteAltIcon} title="اطلاعات سفته" color="#7c3aed" />
-                <Grid container spacing={1.25}>
-                  <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره سفته" value={form.promissory_number} onChange={(event) => update('promissory_number', event.target.value)} /></Grid>
-                  <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ سررسید سفته" value={form.promissory_due_date} onChange={(value) => update('promissory_due_date', value)} /></Grid>
-                </Grid>
-              </Box>
-            </>
+            <Box sx={sectionSx}>
+              <SectionHeading icon={NoteAltIcon} title="اطلاعات سفته" color="#7c3aed" />
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره سفته" value={form.promissory_number} onChange={(event) => update('promissory_number', event.target.value)} /></Grid>
+                <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ سررسید سفته" value={form.promissory_due_date} onChange={(value) => update('promissory_due_date', value)} /></Grid>
+              </Grid>
+            </Box>
           ) : null}
 
           {needsGuarantee(form.instrument_type) ? (
-            <>
-              <Divider />
-              <Box>
-                <SectionHeading icon={AccountBalanceIcon} title="اطلاعات ضمانت‌نامه" color="#0f766e" />
-                <Grid container spacing={1.25}>
-                  <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره ضمانت‌نامه" value={form.guarantee_number} onChange={(event) => update('guarantee_number', event.target.value)} /></Grid>
-                  <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ انقضای ضمانت‌نامه" value={form.guarantee_expiry_date} onChange={(value) => update('guarantee_expiry_date', value)} /></Grid>
-                </Grid>
-              </Box>
-            </>
+            <Box sx={sectionSx}>
+              <SectionHeading icon={AccountBalanceIcon} title="اطلاعات ضمانت‌نامه" color="#0f766e" />
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره ضمانت‌نامه" value={form.guarantee_number} onChange={(event) => update('guarantee_number', event.target.value)} /></Grid>
+                <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ انقضای ضمانت‌نامه" value={form.guarantee_expiry_date} onChange={(value) => update('guarantee_expiry_date', value)} /></Grid>
+              </Grid>
+            </Box>
           ) : null}
 
-          <Divider />
-          <Box>
-            <SectionHeading icon={PictureAsPdfIcon} title="پیوست PDF تضمین" color="#be123c" />
+          <Box sx={sectionSx}>
+            <SectionHeading icon={PictureAsPdfIcon} title="پیوست PDF تضمین" color="#be123c"
+              subtitle="فقط PDF · حداکثر ۲۵ مگابایت برای هر فایل" />
             <AttachmentPicker
               documents={form.documents || []}
               pendingFiles={form.pendingFiles || []}
@@ -1069,17 +1106,27 @@ const GuaranteeEditorDialog = ({
             />
           </Box>
 
-          <Divider />
-          <TextField size="small" fullWidth multiline rows={2} label="یادداشت" value={form.note}
-            onChange={(event) => update('note', event.target.value)} />
+          <Box sx={sectionSx}>
+            <SectionHeading icon={NoteAltIcon} title="یادداشت" color={MUTED} />
+            <TextField size="small" fullWidth multiline rows={2} label="یادداشت" value={form.note}
+              onChange={(event) => update('note', event.target.value)} />
+          </Box>
 
           {error ? <Alert severity="error" onClose={() => setError('')}>{error}</Alert> : null}
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 2.25, py: 1.5, borderTop: `1px solid ${theme.palette.divider}` }}>
-        <Button onClick={onClose}>انصراف</Button>
-        <Button variant="contained" disabled={saving || !form.contract || !form.guarantee_type} onClick={onSave}>
+      <DialogActions sx={{
+        px: 2.25, py: 1.4, gap: 1,
+        borderTop: `1px solid ${borderColor}`,
+        bgcolor: dialogSurface,
+      }}>
+        <Button onClick={onClose} sx={{ color: MUTED }}>انصراف</Button>
+        <Button variant="contained" disabled={saving || !form.contract || !form.guarantee_type} onClick={onSave}
+          sx={{
+            px: 2.4, borderRadius: shape.medium || '10px', fontWeight: 800,
+            boxShadow: 'none', bgcolor: accent, '&:hover': { bgcolor: accent, filter: 'brightness(0.94)' },
+          }}>
           {saving ? <CircularProgress size={18} color="inherit" /> : 'ذخیره تضمین'}
         </Button>
       </DialogActions>
@@ -2032,7 +2079,7 @@ const GuaranteesPage = () => {
         </Grid>
       )}
 
-      <GuaranteeDetailDrawer row={detail} onClose={() => setDetail(null)}
+      <GuaranteeDetailDialog row={detail} onClose={() => setDetail(null)}
         onEdit={openEdit} onDelete={setConfirmDelete}
         onAction={({ row, action }) => openLifecycle(row, action)}
         currency={detail ? guaranteeCurrency(detail) : currencyLabel} accent={accent} />

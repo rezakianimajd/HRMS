@@ -819,7 +819,7 @@ const CoverageGauge = ({ percent = 0, size = 132, thickness = 14, color = '#2563
       </svg>
       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <Typography sx={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1.1 }}>
-          {toPersianDigits(Math.round(clamped))}٪
+          {toPersianDigits(Math.round(Number(percent) || 0))}٪
         </Typography>
         <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label || 'پوشش'}</Typography>
         {value ? <Typography sx={{ mt: 0.15, fontSize: 10, fontWeight: 700, color: MUTED }}>{value}</Typography> : null}
@@ -1066,10 +1066,11 @@ export const GuaranteesTab = ({ ctx }) => {
               key: 'coverage', label: 'پوشش از قلم', width: '12%',
               render: (row) => {
                 if (!row.requirement_required) return <CellText>—</CellText>;
-                const share = Math.min(100, Math.round((Number(row.amount || 0) / row.requirement_required) * 100));
+                const rawShare = Math.round((Number(row.amount || 0) / row.requirement_required) * 100);
+                const share = Math.max(0, Math.min(100, rawShare));
                 return (
                   <Stack spacing={0.3} alignItems="center" sx={{ width: '100%' }}>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{toPersianDigits(share)}٪</Typography>
+                    <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{toPersianDigits(rawShare)}٪</Typography>
                     <Box sx={{ width: '82%', height: 5, borderRadius: 3, bgcolor: alpha(theme.palette.text.primary, 0.07), overflow: 'hidden' }}>
                       <Box sx={{ width: `${share}%`, height: '100%', bgcolor: theme.palette.primary.main, opacity: 0.85 }} />
                     </Box>

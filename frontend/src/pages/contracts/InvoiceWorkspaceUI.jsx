@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, Drawer, FormControl, FormControlLabel,
+  DialogContent, DialogTitle, Divider, FormControl, FormControlLabel,
   Grid, IconButton, InputLabel, MenuItem, Paper, Select, Stack, Switch,
   TextField,
   Tooltip, Typography,
@@ -88,9 +88,9 @@ export const InvoiceDetailDrawer = ({
     ? Math.ceil((new Date(`${String(row.due_date).slice(0, 10)}T00:00:00`) - new Date(`${today()}T00:00:00`)) / 86400000)
     : null;
   return (
-    <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 445 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden', boxShadow: 'none' } }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <Box sx={{
@@ -180,7 +180,7 @@ export const InvoiceDetailDrawer = ({
           <Tooltip title="حذف"><Button color="error" variant="outlined" onClick={() => onDelete(row)} sx={{ minWidth: 40, px: 1 }}><DeleteOutlineIcon fontSize="small" /></Button></Tooltip>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 

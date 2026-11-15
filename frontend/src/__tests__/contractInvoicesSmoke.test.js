@@ -72,6 +72,8 @@ beforeEach(() => {
   }));
   axiosInstance.get.mockImplementation((url) => {
     if (url === '/external-contracts/') return Promise.resolve({ data: [contract] });
+    if (url === '/external-contracts/options/') return Promise.resolve({ data: [contract] });
+
     if (url === '/currencies/') return Promise.resolve({ data: [{ id: 1, name: 'ریال ایران', symbol: '﷼', code: 'IRR' }] });
     if (url === '/contract-invoices/') return Promise.resolve({ data: [invoice] });
     if (url === '/contract-payments/') return Promise.resolve({ data: [payment] });

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Button, ButtonBase, Chip, CircularProgress, Divider, Drawer,
+  Box, Button, ButtonBase, Chip, CircularProgress, Dialog, Divider,
   FormControl, Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper,
   Select, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
@@ -548,9 +548,9 @@ const EventDrawer = ({ event, onClose, onOpenContract, onOpenModule }) => {
   const meta = EVENT_TYPES[event.kind] || { label: 'رویداد', color: '#64748b', icon: CalendarMonthIcon };
   const Icon = meta.icon;
   return (
-    <Drawer anchor="left" open={Boolean(event)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 420 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(event)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden', boxShadow: 'none' } }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.75, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <Box sx={{
@@ -610,7 +610,7 @@ const EventDrawer = ({ event, onClose, onOpenContract, onOpenModule }) => {
           </Button>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 

@@ -50,6 +50,31 @@ class GuaranteeAmountTests(SimpleTestCase):
         self.assertEqual(amounts.round_rial(None), 0)
         self.assertEqual(amounts.round_rial('bad'), 0)
 
+    def test_over_coverage_above_100_percent_is_kept(self):
+        from types import SimpleNamespace as NS
+
+        from contracts.guarantee_status import guarantee_compliance
+
+        contract = NS(
+            guarantee_items=[{'type': 'performance', 'percent': 10, 'amount': None, 'note': ''}],
+            guarantee_type='', guarantee_amount=None, amount=10000, guarantees=[],
+        )
+        guarantee = NS(
+            id=9, contract_guarantee_index=0, guarantee_type='performance',
+            instrument_type='bank_guarantee', number='G-OVER', amount=1200,
+            currency=None, exchange_rate=None, settlement_type='instrument', rial_amount=None,
+            contract=None, bank='', issue_date=None, expiry_date=None,
+            guarantee_expiry_date=None, check_due_date=None, promissory_due_date=None,
+            is_released=False, release_date=None, note='',
+        )
+        report = guarantee_compliance(contract, guarantees=[guarantee], effective_amount=10000)
+        requirement = report['requirements'][0]
+        self.assertEqual(requirement['required'], 1000.0)
+        self.assertEqual(requirement['coverage_percent'], 120.0)
+        self.assertEqual(requirement['status'], 'provided')
+        self.assertEqual(requirement['balance'], 0.0)
+        self.assertEqual(report['summary']['coverage_percent'], 120.0)
+
     def test_guarantee_payload_exposes_currency_and_rial_equivalent(self):
         from types import SimpleNamespace as NS
 

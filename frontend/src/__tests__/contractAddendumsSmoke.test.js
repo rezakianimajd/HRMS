@@ -70,6 +70,8 @@ beforeEach(() => {
   }));
   axiosInstance.get.mockImplementation((url) => {
     if (url === '/external-contracts/') return Promise.resolve({ data: [contract] });
+    if (url === '/external-contracts/options/') return Promise.resolve({ data: [contract] });
+
     if (url === '/currencies/') return Promise.resolve({ data: [] });
     if (url === '/contract-addendums/subject-types/') return Promise.resolve({ data: { subjects: [] } });
     if (url === '/contract-addendums/') return Promise.resolve({ data: addendums });

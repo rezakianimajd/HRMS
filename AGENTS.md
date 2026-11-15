@@ -639,9 +639,25 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     انتخاب «ابزار تضمین / معادل ریالی نقدی»، معادل ریالی زنده و فیلد اختیاری «معادل ریالی دریافتی» دارد.
     آیکن‌های نوع ابزار تضمین حذف شدند. فهرست تضامین، پروندهٔ قرارداد و صفحهٔ پایش مبلغ ارزی + `≈ … ریال`
     را نشان می‌دهند و KPI پایش روی معادل ریالی جمع می‌زند.
-  - تست: `contracts.tests_guarantee_amounts` (۷، DB-free) + سوئیت DB-free قراردادها (۶۷)؛ فرانت
-    `guaranteesSmoke` (۴، شامل قرارداد یورویی) + `contractGuaranteesMonitorSmoke` + `contractProfileSmoke`.
-    باندل زنده: **`main.389845ee.js`**. فایل‌های بک‌اند در `/var/tmp/hrms-guarantee` آماده‌اند؛
+  - **بازطراحی دیالوگ تضمین (۲۰۲۶-۱۱-۱۵):** کل `GuaranteeEditorDialog` روی توکن‌های استودیو تم
+    (`surfaces.dialog/card/page`, `shape`, `shadows`, `colors.border`) بازنویسی شد: هدر گرادیانی با
+    آیکن ۴۲px و فاصلهٔ `14px` تا عنوان (RTL-safe با `gap`)، بدنهٔ بخش‌بندی‌شده به کارت‌های تم‌محور با
+    زیرعنوان، فوتر چسبان با دکمهٔ accent. **هیچ چیپی در دیالوگ نیست**: نوع ابزار و ضمانت با `Select`
+    و «ابزار تضمین / معادل ریالی نقدی» با `ToggleButtonGroup`. فاصلهٔ آیکن/عنوان همهٔ `SectionHeading`ها
+    با `gap: 12px` و آیکن ۳۱px یکدست شد.
+  - **پوشش بیش از ۱۰۰٪ (۲۰۲۶-۱۱-۱۵):** `guarantee_status` دیگر `coverage_percent` را سقف نمی‌زند؛
+    تضمین ۱۲۰٪ یا ۲۰۰٪ همان عدد را نشان می‌دهد (status `provided`، کمبود ۰). `CoverageGauge` کمان را
+    برای نمایش در ۱۰۰٪ نگه می‌دارد اما عدد واقعی را می‌نویسد، و «پوشش هر قلم/پوشش از قلم» و KPIها
+    مقدار واقعی را نشان می‌دهند (نوار پیشرفت فقط برای نمایش در ۱۰۰٪ clamp می‌شود).
+  - **دیالوگ‌های مرکزی در مدیریت قراردادها (۲۰۲۶-۱۱-۱۵):** همهٔ کشوهای جزئیات ردیف (`GuaranteesPage`،
+    `ContractDocumentsPage`، `ContractPaymentsPage`، `ContractAddendumsPage`، `ContractCalendarPage`،
+    `Statement/Invoice/Dispute` workspace) از `Drawer anchor="left|right"` به **`Dialog` مرکزی**
+    (`maxWidth="md"`، ارتفاع حداکثر ۸۶vh) تبدیل شدند؛ دیگر هیچ ردیفی کشوی کناری باز نمی‌کند.
+  - تست: `contracts.tests_guarantee_amounts` (۸، DB-free شامل «پوشش ۱۲۰٪») + سوئیت DB-free قراردادها (۶۷)؛
+    فرانت `guaranteesSmoke` (۴، شامل قرارداد یورویی و «دیالوگ بدون چیپ») + `contractGuaranteesMonitorSmoke`
+    + `contractProfileSmoke` + `contractStatementsSmoke`/`contractInvoicesSmoke`/`contractPaymentsSmoke`/
+    `contractDisputesSmoke`/`contractAddendumsSmoke`/`contractCalendarSmoke`/`contractDocumentsPageSmoke`.
+    باندل زنده: **`main.5233ddba.js`**. فایل‌های بک‌اند در `/var/tmp/hrms-guarantee` آماده‌اند؛
     اجرای `migrate_schemas` + restart نیازمند رمز sudo است (اسکریپت `apply.sh` همان‌جا).
 
 - **تب «تقویم شخصی» با پیوند دوطرفه به وظایف و یادداشت‌ها (۲۰۲۶-۱۱-۱۵):**

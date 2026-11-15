@@ -239,7 +239,8 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
         required = round(requirement['required'] or 0.0, 2)
         balance = round(max(required - fulfilled, 0.0), 2)
         if required > 0:
-            coverage = round(min(fulfilled / required * 100.0, 100.0), 1)
+            # پوشش می‌تواند بیش از ۱۰۰٪ باشد (مثلاً ۱۲۰٪ یا ۲۰۰٪)؛ سقف نمی‌گذاریم.
+            coverage = round(fulfilled / required * 100.0, 1)
         else:
             coverage = 100.0 if fulfilled else 0.0
 

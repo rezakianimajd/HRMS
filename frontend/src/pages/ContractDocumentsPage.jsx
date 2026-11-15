@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, Drawer, FormControl, Grid,
+  DialogContent, DialogTitle, Divider, FormControl, Grid,
   IconButton, InputAdornment, InputLabel, LinearProgress, MenuItem, Paper, Select,
   Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Tooltip, Typography,
@@ -537,9 +537,9 @@ const DocumentDetailDrawer = ({ row, onClose, onEdit, onDelete, accent }) => {
   const isImage = meta.key === 'image';
 
   return (
-    <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 500 }, bgcolor: SOFT_BG } }}>
-      <Stack sx={{ height: '100%' }}>
+    <Dialog open={Boolean(row)} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: SOFT_BG, borderRadius: '16px', overflow: 'hidden', boxShadow: 'none' } }}>
+      <Stack sx={{ maxHeight: { xs: '92vh', sm: '86vh' } }}>
         <Box sx={{ p: 1.7, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
             <FileBadge row={row} size={42} />
@@ -617,7 +617,7 @@ const DocumentDetailDrawer = ({ row, onClose, onEdit, onDelete, accent }) => {
           <Button fullWidth variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => onDelete(row)}>حذف</Button>
         </Stack>
       </Stack>
-    </Drawer>
+    </Dialog>
   );
 };
 

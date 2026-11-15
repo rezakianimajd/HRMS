@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, Drawer,
+  DialogActions, DialogContent, DialogTitle, Divider,
   IconButton, Paper,
   Snackbar, Stack,
   Tooltip, Typography, alpha,
@@ -135,7 +135,7 @@ const SectionHeading = ({ icon: Icon, title, color = TEAL, action }) => (
   </Stack>
 );
 
-const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, onClose, onEdit, onDelete }) => {
+const PaymentDetailDialog = ({ payment, currency, contractRate = 1, contract, onClose, onEdit, onDelete }) => {
   const open = Boolean(payment);
   const row = payment || {};
   const info = statementInfo(row, contractRate, currency);
@@ -148,10 +148,10 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
   const color = methodColor(row.method);
   const typeMeta = paymentTypeOf(row);
   return (
-    <Drawer anchor="left" open={open} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 440 }, bgcolor: '#f8fafc' } }}>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
+      PaperProps={{ sx: { bgcolor: '#f8fafc', borderRadius: '16px', overflow: 'hidden' } }}>
       {payment ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', maxHeight: { xs: '92vh', sm: '86vh' } }}>
           <Box sx={{
             p: 2.2, color: '#fff', position: 'relative', overflow: 'hidden',
             background: `linear-gradient(135deg, ${TEAL}, #115e59 62%, #134e4a)`,
@@ -311,7 +311,7 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
           </Stack>
         </Box>
       ) : null}
-    </Drawer>
+    </Dialog>
   );
 };
 
@@ -984,7 +984,7 @@ const ContractPaymentsPage = () => {
         </>
       )}
 
-      <PaymentDetailDrawer payment={detail} currency={contractCurrency} contractRate={contractRate} contract={selectedContract}
+      <PaymentDetailDialog payment={detail} currency={contractCurrency} contractRate={contractRate} contract={selectedContract}
         onClose={() => setDetail(null)} onEdit={openEdit}
         onDelete={(row) => { setDeleteTarget(row); setDetail(null); }} />
 
