@@ -604,6 +604,15 @@ def user_create_view(request):
         from core.models import Application
         p.applications.set(Application.objects.filter(id__in=app_ids, is_active=True))
 
+    from core.models.user import UserAccess
+    access, _ = UserAccess.objects.get_or_create(user=u)
+    access.applications = [str(item) for item in app_ids]
+    if data.get('full_access'):
+        access.is_full_access = True
+        access.permissions = {}
+    access.updated_by = getattr(request.user, 'username', '')
+    access.save()
+
     return Response({
         'message': 'کاربر ساخته شد.',
         'user': {
@@ -668,6 +677,18 @@ def user_update_view(request, user_id):
         if profile.current_application_id and profile.current_application_id not in ids:
             profile.current_application = None
             update_fields.append('current_application')
+
+    if 'application_ids' in data or 'full_access' in data:
+        from core.models.user import UserAccess
+        access, _ = UserAccess.objects.get_or_create(user=user)
+        if 'application_ids' in data:
+            access.applications = [str(item) for item in (data.get('application_ids') or []) if str(item).isdigit()]
+        if 'full_access' in data:
+            access.is_full_access = bool(data.get('full_access'))
+            if access.is_full_access:
+                access.permissions = {}
+        access.updated_by = getattr(request.user, 'username', '')
+        access.save()
 
     # اتصال/قطع اتصال پروندهٔ پرسنلی (منبع عکس و جنسیت کاربر)
     if 'employee_id' in data:

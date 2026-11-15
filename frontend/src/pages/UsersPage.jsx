@@ -142,7 +142,7 @@ const UserEditDialog = ({
       email: user.email || '',
       password: '',
       employee_id: user.employee_id || null,
-      application_ids: user.applications || [],
+      application_ids: (user.applications || []).map(Number),
       full_access: Boolean(user.is_full_access),
     } : EMPTY_USER);
   }, [open, user]);
@@ -381,6 +381,11 @@ const UsersTab = ({ apps, onMessage, onOpenAccess }) => {
     ].filter(Boolean).join(' ').toLowerCase().includes(term);
   });
 
+  const appById = useMemo(
+    () => new Map((apps || []).map((app) => [Number(app.id), app])),
+    [apps],
+  );
+
   return (
     <Box>
       <Paper elevation={0} sx={{ ...SURFACE, p: 1.25, mb: 1.5 }}>
@@ -496,30 +501,58 @@ const UsersTab = ({ apps, onMessage, onOpenAccess }) => {
                           <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
                             همهٔ ماژول‌ها
                           </Typography>
-                        ) : (user.modules || []).length ? (
-                          <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                            {user.modules.slice(0, 4).map((module) => (
-                              <Chip
-                                key={module.slug}
-                                size="small"
-                                label={`${module.name} · ${formatPersianNumber(module.count)}`}
-                                sx={{
-                                  height: 20, fontSize: 9.5,
-                                  bgcolor: alpha(module.color || SOFT.slate, 0.12),
-                                  color: module.color || SOFT.slate,
-                                }}
-                              />
-                            ))}
-                            {user.modules.length > 4 ? (
-                              <Chip size="small"
-                                label={`+${formatPersianNumber(user.modules.length - 4)}`}
-                                sx={{ height: 20, fontSize: 9.5 }} />
-                            ) : null}
-                          </Stack>
                         ) : (
-                          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                            هنوز مجوزی تعیین نشده
-                          </Typography>
+                          (() => {
+                            const selectedApps = (user.applications || [])
+                              .map((id) => appById.get(Number(id)))
+                              .filter(Boolean);
+                            if (selectedApps.length) {
+                              return (
+                                <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                                  {selectedApps.slice(0, 4).map((app) => (
+                                    <Chip
+                                      key={app.id}
+                                      size="small"
+                                      label={moduleLabel(app)}
+                                      sx={{
+                                        height: 20, fontSize: 9.5,
+                                        bgcolor: alpha(app.color || SOFT.slate, 0.12),
+                                        color: app.color || SOFT.slate,
+                                      }}
+                                    />
+                                  ))}
+                                  {selectedApps.length > 4 ? (
+                                    <Chip size="small"
+                                      label={`+${formatPersianNumber(selectedApps.length - 4)}`}
+                                      sx={{ height: 20, fontSize: 9.5 }} />
+                                  ) : null}
+                                </Stack>
+                              );
+                            }
+                            if ((user.modules || []).length) {
+                              return (
+                                <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                                  {user.modules.slice(0, 4).map((module) => (
+                                    <Chip
+                                      key={module.slug}
+                                      size="small"
+                                      label={`${module.name} · ${formatPersianNumber(module.count)}`}
+                                      sx={{
+                                        height: 20, fontSize: 9.5,
+                                        bgcolor: alpha(module.color || SOFT.slate, 0.12),
+                                        color: module.color || SOFT.slate,
+                                      }}
+                                    />
+                                  ))}
+                                </Stack>
+                              );
+                            }
+                            return (
+                              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                                هنوز مجوزی تعیین نشده
+                              </Typography>
+                            );
+                          })()
                         )}
                       </TableCell>
 
@@ -731,7 +764,7 @@ const PermissionMatrix = ({ catalog, actions, draft, onToggleCodes, search }) =>
 };
 
 
-const UserAccessTab = ({ catalog, actions, initialUserId, onMessage, onSaved }) => {
+const UserAccessTab = ({ catalog, actions, apps = [], initialUserId, onMessage, onSaved }) => {
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState(initialUserId || null);
   const [search, setSearch] = useState('');
@@ -769,9 +802,35 @@ const UserAccessTab = ({ catalog, actions, initialUserId, onMessage, onSaved }) 
 
   const selectedUser = users.find((user) => user.id === selectedId);
   const granted = Object.values(draft).filter(Boolean).length;
+  const selectedApplicationIds = useMemo(
+    () => (selectedUser?.applications || accessData?.applications || []).map(Number),
+    [selectedUser?.applications, accessData?.applications],
+  );
+  const appSlugById = useMemo(
+    () => new Map((apps || []).map((app) => [Number(app.id), app.slug])),
+    [apps],
+  );
+  const allowedSlugs = useMemo(() => {
+    const result = new Set(
+      selectedApplicationIds.map((id) => appSlugById.get(Number(id))).filter(Boolean),
+    );
+    // کاربران قدیمی که ماژول انتخاب نکرده‌اند اما مجوز دارند: فقط ماژول‌های مجوزدارشان.
+    if (!result.size) {
+      Object.entries(draft).forEach(([code, value]) => {
+        if (value && code.includes('.')) result.add(code.split('.')[0]);
+      });
+    }
+    return result;
+  }, [selectedApplicationIds, appSlugById, draft]);
+  const visibleCatalog = useMemo(
+    () => ((fullAccess || selectedUser?.is_superuser)
+      ? catalog
+      : catalog.filter((module) => allowedSlugs.has(module.slug))),
+    [catalog, fullAccess, selectedUser?.is_superuser, allowedSlugs],
+  );
   const totalCodes = useMemo(
-    () => catalog.reduce((sum, module) => sum + moduleCodes(module).length, 0),
-    [catalog],
+    () => visibleCatalog.reduce((sum, module) => sum + moduleCodes(module).length, 0),
+    [visibleCatalog],
   );
   const readOnly = Boolean(selectedUser?.is_superuser);
 
@@ -786,7 +845,11 @@ const UserAccessTab = ({ catalog, actions, initialUserId, onMessage, onSaved }) 
   const save = useMutation({
     mutationFn: () => axiosInstance.post(
       `${USERS_API}${selectedId}/access/`,
-      { permissions: fullAccess ? {} : draft, full_access: fullAccess },
+      {
+        permissions: fullAccess ? {} : draft,
+        full_access: fullAccess,
+        applications: selectedApplicationIds,
+      },
     ),
     onSuccess: (response) => {
       qc.invalidateQueries({ queryKey: ['access-users'] });
@@ -961,6 +1024,13 @@ const UserAccessTab = ({ catalog, actions, initialUserId, onMessage, onSaved }) 
                 </Alert>
               ) : null}
 
+              {!fullAccess && !readOnly && !visibleCatalog.length ? (
+                <Alert severity="warning" sx={{ mb: 1, fontSize: 11.5 }}>
+                  برای این کاربر هنوز «ماژول مجاز» انتخاب نشده است. ابتدا در تب کاربران → ویرایش،
+                  ماژول‌های مجاز را انتخاب و ذخیره کنید؛ سپس مجوزهای همان ماژول‌ها اینجا نمایش داده می‌شود.
+                </Alert>
+              ) : null}
+
               <Box sx={{
                 maxHeight: { xs: 'none', md: 'calc(100vh - 380px)' },
                 overflow: 'auto', pr: 0.5,
@@ -968,7 +1038,7 @@ const UserAccessTab = ({ catalog, actions, initialUserId, onMessage, onSaved }) 
                 pointerEvents: (fullAccess || readOnly) ? 'none' : 'auto',
               }}>
                 <PermissionMatrix
-                  catalog={catalog}
+                  catalog={visibleCatalog}
                   actions={actions}
                   draft={draft}
                   onToggleCodes={toggleCodes}
@@ -1089,6 +1159,7 @@ const UsersPage = () => {
         <UserAccessTab
           catalog={catalog}
           actions={actions}
+          apps={apps}
           initialUserId={selectedUserId}
           onMessage={setMessage}
           onSaved={() => usersQuery.refetch()}

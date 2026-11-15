@@ -17,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.employee_link import employee_link_payload
+from core.models import Application
 from core.models.user import AccessRole, UserAccess, UserProfile
 from core.permission_catalog import (
     ACTIONS, all_codes, catalog, is_valid_code, modules_brief, stats,
@@ -57,12 +58,27 @@ def _granted(user):
     }
 
 
+def _application_ids(profile, access):
+    """شناسهٔ ماژول‌های مجاز کاربر — منبع اصلی: UserProfile.applications."""
+    if profile is not None:
+        ids = [app.id for app in profile.applications.all()]
+        if ids:
+            return ids
+    raw = getattr(access, 'applications', None) or []
+    result = []
+    for item in raw:
+        if str(item).isdigit() and int(item) not in result:
+            result.append(int(item))
+    return result
+
+
 def _user_row(user, roles):
     access = UserAccess.objects.filter(user=user).first()
     granted = _granted(user)
     profile = getattr(user, 'profile', None)
     role_code = profile.role if profile else ''
     full = bool(user.is_superuser or (access and access.is_full_access))
+    application_ids = _application_ids(profile, access)
     return {
         'id': user.id,
         'username': user.username,
@@ -75,7 +91,7 @@ def _user_row(user, roles):
         'is_full_access': full,
         'permissions_granted': 'همه' if full else len(granted),
         'modules': modules_brief(granted),
-        'applications': list(access.applications or []) if access else [],
+        'applications': application_ids,
         'role': role_code,
         'role_name': roles.get(role_code, role_code),
         'last_login': user.last_login.isoformat() if user.last_login else None,
@@ -95,7 +111,9 @@ def access_users_view(request):
     AccessRole.ensure_system_roles()
     roles = {row.code: row.name for row in AccessRole.objects.all()}
 
-    queryset = User.objects.select_related('profile', 'access').order_by('username')
+    queryset = User.objects.select_related('profile', 'access').prefetch_related(
+        'profile__applications',
+    ).order_by('username')
     show_inactive = str(request.query_params.get('inactive') or '') in ('1', 'true')
     if not show_inactive:
         queryset = queryset.filter(is_active=True)
@@ -131,6 +149,7 @@ def user_access_view(request, user_id):
     if request.method == 'GET':
         access = UserAccess.objects.filter(user=target).first()
         granted = _granted(target)
+        profile = getattr(target, 'profile', None)
         return Response({
             'user': {
                 'id': target.id,
@@ -140,7 +159,7 @@ def user_access_view(request, user_id):
             },
             'full_access': bool(target.is_superuser or (access and access.is_full_access)),
             'permissions': {code: True for code in granted},
-            'applications': list(access.applications or []) if access else [],
+            'applications': _application_ids(profile, access),
             'note': getattr(access, 'note', '') or '',
             'updated_at': access.updated_at.isoformat() if access else None,
             'catalog': catalog(),
@@ -152,30 +171,54 @@ def user_access_view(request, user_id):
 
     if target.is_superuser:
         return Response(
-            {'error': 'مجوزهای مدیر سیستم (سوپریوزر) قابل تغییر نیست.'}, status=400,
+            {'error': 'مجوزهای مدیر سیستم (سوپری‌یوزر) قابل تغییر نیست.'}, status=400,
         )
 
     full_access = str(request.data.get('full_access')).lower() in ('1', 'true', 'on')
     raw = request.data.get('permissions') or {}
     if isinstance(raw, list):
         raw = {code: True for code in raw}
+
+    profile, _created = UserProfile.objects.get_or_create(user=target)
+    access, _created = UserAccess.objects.get_or_create(user=target)
+
+    applications = request.data.get('applications')
+    if applications is not None:
+        app_ids = [int(item) for item in applications if str(item).isdigit()]
+        access.applications = [str(item) for item in app_ids]
+        profile.applications.set(Application.objects.filter(id__in=app_ids, is_active=True))
+        if profile.current_application_id and profile.current_application_id not in app_ids:
+            profile.current_application = None
+            profile.save(update_fields=['current_application', 'updated_at'])
+    else:
+        app_ids = _application_ids(profile, access)
+
+    allowed_slugs = set(
+        Application.objects.filter(id__in=app_ids, is_active=True)
+        .values_list('slug', flat=True)
+    ) if app_ids else set()
+    if not allowed_slugs:
+        # سازگاری با کاربران قدیمی: ماژول‌های مجوزهای موجود، مجاز تلقی می‌شوند.
+        allowed_slugs = {
+            code.split('.')[0] for code, value in (access.permissions or {}).items()
+            if value and isinstance(code, str) and '.' in code
+        }
+
     clean = {}
     rejected = []
     for code, value in raw.items():
         if not isinstance(code, str) or '.' not in code:
             continue
-        if is_valid_code(code):
-            if value:
-                clean[code] = True
-        else:
+        if not is_valid_code(code):
+            rejected.append(code)
+            continue
+        if value and (full_access or code.split('.')[0] in allowed_slugs):
+            clean[code] = True
+        elif value:
             rejected.append(code)
 
-    applications = request.data.get('applications')
-    access, _created = UserAccess.objects.get_or_create(user=target)
     access.is_full_access = bool(full_access)
     access.permissions = {} if full_access else clean
-    if applications is not None:
-        access.applications = [str(item) for item in applications]
     note = request.data.get('note')
     if note is not None:
         access.note = str(note)[:250]
@@ -191,6 +234,7 @@ def user_access_view(request, user_id):
         'user_id': target.id,
         'full_access': full_access,
         'granted': len(clean),
+        'applications': app_ids,
         'modules': modules_brief(set(clean)),
         'rejected': rejected[:20],
     })

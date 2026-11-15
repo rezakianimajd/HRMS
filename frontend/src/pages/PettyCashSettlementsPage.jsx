@@ -13,6 +13,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import PriceCheckIcon from '@mui/icons-material/PriceCheck';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -221,11 +222,19 @@ const PettyCashSettlementsPage = () => {
                         </>
                       )}
                       {s.status === 'approved' && (
-                        <Tooltip title="ثبت نهایی (برگشت وجه و شارژ مجدد)">
-                          <IconButton size="small" color="warning" onClick={() => act.mutate({ id: s.id, action: 'post' })}>
-                            <PaymentsIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        <>
+                          <Tooltip title="ثبت نهایی (برگشت وجه و شارژ مجدد)">
+                            <IconButton size="small" color="warning" onClick={() => act.mutate({ id: s.id, action: 'post' })}>
+                              <PaymentsIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="وصول دستی وجه (بدون خزانه)">
+                            <IconButton size="small" color="success"
+                              onClick={() => act.mutate({ id: s.id, action: 'post', body: { manual: true } })}>
+                              <PriceCheckIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
                       )}
                     </TableCell>
                   </TableRow>

@@ -1737,8 +1737,13 @@ class PettyCashSettlementViewSet(FinancialViewSet):
 
     @action(detail=True, methods=['post'])
     def post(self, request, pk=None):
-        """ثبت نهایی تسویه: برگشت وجه به خزانه، شارژ مجدد (تنخواه ثابت) و ارسال به حسابداری."""
+        """ثبت نهایی تسویه: برگشت وجه به خزانه، شارژ مجدد و (در حالت عادی) ارسال به حسابداری.
+
+        با ارسال ``manual: true`` عملیات وصول/ثبت به‌صورت دستی انجام می‌شود و
+        ارسال به خزانه/صف حسابداری انجام نمی‌گیرد تا خرابی خزانه مانع نباشد.
+        """
         obj = self.get_object()
+        manual = str(request.data.get('manual')).lower() in ('1', 'true', 'on', 'yes')
         if obj.status == PettyCashSettlement.Status.POSTED:
             return Response(PettyCashSettlementSerializer(obj).data)
         if obj.status != PettyCashSettlement.Status.APPROVED:
@@ -1770,29 +1775,33 @@ class PettyCashSettlementViewSet(FinancialViewSet):
                 }]
                 obj.save(update_fields=['status', 'history', 'updated_at'])
                 obj.statements.update(settled_at=timezone.now())
-                try:
-                    from accounting.integrations import enqueue
-                    src = enqueue(
-                        company=obj.company, source_module='pettycash',
-                        source_type='settlement', source_id=str(obj.pk),
-                        payload={
-                            'fund': obj.fund.title,
-                            'expenses_total': str(obj.expenses_total),
-                            'returned_amount': str(obj.returned_amount),
-                            'recharge_amount': str(obj.recharge_amount),
-                            'shortage': str(obj.shortage),
-                            'overage': str(obj.overage),
-                            'date': obj.date.isoformat(),
-                        },
-                    )
-                    if src:
-                        obj.source_transaction = src
-                        obj.save(update_fields=['source_transaction'])
-                except Exception:  # noqa: BLE001 — نبود صف حسابداری مانع ثبت نیست
-                    pass
+                if not manual:
+                    try:
+                        from accounting.integrations import enqueue
+                        src = enqueue(
+                            company=obj.company, source_module='pettycash',
+                            source_type='settlement', source_id=str(obj.pk),
+                            payload={
+                                'fund': obj.fund.title,
+                                'expenses_total': str(obj.expenses_total),
+                                'returned_amount': str(obj.returned_amount),
+                                'recharge_amount': str(obj.recharge_amount),
+                                'shortage': str(obj.shortage),
+                                'overage': str(obj.overage),
+                                'date': obj.date.isoformat(),
+                            },
+                        )
+                        if src:
+                            obj.source_transaction = src
+                            obj.save(update_fields=['source_transaction'])
+                    except Exception:  # noqa: BLE001 — نبود صف حسابداری مانع ثبت نیست
+                        pass
         except PettyCashError as exc:
             return Response({'error': str(exc)}, status=400)
-        services.audit('UPDATE', obj, user=request.user, description='ثبت نهایی تسویهٔ تنخواه')
+        services.audit(
+            'UPDATE', obj, user=request.user,
+            description=('وصول دستی تسویهٔ تنخواه' if manual else 'ثبت نهایی تسویهٔ تنخواه'),
+        )
         return Response(PettyCashSettlementSerializer(obj).data)
 
 

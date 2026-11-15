@@ -356,7 +356,7 @@ const PettyCashPage = () => {
 
   return (
     <Box>
-      <PageHeader icon={<AccountBalanceWalletIcon />} title="تنخواه" />
+      {tabIndex !== 0 && <PageHeader icon={<AccountBalanceWalletIcon />} title="تنخواه" />}
 
       {tabIndex === 0 && <PettyCashDashboard />}
       {tabIndex === 1 && <FundsTab />}
