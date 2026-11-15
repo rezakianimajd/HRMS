@@ -117,6 +117,21 @@ test('events report lists birthdays, dependents and contract ends with filters a
   expect(container.textContent).toContain('فیلترها');
   expect(container.querySelectorAll('input').length).toBeGreaterThan(0);
 
+  axiosInstance.post.mockResolvedValue({
+    data: { html: '<html><body>events</body></html>', title: 'گزارش رویدادها' },
+  });
+  const printButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'چاپ');
+  expect(printButton).toBeTruthy();
+  await act(async () => { printButton.click(); await wait(250); });
+  const printCall = axiosInstance.post.mock.calls
+    .find(([url]) => url === '/print/preview/');
+  expect(printCall).toBeTruthy();
+  expect(printCall[1].document).toBe('table');
+  expect(printCall[1].payload.title).toBe('گزارش رویدادها');
+  expect(printCall[1].payload.columns.length).toBeGreaterThan(5);
+  expect(printCall[1].options.orientation).toBe('landscape');
+
   root.unmount();
   container.remove();
 });

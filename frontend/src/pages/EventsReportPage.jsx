@@ -16,12 +16,14 @@ import EventIcon from '@mui/icons-material/Event';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+import PrintIcon from '@mui/icons-material/Print';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
-import PrintButton from '../core/print/PrintButton';
+import usePrintDocument from '../core/print/usePrintDocument';
+import PrintPreviewDialog from '../core/print/PrintPreviewDialog';
 import downloadFile from '../core/utils/downloadUtils';
 import { FAMILY_RELATIONS } from '../core/utils/familyMembers';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
@@ -92,6 +94,7 @@ const daysMeta = (days) => {
 };
 const EventsReportPage = () => {
   const moduleTheme = useModuleTheme();
+  const print = usePrintDocument();
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
 
   const [search, setSearch] = useState('');
@@ -357,8 +360,54 @@ const EventsReportPage = () => {
   ];
 
 
+  const openPrint = () => {
+    const printColumns = [
+      { key: 'row', label: 'ردیف', align: 'center', width: '4%' },
+      { key: 'kind', label: 'نوع رویداد', align: 'right', width: '13%' },
+      { key: 'event_jalali', label: 'تاریخ رویداد', align: 'center', width: '10%' },
+      { key: 'days', label: 'روزهای مانده', align: 'center', width: '10%' },
+      { key: 'person', label: 'شخص', align: 'right', width: '16%' },
+      { key: 'relation', label: 'نسبت', align: 'center', width: '8%' },
+      { key: 'employee', label: 'پرسنل اصلی', align: 'right', width: '15%' },
+      { key: 'code', label: 'کد پرسنلی', align: 'center', width: '8%' },
+      { key: 'department', label: 'واحد', align: 'right', width: '10%' },
+      { key: 'position', label: 'عنوان شغلی', align: 'right', width: '10%' },
+      { key: 'mobile', label: 'همراه', align: 'center', width: '8%' },
+    ];
+    const printRows = rows.map((row, index) => ({
+      row: toPersianDigits(index + 1),
+      kind: row.kind_label || '',
+      event_jalali: row.event_jalali || '',
+      days: daysMeta(row.days_until).label,
+      person: row.person_name || '',
+      relation: row.relation_label || '',
+      employee: row.employee_name || '',
+      code: row.employee_code ? toPersianDigits(row.employee_code) : '',
+      department: row.department || '',
+      position: row.position || '',
+      mobile: row.mobile ? toPersianDigits(row.mobile) : '',
+    }));
+    const filterLabels = activeChips.map((chip) => chip.label);
+    if (debouncedSearch) filterLabels.push(`جست‌وجو: ${debouncedSearch}`);
+    print.openDocument({
+      document: 'table',
+      payload: {
+        module: 'hrms',
+        title: 'گزارش رویدادها',
+        subtitle: 'تولد پرسنل و افراد تحت تکفل، سالگرد استخدام و پایان قرارداد',
+        badge: `${formatPersianNumber(rows.length)} رویداد`,
+        filters_note: filterLabels.join(' · '),
+        columns: printColumns,
+        rows: printRows,
+        zebra: true,
+      },
+      options: { paper: 'A4', orientation: 'landscape' },
+    });
+  };
+
   return (
     <Box sx={{ pb: 1 }} data-testid="events-report">
+
       <PageHeader
         icon={<EventIcon />}
         color={ACCENT}
@@ -381,15 +430,12 @@ const EventsReportPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Tooltip title="چاپ گزارش">
+            <Tooltip title="پیش‌نمایش و چاپ استاندارد (استودیو تم)">
               <span>
-                <PrintButton
-                  label=""
-                  icon
-                  title="گزارش رویدادها"
-                  orientation="landscape"
-                  sx={{ minWidth: 40, px: 1 }}
-                />
+                <Button variant="outlined" startIcon={<PrintIcon />} onClick={openPrint}
+                  disabled={eventsQuery.isLoading || !rows.length}>
+                  چاپ
+                </Button>
               </span>
             </Tooltip>
             <Button
@@ -496,6 +542,18 @@ const EventsReportPage = () => {
           unit="رویداد"
         />
       </Paper>
+
+      <PrintPreviewDialog
+        open={print.open}
+        title={print.title || 'گزارش رویدادها'}
+        html={print.html}
+        loading={print.loading}
+        error={print.error}
+        options={print.options}
+        onChangeOptions={print.updateOptions}
+        onRefresh={print.refresh}
+        onClose={print.close}
+      />
     </Box>
   );
 };

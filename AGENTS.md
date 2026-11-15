@@ -640,15 +640,16 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
     در `employees/events_export.py`؛ هر ردیف شامل شخص/نسبت/پرسنل اصلی/کد/واحد/عنوان/موبایل،
     تاریخ شمسی، روزهای مانده، سن/سابقه و رنگ نوع رویداد است.
   - **فرانت:** `pages/EventsReportPage.jsx` با `PageHeader`، پنج KPI، `ModuleToolbar` (نوع رویداد،
-    شخص، نسبت، پرسنل اصلی، واحد، ماه، بازه)، `ModuleTable`/`ModulePager`، `PrintButton`
-    (افقی و با سربرگ استاندارد استودیو) و خروجی اکسل از همان اندپوینت. منو:
+    شخص، نسبت، پرسنل اصلی، واحد، ماه، بازه)، `ModuleTable`/`ModulePager`، **چاپ از موتور چاپ سروری**
+    (`document: 'table'` با `PrintPreviewDialog`؛ همان استاندارد تنخواه/مکاتبات با سربرگ/پاورقی تنظیمات
+    استودیو و A4 افقی) و خروجی اکسل از همان اندپوینت. منو:
     `hr-events-report` در `hr-reports` و مسیر در `AppRoutes.jsx`.
   - کاتالوگ مجوز با `scripts/build_permission_catalog.py` بازتولید و در
     `core/permission_catalog_data.json` جای‌گذاری شد.
   - تست: `employees.tests_events` (**۵**، شامل فیلترها و ساخت اکسل) و فرانت
     `eventsReportSmoke` (۱). تأیید زندهٔ `kpsmi`: ۱۰۰ رویداد (۶۹ پرسنل + ۳۰ تحت تکفل)،
     ۵ تولد این ماه، ۸ رویداد ۳۰ روز آینده؛ خروجی اکسل ۲۰۰ (۸٫۸KB).
-    باندل زنده: **`main.7af38e3e.js`**.
+    باندل زنده: **`main.4d672ea6.js`**.
 
 - **روند کامل نامه در پرونده و کارتابل (۲۰۲۶-۱۱-۱۵):** ارجاعات، پاسخ‌ها و رویدادهای هر نامه
   در یک تایم‌لاین واحد و مرتب (قدیمی → جدید) نمایش داده می‌شوند.
