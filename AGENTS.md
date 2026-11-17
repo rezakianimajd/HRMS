@@ -652,8 +652,14 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   ریشهٔ مجاز را نشان می‌دهد؛ API فهرست، آمار، تاریخچه و منوی پوشه‌ها هم همان دامنه را برمی‌گرداند.
   سطوح محرمانگی (`public/internal` برای دارندهٔ view و `confidential/secret` فقط با
   `can_manage_documents`) همچنان اعمال می‌شود. کاتالوگ مجوز: **۱۱ ماژول / ۳۰۴ منو / ۱۲۷۹ کد**.
-  تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و `documentPermissions` (۵) سبز.
-  باندل زنده: **`main.f6dd5895.js`**.
+  **پنجرهٔ شناور اسناد سازمانی:** کلیک روی میان‌بر، دیگر صفحه را عوض نمی‌کند و مثل چت/برنامه‌ریزی
+  یک `Dialog` بزرگ از `WorkspaceDock` باز می‌کند (`openDocuments`)؛ داخل آن ابتدا کارت‌های پوشه‌ها
+  و با ورود به هر پوشه، زیرپوشه‌ها و اسناد همان پوشه با جست‌وجو/پیش‌نمایش/دریافت نمایش داده می‌شود
+  (`pages/documents/OrganizationalDocumentsPanel.jsx`). برای کاربر بدون پوشهٔ مجاز، منوی DMS
+  حداقل یک آیتم «کتابخانه اسناد» (`dms-library-home`) دارد تا منوی اصلی خالی نشود.
+  تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و فرانت
+  `documentPermissions` (۶) + `organizationalDocumentsSmoke` (۱) سبز.
+  باندل زنده: **`main.3e9b6485.js`**.
 - **اسکرول چارت سازمانی (۲۰۲۶-۱۱-۱۷):** پوستهٔ برنامه در حالت استاندارد **ثابت (`100vh`)** است و
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛

@@ -908,6 +908,19 @@ const documentsMenu = [
 
 const DOCUMENTS_COMPANY_ROOT_CODE = 'company.documents';
 
+const emptyLibraryItem = {
+  id: 'dms-library-home',
+  title: 'کتابخانه اسناد',
+  path: '/document-management/library',
+  color: '#0ea5e9',
+  primary: false,
+  ready: true,
+};
+
+const documentsMenuWithoutFolders = documentsMenu.map((group) => (
+  group.id === 'documents-library' ? { ...group, items: [emptyLibraryItem] } : group
+));
+
 const dmsFolderPath = (id) => `/document-management/library?folder=${id}`;
 const dmsFolderItem = (folder) => ({
   id: `dms-folder-${folder.id}`,
@@ -937,7 +950,7 @@ const dmsFolderChildren = (folders, parentId, limit = 40) => {
 
 export function buildDocumentsMenu(folders = []) {
   const rows = Array.isArray(folders) ? folders : [];
-  if (!rows.length) return documentsMenu;
+  if (!rows.length) return documentsMenuWithoutFolders;
 
   const availableKeys = new Set();
   DOCUMENT_LIBRARY_MODULES.forEach((module) => {
@@ -953,6 +966,9 @@ export function buildDocumentsMenu(folders = []) {
   const items = buildLibraryModuleItems(rows).filter((item) => (
     availableKeys.has(String(item.id || '').replace('dms-library-', ''))
   ));
+  if (!items.length) {
+    items.push({ ...emptyLibraryItem });
+  }
   const companyRoot = rows.find((folder) => folder.code === DOCUMENTS_COMPANY_ROOT_CODE)
     || moduleRootFolders(rows, 'organization')[0];
   const organizationItem = items.find((item) => item.id === 'dms-library-organization');
@@ -1140,7 +1156,9 @@ const filterMenuByPermissions = (menu, moduleSlug, permissions) => {
 export function getMenuForApp(appSlug, options = {}) {
   let menu;
   if (appSlug === 'documents') {
-    menu = options.folders?.length ? buildDocumentsMenu(options.folders) : documentsMenu;
+    menu = Array.isArray(options.folders)
+      ? buildDocumentsMenu(options.folders)
+      : documentsMenu;
   } else if (appSlug === 'contracts') menu = contractsMenu;
   else if (appSlug === 'settings') menu = settingsMenu;
   else if (appSlug === 'projects') menu = projectsMenu;

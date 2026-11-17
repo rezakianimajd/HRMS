@@ -7,10 +7,12 @@ import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { ChatPanel } from '../../../pages/chat/ChatPage';
 import { PlanningPanel } from '../../../pages/planning/PlanningPage';
+import OrganizationalDocumentsPanel from '../../../pages/documents/OrganizationalDocumentsPanel';
 
 /**
  * «پنجرهٔ کاری» شناور: چت و برنامه‌ریزی روی هر صفحه‌ای بدون ترک آن صفحه باز می‌شوند.
@@ -24,10 +26,13 @@ const WorkspaceDockContext = createContext(null);
 export const useWorkspaceDock = () => useContext(WorkspaceDockContext) || {
   chatOpen: false,
   planningOpen: false,
+  documentsOpen: false,
   openChat: () => {},
   closeChat: () => {},
   openPlanning: () => {},
   closePlanning: () => {},
+  openDocuments: () => {},
+  closeDocuments: () => {},
 };
 
 const PANEL_META = {
@@ -45,6 +50,13 @@ const PANEL_META = {
     accent: '#6366f1',
     route: '/planning',
   },
+  documents: {
+    title: 'اسناد سازمانی',
+    subtitle: 'پوشه‌بندی مدارک و مستندات شرکت',
+    icon: FolderSharedOutlinedIcon,
+    accent: '#2563eb',
+    route: '/document-management/library?module=organization',
+  },
 };
 
 export const WorkspaceDockProvider = ({ children }) => {
@@ -52,6 +64,7 @@ export const WorkspaceDockProvider = ({ children }) => {
   const { getPalette } = useModulePalette();
   const [chatState, setChatState] = useState({ open: false, conversation: '' });
   const [planningState, setPlanningState] = useState({ open: false, tab: 0 });
+  const [documentsState, setDocumentsState] = useState({ open: false });
 
   const openChat = useCallback((conversation = '') => {
     setChatState({ open: true, conversation: conversation ? String(conversation) : '' });
@@ -64,18 +77,31 @@ export const WorkspaceDockProvider = ({ children }) => {
     () => setPlanningState((previous) => ({ ...previous, open: false })),
     [],
   );
+  const openDocuments = useCallback(() => setDocumentsState({ open: true }), []);
+  const closeDocuments = useCallback(
+    () => setDocumentsState((previous) => ({ ...previous, open: false })),
+    [],
+  );
 
   const value = useMemo(() => ({
     chatOpen: chatState.open,
     planningOpen: planningState.open,
+    documentsOpen: documentsState.open,
     openChat,
     closeChat,
     openPlanning,
     closePlanning,
-  }), [chatState.open, planningState.open, openChat, closeChat, openPlanning, closePlanning]);
+    openDocuments,
+    closeDocuments,
+  }), [
+    chatState.open, planningState.open, documentsState.open,
+    openChat, closeChat, openPlanning, closePlanning, openDocuments, closeDocuments,
+  ]);
 
   const goFullPage = (kind) => {
-    if (kind === 'chat') closeChat(); else closePlanning();
+    if (kind === 'chat') closeChat();
+    else if (kind === 'planning') closePlanning();
+    else closeDocuments();
     navigate(PANEL_META[kind].route);
   };
 
@@ -151,6 +177,9 @@ export const WorkspaceDockProvider = ({ children }) => {
       ) : null)}
       {renderShell('planning', planningState.open, closePlanning, planningState.open ? (
         <PlanningPanel embedded initialTab={planningState.tab} />
+      ) : null)}
+      {renderShell('documents', documentsState.open, closeDocuments, documentsState.open ? (
+        <OrganizationalDocumentsPanel />
       ) : null)}
     </WorkspaceDockContext.Provider>
   );

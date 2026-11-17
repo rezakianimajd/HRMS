@@ -83,7 +83,7 @@ import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 import { useThemeMode } from '../../context/ThemeContext';
 import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../../context/ModulePaletteContext';
 import {
-  hasOrganizationDocumentsPermission, ORGANIZATION_DOCUMENTS_PATH,
+  hasOrganizationDocumentsPermission,
 } from '../../utils/documentPermissions';
 
 const RAIL_WIDTH = 68;
@@ -209,7 +209,7 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { currentCompany } = useCompany();
-  const { currentApp, applications, switchApplication, loadApplications } = useApplication();
+  const { currentApp } = useApplication();
   const { openTab } = useWorkspaceTabs();
   const { mode, setMode } = useThemeMode();
   const { getPalette } = useModulePalette();
@@ -221,20 +221,10 @@ const Layout = ({ children }) => {
     : libraryModuleLabel(moduleLibraryKey, currentApp?.title || 'کتابخانهٔ اسناد');
   const moduleLibraryAccent = moduleAccent || getPalette(moduleLibraryKey)?.accent || '#0f766e';
 
-  // لیست ماژول‌های مجاز را حتی وقتی پنل منو جمع است بارگذاری می‌کنیم تا
-  // میان‌بر «اسناد سازمانی» بتواند ماژول اسناد را فعال کند.
-  useEffect(() => {
-    if (!applications.length) loadApplications();
-  }, [applications.length, loadApplications]);
-
-  // دسترسی «اسناد سازمانی»: مجوز ریز documents.documents-organization.view
-  // (یا دسترسی کامل) + دسترسی به ماژول مدیریت اسناد.
-  const documentsApplication = applications.find(
-    (app) => app.slug === 'documents' && app.accessible && !app.is_coming_soon,
-  );
   const canOpenOrganizationDocuments = hasOrganizationDocumentsPermission(user);
-  const organizationDocsActive = location.pathname === '/document-management/library'
-    && new URLSearchParams(location.search).get('module') === 'organization';
+  const organizationDocsActive = documentsOpen
+    || (location.pathname === '/document-management/library'
+      && new URLSearchParams(location.search).get('module') === 'organization');
 
   // منوی کتابخانه DMS از پوشه‌های واقعی همان شرکت ساخته می‌شود.
   const dmsFoldersQuery = useQuery({
@@ -257,7 +247,7 @@ const Layout = ({ children }) => {
   const workspaceBadges = workspaceQuery.data || {};
   const chatBadge = Number(workspaceBadges.chat) || 0;
   const planningBadge = Number(workspaceBadges.planning) || 0;
-  const { openChat, openPlanning } = useWorkspaceDock();
+  const { openChat, openPlanning, openDocuments, documentsOpen } = useWorkspaceDock();
   const rawMenu = getMenuForApp(currentApp?.slug, {
     folders: dmsFolders,
     permissions: user?.fine_permissions,
@@ -446,17 +436,9 @@ const Layout = ({ children }) => {
     goTo(path);
   };
 
-  const openOrganizationDocuments = async () => {
+  const openOrganizationDocuments = () => {
     if (mobileOpen) setMobileOpen(false);
-    if (documentsApplication && currentApp?.slug !== 'documents') {
-      await switchApplication(documentsApplication);
-    }
-    openTab({
-      path: ORGANIZATION_DOCUMENTS_PATH,
-      title: 'اسناد سازمانی',
-      color: ORGANIZATION_DOCS_ACCENT,
-    });
-    navigate(ORGANIZATION_DOCUMENTS_PATH);
+    openDocuments();
   };
 
   const renderMenuItems = (items = [], accent, depth = 0) => items.map((item) => {

@@ -58,3 +58,12 @@ test('documents library only builds menu items for available folder roots', () =
   expect(ids).not.toContain('dms-library-projects');
   expect(ids).not.toContain('dms-library-organization');
 });
+
+test('documents menu keeps a library item when no folder is available', () => {
+  const groups = getMenuForApp('documents', {
+    folders: [],
+    permissions: { 'documents.all.view': true },
+  });
+  const library = groups.find((group) => group.id === 'documents-library');
+  expect((library?.items || []).map((item) => item.id)).toContain('dms-library-home');
+});
