@@ -659,7 +659,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   حداقل یک آیتم «کتابخانه اسناد» (`dms-library-home`) دارد تا منوی اصلی خالی نشود.
   تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و فرانت
   `documentPermissions` (۶) + `organizationalDocumentsSmoke` (۱) سبز.
-  باندل زنده: **`main.3e9b6485.js`**.
+  باندل زنده: **`main.ce5b2b49.js`** (رفع TDZ `documentsOpen` در `Layout`).
 - **اسکرول چارت سازمانی (۲۰۲۶-۱۱-۱۷):** پوستهٔ برنامه در حالت استاندارد **ثابت (`100vh`)** است و
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛

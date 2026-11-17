@@ -222,9 +222,6 @@ const Layout = ({ children }) => {
   const moduleLibraryAccent = moduleAccent || getPalette(moduleLibraryKey)?.accent || '#0f766e';
 
   const canOpenOrganizationDocuments = hasOrganizationDocumentsPermission(user);
-  const organizationDocsActive = documentsOpen
-    || (location.pathname === '/document-management/library'
-      && new URLSearchParams(location.search).get('module') === 'organization');
 
   // منوی کتابخانه DMS از پوشه‌های واقعی همان شرکت ساخته می‌شود.
   const dmsFoldersQuery = useQuery({
@@ -248,6 +245,9 @@ const Layout = ({ children }) => {
   const chatBadge = Number(workspaceBadges.chat) || 0;
   const planningBadge = Number(workspaceBadges.planning) || 0;
   const { openChat, openPlanning, openDocuments, documentsOpen } = useWorkspaceDock();
+  const organizationDocsActive = documentsOpen
+    || (location.pathname === '/document-management/library'
+      && new URLSearchParams(location.search).get('module') === 'organization');
   const rawMenu = getMenuForApp(currentApp?.slug, {
     folders: dmsFolders,
     permissions: user?.fine_permissions,
