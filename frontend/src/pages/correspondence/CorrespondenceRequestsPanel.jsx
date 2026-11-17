@@ -41,6 +41,7 @@ const REQUEST_STATUS_META = {
 };
 
 const SCOPE_OPTIONS = [
+  { value: 'related', label: 'کارتابل من (درخواست‌ها و ارجاع‌ها)' },
   { value: 'mine', label: 'درخواست‌های من' },
   { value: 'assigned', label: 'ارجاع‌شده به من' },
   { value: 'all', label: 'همهٔ درخواست‌ها' },
@@ -84,6 +85,10 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
     due_date: '',
     status: 'submitted',
     receiver: null,
+    letter_subject: '',
+    letter_body: '',
+    letter_addressee: '',
+    letter_delivery: 'post',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -99,6 +104,10 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
       due_date: '',
       status: 'submitted',
       receiver: null,
+      letter_subject: '',
+      letter_body: '',
+      letter_addressee: '',
+      letter_delivery: 'post',
     });
     setError('');
   }, [open]);
@@ -109,6 +118,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
     setSaving(true);
     setError('');
     try {
+      const currentType = types.find((row) => String(row.id) === String(form.request_type));
       const payload = {
         request_type: form.request_type || null,
         subject: form.subject.trim(),
@@ -119,6 +129,14 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
         status: form.status,
         current_assignee_employee: form.receiver?.id || null,
       };
+      if (currentType?.code === 'letter_issue') {
+        payload.payload = {
+          letter_subject: form.letter_subject.trim(),
+          letter_body: form.letter_body.trim(),
+          letter_addressee: form.letter_addressee.trim(),
+          letter_delivery: form.letter_delivery,
+        };
+      }
       const response = await axiosInstance.post('/letter-requests/', payload);
       qc.invalidateQueries({ queryKey: REQUESTS_KEY });
       onSaved?.(response.data);
@@ -167,6 +185,24 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
           <TextField size="small" multiline minRows={3} label="شرح درخواست"
             value={form.description} onChange={set('description')}
             sx={{ gridColumn: { sm: 'span 2' } }} />
+          {selectedType?.code === 'letter_issue' ? (
+            <>
+              <TextField size="small" label="موضوع نامه" value={form.letter_subject}
+                onChange={set('letter_subject')} sx={{ gridColumn: { sm: 'span 2' } }} />
+              <TextField size="small" multiline minRows={3} label="متن نامه"
+                value={form.letter_body} onChange={set('letter_body')}
+                sx={{ gridColumn: { sm: 'span 2' } }} />
+              <TextField size="small" label="گیرندهٔ نامه (شخص / شرکت / واحد)"
+                value={form.letter_addressee} onChange={set('letter_addressee')} />
+              <TextField select size="small" label="نحوهٔ ارسال" value={form.letter_delivery}
+                onChange={set('letter_delivery')}>
+                <MenuItem value="post">پست</MenuItem>
+                <MenuItem value="courier">پیک</MenuItem>
+                <MenuItem value="email">ایمیل</MenuItem>
+                <MenuItem value="in_person">تحویل حضوری</MenuItem>
+              </TextField>
+            </>
+          ) : null}
           <Box sx={{ gridColumn: { sm: 'span 2' } }}>
             <PersonnelPicker
               label="گیرنده / مسئول اقدام"
@@ -196,7 +232,11 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
-        <Button size="small" variant="contained" disabled={saving || !form.subject.trim() || !form.receiver}
+        <Button size="small" variant="contained"
+          disabled={saving || !form.subject.trim() || !form.receiver
+            || (selectedType?.code === 'letter_issue' && (
+              !form.letter_subject.trim() || !form.letter_body.trim() || !form.letter_addressee.trim()
+            ))}
           onClick={submit} sx={{ bgcolor: INTERNAL, '&:hover': { bgcolor: '#5b21b6' } }}>
           {saving ? 'در حال ثبت…' : 'ثبت درخواست'}
         </Button>
@@ -348,6 +388,34 @@ const RequestDetailDialog = ({ open, request, onClose }) => (
               </Box>
             </>
           ) : null}
+          {request.request_type_code === 'letter_issue' || request.payload?.letter_subject ? (
+            <>
+              <Divider />
+              <Box>
+                <Typography sx={{ fontSize: 11.5, fontWeight: 800, mb: 0.75 }}>مشخصات نامهٔ درخواستی</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>
+                  <Box sx={{ gridColumn: 'span 2' }}>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>موضوع نامه</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{request.payload?.letter_subject || '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>گیرندهٔ نامه</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{request.payload?.letter_addressee || '—'}</Typography>
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>نحوهٔ ارسال</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
+                      {({ post: 'پست', courier: 'پیک', email: 'ایمیل', in_person: 'تحویل حضوری' })[request.payload?.letter_delivery] || '—'}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ gridColumn: 'span 2' }}>
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>متن نامه</Typography>
+                    <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{request.payload?.letter_body || '—'}</Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </>
+          ) : null}
           {request.decision_note ? (
             <Box>
               <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>توضیح تصمیم</Typography>
@@ -400,7 +468,7 @@ const CorrespondenceRequestsPanel = () => {
   const qc = useQueryClient();
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
 
-  const [scope, setScope] = useState('mine');
+  const [scope, setScope] = useState('related');
   const [statusFilter, setStatusFilter] = useState('open');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -673,10 +741,10 @@ const CorrespondenceRequestsPanel = () => {
           },
         ]}
         activeChips={[
-          ...(scope !== 'mine' ? [{
+          ...(scope !== 'related' ? [{
             key: 'scope',
             label: SCOPE_OPTIONS.find((row) => row.value === scope)?.label || '',
-            clear: () => setScope('mine'),
+            clear: () => setScope('related'),
           }] : []),
           ...(statusFilter !== 'open' ? [{
             key: 'status',
@@ -684,9 +752,9 @@ const CorrespondenceRequestsPanel = () => {
             clear: () => setStatusFilter('open'),
           }] : []),
         ]}
-        activeFilterCount={(scope !== 'mine' ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)}
+        activeFilterCount={(scope !== 'related' ? 1 : 0) + (statusFilter !== 'open' ? 1 : 0)}
         onReset={() => {
-          setScope('mine');
+          setScope('related');
           setStatusFilter('open');
           setSearch('');
           setSortBy('newest');

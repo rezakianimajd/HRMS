@@ -863,6 +863,7 @@ class LetterRequestSerializer(serializers.ModelSerializer):
         source='request_type.name', read_only=True,
     )
     request_type_color = serializers.CharField(source='request_type.color', read_only=True)
+    request_type_code = serializers.CharField(source='request_type.code', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
     requester_employee_name = serializers.CharField(
@@ -883,7 +884,7 @@ class LetterRequestSerializer(serializers.ModelSerializer):
         model = LetterRequest
         fields = [
             'id', 'number', 'request_type', 'request_type_title', 'request_type_title_display',
-            'request_type_color', 'subject', 'description', 'requester', 'requester_name',
+            'request_type_color', 'request_type_code', 'subject', 'description', 'requester', 'requester_name',
             'requester_employee', 'requester_employee_name', 'requester_employee_code',
             'requester_display', 'status', 'status_display', 'priority', 'priority_display',
             'requested_on', 'due_date', 'payload', 'current_step', 'total_steps',
@@ -896,7 +897,7 @@ class LetterRequestSerializer(serializers.ModelSerializer):
             'closed_at', 'is_open', 'is_overdue', 'events', 'created_at', 'updated_at',
             'request_type_color', 'status_display', 'priority_display',
             'requester_employee_name', 'requester_employee_code', 'requester_display',
-            'assignee_name', 'request_type_title_display',
+            'assignee_name', 'request_type_title_display', 'request_type_code',
         ]
 
     @staticmethod
@@ -920,6 +921,19 @@ class LetterRequestSerializer(serializers.ModelSerializer):
         attachment = attrs.get('attachment', getattr(self.instance, 'attachment', None))
         if request_type and request_type.requires_attachment and not attachment:
             raise serializers.ValidationError({'attachment': 'این نوع درخواست نیازمند پیوست است.'})
+        if request_type and request_type.code == 'letter_issue':
+            payload = attrs.get('payload', getattr(self.instance, 'payload', {}) or {})
+            missing = [
+                label for key, label in (
+                    ('letter_subject', 'موضوع نامه'),
+                    ('letter_body', 'متن نامه'),
+                    ('letter_addressee', 'گیرندهٔ نامه'),
+                ) if not str(payload.get(key) or '').strip()
+            ]
+            if missing:
+                raise serializers.ValidationError({
+                    'payload': f"برای درخواست صدور نامه، {'، '.join(missing)} را تکمیل کنید.",
+                })
         if self.instance is None and not attrs.get('current_assignee_employee') and not attrs.get('current_assignee'):
             raise serializers.ValidationError({
                 'current_assignee_employee': 'گیرنده / مسئول اقدام را مشخص کنید تا درخواست در کارتابل او قرار گیرد.',

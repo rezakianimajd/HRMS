@@ -67,10 +67,15 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         company = _get_company(self.request)
         employee = _user_employee(user, company)
 
-        # کاربران بدون مجوز «مشاهدهٔ کارتابل درخواست‌ها» فقط درخواست‌های خودشان را می‌بینند
-        if not correspondence_has_permission(user, 'view', menus=REQUESTS_MENUS):
+        # کاربران بدون مجوز «مشاهدهٔ کارتابل درخواست‌ها» فقط درخواست‌های خودشان
+        # و درخواست‌هایی که به آن‌ها ارجاع شده را می‌بینند.
+        view_all = correspondence_has_permission(user, 'view', menus=REQUESTS_MENUS)
+        if not view_all:
             if user and user.is_authenticated:
-                qs = qs.filter(requester=user)
+                own = Q(requester=user) | Q(current_assignee=user)
+                if employee:
+                    own = own | Q(current_assignee_employee=employee)
+                qs = qs.filter(own)
             else:
                 qs = qs.none()
 
@@ -79,6 +84,11 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             qs = qs.filter(requester=user)
         elif scope == 'assigned' and user and user.is_authenticated:
             target = Q(current_assignee=user)
+            if employee:
+                target = target | Q(current_assignee_employee=employee)
+            qs = qs.filter(target)
+        elif scope == 'related' and user and user.is_authenticated:
+            target = Q(requester=user) | Q(current_assignee=user)
             if employee:
                 target = target | Q(current_assignee_employee=employee)
             qs = qs.filter(target)
