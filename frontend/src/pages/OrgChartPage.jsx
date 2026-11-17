@@ -308,17 +308,25 @@ const OrgChartPage = () => {
           animation: `${fadeIn} 0.4s ease ${depth * 0.07}s both`,
           boxShadow: 'var(--hrms-shadow-card, none)',
           '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 22px ${color}22` },
-        }}>
-          <Typography variant="body2" fontWeight={700} sx={{ fontSize: 12.5, lineHeight: 1.35, color: theme.palette.text.primary }}>{node.title}</Typography>
+        }}
+          style={{
+            width: 190, padding: '10px 12px', borderRadius: 'var(--hrms-radius, 10px)',
+            background: `linear-gradient(135deg, ${color}16, ${color}08)`,
+            border: `1.2px solid ${color}45`, textAlign: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            color: theme.palette.text.primary,
+          }}>
+          <Typography variant="body2" fontWeight={700} sx={{ fontSize: 12.5, lineHeight: 1.35, color: theme.palette.text.primary }} style={{ color: theme.palette.text.primary, fontSize: 12.5, lineHeight: 1.35 }}>{node.title}</Typography>
           {node.department_name && (
-            <Typography variant="caption" sx={{ fontSize: 12, color: theme.palette.text.secondary, display: 'block', mb: 0.25 }}>{node.department_name}</Typography>
+            <Typography variant="caption" sx={{ fontSize: 12, color: theme.palette.text.secondary, display: 'block', mb: 0.25 }} style={{ color: theme.palette.text.secondary, fontSize: 12, display: 'block' }}>{node.department_name}</Typography>
           )}
 
           {hasEmployees && (
-            <Box sx={{ mt: 0.75, pt: 0.75, borderTop: `1px solid ${color}22`, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.3 }}>
+            <Box sx={{ mt: 0.75, pt: 0.75, borderTop: `1px solid ${color}22`, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.3 }} style={{ marginTop: 6, paddingTop: 6, borderTop: `1px solid ${color}22`, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 3 }}>
               {node.employees.slice(0, 4).map(emp => (
                 <Chip key={emp.id} label={emp.full_name} size="small"
-                  sx={{ fontSize: 12, height: 20, bgcolor: `${color}1c`, color: theme.palette.text.primary }} />
+                  sx={{ fontSize: 12, height: 20, bgcolor: `${color}1c`, color: theme.palette.text.primary }}
+                  style={{ fontSize: 12, height: 20, backgroundColor: `${color}1c`, color: theme.palette.text.primary }} />
               ))}
               {node.employees.length > 4 && <Chip label={`+${node.employees.length - 4}`} size="small" variant="outlined" sx={{ fontSize: 12, height: 20 }} />}
             </Box>

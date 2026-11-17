@@ -54,6 +54,10 @@ test('org chart renders a centered tree and uses the standard print button', asy
   expect(container.textContent).toContain('واحد اداری');
   expect(container.textContent).toContain('چاپ');
   expect(container.querySelector('.orgchart-print-area')).toBeTruthy();
+  const printCard = container.querySelector('.orgchart-print-area .org-tree--root > li > div');
+  expect(printCard).toBeTruthy();
+  expect(printCard.getAttribute('style')).toContain('border');
+  expect(printCard.getAttribute('style')).toContain('width: 190px');
   act(() => root.unmount());
   container.remove();
 });
