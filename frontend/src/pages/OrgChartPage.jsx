@@ -392,21 +392,15 @@ const OrgChartPage = () => {
       {/* Tree */}
       <Paper elevation={0} sx={{
         p: 3,
-        height: { xs: 'calc(100vh - 300px)', md: 'calc(100vh - 240px)' },
-        minHeight: 360,
-        maxHeight: { xs: 'calc(100vh - 220px)', md: 'calc(100vh - 180px)' },
-        overflow: 'auto',
-        overscrollBehavior: 'contain',
-        scrollbarGutter: 'stable',
+        minHeight: 400,
+        overflow: 'visible',
         direction: 'ltr',
         borderRadius: 'var(--hrms-radius-large, 16px)',
         border: 'var(--hrms-border-card, 1px solid #e8edf4)',
         bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
         boxShadow: 'var(--hrms-shadow-card, none)',
         '@media print': {
-          height: 'auto',
           minHeight: 'auto',
-          maxHeight: 'none',
           overflow: 'visible',
           borderRadius: 0,
           backdropFilter: 'none',

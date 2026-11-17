@@ -632,6 +632,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **اسکرول کل صفحه در چارت سازمانی (۲۰۲۶-۱۱-۱۷):** محدودیت ارتفاع/اسکرول داخلی کارت چارت حذف شد
+  (`Paper` بدون `height/maxHeight/overflow:auto`) و اسکرول به **کل صفحه** منتقل شد؛ در `Layout`
+  مسیرهای `/org-chart` و `/orgchart/*` حالت `pageScroll` می‌گیرند: پوسته/سایدبار/ریل/پنل منو
+  و ناحیهٔ محتوا `height:auto` و `overflow:visible` می‌شوند و **سایدبار هم همراه صفحه** اسکرول
+  می‌کند (بدون اسکرول داخلی منو). در بقیهٔ صفحات رفتار ثابت قبلی (`100vh` + اسکرول محتوا) حفظ شده است.
+  تست `orgChartSmoke` (۱) سبز؛ باندل زنده: **`main.b24fbb75.js`**.
 - **چارت سازمانی (۲۰۲۶-۱۱-۱۷):** درخت چارت در حالت صفحه و چاپ کاملاً **وسط‌چین** شد
   (`justify-content:center` و `width:max-content` + `margin:auto`)؛ چاپ از
   `PrintButton target={printAreaRef}` و ناحیهٔ چاپ اختصاصی `orgchart-print-area` استفاده
