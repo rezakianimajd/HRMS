@@ -210,7 +210,6 @@ const Layout = ({ children }) => {
   const { mode, setMode } = useThemeMode();
   const { getPalette } = useModulePalette();
   const isAccounting = location.pathname.startsWith('/accounting') || location.pathname.startsWith('/petty-cash');
-  const isOrgChartPage = location.pathname.startsWith('/org-chart') || location.pathname.startsWith('/orgchart');
   const moduleAccent = getPalette(currentApp?.slug)?.accent || MODULE_DEFAULT_ACCENTS[currentApp?.slug] || null;
   const moduleLibraryKey = libraryModuleForApplication(currentApp?.slug) || '';
   const moduleLibraryTitle = currentApp?.slug === 'documents'
@@ -502,17 +501,16 @@ const Layout = ({ children }) => {
 
   const renderSidebarContent = (compact) => (
     <Box sx={{
-      height: isOrgChartPage ? 'auto' : '100%',
-      minHeight: isOrgChartPage ? '100vh' : undefined,
+      height: '100%',
       display: 'flex',
       bgcolor: 'var(--hrms-region-sidebar-bg, #ffffff)',
-      overflow: isOrgChartPage ? 'visible' : 'hidden',
+      overflow: 'hidden',
     }}>
       {/* ---------- ریل میانبرهای ماژول ---------- */}
       <Box sx={{
         width: RAIL_WIDTH,
         flexShrink: 0,
-        height: isOrgChartPage ? 'auto' : '100%',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -521,8 +519,8 @@ const Layout = ({ children }) => {
         borderInlineEnd: '1px solid',
         borderColor: 'divider',
         bgcolor: 'var(--hrms-region-sidebar-bg, #ffffff)',
-        overflowY: isOrgChartPage ? 'visible' : 'auto',
-        overflowX: isOrgChartPage ? 'visible' : 'hidden',
+        overflowY: 'auto',
+        overflowX: 'hidden',
         '&::-webkit-scrollbar': { width: 0 },
       }}>
         <Tooltip title={companyName} placement="left" arrow>
@@ -847,10 +845,7 @@ const Layout = ({ children }) => {
 
       {/* ---------- گروه‌ها و زیرمنوها ---------- */}
       <Box sx={{
-        flex: isOrgChartPage ? '0 0 auto' : 1,
-        minHeight: isOrgChartPage ? 'auto' : 0,
-        overflowY: isOrgChartPage ? 'visible' : 'auto',
-        px: 1, pb: 1,
+        flex: 1, minHeight: 0, overflowY: 'auto', px: 1, pb: 1,
         '&::-webkit-scrollbar': { width: 4 },
         '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 2 },
       }}>
@@ -920,13 +915,7 @@ const Layout = ({ children }) => {
 
 
   return (
-    <Box sx={{
-      display: 'flex',
-      height: isOrgChartPage ? 'auto' : '100vh',
-      minHeight: '100vh',
-      overflow: isOrgChartPage ? 'visible' : 'hidden',
-      alignItems: 'stretch',
-    }}>
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Menu
         anchorEl={userMenuAnchor}
         open={Boolean(userMenuAnchor)}
@@ -988,9 +977,7 @@ const Layout = ({ children }) => {
 
       <Box sx={{
         display: { xs: 'none', md: 'block' },
-        width: effectiveSidebarWidth, flexShrink: 0,
-        height: isOrgChartPage ? 'auto' : '100vh',
-        minHeight: '100vh',
+        width: effectiveSidebarWidth, flexShrink: 0, height: '100vh',
         borderInlineEnd: '1px solid', borderColor: 'divider',
         transition: 'width 0.2s ease',
       }}>
@@ -1002,11 +989,10 @@ const Layout = ({ children }) => {
         sx={{
           flexGrow: 1,
           minWidth: 0,
-          height: isOrgChartPage ? 'auto' : '100vh',
-          minHeight: '100vh',
+          height: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          overflow: isOrgChartPage ? 'visible' : 'hidden',
+          overflow: 'hidden',
         }}
       >
         <Box sx={{
@@ -1046,10 +1032,7 @@ const Layout = ({ children }) => {
         </Box>
 
         <Box className={`hrms-page${isAccounting ? ' accounting-page' : ''}`} sx={{
-          flex: isOrgChartPage ? '1 0 auto' : 1,
-          overflowY: isOrgChartPage ? 'visible' : 'auto',
-          overflowX: isOrgChartPage ? 'visible' : 'hidden',
-          p: { xs: 2, md: 3 },
+          flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 },
           '--module-accent': moduleAccent || '#2563eb',
         }}>
           {children}
