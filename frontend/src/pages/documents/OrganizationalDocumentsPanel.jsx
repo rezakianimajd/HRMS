@@ -14,7 +14,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import axiosInstance from '../../core/api/axiosConfig';
-import { folderDescendants, moduleRootFolders } from '../../core/config/documentLibraryModules';
+import { folderDescendants } from '../../core/config/documentLibraryModules';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import {
@@ -157,36 +157,42 @@ const OrganizationalDocumentsPanel = () => {
   });
   const folders = Array.isArray(foldersQuery.data) ? foldersQuery.data : [];
 
-  const organizationRoots = useMemo(
-    () => moduleRootFolders(folders, 'organization'),
+  const companyRoot = useMemo(
+    () => folders.find((folder) => folder.code === 'company.documents')
+      || folders.find((folder) => folder.name === 'مدارک و مستندات شرکت')
+      || null,
     [folders],
   );
   const organizationIds = useMemo(
-    () => folderDescendants(folders, organizationRoots.map((folder) => folder.id)),
-    [folders, organizationRoots],
+    () => (companyRoot ? folderDescendants(folders, [companyRoot.id]) : new Set()),
+    [folders, companyRoot],
   );
   const organizationFolders = useMemo(
     () => folders.filter((folder) => organizationIds.has(String(folder.id))),
     [folders, organizationIds],
   );
+  const effectiveFolderId = folderId || companyRoot?.id || '';
   const selectedFolder = organizationFolders.find(
-    (folder) => String(folder.id) === String(folderId),
+    (folder) => String(folder.id) === String(effectiveFolderId),
   ) || null;
+  const atCompanyRoot = Boolean(
+    companyRoot && String(selectedFolder?.id) === String(companyRoot.id),
+  );
 
   const visibleFolders = useMemo(() => {
-    const parent = selectedFolder ? selectedFolder.id : '';
+    const parent = atCompanyRoot ? companyRoot.id : (selectedFolder?.id || companyRoot?.id || '');
     const rows = organizationFolders.filter(
       (folder) => String(folder.parent || '') === String(parent),
     );
     return sortedFolders(rows);
-  }, [organizationFolders, selectedFolder]);
+  }, [organizationFolders, selectedFolder, atCompanyRoot, companyRoot]);
 
   const documentsQuery = useQuery({
-    queryKey: ['org-documents-list', folderId, search],
+    queryKey: ['org-documents-list', effectiveFolderId, search],
     queryFn: () => axiosInstance
       .get('/document-management/documents/', {
         params: {
-          folder: folderId,
+          folder: effectiveFolderId,
           search: search.trim() || undefined,
           page_size: 100,
           ordering: '-created_at',
@@ -194,7 +200,7 @@ const OrganizationalDocumentsPanel = () => {
         },
       })
       .then((response) => response.data),
-    enabled: Boolean(folderId),
+    enabled: Boolean(effectiveFolderId) && !atCompanyRoot,
     staleTime: 20_000,
   });
   const documents = Array.isArray(documentsQuery.data)
@@ -212,12 +218,14 @@ const OrganizationalDocumentsPanel = () => {
         (folder) => String(folder.id) === String(current.parent),
       ) || null;
     }
-    return trail;
-  }, [selectedFolder, organizationFolders]);
+    return trail.filter((folder) => String(folder.id) !== String(companyRoot?.id));
+  }, [selectedFolder, organizationFolders, companyRoot]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['org-documents-folders'] });
-    if (folderId) qc.invalidateQueries({ queryKey: ['org-documents-list', folderId] });
+    if (effectiveFolderId) {
+      qc.invalidateQueries({ queryKey: ['org-documents-list', effectiveFolderId] });
+    }
   };
 
   const openContent = async (row, download = false) => {
@@ -314,69 +322,46 @@ const OrganizationalDocumentsPanel = () => {
       </Paper>
 
       <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.25 }}>
-        {!folderId ? (
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
-              <Box>
-                <Typography sx={{ fontSize: 13, fontWeight: 900 }}>پوشه‌های اسناد سازمانی</Typography>
-                <Typography sx={{ fontSize: 10.5, color: 'text.secondary', mt: 0.2 }}>
-                  برای مشاهدهٔ اسناد، یک پوشه را انتخاب کنید.
-                </Typography>
-              </Box>
-              <Chip
-                size="small"
-                label={`${toPersianDigits(organizationRoots.length)} پوشهٔ اصلی`}
-                sx={{ fontSize: 10, height: 22, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }}
-              />
-            </Box>
-            {organizationRoots.length ? (
-              <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
-                gap: 1.1,
-              }}>
-                {sortedFolders(organizationRoots).map((folder) => (
-                  <FolderCard key={folder.id} folder={folder} accent={ACCENT} onSelect={(row) => setFolderId(row.id)} />
-                ))}
-              </Box>
-            ) : (
-              <Alert severity="info" sx={{ borderRadius: '12px' }}>
-                پوشه‌ای برای اسناد سازمانی در دسترس شما نیست.
-              </Alert>
-            )}
-          </Box>
+        {!companyRoot ? (
+          <Alert severity="info" sx={{ borderRadius: '12px' }}>
+            پوشهٔ «مدارک و مستندات شرکت» در دسترس شما نیست.
+          </Alert>
         ) : (
-
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
-              <Tooltip title="بازگشت">
-                <IconButton
-                  size="small"
-                  onClick={() => setFolderId(selectedFolder?.parent || '')}
-                  aria-label="بازگشت به پوشهٔ بالاتر"
-                >
-                  <ArrowBackIcon sx={{ fontSize: 18, transform: 'scaleX(-1)' }} />
-                </IconButton>
-              </Tooltip>
+              {!atCompanyRoot && (
+                <Tooltip title="بازگشت">
+                  <IconButton
+                    size="small"
+                    onClick={() => setFolderId('')}
+                    aria-label="بازگشت به پوشهٔ بالاتر"
+                  >
+                    <ArrowBackIcon sx={{ fontSize: 18, transform: 'scaleX(-1)' }} />
+                  </IconButton>
+                </Tooltip>
+              )}
               <Box sx={{ minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 13, fontWeight: 900 }}>{selectedFolder?.name}</Typography>
+                <Typography noWrap sx={{ fontSize: 13, fontWeight: 900 }}>
+                  {atCompanyRoot ? 'پوشه‌های اسناد سازمانی' : selectedFolder?.name}
+                </Typography>
                 <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary', mt: 0.15 }}>
-                  {selectedFolder?.path || folderTrail.map((row) => row.name).join(' / ')}
+                  {atCompanyRoot
+                    ? 'زیرپوشه‌های اسناد سازمانی'
+                    : folderTrail.map((row) => row.name).join(' / ')}
                 </Typography>
               </Box>
               <Box sx={{ flex: 1 }} />
               <Chip
                 size="small"
-                label={`${toPersianDigits(documents.length)} سند`}
+                label={atCompanyRoot
+                  ? `${toPersianDigits(visibleFolders.length)} پوشه`
+                  : `${toPersianDigits(documents.length)} سند`}
                 sx={{ fontSize: 10, height: 22, bgcolor: alpha(theme.palette.text.primary, 0.05) }}
               />
             </Box>
 
             {visibleFolders.length > 0 && (
               <Box sx={{ mb: 1.25 }}>
-                <Typography sx={{ fontSize: 11, fontWeight: 900, color: 'text.secondary', mb: 0.75 }}>
-                  زیرپوشه‌ها
-                </Typography>
                 <Box sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))' },
@@ -389,35 +374,43 @@ const OrganizationalDocumentsPanel = () => {
               </Box>
             )}
 
-            <Paper elevation={0} sx={{
-              borderRadius: tokenRadius, border: tokenBorder, overflow: 'hidden',
-              bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
-              boxShadow: 'var(--hrms-shadow-card, none)',
-            }}>
-              <Box sx={{ px: 1.35, py: 0.9, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Typography sx={{ fontSize: 11.5, fontWeight: 900 }}>اسناد این پوشه</Typography>
-              </Box>
-              {documentsQuery.isLoading ? (
-                <Box sx={{ display: 'grid', placeItems: 'center', py: 4 }}><CircularProgress size={24} /></Box>
-              ) : documents.length ? (
-                documents.map((row) => (
-                  <DocumentRow
-                    key={row.id}
-                    row={row}
-                    busy={busyId === row.id}
-                    onPreview={(documentRow) => openContent(documentRow, false)}
-                    onDownload={(documentRow) => openContent(documentRow, true)}
-                  />
-                ))
-              ) : (
-                <Box sx={{ py: 5, textAlign: 'center' }}>
-                  <DescriptionOutlinedIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
-                  <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-                    سندی مستقیماً در این پوشه ثبت نشده است.
-                  </Typography>
+            {atCompanyRoot && !visibleFolders.length && (
+              <Alert severity="info" sx={{ borderRadius: '12px' }}>
+                زیرپوشه‌ای برای مدارک و مستندات شرکت ثبت نشده است.
+              </Alert>
+            )}
+
+            {!atCompanyRoot && (
+              <Paper elevation={0} sx={{
+                borderRadius: tokenRadius, border: tokenBorder, overflow: 'hidden',
+                bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
+                boxShadow: 'var(--hrms-shadow-card, none)',
+              }}>
+                <Box sx={{ px: 1.35, py: 0.9, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Typography sx={{ fontSize: 11.5, fontWeight: 900 }}>اسناد این پوشه</Typography>
                 </Box>
-              )}
-            </Paper>
+                {documentsQuery.isLoading ? (
+                  <Box sx={{ display: 'grid', placeItems: 'center', py: 4 }}><CircularProgress size={24} /></Box>
+                ) : documents.length ? (
+                  documents.map((row) => (
+                    <DocumentRow
+                      key={row.id}
+                      row={row}
+                      busy={busyId === row.id}
+                      onPreview={(documentRow) => openContent(documentRow, false)}
+                      onDownload={(documentRow) => openContent(documentRow, true)}
+                    />
+                  ))
+                ) : (
+                  <Box sx={{ py: 5, textAlign: 'center' }}>
+                    <DescriptionOutlinedIcon sx={{ fontSize: 32, color: 'text.disabled', mb: 0.5 }} />
+                    <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                      سندی مستقیماً در این پوشه ثبت نشده است.
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            )}
           </Box>
         )}
       </Box>

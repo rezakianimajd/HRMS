@@ -59,18 +59,21 @@ test('organizational documents dialog lists folders before documents', async () 
   });
   await act(async () => { await wait(400); });
 
-  expect(container.textContent).toContain('مدارک و مستندات شرکت');
+  expect(container.textContent).toContain('مدارک ثبت شرکت');
   expect(container.textContent).toContain('پوشه‌های اسناد سازمانی');
+  expect(container.textContent).not.toContain('مدارک و مستندات شرکت');
+  expect(container.textContent).not.toContain('بایگانی اسناد سازمان');
 
   const folderButton = [...container.querySelectorAll('button')]
-    .find((button) => button.textContent.includes('مدارک و مستندات شرکت'));
+    .find((button) => button.textContent.includes('مدارک ثبت شرکت'));
   expect(folderButton).toBeTruthy();
   await act(async () => {
     folderButton.click();
-    await wait(100);
+    await wait(400);
   });
-  expect(container.textContent).toContain('مدارک ثبت شرکت');
+  await act(async () => { await wait(400); });
   expect(container.textContent).toContain('اسناد این پوشه');
+  expect(container.textContent).toContain('اساسنامه شرکت');
 
   act(() => root.unmount());
   container.remove();

@@ -655,11 +655,14 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   **پنجرهٔ شناور اسناد سازمانی:** کلیک روی میان‌بر، دیگر صفحه را عوض نمی‌کند و مثل چت/برنامه‌ریزی
   یک `Dialog` بزرگ از `WorkspaceDock` باز می‌کند (`openDocuments`)؛ داخل آن ابتدا کارت‌های پوشه‌ها
   و با ورود به هر پوشه، زیرپوشه‌ها و اسناد همان پوشه با جست‌وجو/پیش‌نمایش/دریافت نمایش داده می‌شود
-  (`pages/documents/OrganizationalDocumentsPanel.jsx`). برای کاربر بدون پوشهٔ مجاز، منوی DMS
-  حداقل یک آیتم «کتابخانه اسناد» (`dms-library-home`) دارد تا منوی اصلی خالی نشود.
+  (`pages/documents/OrganizationalDocumentsPanel.jsx`). این پنجره مستقیماً **زیرپوشه‌های**
+  «مدارک و مستندات شرکت» را نشان می‌دهد؛ خودِ ریشهٔ `company.documents` و ریشهٔ
+  `hrms.organization_documents` («بایگانی اسناد سازمان») در آن نمایش داده نمی‌شوند.
+  برای کاربر بدون پوشهٔ مجاز، منوی DMS حداقل یک آیتم «کتابخانه اسناد» (`dms-library-home`)
+  دارد تا منوی اصلی خالی نشود.
   تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و فرانت
   `documentPermissions` (۶) + `organizationalDocumentsSmoke` (۱) سبز.
-  باندل زنده: **`main.ce5b2b49.js`** (رفع TDZ `documentsOpen` در `Layout`).
+  باندل زنده: **`main.11e617b5.js`** (رفع TDZ `documentsOpen` در `Layout`).
 - **اسکرول چارت سازمانی (۲۰۲۶-۱۱-۱۷):** پوستهٔ برنامه در حالت استاندارد **ثابت (`100vh`)** است و
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛
