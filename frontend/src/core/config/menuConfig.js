@@ -1118,6 +1118,11 @@ const filterMenuByPermissions = (menu, moduleSlug, permissions) => {
 
   const keepItem = (item) => {
     const id = String(item?.id || '');
+    // آیتم‌های پوشه‌های واقعی DMS با مجوز ماژول فیلتر می‌شوند (نه کد ریز منو)؛
+    // ریشه‌ها از قبل در API فقط برای ماژول‌های مجاز برگشته‌اند.
+    if (moduleSlug === 'documents' && (
+      id.startsWith('dms-library-') || id.startsWith('dms-folder-') || id.startsWith('dms-more-')
+    )) return true;
     const key = id.startsWith(`${moduleSlug}-`) ? id.slice(moduleSlug.length + 1) : id;
     return Boolean(permissions[`${moduleSlug}.${key}.view`]);
   };

@@ -50,7 +50,7 @@ test('documents library only builds menu items for available folder roots', () =
       id: 21, name: 'قراردادها', code: 'hrms.contracts', parent: null, color: '#f59e0b',
       order: 1,
     }],
-    permissions: {},
+    permissions: { 'documents.all.view': true },
   });
   const library = groups.find((group) => group.id === 'documents-library');
   const ids = (library?.items || []).map((item) => item.id);

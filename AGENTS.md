@@ -653,7 +653,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   سطوح محرمانگی (`public/internal` برای دارندهٔ view و `confidential/secret` فقط با
   `can_manage_documents`) همچنان اعمال می‌شود. کاتالوگ مجوز: **۱۱ ماژول / ۳۰۴ منو / ۱۲۷۹ کد**.
   تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و `documentPermissions` (۵) سبز.
-  باندل زنده: **`main.3348a8bb.js`**.
+  باندل زنده: **`main.f6dd5895.js`**.
 - **اسکرول چارت سازمانی (۲۰۲۶-۱۱-۱۷):** پوستهٔ برنامه در حالت استاندارد **ثابت (`100vh`)** است و
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛
