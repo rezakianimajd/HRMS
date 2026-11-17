@@ -920,5 +920,9 @@ class LetterRequestSerializer(serializers.ModelSerializer):
         attachment = attrs.get('attachment', getattr(self.instance, 'attachment', None))
         if request_type and request_type.requires_attachment and not attachment:
             raise serializers.ValidationError({'attachment': 'این نوع درخواست نیازمند پیوست است.'})
+        if self.instance is None and not attrs.get('current_assignee_employee') and not attrs.get('current_assignee'):
+            raise serializers.ValidationError({
+                'current_assignee_employee': 'گیرنده / مسئول اقدام را مشخص کنید تا درخواست در کارتابل او قرار گیرد.',
+            })
         return attrs
 

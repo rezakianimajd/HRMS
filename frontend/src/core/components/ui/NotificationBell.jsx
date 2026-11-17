@@ -84,6 +84,8 @@ const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
       navigate('/leaves');
     } else if (n.entity_type === 'hr_request') {
       navigate('/requests');
+    } else if (n.entity_type === 'letter_request') {
+      navigate('/correspondence/workdesk?tab=requests');
     } else if (n.entity_type === 'document') {
       navigate('/documents');
     } else if (n.entity_type === 'chat_conversation' && n.entity_id) {

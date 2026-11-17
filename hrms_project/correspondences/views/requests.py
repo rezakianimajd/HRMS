@@ -51,7 +51,9 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
     serializer_class = LetterRequestSerializer
     queryset = LetterRequest.objects.all()
     search_fields = ['number', 'subject', 'description', 'requester_name',
-                     'request_type__name']
+                     'request_type__name', 'current_assignee_employee__first_name',
+                     'current_assignee_employee__last_name', 'current_assignee__first_name',
+                     'current_assignee__last_name']
     ordering_fields = ['created_at', 'requested_on', 'due_date', 'status', 'priority']
     ordering = ['-created_at']
 
@@ -112,14 +114,50 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             note=note or '', meta=meta or {},
         )
 
+    def _notify_assignee(self, instance):
+        """Notify the current assignee so the request appears in their cartable."""
+        user = instance.current_assignee or _user_of_employee(instance.current_assignee_employee)
+        if not user:
+            return None
+        from notifications.models import Notification
+
+        try:
+            notification, _created = Notification.objects.get_or_create(
+                company=instance.company,
+                dedup_key=f'letter-request-{instance.pk}-assignee-{user.pk}',
+                defaults={
+                    'user_id': user.pk,
+                    'category': Notification.Category.HR_REQUEST,
+                    'priority': (Notification.Priority.HIGH
+                                 if instance.priority in ('high', 'urgent')
+                                 else Notification.Priority.NORMAL),
+                    'title': f'درخواست جدید در کارتابل: {instance.subject}',
+                    'body': (f'شماره {instance.number or "—"} از سوی '
+                             f'{instance.requester_name or "درخواست‌دهنده"} برای اقدام ارسال شد.'),
+                    'entity_type': 'letter_request',
+                    'entity_id': instance.pk,
+                },
+            )
+            return notification
+        except Exception:  # noqa: BLE001 — notification must not break request creation
+            return None
+
     def perform_create(self, serializer):
         company = _get_company(self.request)
         user = getattr(self.request, 'user', None)
         employee = _user_employee(user, company)
         request_type = serializer.validated_data.get('request_type')
+        assignee_employee = serializer.validated_data.get('current_assignee_employee')
+        assignee_user = serializer.validated_data.get('current_assignee')
+        if not assignee_user and assignee_employee:
+            assignee_user = _user_of_employee(assignee_employee)
+        if not assignee_employee and assignee_user:
+            assignee_employee = _employee_of_user(assignee_user, company)
         status = self.request.data.get('status') or 'submitted'
         if status not in dict(LetterRequest.STATUS_CHOICES):
             status = 'submitted'
+        if status == 'submitted' and assignee_employee:
+            status = 'in_review'
         instance = serializer.save(
             company=company,
             number=request_number(company),
@@ -129,12 +167,20 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             request_type_title=(request_type.name if request_type else ''),
             requested_on=serializer.validated_data.get('requested_on') or date_cls.today(),
             total_steps=(request_type.approval_levels if request_type else 1) or 1,
+            current_assignee=assignee_user,
+            current_assignee_employee=assignee_employee,
             status=status,
         )
         self._log_request(
             instance, 'created', note=instance.subject[:200],
-            meta={'request_type': instance.request_type_id or '', 'status': instance.status},
+            meta={
+                'request_type': instance.request_type_id or '',
+                'status': instance.status,
+                'assignee': instance.current_assignee_employee_id or '',
+            },
         )
+        if instance.status != 'draft':
+            self._notify_assignee(instance)
 
 
 
@@ -158,10 +204,13 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         if instance.status != 'draft':
             return Response({'detail': 'این درخواست قبلاً ثبت شده است.'},
                             status=http_status.HTTP_400_BAD_REQUEST)
-        instance.status = 'submitted'
+        instance.status = 'in_review' if (
+            instance.current_assignee_id or instance.current_assignee_employee_id
+        ) else 'submitted'
         instance.requested_on = instance.requested_on or date_cls.today()
         instance.save(update_fields=['status', 'requested_on', 'updated_at'])
         self._log_request(instance, 'submitted', note=instance.subject[:200])
+        self._notify_assignee(instance)
         return Response(self.get_serializer(instance).data)
 
     @action(detail=True, methods=['post'])
@@ -252,5 +301,6 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             instance, 'assigned', note=note,
             meta={'to_employee': to_employee_id or '', 'to_user': to_user_id or ''},
         )
+        self._notify_assignee(instance)
         return Response(self.get_serializer(instance).data)
 

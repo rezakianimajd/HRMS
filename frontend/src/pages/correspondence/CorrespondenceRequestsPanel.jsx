@@ -83,6 +83,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
     requested_on: new Date().toISOString().slice(0, 10),
     due_date: '',
     status: 'submitted',
+    receiver: null,
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -97,6 +98,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
       requested_on: new Date().toISOString().slice(0, 10),
       due_date: '',
       status: 'submitted',
+      receiver: null,
     });
     setError('');
   }, [open]);
@@ -115,6 +117,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
         requested_on: form.requested_on || undefined,
         due_date: form.due_date || null,
         status: form.status,
+        current_assignee_employee: form.receiver?.id || null,
       };
       const response = await axiosInstance.post('/letter-requests/', payload);
       qc.invalidateQueries({ queryKey: REQUESTS_KEY });
@@ -164,6 +167,14 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
           <TextField size="small" multiline minRows={3} label="شرح درخواست"
             value={form.description} onChange={set('description')}
             sx={{ gridColumn: { sm: 'span 2' } }} />
+          <Box sx={{ gridColumn: { sm: 'span 2' } }}>
+            <PersonnelPicker
+              label="گیرنده / مسئول اقدام"
+              value={form.receiver}
+              onChange={(option) => setForm((previous) => ({ ...previous, receiver: option }))}
+              helperText="درخواست پس از ثبت، در کارتابل این شخص قرار می‌گیرد و برای او اعلان ارسال می‌شود."
+            />
+          </Box>
           <JalaliMaskedDateInput variant="outlined" label="تاریخ درخواست"
             value={form.requested_on}
             onChange={(value) => setForm((previous) => ({ ...previous, requested_on: value }))} />
@@ -185,7 +196,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
-        <Button size="small" variant="contained" disabled={saving || !form.subject.trim()}
+        <Button size="small" variant="contained" disabled={saving || !form.subject.trim() || !form.receiver}
           onClick={submit} sx={{ bgcolor: INTERNAL, '&:hover': { bgcolor: '#5b21b6' } }}>
           {saving ? 'در حال ثبت…' : 'ثبت درخواست'}
         </Button>
@@ -502,7 +513,7 @@ const CorrespondenceRequestsPanel = () => {
       ),
     },
     {
-      key: 'subject', label: 'موضوع', width: '26%',
+      key: 'subject', label: 'موضوع', width: '22%',
       render: (row) => (
         <CellText weight={800} title={joinParts(row.subject, row.description)}>
           {row.subject || '—'}
@@ -510,10 +521,18 @@ const CorrespondenceRequestsPanel = () => {
       ),
     },
     {
-      key: 'requester', label: 'درخواست‌دهنده', width: '14%',
+      key: 'requester', label: 'درخواست‌دهنده', width: '12%',
       render: (row) => (
         <CellText weight={700}>
           {row.requester_display || row.requester_name || '—'}
+        </CellText>
+      ),
+    },
+    {
+      key: 'assignee', label: 'گیرنده / مسئول اقدام', width: '12%',
+      render: (row) => (
+        <CellText weight={700} color={row.assignee_name ? '#334155' : '#b91c1c'}>
+          {row.assignee_name || 'تعیین نشده'}
         </CellText>
       ),
     },

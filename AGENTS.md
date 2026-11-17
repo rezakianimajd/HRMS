@@ -631,6 +631,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **گیرندهٔ درخواست جدید در کارتابل مکاتبات (۲۰۲۶-۱۱-۱۷):** فرم «درخواست جدید» حالا فیلد
+  اجباری **گیرنده / مسئول اقدام** (`PersonnelPicker` → `current_assignee_employee`) دارد؛
+  درخواست پس از ثبت با وضعیت `in_review` در کارتابل همان شخص قرار می‌گیرد،
+  `current_assignee` از `UserProfile` او پر می‌شود و اعلان `HR_REQUEST` با
+  `entity_type='letter_request'` برای همان کاربر ساخته می‌شود. ستون «گیرنده / مسئول اقدام»
+  به جدول اضافه شد و کلیک اعلان به `/correspondence/workdesk?tab=requests` می‌رود.
+  اگر پرسنل گیرنده حساب کاربری نداشته باشد ارجاع در سطح پرسنل ثبت می‌شود ولی اعلان ساخته نمی‌شود.
+  تست‌ها: بک‌اند `correspondences` (**۲۴۷**) و فرانت `correspondenceSmoke` (**۱۹**) سبز؛
+  تأیید زنده با گیرندهٔ دارای کاربر: `201`، `assignee_name` درست و `notification_count=1`.
 - **ماژول جامع حقوق و دستمزد (۲۰۲۶-۱۱-۱۵):** ماژول `payroll` از یک CRUD ساده به یک
   سیستم دوره‌محور، مؤلفه‌محور و قابل حسابرسی ارتقا یافت و **از منابع انسانی جدا شد**؛ اکنون
   یک Application مستقل با slug `payroll` است (مایگریشن `core.0020`) و از انتخاب‌گر/سوئیچر ماژول
@@ -685,7 +694,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.9ecabf1d.js`**.
+    باندل زنده: **`main.ae12bb0f.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،
