@@ -36,6 +36,20 @@ def _allowed_application_ids(user, profile):
     return set(Application.objects.filter(slug__in=slugs, is_active=True).values_list('id', flat=True))
 
 
+def allowed_application_slugs(user):
+    """اسلاگ ماژول‌هایی که کاربر مجاز به دسترسی به آن‌هاست (برای فیلتر DMS)."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return set()
+    profile = _profile(user)
+    allowed_ids = _allowed_application_ids(user, profile)
+    if not allowed_ids:
+        return set()
+    return set(
+        Application.objects.filter(id__in=allowed_ids, is_active=True)
+        .values_list('slug', flat=True)
+    )
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def applications_view(request):

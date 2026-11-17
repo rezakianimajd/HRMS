@@ -43,3 +43,18 @@ test('documents menu exposes the organization documents permission item', () => 
   expect(item).toBeTruthy();
   expect(item.path).toBe(ORGANIZATION_DOCUMENTS_PATH);
 });
+
+test('documents library only builds menu items for available folder roots', () => {
+  const groups = getMenuForApp('documents', {
+    folders: [{
+      id: 21, name: 'قراردادها', code: 'hrms.contracts', parent: null, color: '#f59e0b',
+      order: 1,
+    }],
+    permissions: {},
+  });
+  const library = groups.find((group) => group.id === 'documents-library');
+  const ids = (library?.items || []).map((item) => item.id);
+  expect(ids).toContain('dms-library-contracts');
+  expect(ids).not.toContain('dms-library-projects');
+  expect(ids).not.toContain('dms-library-organization');
+});

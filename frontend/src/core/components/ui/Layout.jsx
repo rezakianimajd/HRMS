@@ -258,11 +258,17 @@ const Layout = ({ children }) => {
   const chatBadge = Number(workspaceBadges.chat) || 0;
   const planningBadge = Number(workspaceBadges.planning) || 0;
   const { openChat, openPlanning } = useWorkspaceDock();
-  const menu = getMenuForApp(currentApp?.slug, {
+  const rawMenu = getMenuForApp(currentApp?.slug, {
     folders: dmsFolders,
     permissions: user?.fine_permissions,
   });
-  const visibleMenu = menu
+  // در ماژول مدیریت اسناد، کاربر عادی فقط «کتابخانه اسناد» را می‌بیند و
+  // بخش‌های دیگر DMS (داشبورد/گردش‌کار/پایش/گزارش‌ها) برای او پنهان می‌شوند.
+  const isFullAccessUser = Boolean(user?.is_superuser || user?.is_full_access);
+  const scopedMenu = currentApp?.slug === 'documents' && !isFullAccessUser
+    ? rawMenu.filter((group) => group.id === 'documents-library')
+    : rawMenu;
+  const visibleMenu = scopedMenu
     .map((group) => ({
       ...group,
       items: (group.items || []).filter(
@@ -632,6 +638,20 @@ const Layout = ({ children }) => {
           })}
         </Box>
 
+        <Box sx={{ flex: 1, minHeight: 12 }} />
+        <Divider sx={{ width: 24, my: 1, flexShrink: 0 }} />
+
+        <Tooltip title="جستجوی سریع (Ctrl+K)" placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={openPalette}
+            aria-label="جستجوی سریع"
+            sx={{ color: ICON_COLOR }}
+          >
+            <SearchIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
         {canOpenOrganizationDocuments && (
           <Tooltip title="اسناد سازمانی" placement="left" arrow>
             <IconButton
@@ -658,38 +678,6 @@ const Layout = ({ children }) => {
             </IconButton>
           </Tooltip>
         )}
-
-        <Box sx={{ flex: 1, minHeight: 12 }} />
-        <Divider sx={{ width: 24, my: 1, flexShrink: 0 }} />
-
-        <Tooltip title={`پوشهٔ ${moduleLibraryTitle}`} placement="left" arrow>
-          <IconButton
-            size="small"
-            onClick={() => openLibrary()}
-            aria-label={`پوشهٔ ${moduleLibraryTitle}`}
-            sx={{
-              color: libraryOpen ? moduleLibraryAccent : ICON_COLOR,
-              bgcolor: libraryOpen ? alpha(moduleLibraryAccent, 0.12) : 'transparent',
-              border: '1px solid',
-              borderColor: libraryOpen ? alpha(moduleLibraryAccent, 0.3) : 'transparent',
-              mb: 0.35,
-              '&:hover': { bgcolor: alpha(moduleLibraryAccent, 0.08), color: moduleLibraryAccent },
-            }}
-          >
-            <FolderSharedOutlinedIcon sx={{ fontSize: 20 }} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip title="جستجوی سریع (Ctrl+K)" placement="left" arrow>
-          <IconButton
-            size="small"
-            onClick={openPalette}
-            aria-label="جستجوی سریع"
-            sx={{ color: ICON_COLOR }}
-          >
-            <SearchIcon sx={{ fontSize: 20 }} />
-          </IconButton>
-        </Tooltip>
 
         {/* فضای شخصی هر کاربر: نامه‌های ارجاع‌شده به خودش */}
         <Tooltip

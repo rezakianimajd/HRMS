@@ -939,7 +939,20 @@ export function buildDocumentsMenu(folders = []) {
   const rows = Array.isArray(folders) ? folders : [];
   if (!rows.length) return documentsMenu;
 
-  const items = buildLibraryModuleItems(rows);
+  const availableKeys = new Set();
+  DOCUMENT_LIBRARY_MODULES.forEach((module) => {
+    const childHasRoot = (module.children || [])
+      .some((child) => moduleRootFolders(rows, child.key).length > 0);
+    if (moduleRootFolders(rows, module.key).length > 0 || childHasRoot) {
+      availableKeys.add(module.key);
+    }
+    (module.children || []).forEach((child) => {
+      if (moduleRootFolders(rows, child.key).length > 0) availableKeys.add(child.key);
+    });
+  });
+  const items = buildLibraryModuleItems(rows).filter((item) => (
+    availableKeys.has(String(item.id || '').replace('dms-library-', ''))
+  ));
   const companyRoot = rows.find((folder) => folder.code === DOCUMENTS_COMPANY_ROOT_CODE)
     || moduleRootFolders(rows, 'organization')[0];
   const organizationItem = items.find((item) => item.id === 'dms-library-organization');

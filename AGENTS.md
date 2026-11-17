@@ -633,18 +633,27 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 
 ## 12) Current snapshot — وضعیت فعلی
 - **میان‌بر «اسناد سازمانی» در ریل سایدبار (۲۰۲۶-۱۱-۱۷):** دکمهٔ `rail-organization-documents`
-  با آیکن `FolderSharedOutlined` و مسیر `/document-management/library?module=organization`
-  فقط با مجوز ریز **`documents.organization.view`** (یا `is_full_access`/سوپریوزر) نمایش داده
-  می‌شود؛ در «کاربران و مجوزها → مدیریت اسناد → اسناد سازمانی» قابل واگذاری است. کاربران قدیمی
+  **زیر آیکن جست‌وجو** در ریل قرار گرفت (نه بین میان‌برهای بالای ریل) و با آیکن
+  `FolderSharedOutlined` به `/document-management/library?module=organization` می‌رود.
+  نمایش آن فقط با مجوز ریز **`documents.organization.view`** (یا `is_full_access`/سوپریوزر)
+  است؛ در «کاربران و مجوزها → مدیریت اسناد → اسناد سازمانی» قابل واگذاری است. کاربران قدیمی
   بدون هیچ کد ریز اسناد همچنان با `can_manage_documents` سازگار می‌مانند. کلیک روی میان‌بر در
   صورت دسترسی، ماژول اسناد را فعال و پوشهٔ ریشهٔ `company.documents` (مدارک و مستندات شرکت) را
-  باز می‌کند. `Layout` آیتم سازمانی پویا (`dms-library-organization`) را برای جلوگیری از تکرار
-  حذف می‌کند. بک‌اند (`documents/access.py` + `management_views.py`) اسناد/پوشه‌های سازمانی را
-  برای کاربرِ بدون مجوز از API فهرست، فایل‌ها، آمار و منوی DMS حذف می‌کند؛ سطوح محرمانگی
-  (`public/internal` برای دارندهٔ view و `confidential/secret` فقط با `can_manage_documents`)
-  همچنان اعمال می‌شود. کاتالوگ مجوز بازتولید شد: **۱۱ ماژول / ۳۰۴ منو / ۱۲۷۹ کد**.
-  تست‌ها: `documents` + `core.tests_permissions` (**۵۷**) و `documentPermissions` (۴) سبز.
-  باندل زنده: **`main.d80ac31f.js`**.
+  باز می‌کند. **آیکن پوشهٔ ModuleLibraryDrawer از ریل حذف شد.** `Layout` آیتم سازمانی پویا
+  (`dms-library-organization`) را برای جلوگیری از تکرار حذف می‌کند.
+  **دسترسی پوشه‌ها بر اساس ماژول‌ها:** بک‌اند (`documents/access.py` + `management_views.py`)
+  فقط ریشه‌ها/زیرشاخه‌های ماژول‌هایی را برمی‌گرداند که کاربر در `UserProfile.applications` /
+  `RolePermission` به آن‌ها دسترسی دارد؛ خودِ «مدیریت اسناد» باعث دیدن پوشه‌های دیگر نمی‌شود.
+  نگاشت: `hr.employees`/`hrms.recruitment`→`hrms`، `hrms.contracts`→`contracts`،
+  `hrms.projects`→`projects`، `hrms.payroll`→`payroll`، `hrms.pettycash`→`pettycash`،
+  `hrms.accounting`→`accounting`، `hrms.correspondence`→`correspondence`.
+  ریشه‌های `company.documents`/`hrms.organization_documents` فقط با مجوز مستقل سازمانی
+  اضافه می‌شوند. برای کاربر عادی، منوی DMS فقط گروه «کتابخانه اسناد» و فقط ماژول‌های دارای
+  ریشهٔ مجاز را نشان می‌دهد؛ API فهرست، آمار، تاریخچه و منوی پوشه‌ها هم همان دامنه را برمی‌گرداند.
+  سطوح محرمانگی (`public/internal` برای دارندهٔ view و `confidential/secret` فقط با
+  `can_manage_documents`) همچنان اعمال می‌شود. کاتالوگ مجوز: **۱۱ ماژول / ۳۰۴ منو / ۱۲۷۹ کد**.
+  تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و `documentPermissions` (۵) سبز.
+  باندل زنده: **`main.3348a8bb.js`**.
 - **اسکرول چارت سازمانی (۲۰۲۶-۱۱-۱۷):** پوستهٔ برنامه در حالت استاندارد **ثابت (`100vh`)** است و
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛

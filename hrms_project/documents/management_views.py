@@ -14,11 +14,13 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.application_views import allowed_application_slugs
 from core.engines.permission_engine import (
-    can, fine_permissions_for, permissions_for,
+    can, fine_permissions_for, permissions_for, user_access_record,
 )
 from documents.access import (
-    ORGANIZATION_DOCUMENTS_ROOT_CODE, has_organization_documents_permission,
+    ORGANIZATION_DOCUMENTS_ROOT_CODES,
+    folder_root_application, has_organization_documents_permission,
 )
 from documents.models import (
     DocumentActivity, DocumentFolder, DocumentVersion, ManagedDocument,
@@ -95,7 +97,7 @@ def _organization_folder_ids(company):
     )
     roots = {
         folder_id for folder_id, _parent_id, code, name in rows
-        if code == ORGANIZATION_DOCUMENTS_ROOT_CODE
+        if code in ORGANIZATION_DOCUMENTS_ROOT_CODES
         or (not code and name == COMPANY_DOCUMENTS_FOLDER)
     }
     if not roots:
@@ -115,6 +117,76 @@ def _organization_folder_ids(company):
     return collected
 
 
+def _is_full_access(user):
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+    access = user_access_record(user)
+    return bool(access and access.is_full_access)
+
+
+def _allowed_folder_ids(request):
+    """پوشه‌های DMS قابل مشاهده بر اساس ماژول‌های مجاز کاربر.
+
+    ``None`` یعنی دسترسی کامل (بدون محدودیت). برای کاربر عادی، فقط ریشه‌های
+    ماژول‌هایی که در «کاربران و مجوزها → ماژول‌ها» به او داده شده (به‌جز خودِ
+    مدیریت اسناد) و زیرشاخه‌هایشان برمی‌گردند. ریشهٔ اسناد سازمانی فقط با
+    مجوز مستقل ``documents.organization.view`` اضافه می‌شود.
+    """
+    cached = getattr(request, '_dms_allowed_folder_ids', 'missing')
+    if cached != 'missing':
+        return cached
+
+    user = getattr(request, 'user', None)
+    company = _company(request)
+    if not user or not getattr(user, 'is_authenticated', False) or not company:
+        result = set()
+        request._dms_allowed_folder_ids = result
+        return result
+    if _is_full_access(user):
+        request._dms_allowed_folder_ids = None
+        return None
+
+    allowed_slugs = allowed_application_slugs(user)
+    organization_allowed = _can_view_organization_documents(request)
+    rows = list(
+        DocumentFolder.objects.filter(company=company)
+        .values_list('id', 'parent_id', 'code', 'name')
+    )
+    roots = set()
+    for folder_id, parent_id, code, name in rows:
+        if parent_id:
+            continue
+        if code in ORGANIZATION_DOCUMENTS_ROOT_CODES or (
+            not code and name == COMPANY_DOCUMENTS_FOLDER
+        ):
+            if organization_allowed:
+                roots.add(folder_id)
+            continue
+        application_slug = folder_root_application(code)
+        if application_slug and application_slug in allowed_slugs:
+            roots.add(folder_id)
+
+    if not roots:
+        request._dms_allowed_folder_ids = set()
+        return set()
+
+    children = {}
+    for folder_id, parent_id, _code, _name in rows:
+        children.setdefault(parent_id, []).append(folder_id)
+
+    collected, stack = set(), list(roots)
+    while stack:
+        folder_id = stack.pop()
+        if folder_id in collected:
+            continue
+        collected.add(folder_id)
+        stack.extend(children.get(folder_id, []))
+    request._dms_allowed_folder_ids = collected
+    return collected
+
+
 def _accessible_documents(request):
     """اسناد قابل مشاهدهٔ کاربر جاری؛ منبع واحد برای فهرست، آمار و تاریخچه."""
     qs = ManagedDocument.objects.all()
@@ -122,11 +194,9 @@ def _accessible_documents(request):
     if company:
         qs = qs.filter(company=company)
     user = getattr(request, 'user', None)
-    # «اسناد سازمانی» فقط برای دارندگان مجوز ریز همین منو (یا سازگاری قدیمی)
-    if user and user.is_authenticated and not _can_view_organization_documents(request):
-        organization_ids = _organization_folder_ids(company)
-        if organization_ids:
-            qs = qs.exclude(folder_id__in=organization_ids)
+    allowed_folders = _allowed_folder_ids(request)
+    if allowed_folders is not None:
+        qs = qs.filter(folder_id__in=allowed_folders) if allowed_folders else qs.none()
     if user and user.is_authenticated and not _can_manage_documents(request):
         qs = qs.filter(
             Q(confidentiality__in=[
@@ -162,10 +232,9 @@ class DocumentFolderViewSet(viewsets.ModelViewSet):
         if company:
             ensure_default_document_folders(company)
             qs = qs.filter(company=company)
-            if not _can_view_organization_documents(self.request):
-                organization_ids = _organization_folder_ids(company)
-                if organization_ids:
-                    qs = qs.exclude(id__in=organization_ids)
+            allowed_folders = _allowed_folder_ids(self.request)
+            if allowed_folders is not None:
+                qs = qs.filter(id__in=allowed_folders) if allowed_folders else qs.none()
         return qs
 
     def perform_create(self, serializer):
@@ -554,10 +623,9 @@ class DocumentManagementMenuAPIView(APIView):
             'id', 'name', 'parent', 'code', 'color', 'order', 'is_system',
         )
         rows = list(folders)
-        if not _can_view_organization_documents(request):
-            organization_ids = _organization_folder_ids(company)
-            if organization_ids:
-                rows = [row for row in rows if row['id'] not in organization_ids]
+        allowed_folders = _allowed_folder_ids(request)
+        if allowed_folders is not None:
+            rows = [row for row in rows if row['id'] in allowed_folders]
         return Response(rows)
 
 
@@ -589,6 +657,12 @@ class DocumentManagementStatsAPIView(APIView):
             storage_policy_dict(get_documents_storage_profile(getattr(company, 'pk', None)))
             if _can_manage_documents(request) else None
         )
+        folders_qs = DocumentFolder.objects.filter(is_active=True)
+        if company:
+            folders_qs = folders_qs.filter(company=company)
+        allowed_folders = _allowed_folder_ids(request)
+        if allowed_folders is not None:
+            folders_qs = folders_qs.filter(id__in=allowed_folders)
         live_docs = docs.exclude(status=ManagedDocument.Status.ARCHIVED)
         expiring = live_docs.filter(expiry_date__gte=today, expiry_date__lte=today + timedelta(days=30)).count()
         expired = live_docs.filter(expiry_date__lt=today).count()
@@ -617,7 +691,7 @@ class DocumentManagementStatsAPIView(APIView):
             ).count(),
             'storage_bytes': storage,
             'storage_policy': storage_policy,
-            'folders': DocumentFolder.objects.filter(company=company, is_active=True).count() if company else DocumentFolder.objects.filter(is_active=True).count(),
+            'folders': folders_qs.count(),
             'by_confidentiality': list(
                 live_docs.values('confidentiality').annotate(count=Count('id'))
             ),

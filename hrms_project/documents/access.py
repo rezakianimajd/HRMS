@@ -8,6 +8,51 @@ from __future__ import annotations
 ORGANIZATION_DOCUMENTS_MENU = 'organization'
 ORGANIZATION_DOCUMENTS_PERMISSION = f'documents.{ORGANIZATION_DOCUMENTS_MENU}.view'
 ORGANIZATION_DOCUMENTS_ROOT_CODE = 'company.documents'
+ORGANIZATION_DOCUMENTS_ROOT_CODES = (
+    ORGANIZATION_DOCUMENTS_ROOT_CODE,
+    'hrms.organization_documents',
+)
+
+# ریشهٔ پوشه‌های DMS (کد StorageProfile) → اسلاگ ماژول برنامه.
+# «مدیریت اسناد» عمداً در این نگاشت نیست؛ دسترسی به خودِ ماژول DMS نباید
+# باعث دیدن پوشه‌های سایر ماژول‌ها شود.
+FOLDER_ROOT_APPLICATIONS = {
+    'hr.employees': 'hrms',
+    'hrms.recruitment': 'hrms',
+    'hrms.contracts': 'contracts',
+    'hrms.projects': 'projects',
+    'hrms.payroll': 'payroll',
+    'hrms.pettycash': 'pettycash',
+    'hrms.accounting': 'accounting',
+    'hrms.correspondence': 'correspondence',
+}
+
+
+def folder_root_application(code) -> str:
+    """اسلاگ ماژولِ صاحب یک پوشهٔ ریشهٔ DMS (یا رشتهٔ خالی)."""
+    code = str(code or '').strip()
+    if not code:
+        return ''
+    if code in ORGANIZATION_DOCUMENTS_ROOT_CODES:
+        return ''
+    if code in FOLDER_ROOT_APPLICATIONS:
+        return FOLDER_ROOT_APPLICATIONS[code]
+    if code.startswith('hr.employees'):
+        return 'hrms'
+    if code.startswith('hrms.'):
+        slug = code.split('.', 1)[1].split('.', 1)[0]
+        if slug in {
+            'contracts', 'projects', 'recruitment', 'payroll',
+            'pettycash', 'accounting', 'correspondence',
+            'procurement', 'treasury',
+        }:
+            return slug
+        return ''
+    if code.startswith('procurement'):
+        return 'procurement'
+    if code.startswith('treasury'):
+        return 'treasury'
+    return ''
 
 
 def has_organization_documents_permission(

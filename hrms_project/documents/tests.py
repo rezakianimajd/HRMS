@@ -9,7 +9,8 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from documents.access import (
-    ORGANIZATION_DOCUMENTS_PERMISSION, has_organization_documents_permission,
+    ORGANIZATION_DOCUMENTS_PERMISSION, folder_root_application,
+    has_organization_documents_permission,
 )
 from documents.models import (
     DEPENDENTS_FOLDER, DocumentFolder, DocumentType, OrganizationDocument,
@@ -200,6 +201,25 @@ class OrganizationDocumentsAccessTests(SimpleTestCase):
 
     def test_anonymous_user_is_denied(self):
         self.assertFalse(self._has_access(self._user(is_authenticated=False)))
+
+
+class FolderApplicationScopeTests(SimpleTestCase):
+    """نگاشت پوشه‌های ریشهٔ DMS به ماژول‌های برنامه."""
+
+    def test_known_roots_map_to_their_application(self):
+        self.assertEqual(folder_root_application('hr.employees'), 'hrms')
+        self.assertEqual(folder_root_application('hrms.recruitment'), 'hrms')
+        self.assertEqual(folder_root_application('hrms.contracts'), 'contracts')
+        self.assertEqual(folder_root_application('hrms.projects'), 'projects')
+        self.assertEqual(folder_root_application('hrms.payroll'), 'payroll')
+        self.assertEqual(folder_root_application('hrms.pettycash'), 'pettycash')
+        self.assertEqual(folder_root_application('hrms.accounting'), 'accounting')
+        self.assertEqual(folder_root_application('hrms.correspondence'), 'correspondence')
+
+    def test_documents_and_organization_roots_are_not_module_grants(self):
+        self.assertEqual(folder_root_application('hr.documents.management'), '')
+        self.assertEqual(folder_root_application('company.documents'), '')
+        self.assertEqual(folder_root_application('hrms.organization_documents'), '')
 
 
 class DocumentManagementTests(SimpleTestCase):
