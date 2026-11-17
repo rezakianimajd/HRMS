@@ -14,7 +14,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.engines.permission_engine import can
+from core.engines.permission_engine import (
+    can, fine_permissions_for, permissions_for,
+)
+from documents.access import (
+    ORGANIZATION_DOCUMENTS_ROOT_CODE, has_organization_documents_permission,
+)
 from documents.models import (
     DocumentActivity, DocumentFolder, DocumentVersion, ManagedDocument,
 )
@@ -25,7 +30,7 @@ from documents.management_storage import (
     get_documents_storage_profile, storage_policy_dict,
 )
 from documents.management_sync import reconcile_indexed_sources, sync_archive_files
-from documents.management_folders import ensure_default_document_folders
+from documents.management_folders import COMPANY_DOCUMENTS_FOLDER, ensure_default_document_folders
 from documents.management_workflow import can_transition, valid_workflow_targets
 
 
@@ -70,6 +75,46 @@ def _require_workflow_decision(request, target):
         raise PermissionDenied('برای انتشار، لغو یا جایگزینی سند به مجوز انتشار اسناد نیاز دارید.')
 
 
+def _can_view_organization_documents(request):
+    """مجوز ریز «اسناد سازمانی» (یا سازگاری با can_manage_documents)."""
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    return has_organization_documents_permission(
+        user, fine_permissions_for(user), permissions_for(user),
+    )
+
+
+def _organization_folder_ids(company):
+    """شناسهٔ ریشهٔ «مدارک و مستندات شرکت» و همهٔ زیرشاخه‌های آن."""
+    if not company:
+        return set()
+    rows = list(
+        DocumentFolder.objects.filter(company=company)
+        .values_list('id', 'parent_id', 'code', 'name')
+    )
+    roots = {
+        folder_id for folder_id, _parent_id, code, name in rows
+        if code == ORGANIZATION_DOCUMENTS_ROOT_CODE
+        or (not code and name == COMPANY_DOCUMENTS_FOLDER)
+    }
+    if not roots:
+        return set()
+
+    children = {}
+    for folder_id, parent_id, _code, _name in rows:
+        children.setdefault(parent_id, []).append(folder_id)
+
+    collected, stack = set(), list(roots)
+    while stack:
+        folder_id = stack.pop()
+        if folder_id in collected:
+            continue
+        collected.add(folder_id)
+        stack.extend(children.get(folder_id, []))
+    return collected
+
+
 def _accessible_documents(request):
     """اسناد قابل مشاهدهٔ کاربر جاری؛ منبع واحد برای فهرست، آمار و تاریخچه."""
     qs = ManagedDocument.objects.all()
@@ -77,6 +122,11 @@ def _accessible_documents(request):
     if company:
         qs = qs.filter(company=company)
     user = getattr(request, 'user', None)
+    # «اسناد سازمانی» فقط برای دارندگان مجوز ریز همین منو (یا سازگاری قدیمی)
+    if user and user.is_authenticated and not _can_view_organization_documents(request):
+        organization_ids = _organization_folder_ids(company)
+        if organization_ids:
+            qs = qs.exclude(folder_id__in=organization_ids)
     if user and user.is_authenticated and not _can_manage_documents(request):
         qs = qs.filter(
             Q(confidentiality__in=[
@@ -112,6 +162,10 @@ class DocumentFolderViewSet(viewsets.ModelViewSet):
         if company:
             ensure_default_document_folders(company)
             qs = qs.filter(company=company)
+            if not _can_view_organization_documents(self.request):
+                organization_ids = _organization_folder_ids(company)
+                if organization_ids:
+                    qs = qs.exclude(id__in=organization_ids)
         return qs
 
     def perform_create(self, serializer):
@@ -499,7 +553,12 @@ class DocumentManagementMenuAPIView(APIView):
         ).values(
             'id', 'name', 'parent', 'code', 'color', 'order', 'is_system',
         )
-        return Response(list(folders))
+        rows = list(folders)
+        if not _can_view_organization_documents(request):
+            organization_ids = _organization_folder_ids(company)
+            if organization_ids:
+                rows = [row for row in rows if row['id'] not in organization_ids]
+        return Response(rows)
 
 
 class DocumentManagementStatsAPIView(APIView):

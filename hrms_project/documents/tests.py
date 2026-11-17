@@ -8,6 +8,9 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
+from documents.access import (
+    ORGANIZATION_DOCUMENTS_PERMISSION, has_organization_documents_permission,
+)
 from documents.models import (
     DEPENDENTS_FOLDER, DocumentFolder, DocumentType, OrganizationDocument,
     document_upload_path, is_dependent_label, managed_document_version_upload_path,
@@ -154,6 +157,49 @@ class OrganizationDependentPathTests(SimpleTestCase):
         call_args = mocked.call_args
         self.assertEqual(call_args.args[1], 'hrms.organization_documents')
         self.assertEqual(call_args.kwargs['subfolder'], '')
+
+
+class OrganizationDocumentsAccessTests(SimpleTestCase):
+    """مجوز ریز «اسناد سازمانی» و سازگاری با کاربران قدیمی."""
+
+    @staticmethod
+    def _user(**overrides):
+        values = {
+            'is_authenticated': True, 'is_superuser': False,
+            'fine_permissions': {}, 'permissions': {},
+        }
+        values.update(overrides)
+        return SimpleNamespace(**values)
+
+    @classmethod
+    def _has_access(cls, user):
+        return has_organization_documents_permission(
+            user, user.fine_permissions, user.permissions,
+        )
+
+    def test_superuser_has_access(self):
+        self.assertTrue(self._has_access(self._user(is_superuser=True)))
+
+    def test_explicit_menu_view_code_grants_access(self):
+        user = self._user(fine_permissions={ORGANIZATION_DOCUMENTS_PERMISSION: True})
+        self.assertTrue(self._has_access(user))
+
+    def test_other_documents_codes_do_not_grant_access(self):
+        user = self._user(fine_permissions={
+            'documents.all.view': True,
+            'documents.confidential.view': True,
+        })
+        self.assertFalse(self._has_access(user))
+
+    def test_legacy_manager_without_fine_codes_keeps_access(self):
+        user = self._user(permissions={'can_manage_documents': True})
+        self.assertTrue(self._has_access(user))
+
+    def test_user_without_permission_is_denied(self):
+        self.assertFalse(self._has_access(self._user()))
+
+    def test_anonymous_user_is_denied(self):
+        self.assertFalse(self._has_access(self._user(is_authenticated=False)))
 
 
 class DocumentManagementTests(SimpleTestCase):

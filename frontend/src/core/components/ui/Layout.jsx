@@ -82,6 +82,9 @@ import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 import { useThemeMode } from '../../context/ThemeContext';
 import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../../context/ModulePaletteContext';
+import {
+  hasOrganizationDocumentsPermission, ORGANIZATION_DOCUMENTS_PATH,
+} from '../../utils/documentPermissions';
 
 const RAIL_WIDTH = 68;
 const PANEL_WIDTH = 268;
@@ -192,6 +195,7 @@ const ICON_COLOR = 'text.secondary';
 const WORKDESK_ACCENT = '#0f766e';
 const CHAT_ACCENT = '#0ea5e9';
 const PLANNING_ACCENT = '#6366f1';
+const ORGANIZATION_DOCS_ACCENT = '#2563eb';
 
 /**
  * چیدمان اصلی برنامه با سایدبار دوستونهٔ سفید:
@@ -205,7 +209,7 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { currentCompany } = useCompany();
-  const { currentApp } = useApplication();
+  const { currentApp, applications, switchApplication, loadApplications } = useApplication();
   const { openTab } = useWorkspaceTabs();
   const { mode, setMode } = useThemeMode();
   const { getPalette } = useModulePalette();
@@ -216,6 +220,21 @@ const Layout = ({ children }) => {
     ? 'مدیریت اسناد و مدارک'
     : libraryModuleLabel(moduleLibraryKey, currentApp?.title || 'کتابخانهٔ اسناد');
   const moduleLibraryAccent = moduleAccent || getPalette(moduleLibraryKey)?.accent || '#0f766e';
+
+  // لیست ماژول‌های مجاز را حتی وقتی پنل منو جمع است بارگذاری می‌کنیم تا
+  // میان‌بر «اسناد سازمانی» بتواند ماژول اسناد را فعال کند.
+  useEffect(() => {
+    if (!applications.length) loadApplications();
+  }, [applications.length, loadApplications]);
+
+  // دسترسی «اسناد سازمانی»: مجوز ریز documents.documents-organization.view
+  // (یا دسترسی کامل) + دسترسی به ماژول مدیریت اسناد.
+  const documentsApplication = applications.find(
+    (app) => app.slug === 'documents' && app.accessible && !app.is_coming_soon,
+  );
+  const canOpenOrganizationDocuments = hasOrganizationDocumentsPermission(user);
+  const organizationDocsActive = location.pathname === '/document-management/library'
+    && new URLSearchParams(location.search).get('module') === 'organization';
 
   // منوی کتابخانه DMS از پوشه‌های واقعی همان شرکت ساخته می‌شود.
   const dmsFoldersQuery = useQuery({
@@ -243,6 +262,16 @@ const Layout = ({ children }) => {
     folders: dmsFolders,
     permissions: user?.fine_permissions,
   });
+  const visibleMenu = menu
+    .map((group) => ({
+      ...group,
+      items: (group.items || []).filter(
+        (item) => item.id !== 'dms-library-organization'
+          && (canOpenOrganizationDocuments || item.id !== 'documents-organization'),
+      ),
+    }))
+    .filter((group) => !Array.isArray(group.items) || group.items.length > 0);
+  const menuItems = visibleMenu;
 
   const flatMenuItems = (items = []) => items.flatMap((item) => [
     item,
@@ -332,7 +361,7 @@ const Layout = ({ children }) => {
   const activeItemPath = (() => {
     let bestPath = null;
     let bestScore = -1;
-    menu.forEach((group) => {
+    menuItems.forEach((group) => {
       flatMenuItems(group.items).forEach((item) => {
         if (!pathMatches(item.path)) return;
         const [itemPath, itemQuery = ''] = String(item.path).split('?');
@@ -348,10 +377,10 @@ const Layout = ({ children }) => {
 
   const isActive = (path) => Boolean(activeItemPath) && path === activeItemPath;
 
-  const activeGroup = menu.find((group) => flatMenuItems(group.items)
+  const activeGroup = menuItems.find((group) => flatMenuItems(group.items)
     .some((item) => item.path === activeItemPath));
 
-  const fallbackShortcuts = menu
+  const fallbackShortcuts = menuItems
     .flatMap((group) => group.items)
     .filter((item) => item.ready !== false && item.path);
   const seenShortcuts = new Set();
@@ -389,7 +418,7 @@ const Layout = ({ children }) => {
 
   const findMenuMeta = (path) => {
     if (EXTRA_ROUTE_META[path]) return EXTRA_ROUTE_META[path];
-    const allMenus = [menu, menuConfig];
+    const allMenus = [menuItems, menuConfig];
     for (const m of allMenus) {
       for (const g of m) {
         for (const it of flatMenuItems(g.items)) {
@@ -409,6 +438,19 @@ const Layout = ({ children }) => {
   const navigateTo = (path) => {
     if (mobileOpen) setMobileOpen(false);
     goTo(path);
+  };
+
+  const openOrganizationDocuments = async () => {
+    if (mobileOpen) setMobileOpen(false);
+    if (documentsApplication && currentApp?.slug !== 'documents') {
+      await switchApplication(documentsApplication);
+    }
+    openTab({
+      path: ORGANIZATION_DOCUMENTS_PATH,
+      title: 'اسناد سازمانی',
+      color: ORGANIZATION_DOCS_ACCENT,
+    });
+    navigate(ORGANIZATION_DOCUMENTS_PATH);
   };
 
   const renderMenuItems = (items = [], accent, depth = 0) => items.map((item) => {
@@ -525,7 +567,7 @@ const Layout = ({ children }) => {
       }}>
         <Tooltip title={companyName} placement="left" arrow>
           <Avatar
-            onClick={() => navigateTo(menu[0]?.items?.[0]?.path || '/dashboard')}
+            onClick={() => navigateTo(menuItems[0]?.items?.[0]?.path || '/dashboard')}
             src={companyLogo || undefined}
             sx={{
               width: 40, height: 40, borderRadius: '12px', cursor: 'pointer', flexShrink: 0,
@@ -589,6 +631,33 @@ const Layout = ({ children }) => {
             );
           })}
         </Box>
+
+        {canOpenOrganizationDocuments && (
+          <Tooltip title="اسناد سازمانی" placement="left" arrow>
+            <IconButton
+              size="small"
+              data-testid="rail-organization-documents"
+              onClick={openOrganizationDocuments}
+              aria-label="اسناد سازمانی"
+              aria-current={organizationDocsActive ? 'page' : undefined}
+              sx={{
+                mt: 0.35,
+                color: organizationDocsActive ? ORGANIZATION_DOCS_ACCENT : ICON_COLOR,
+                bgcolor: organizationDocsActive
+                  ? alpha(ORGANIZATION_DOCS_ACCENT, 0.12) : 'transparent',
+                border: '1px solid',
+                borderColor: organizationDocsActive
+                  ? alpha(ORGANIZATION_DOCS_ACCENT, 0.35) : 'transparent',
+                '&:hover': {
+                  bgcolor: alpha(ORGANIZATION_DOCS_ACCENT, 0.08),
+                  color: ORGANIZATION_DOCS_ACCENT,
+                },
+              }}
+            >
+              <FolderSharedOutlinedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
+        )}
 
         <Box sx={{ flex: 1, minHeight: 12 }} />
         <Divider sx={{ width: 24, my: 1, flexShrink: 0 }} />
@@ -849,7 +918,7 @@ const Layout = ({ children }) => {
         '&::-webkit-scrollbar': { width: 4 },
         '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 2 },
       }}>
-        {menu.map((group) => {
+        {menuItems.map((group) => {
           const open = openGroupId === group.id;
           const containsActive = flatMenuItems(group.items).some((item) => isActive(item.path));
           const color = group.color || '#6366f1';

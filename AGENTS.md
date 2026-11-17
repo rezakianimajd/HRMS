@@ -632,6 +632,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **میان‌بر «اسناد سازمانی» در ریل سایدبار (۲۰۲۶-۱۱-۱۷):** دکمهٔ `rail-organization-documents`
+  با آیکن `FolderSharedOutlined` و مسیر `/document-management/library?module=organization`
+  فقط با مجوز ریز **`documents.organization.view`** (یا `is_full_access`/سوپریوزر) نمایش داده
+  می‌شود؛ در «کاربران و مجوزها → مدیریت اسناد → اسناد سازمانی» قابل واگذاری است. کاربران قدیمی
+  بدون هیچ کد ریز اسناد همچنان با `can_manage_documents` سازگار می‌مانند. کلیک روی میان‌بر در
+  صورت دسترسی، ماژول اسناد را فعال و پوشهٔ ریشهٔ `company.documents` (مدارک و مستندات شرکت) را
+  باز می‌کند. `Layout` آیتم سازمانی پویا (`dms-library-organization`) را برای جلوگیری از تکرار
+  حذف می‌کند. بک‌اند (`documents/access.py` + `management_views.py`) اسناد/پوشه‌های سازمانی را
+  برای کاربرِ بدون مجوز از API فهرست، فایل‌ها، آمار و منوی DMS حذف می‌کند؛ سطوح محرمانگی
+  (`public/internal` برای دارندهٔ view و `confidential/secret` فقط با `can_manage_documents`)
+  همچنان اعمال می‌شود. کاتالوگ مجوز بازتولید شد: **۱۱ ماژول / ۳۰۴ منو / ۱۲۷۹ کد**.
+  تست‌ها: `documents` + `core.tests_permissions` (**۵۷**) و `documentPermissions` (۴) سبز.
+  باندل زنده: **`main.d80ac31f.js`**.
 - **اسکرول چارت سازمانی (۲۰۲۶-۱۱-۱۷):** پوستهٔ برنامه در حالت استاندارد **ثابت (`100vh`)** است و
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛
@@ -678,7 +691,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `/payroll/annual/eidi-*`، `/payroll/leave/*`، `/payroll/definitions/*` و …)؛
   **هیچ تب داخلی در صفحه وجود ندارد** و هر صفحه deep-link/bookmarkable است.
   مستند کامل: `docs/payroll-module.md`.
-  کاتالوگ مجوز پس از جداسازی: **۱۱ ماژول / ۳۰۳ منو / ۱۲۷۴ کد** (`core/permission_catalog_data.json`).
+  کاتالوگ مجوز پس از جداسازی: **۱۱ ماژول / ۳۰۴ منو / ۱۲۷۹ کد** (`core/permission_catalog_data.json`).
   - **مدل‌ها:** `PayrollPeriod` (وضعیت Draft→Open→Calculating→Calculated→Under Review→
     Approved→Payment Pending→Paid→Closed)، `PayrollSettings`، `PayrollInsuranceRate`،
     `PayrollTaxBracket`، `PayrollComponent` + `PayrollComponentRule`،

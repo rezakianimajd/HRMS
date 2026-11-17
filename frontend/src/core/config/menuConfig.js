@@ -851,6 +851,7 @@ const documentsMenu = [
     color: '#64748b',
     items: [
       { id: 'documents-all', title: 'همه اسناد', icon: <FolderCopyIcon />, path: '/document-management/library?scope=all', color: '#0f766e', primary: false, ready: true },
+      { id: 'documents-organization', title: 'اسناد سازمانی', icon: <FolderSharedIcon />, path: '/document-management/library?module=organization', color: '#2563eb', primary: false, ready: true },
       { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management/library?workflow=draft', color: '#64748b', primary: false, ready: true },
       { id: 'documents-mine', title: 'اسناد من', icon: <PersonSearchIcon />, path: '/document-management/library?scope=mine', color: '#0ea5e9', primary: false, ready: true },
       { id: 'documents-confidential', title: 'اسناد محرمانه', icon: <LockIcon />, path: '/document-management/library?confidentiality=confidential', color: '#be123c', primary: false, ready: true },

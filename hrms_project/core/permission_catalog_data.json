@@ -1567,6 +1567,11 @@
       "path": "/document-management/library?scope=all"
      },
      {
+      "id": "documents-organization",
+      "title": "اسناد سازمانی",
+      "path": "/document-management/library?module=organization"
+     },
+     {
       "id": "documents-drafts",
       "title": "پیش‌نویس‌ها",
       "path": "/document-management/library?workflow=draft"
