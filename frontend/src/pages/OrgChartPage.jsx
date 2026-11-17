@@ -7,7 +7,7 @@ import {
   Box, Typography, Paper, CircularProgress, Alert, Avatar, Chip, Grid,
   IconButton, Tooltip, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, FormControl, InputLabel, Select, MenuItem,
-  OutlinedInput, ListItemText, Checkbox,
+  OutlinedInput, ListItemText, Checkbox, Autocomplete, Stack,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AddIcon from '@mui/icons-material/Add';
@@ -139,7 +139,10 @@ const OrgChartPage = () => {
   const [editMode, setEditMode] = useState(false);
   const [posDialog, setPosDialog] = useState(false);
   const [editingPos, setEditingPos] = useState(null);
-  const [posForm, setPosForm] = useState({ title: '', code: '', level: 1, parent: '', department: '' });
+  const [posForm, setPosForm] = useState({ title: '', level: 1, parent: '', department: '', description: '', employee: '' });
+  const [jobTitle, setJobTitle] = useState(null);
+  const [departmentObj, setDepartmentObj] = useState(null);
+  const [employeeObj, setEmployeeObj] = useState(null);
   const [occupantPos, setOccupantPos] = useState(null);
   const [selectedOccupants, setSelectedOccupants] = useState([]);
   const [focusId, setFocusId] = useState('');
@@ -160,17 +163,34 @@ const OrgChartPage = () => {
     queryKey: ['emp-dropdown'],
     queryFn: () => axiosInstance.get('/employees/', { params: { page_size: 500 } }).then(r => r.data.results || r.data),
   });
+  const { data: jobTitles } = useQuery({
+    queryKey: ['org-job-titles'],
+    queryFn: () => axiosInstance.get('/job-titles/').then(r => r.data.results || r.data),
+  });
 
   const savePosMutation = useMutation({
-    mutationFn: (payload) =>
-      editingPos
-        ? axiosInstance.patch(`/org-chart/positions/${editingPos.id}/`, payload)
-        : axiosInstance.post('/org-chart/positions/', payload),
+    mutationFn: async (form) => {
+      const { employee, ...positionPayload } = form;
+      delete positionPayload.code;
+      const response = editingPos
+        ? await axiosInstance.patch(`/org-chart/positions/${editingPos.id}/`, positionPayload)
+        : await axiosInstance.post('/org-chart/positions/', positionPayload);
+      if (employee && response.data?.id) {
+        await axiosInstance.post(
+          `/org-chart/positions/${response.data.id}/set_occupants/`,
+          { occupant_ids: [Number(employee)] },
+        );
+      }
+      return response.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orgchart-tree'] });
       queryClient.invalidateQueries({ queryKey: ['orgchart-flat'] });
       setPosDialog(false);
       setEditingPos(null);
+      setEmployeeObj(null);
+      setJobTitle(null);
+      setDepartmentObj(null);
     },
   });
 
@@ -194,21 +214,33 @@ const OrgChartPage = () => {
 
   const openAdd = () => {
     setEditingPos(null);
-    setPosForm({ title: '', code: '', level: 1, parent: '', department: '' });
+    setJobTitle(null);
+    setDepartmentObj(null);
+    setEmployeeObj(null);
+    setPosForm({ title: '', level: 1, parent: '', department: '', description: '', employee: '' });
     setPosDialog(true);
   };
 
   const openAddChild = (node) => {
     setEditingPos(null);
-    setPosForm({ title: '', code: '', level: (node.level || 1) + 1, parent: node.id, department: node.department_id || '' });
+    setJobTitle(null);
+    setDepartmentObj((departments || []).find(d => d.id === node.department_id) || null);
+    setEmployeeObj(null);
+    setPosForm({
+      title: '', level: (node.level || 1) + 1, parent: node.id,
+      department: node.department_id || '', description: '', employee: '',
+    });
     setPosDialog(true);
   };
 
   const openEdit = (node) => {
     setEditingPos(node);
+    setEmployeeObj(null);
+    setDepartmentObj((departments || []).find(d => d.id === node.department_id) || null);
+    setJobTitle((jobTitles || []).find(t => t.name === node.title) || null);
     setPosForm({
-      title: node.title, code: node.code, level: node.level,
-      parent: node.parent_id || '', department: node.department_id || '',
+      title: node.title, level: node.level, parent: node.parent_id || '',
+      department: node.department_id || '', description: node.description || '', employee: '',
     });
     setPosDialog(true);
   };
@@ -393,46 +425,118 @@ const OrgChartPage = () => {
       </Paper>
 
       {/* Add/Edit Position Dialog */}
-      <Dialog open={posDialog} onClose={() => setPosDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingPos ? 'ویرایش جایگاه' : 'افزودن جایگاه جدید'}</DialogTitle>
-        <DialogContent>
-          <TextField fullWidth size="small" label="عنوان جایگاه" value={posForm.title || ''}
-            onChange={e => setPosForm(p => ({ ...p, title: e.target.value }))} sx={{ mt: 1.5 }} required />
-          <TextField fullWidth size="small" label="کد" value={posForm.code || ''}
-            onChange={e => setPosForm(p => ({ ...p, code: e.target.value }))} sx={{ mt: 1.5 }} required />
-          <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
-            <Grid item xs={6}>
-              <TextField fullWidth size="small" label="سطح" type="number" value={posForm.level || 1}
-                onChange={e => setPosForm(p => ({ ...p, level: Number(e.target.value) }))} />
+      <Dialog open={posDialog} onClose={() => setPosDialog(false)} maxWidth="md" fullWidth
+        PaperProps={{ sx: { borderRadius: 'var(--hrms-radius-large, 16px)' } }}>
+        <DialogTitle sx={{ pb: 1, fontWeight: 900, fontSize: 14 }}>
+          {editingPos ? 'ویرایش جایگاه' : 'افزودن جایگاه جدید'}
+          <Typography component="span" sx={{ display: 'block', mt: 0.5, fontSize: 11.5, color: 'text.secondary', fontWeight: 400 }}>
+            کد جایگاه به‌صورت خودکار توسط سیستم اختصاص داده می‌شود.
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            <Alert severity="info" sx={{ py: 0.25, borderRadius: '10px', fontSize: 11.5 }}>
+              با انتخاب پرسنل، عنوان شغلی و دپارتمان او به‌صورت خودکار پر می‌شود و همان پرسنل در جایگاه قرار می‌گیرد.
+            </Alert>
+
+            <Autocomplete
+              options={employees || []}
+              value={employeeObj}
+              onChange={(_event, option) => {
+                setEmployeeObj(option || null);
+                if (!option) {
+                  setPosForm(prev => ({ ...prev, employee: '' }));
+                  return;
+                }
+                const deptId = option.department ? String(option.department) : '';
+                const matchedJob = (jobTitles || []).find(title => title.name === option.job_title_name) || null;
+                setJobTitle(matchedJob);
+                setDepartmentObj(deptId
+                  ? ((departments || []).find(dept => String(dept.id) === deptId) || null)
+                  : null);
+                setPosForm(prev => ({
+                  ...prev,
+                  employee: option.id,
+                  title: option.job_title_name || prev.title,
+                  department: deptId,
+                }));
+              }}
+              getOptionLabel={(option) => option
+                ? `${option.full_name || ''} — ${option.employee_id || ''}${option.job_title_name ? ` · ${option.job_title_name}` : ''}${option.department_name ? ` · ${option.department_name}` : ''}`
+                : ''}
+              isOptionEqualToValue={(a, b) => a?.id === b?.id}
+              noOptionsText="پرسنلی یافت نشد"
+              renderInput={(params) => (
+                <TextField {...params} size="small" label="جست‌وجوی پرسنل (نام / کد پرسنلی / شغل)" />
+              )}
+            />
+
+            <Autocomplete
+              options={jobTitles || []}
+              value={jobTitle}
+              onChange={(_event, option) => {
+                setJobTitle(option || null);
+                if (option) {
+                  setPosForm(prev => ({ ...prev, title: option.name }));
+                }
+              }}
+              getOptionLabel={(option) => option?.name || ''}
+              isOptionEqualToValue={(a, b) => a?.id === b?.id}
+              noOptionsText="عنوان شغلی یافت نشد"
+              renderInput={(params) => (
+                <TextField {...params} size="small" label="جست‌وجوی عنوان شغلی" />
+              )}
+            />
+
+            <TextField fullWidth size="small" label="عنوان جایگاه" value={posForm.title || ''}
+              onChange={e => setPosForm(p => ({ ...p, title: e.target.value }))} required
+              helperText="در صورت نیاز می‌توانید عنوان جایگاه را دستی ویرایش کنید." />
+
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  options={departments || []}
+                  value={departmentObj}
+                  onChange={(_event, option) => {
+                    setDepartmentObj(option || null);
+                    setPosForm(prev => ({ ...prev, department: option?.id || '' }));
+                  }}
+                  getOptionLabel={(option) => option?.name || ''}
+                  isOptionEqualToValue={(a, b) => a?.id === b?.id}
+                  noOptionsText="دپارتمانی یافت نشد"
+                  renderInput={(params) => (
+                    <TextField {...params} size="small" label="جست‌وجوی دپارتمان" />
+                  )}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField fullWidth size="small" label="سطح در چارت" type="number"
+                  value={posForm.level || 1}
+                  onChange={e => setPosForm(p => ({ ...p, level: Number(e.target.value) }))} />
+              </Grid>
             </Grid>
-            <Grid item xs={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel>جایگاه بالادستی</InputLabel>
-                <Select value={posForm.parent || ''} label="جایگاه بالادستی"
-                  onChange={e => setPosForm(p => ({ ...p, parent: e.target.value }))}>
-                  <MenuItem value="">— بدون بالادستی (ریشه) —</MenuItem>
-                  {(flatPositions || []).filter(p => p.id !== editingPos?.id).map(p => (
-                    <MenuItem key={p.id} value={p.id}>{p.title}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-          <FormControl fullWidth size="small" sx={{ mt: 1.5 }}>
-            <InputLabel>دپارتمان</InputLabel>
-            <Select value={posForm.department || ''} label="دپارتمان"
-              onChange={e => setPosForm(p => ({ ...p, department: e.target.value }))}>
-              <MenuItem value="">— بدون دپارتمان —</MenuItem>
-              {Array.isArray(departments) && departments.map(d => (
-                <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>جایگاه بالادستی</InputLabel>
+              <Select value={posForm.parent || ''} label="جایگاه بالادستی"
+                onChange={e => setPosForm(p => ({ ...p, parent: e.target.value }))}>
+                <MenuItem value="">— بدون بالادستی (ریشه) —</MenuItem>
+                {(flatPositions || []).filter(p => p.id !== editingPos?.id).map(p => (
+                  <MenuItem key={p.id} value={p.id}>{p.title}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField fullWidth size="small" multiline minRows={2} label="توضیحات جایگاه"
+              value={posForm.description || ''}
+              onChange={e => setPosForm(p => ({ ...p, description: e.target.value }))} />
+          </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 2, py: 1.25 }}>
           <Button onClick={() => setPosDialog(false)}>انصراف</Button>
-          <Button variant="contained" onClick={() => savePosMutation.mutate(posForm)} disabled={savePosMutation.isLoading}>
-            {savePosMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیره'}
+          <Button variant="contained" onClick={() => savePosMutation.mutate(posForm)}
+            disabled={savePosMutation.isLoading || !posForm.title?.trim() || (!editingPos && !posForm.employee)}>
+            {savePosMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیرهٔ جایگاه'}
           </Button>
         </DialogActions>
       </Dialog>

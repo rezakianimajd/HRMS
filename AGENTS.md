@@ -636,7 +636,10 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (`justify-content:center` و `width:max-content` + `margin:auto`)؛ چاپ از
   `PrintButton target={printAreaRef}` و ناحیهٔ چاپ اختصاصی `orgchart-print-area` استفاده
   می‌کند تا سربرگ/پاورقی استودیو تم اعمال شود. رنگ شاخه‌ها از `theme.palette` و
-  سطح/شعاع/سایه از توکن‌های استودیو (CSS variables) می‌آید. تست `orgChartSmoke` (۱).
+  سطح/شعاع/سایه از توکن‌های استودیو (CSS variables) می‌آید. دیالوگ «افزودن جایگاه» بازطراحی شد:
+  کد جایگاه حذف و **خودکار** (`ORG-0001`…) ساخته می‌شود؛ پرسنل/دپارتمان/عنوان شغلی با
+  Autocomplete جست‌وجو می‌شوند و با انتخاب پرسنل، عنوان شغلی و دپارتمان او پر می‌شود
+  (و همان پرسنل به‌عنوان occupant ثبت می‌گردد). تست `orgChartSmoke` (۱).
 - **گیرندهٔ درخواست جدید در کارتابل مکاتبات (۲۰۲۶-۱۱-۱۷):** فرم «درخواست جدید» حالا فیلد
   اجباری **گیرنده / مسئول اقدام** (`PersonnelPicker` → `current_assignee_employee`) دارد؛
   درخواست پس از ثبت با وضعیت `in_review` در کارتابل همان شخص قرار می‌گیرد،
@@ -705,7 +708,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.bd1b674d.js`**.
+    باندل زنده: **`main.d0f9636b.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،

@@ -6,9 +6,24 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count
+import re
+
 from orgchart.models import Position
 from orgchart.serializers import PositionSerializer
 from employees.models import Employee
+
+
+def _next_position_code(company):
+    """Generate the next automatic position code (ORG-0001, ...)."""
+    qs = Position.objects.all()
+    if company:
+        qs = qs.filter(company=company)
+    highest = 0
+    for code in qs.values_list('code', flat=True):
+        match = re.fullmatch(r'ORG-(\d+)', str(code or ''))
+        if match:
+            highest = max(highest, int(match.group(1)))
+    return f'ORG-{highest + 1:04d}'
 
 
 class OrgChartViewSet(viewsets.ModelViewSet):
@@ -25,7 +40,7 @@ class OrgChartViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
-        serializer.save(company=company)
+        serializer.save(company=company, code=_next_position_code(company))
 
     @action(detail=False, methods=['get'])
     def list_all(self, request):
@@ -61,6 +76,7 @@ class OrgChartViewSet(viewsets.ModelViewSet):
             'parent_id': position.parent_id,
             'department_id': position.department_id,
             'department_name': position.department.name if position.department else '',
+            'description': position.description or '',
             'employees': [{'id': e.id, 'full_name': e.full_name, 'employee_id': e.employee_id} for e in employees[:20]],
             'children': [self._build_node(c, company) for c in children],
         }

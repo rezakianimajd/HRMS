@@ -26,7 +26,7 @@ class PositionSerializer(serializers.ModelSerializer):
             'department', 'department_name', 'description',
             'occupant_count', 'is_active', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'code', 'company', 'is_active', 'created_at', 'updated_at']
 
     def get_occupant_count(self, obj):
         return obj.occupants.count()
