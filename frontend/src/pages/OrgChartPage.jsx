@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@mui/material/styles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -14,13 +15,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import DoneIcon from '@mui/icons-material/Done';
-import PrintIcon from '@mui/icons-material/Print';
 import { keyframes } from '@mui/system';
 import PageHeader from '../core/components/ui/PageHeader';
-import { printElement } from '../core/print/printEngine';
+import PrintButton from '../core/print/PrintButton';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
-const depthColors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
 /* Pure-CSS tree connectors — reliable, always connected, no breaks.
  * The tree renders LTR (canonical org-chart geometry) while card text stays RTL. */
@@ -110,16 +109,13 @@ const printCss = `
   }
   @media print {
     html, body, #root { overflow: visible !important; height: auto !important; }
-    body * { visibility: hidden !important; }
-    .orgchart-print-area, .orgchart-print-area * { visibility: visible !important; }
     .orgchart-print-area {
       display: block !important;
-      position: absolute;
-      top: 0; left: 0;
+      position: static;
       width: max-content;
       min-width: max-content;
-      margin: 0;
-      padding: 16px;
+      margin: 0 auto;
+      padding: 0;
       background: #fff;
       zoom: 1;
     }
@@ -129,6 +125,16 @@ const printCss = `
 
 const OrgChartPage = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const printAreaRef = useRef(null);
+  const depthColors = useMemo(() => [
+    theme.palette.primary.main,
+    theme.palette.secondary.main,
+    theme.palette.success.main,
+    theme.palette.warning.main,
+    theme.palette.info.main,
+    theme.palette.primary.light,
+  ], [theme]);
   const queryClient = useQueryClient();
   const [editMode, setEditMode] = useState(false);
   const [posDialog, setPosDialog] = useState(false);
@@ -243,16 +249,12 @@ const OrgChartPage = () => {
   };
   const displayTree = getDisplayTree();
 
-  const handlePrint = () => {
-    const area = document.querySelector('.orgchart-print-area');
-    if (area) {
-      // Measure the off-screen print copy and scale it to fit A4 landscape.
-      const contentWidth = area.scrollWidth || 1200;
-      const pageWidth = 1123; // A4 landscape usable width at 96dpi
-      const scale = Math.min(1, (pageWidth - 40) / contentWidth);
-      area.style.zoom = scale;
-    }
-    setTimeout(() => printElement('main', { title: 'چارت سازمانی', orientation: 'landscape' }), 100);
+  const fitPrintArea = () => {
+    const area = printAreaRef.current;
+    if (!area) return;
+    const contentWidth = area.scrollWidth || 1200;
+    const pageWidth = 1123; // A4 landscape usable width at 96dpi
+    area.style.zoom = Math.min(1, (pageWidth - 40) / contentWidth);
   };
 
   const OrgNode = ({ node, depth }) => {
@@ -265,26 +267,26 @@ const OrgChartPage = () => {
         {/* Card */}
           <Box sx={{
           direction: 'rtl',
-          width: 190, px: 1.5, py: 1.25, borderRadius: '10px',
+          width: 190, px: 1.5, py: 1.25, borderRadius: 'var(--hrms-radius, 10px)',
           background: `linear-gradient(135deg, ${color}16, ${color}08)`,
           border: `1.2px solid ${color}45`,
           backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
           textAlign: 'center', transition: 'all 0.25s ease',
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           animation: `${fadeIn} 0.4s ease ${depth * 0.07}s both`,
-          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)',
+          boxShadow: 'var(--hrms-shadow-card, none)',
           '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 22px ${color}22` },
         }}>
-          <Typography variant="body2" fontWeight={700} sx={{ fontSize: 12.5, lineHeight: 1.35, color: '#1e293b' }}>{node.title}</Typography>
+          <Typography variant="body2" fontWeight={700} sx={{ fontSize: 12.5, lineHeight: 1.35, color: theme.palette.text.primary }}>{node.title}</Typography>
           {node.department_name && (
-            <Typography variant="caption" sx={{ fontSize: 12, color: 'textSecondary', display: 'block', mb: 0.25 }}>{node.department_name}</Typography>
+            <Typography variant="caption" sx={{ fontSize: 12, color: theme.palette.text.secondary, display: 'block', mb: 0.25 }}>{node.department_name}</Typography>
           )}
 
           {hasEmployees && (
             <Box sx={{ mt: 0.75, pt: 0.75, borderTop: `1px solid ${color}22`, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.3 }}>
               {node.employees.slice(0, 4).map(emp => (
                 <Chip key={emp.id} label={emp.full_name} size="small"
-                  sx={{ fontSize: 12, height: 20, bgcolor: `${color}1c`, color: '#1e293b' }} />
+                  sx={{ fontSize: 12, height: 20, bgcolor: `${color}1c`, color: theme.palette.text.primary }} />
               ))}
               {node.employees.length > 4 && <Chip label={`+${node.employees.length - 4}`} size="small" variant="outlined" sx={{ fontSize: 12, height: 20 }} />}
             </Box>
@@ -340,7 +342,7 @@ const OrgChartPage = () => {
             ) : (
               <>
                 <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditMode(true)}>ویرایش چارت</Button>
-                <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>چاپ / PDF</Button>
+                <PrintButton target={printAreaRef} title="چارت سازمانی" orientation="landscape" onClick={fitPrintArea} />
               </>
             )}
           </>
@@ -348,10 +350,12 @@ const OrgChartPage = () => {
       />
 
       {/* Tree */}
-      <Paper sx={{
+      <Paper elevation={0} sx={{
         p: 3, overflow: 'auto', minHeight: 400,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.35))',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '10px',
+        borderRadius: 'var(--hrms-radius-large, 16px)',
+        border: 'var(--hrms-border-card, 1px solid #e8edf4)',
+        bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
+        boxShadow: 'var(--hrms-shadow-card, none)',
         '@media print': {
           overflow: 'visible',
           minHeight: 'auto',
@@ -378,7 +382,7 @@ const OrgChartPage = () => {
             <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>افزودن اولین جایگاه</Button>
           </Box>
         ) : (
-          <Box className="orgchart-print-root" sx={{ display: 'flex', justifyContent: 'flex-start', gap: 6, pb: 4, minWidth: 'fit-content', minHeight: 'max-content' }}>
+          <Box className="orgchart-print-root" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 6, pb: 4, width: 'max-content', minWidth: '100%', minHeight: 'max-content', mx: 'auto' }}>
             {[...displayTree].reverse().map(root => (
               <Box key={root.id} component="ul" className="org-tree org-tree--root" sx={{ '--line': depthColors[0] }}>
                 <OrgNode node={root} depth={0} />
@@ -435,8 +439,9 @@ const OrgChartPage = () => {
 
       {/* Hidden print-only copy of the tree (outside any overflow container) */}
       {displayTree && displayTree.length > 0 && (
-        <div className="orgchart-print-area" aria-hidden="true">
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 60 }}>
+        <div className="orgchart-print-area" aria-hidden="true" ref={printAreaRef}>
+          <style>{treeCss}{printCss}</style>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 60, width: 'max-content', margin: '0 auto' }}>
             {[...displayTree].reverse().map(root => (
               <ul key={`print-${root.id}`} className="org-tree org-tree--root" style={{ '--line': depthColors[0] }}>
                 <OrgNode node={root} depth={0} />

@@ -379,7 +379,8 @@ const print = usePrintDocument();
 | محل | روش چاپ |
 |---|---|
 | نامهٔ مکاتبات (کشوی جزئیات) | سند سروری `document:'letter'` + `PrintPreviewDialog` |
-| ۱۸ صفحهٔ گزارش/داشبورد (حسابداری، قراردادها، تقویم، چارت سازمانی، پروژه، بیمه، داشبورد) | `printElement('main', {title, orientation})` — جدول‌های عریض `landscape` |
+| ۱۸ صفحهٔ گزارش/داشبورد (حسابداری، قراردادها، تقویم، پروژه، بیمه، داشبورد) | `printElement('main', {title, orientation})` — جدول‌های عریض `landscape` |
+| چارت سازمانی | `PrintButton target={printAreaRef}` با ناحیهٔ چاپ همیشه‌وسط‌چین + سربرگ/پاورقی استودیو تم |
 | `SalaryPayslip` | سند سروری `document:'payslip'` + `PrintPreviewDialog` (A5)؛ fallback: `printElement(payslipRef)` |
 | `LedgerDrillDialog` | `printElement(contentRef, {orientation:'landscape'})` |
 | `TreasuryVoucherDialog` | قالب شرکت `printHtml(data.html)` → سند استاندارد `document:'voucher'` → `printElement(contentRef)` |
@@ -631,6 +632,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **چارت سازمانی (۲۰۲۶-۱۱-۱۷):** درخت چارت در حالت صفحه و چاپ کاملاً **وسط‌چین** شد
+  (`justify-content:center` و `width:max-content` + `margin:auto`)؛ چاپ از
+  `PrintButton target={printAreaRef}` و ناحیهٔ چاپ اختصاصی `orgchart-print-area` استفاده
+  می‌کند تا سربرگ/پاورقی استودیو تم اعمال شود. رنگ شاخه‌ها از `theme.palette` و
+  سطح/شعاع/سایه از توکن‌های استودیو (CSS variables) می‌آید. تست `orgChartSmoke` (۱).
 - **گیرندهٔ درخواست جدید در کارتابل مکاتبات (۲۰۲۶-۱۱-۱۷):** فرم «درخواست جدید» حالا فیلد
   اجباری **گیرنده / مسئول اقدام** (`PersonnelPicker` → `current_assignee_employee`) دارد؛
   درخواست پس از ثبت با وضعیت `in_review` در کارتابل همان شخص قرار می‌گیرد،
@@ -699,7 +705,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.d7aef5e2.js`**.
+    باندل زنده: **`main.bd1b674d.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،
