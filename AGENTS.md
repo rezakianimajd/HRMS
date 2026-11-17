@@ -710,7 +710,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   - **تست:** `payroll.tests_payroll` (۱۲ تست DB-free) + `payrollSmoke` (۲) و live check
     روی `kpsmi`: ایجاد پروفایل/دوره، محاسبهٔ ۶۸ نفر، حقوق پایه ۱۰۰م + مزایا، بیمهٔ
     کارمند ۷٪ و مالیات مؤثر، فیش ۲۰۰، Summary/Reconciliation ۲۰۰؛ سپس دادهٔ تست پاک شد.
-    باندل زنده: **`main.35daf7f9.js`**.
+    باندل زنده: **`main.b9aeb733.js`**.
 
 - **صفحهٔ «پرداخت‌های تنخواه» (۲۰۲۶-۱۱-۱۵):** صفحهٔ مستقل `/petty-cash/payments` برای ثبت پرداخت وجه
   تنخواه (اولیه/علی‌الحساب/شارژ/سایر) با روش‌های نقدی، واریز، شبا، کارت و چک، تاریخ پرداخت،
