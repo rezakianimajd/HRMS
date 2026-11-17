@@ -393,7 +393,10 @@ const OrgChartPage = () => {
       <Paper elevation={0} sx={{
         p: 3,
         minHeight: 400,
-        overflow: 'visible',
+        maxWidth: '100%',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        overscrollBehaviorX: 'contain',
         direction: 'ltr',
         borderRadius: 'var(--hrms-radius-large, 16px)',
         border: 'var(--hrms-border-card, 1px solid #e8edf4)',
@@ -401,6 +404,7 @@ const OrgChartPage = () => {
         boxShadow: 'var(--hrms-shadow-card, none)',
         '@media print': {
           minHeight: 'auto',
+          maxWidth: 'none',
           overflow: 'visible',
           borderRadius: 0,
           backdropFilter: 'none',
