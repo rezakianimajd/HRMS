@@ -98,13 +98,14 @@ const treeCss = `
 
 const printCss = `
   @media screen {
-    .orgchart-print-area {
-      position: absolute;
-      left: -99999px;
+    .orgchart-print-slot {
+      position: fixed;
+      left: -200vw;
       top: 0;
-      display: block;
-      background: #fff;
-      padding: 16px;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
     }
   }
   @media print {
@@ -558,14 +559,16 @@ const OrgChartPage = () => {
 
       {/* Hidden print-only copy of the tree (outside any overflow container) */}
       {displayTree && displayTree.length > 0 && (
-        <div className="orgchart-print-area" aria-hidden="true" ref={printAreaRef}>
-          <style>{treeCss}{printCss}</style>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 60, width: 'max-content', margin: '0 auto' }}>
-            {[...displayTree].reverse().map(root => (
-              <ul key={`print-${root.id}`} className="org-tree org-tree--root" style={{ '--line': depthColors[0] }}>
-                <OrgNode node={root} depth={0} />
-              </ul>
-            ))}
+        <div className="orgchart-print-slot" aria-hidden="true">
+          <div className="orgchart-print-area" ref={printAreaRef}>
+            <style>{treeCss}{printCss}</style>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 60, width: 'max-content', margin: '0 auto' }}>
+              {[...displayTree].reverse().map(root => (
+                <ul key={`print-${root.id}`} className="org-tree org-tree--root" style={{ '--line': depthColors[0] }}>
+                  <OrgNode node={root} depth={0} />
+                </ul>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -636,8 +636,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   کل صفحه/سایدبار اسکرول نمی‌شود؛ فقط ناحیهٔ محتوا (`hrms-page`) اسکرول عمودی دارد. کارت چارت
   ارتفاع ثابت/اسکرول عمودی ندارد (`minHeight:400` و `height:auto`) تا خودِ درخت در یک کارت بماند؛
   `maxWidth:100%` با `overflowX:auto`/`overflowY:hidden` باعث می‌شود فقط محور افقی درخت (اگر از عرض
-  بیشتر باشد) داخل همان کارت اسکرول شود و چارت از کادر بیرون نزند. این رفتار با `openChat`/دیالوگ‌ها
-  و بقیهٔ صفحات یکسان است. تست `orgChartSmoke` (۱) سبز؛ باندل زنده: **`main.93bd680b.js`**.
+  بیشتر باشد) داخل همان کارت اسکرول شود و چارت از کادر بیرون نزند. **کپی چاپی پنهان** در
+  `orgchart-print-slot` با `position:fixed; width:0; height:0; overflow:hidden` قرار گرفت (قبلاً
+  `left:-99999px` مطلق بود و کل سند را تا صدهاهزار پیکسل افقی می‌کشید/اسکرول سراسری می‌ساخت)؛
+  خودِ `orgchart-print-area` تمیز می‌ماند تا پیش‌نمایش چاپ هم خالی نشود. این رفتار با `openChat`/دیالوگ‌ها
+  و بقیهٔ صفحات یکسان است. تست `orgChartSmoke` (۱) سبز؛ باندل زنده: **`main.073def50.js`**.
 - **چارت سازمانی (۲۰۲۶-۱۱-۱۷):** درخت چارت در حالت صفحه و چاپ کاملاً **وسط‌چین** شد
   (`justify-content:center` و `width:max-content` + `margin:auto`)؛ چاپ از
   `PrintButton target={printAreaRef}` و ناحیهٔ چاپ اختصاصی `orgchart-print-area` استفاده
