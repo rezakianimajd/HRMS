@@ -95,31 +95,45 @@ const DocumentFolderNavigator = ({
   folders = [], moduleKey = '', selectedFolderId = '', onChangeModule, onChangeFolder,
 }) => {
   const [expanded, setExpanded] = useState(true);
+  const organizationRoot = useMemo(
+    () => folders.find((folder) => folder.code === 'company.documents')
+      || folders.find((folder) => folder.name === 'مدارک و مستندات شرکت')
+      || null,
+    [folders],
+  );
   const moduleRows = useMemo(() => DOCUMENT_LIBRARY_MODULES
     .map((module) => {
-      const roots = moduleRootFolders(folders, module.key);
+      const roots = module.key === 'organization'
+        ? (organizationRoot ? [organizationRoot] : [])
+        : moduleRootFolders(folders, module.key);
       const childRoots = (module.children || [])
         .flatMap((child) => moduleRootFolders(folders, child.key));
       const allRoots = [...roots, ...childRoots]
         .filter((folder, index, rows) => rows.findIndex((row) => row.id === folder.id) === index);
       return { ...module, roots: allRoots };
     })
-    .filter((module) => module.roots.length), [folders]);
+    .filter((module) => module.roots.length), [folders, organizationRoot]);
 
   const activeModule = moduleKey ? findDocumentModule(moduleKey) : null;
   const scopedFolders = useMemo(() => {
     if (!moduleKey) return folders;
+    if (moduleKey === 'organization' && organizationRoot) {
+      const ids = folderDescendants(folders, [organizationRoot.id]);
+      return folders.filter((folder) => ids.has(String(folder.id)) && folder.id !== organizationRoot.id);
+    }
     const roots = moduleRootFolders(folders, moduleKey);
     const ids = folderDescendants(folders, roots.map((folder) => folder.id));
     return folders.filter((folder) => ids.has(String(folder.id)));
-  }, [folders, moduleKey]);
+  }, [folders, moduleKey, organizationRoot]);
 
   const selectedFolder = folders.find(
     (folder) => String(folder.id) === String(selectedFolderId),
   ) || null;
-  const rootFolders = moduleKey
-    ? moduleRootFolders(folders, moduleKey)
-    : sorted(moduleRows.flatMap((module) => module.roots));
+  const rootFolders = moduleKey === 'organization' && organizationRoot
+    ? folders.filter((folder) => String(folder.parent || '') === String(organizationRoot.id))
+    : moduleKey
+      ? moduleRootFolders(folders, moduleKey)
+      : sorted(moduleRows.flatMap((module) => module.roots));
 
   return (
     <Paper elevation={0} sx={{
