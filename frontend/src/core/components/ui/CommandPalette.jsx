@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Alert, Box, ButtonBase, CircularProgress, Dialog, Divider, InputAdornment,
+  Alert, Box, ButtonBase, CircularProgress, Dialog, Divider, IconButton, InputAdornment,
   Skeleton, Stack, TextField, Tooltip, Typography, alpha,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -381,12 +381,19 @@ const CommandPalette = () => {
       open={open}
       onClose={() => setOpen(false)}
       fullWidth
-      maxWidth="md"
+      maxWidth="xl"
       aria-label="جستجوی سریع ماژول"
       onKeyDown={handleKeyDown}
       PaperProps={{
         dir: 'rtl',
         sx: {
+          width: 'calc(100vw - 40px)',
+          maxWidth: '1700px',
+          height: '92vh',
+          maxHeight: '92vh',
+          m: 2,
+          display: 'flex',
+          flexDirection: 'column',
           borderRadius: `${dialogRadius}px`,
           overflow: 'hidden',
           bgcolor: surface,
@@ -415,7 +422,15 @@ const CommandPalette = () => {
             <Typography sx={{ fontSize: 13, fontWeight: 900, color: 'text.primary', lineHeight: 1.5 }}>
               جستجو در {moduleMeta.label}
             </Typography>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
+              صفحه‌ها و داده‌های همین ماژول، با دسترسی‌های شما
+            </Typography>
           </Box>
+          <Tooltip title="بستن">
+            <IconButton size="small" onClick={() => setOpen(false)} aria-label="بستن جستجو">
+              <CloseIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
         </Stack>
 
         <TextField
@@ -470,7 +485,7 @@ const CommandPalette = () => {
 
 
       {/* ---------- بدنه: نتایج + ریل محدوده ---------- */}
-      <Box sx={{ display: 'flex', minHeight: 320, maxHeight: 'min(64vh, 540px)' }}>
+      <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
         <Box sx={{ flex: 1, minWidth: 0, overflowY: 'auto', p: 0.75 }}>
           {isError ? (
             <Alert
