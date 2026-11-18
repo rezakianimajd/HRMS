@@ -42,10 +42,16 @@ const messageFromBlob = async (blob, status) => {
  * و `responseType: 'blob'` فایل را می‌گیرد (توکن توسط interceptor اضافه می‌شود)
  * و سپس آن را با نام اصلی از `Content-Disposition` ذخیره می‌کند.
  */
-const downloadFile = async (url, { params, filename = '', fallbackName = 'download' } = {}) => {
+const downloadFile = async (url, {
+  params, filename = '', fallbackName = 'download', timeout,
+} = {}) => {
   let response;
   try {
-    response = await axiosInstance.get(url, { params, responseType: 'blob' });
+    response = await axiosInstance.get(url, {
+      params,
+      responseType: 'blob',
+      ...(timeout !== undefined ? { timeout } : {}),
+    });
   } catch (error) {
     const data = error?.response?.data;
     if (data instanceof Blob) {

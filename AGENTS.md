@@ -632,6 +632,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **خروجی اکسل قراردادها (۲۰۲۶-۱۱-۱۸):** خطای `timeout of 30000ms exceeded` با افزایش
+  مهلت درخواست دانلود به ۱۲۰ ثانیه در `ExternalContractsPage` و `downloadUtils` رفع شد.
+  در بک‌اند `_lean_queryset` پرداخت‌ها را همراه `allocations` پیش‌بارگذاری می‌کند و
+  `_related_count` برای ستون «تعداد اسناد» از annotation `documents_count` استفاده می‌کند؛
+  اندازه‌گیری زنده با ۱۷۱ قرارداد: **۳۶٫۶۵ ثانیه**، فایل ۲٬۰۶۳٬۶۰۱ بایت، HTTP 200.
+  باندل زنده: **`main.44b194b5.js`**.
 - **میان‌بر «اسناد سازمانی» در ریل سایدبار (۲۰۲۶-۱۱-۱۷):** دکمهٔ `rail-organization-documents`
   **زیر آیکن جست‌وجو** در ریل قرار گرفت (نه بین میان‌برهای بالای ریل) و با آیکن
   `FolderSharedOutlined` به `/document-management/library?module=organization` می‌رود.

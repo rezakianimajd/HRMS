@@ -160,7 +160,12 @@ class ContractViewSet(BaseContractViewSet):
                 ).prefetch_related(Prefetch('payment_allocations', queryset=allocations))),
                 Prefetch('payments', queryset=Payment.objects.only(
                     'id', 'contract_id', 'reference', 'date', 'amount',
-                )),
+                ).prefetch_related(Prefetch(
+                    'allocations',
+                    queryset=PaymentAllocation.objects.only(
+                        'id', 'payment_id', 'statement_id', 'invoice_id', 'kind', 'amount',
+                    ),
+                ))),
                 Prefetch('guarantees', queryset=Guarantee.objects.select_related(
                     'currency', 'contract__currency',
                 ).only(

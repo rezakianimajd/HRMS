@@ -121,6 +121,10 @@ def _related_list(contract, field):
 
 def _related_count(contract, field):
     """تعداد اسناد/روابط مرتبط (اگر در دسترس نباشد، رشتهٔ خالی)."""
+    if field == 'documents':
+        annotated = getattr(contract, 'documents_count', None)
+        if annotated is not None:
+            return annotated
     counter = getattr(getattr(contract, field, None), 'count', None)
     if not callable(counter):
         return ''

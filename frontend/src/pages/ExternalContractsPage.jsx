@@ -322,6 +322,7 @@ const ExternalContractsPage = () => {
           ...(typeFilter ? { contract_type_master: typeFilter } : {}),
         },
         fallbackName: 'contracts.xlsx',
+        timeout: 120000,
       });
       setMsg('فایل اکسل تهیه و دانلود شد.');
     } catch (e) {
