@@ -632,6 +632,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
+  اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
+  دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد
+  تا همهٔ صفحه‌ها خوانده شود و با پروندهٔ قرارداد هم‌خوان باشد. تست‌های `guarantees` (۶) و
+  `contractGuaranteesMonitorSmoke` (۲) سبز؛ باندل زنده: **`main.a8017029.js`**.
 - **خروجی اکسل قراردادها (۲۰۲۶-۱۱-۱۸):** خطای `timeout of 30000ms exceeded` با افزایش
   مهلت درخواست دانلود به ۱۲۰ ثانیه در `ExternalContractsPage` و `downloadUtils` رفع شد.
   در بک‌اند `_lean_queryset` پرداخت‌ها را همراه `allocations` پیش‌بارگذاری می‌کند و

@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
+import fetchAllPages from '../core/api/fetchAllPages';
 import {
   Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, FormControl, FormHelperText,
@@ -1183,9 +1184,10 @@ const GuaranteesPage = () => {
 
   const { data: raw, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['contract-guarantees'],
-    queryFn: () => axiosInstance.get('/contract-guarantees/', { params: { page_size: 500 } }).then((r) => r.data),
+    // همهٔ صفحه‌ها؛ سقف ۵۰۰ ردیف باعث می‌شد تضامین قراردادهای بعدی در فهرست دیده نشوند.
+    queryFn: () => fetchAllPages('/contract-guarantees/', { page_size: 1000 }),
   });
-  const list = Array.isArray(raw) ? raw : raw?.results || [];
+  const list = Array.isArray(raw) ? raw : [];
 
   const { data: contracts } = useQuery({
     queryKey: ['external-contracts-all'],
