@@ -23,7 +23,7 @@ const MODULE_SETTINGS = {
   settings: { label: 'تنظیمات عمومی', path: '/settings', color: '#64748b' },
 };
 
-const Tile = ({ icon: Icon, title, subtitle, color, onClick }) => (
+const Tile = ({ icon: Icon = SettingsOutlinedIcon, title, subtitle, color, onClick }) => (
   <ButtonBase
     onClick={onClick}
     sx={{
