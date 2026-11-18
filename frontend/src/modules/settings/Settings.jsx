@@ -128,7 +128,9 @@ const SECTIONS = {
   updates: { title: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, color: SOFT.violet },
 };
 
-const Settings = () => {
+export const SETTINGS_SECTIONS = SECTIONS;
+
+const Settings = ({ embedded = false, initialTab = '' }) => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { info: systemInfo, updateAvailable } = useSystemStatus();
@@ -137,10 +139,27 @@ const Settings = () => {
     user?.permissions?.can_manage_updates || user?.is_superuser
   );
 
-  const requested = (searchParams.get('tab') || 'general').toLowerCase();
+  const requested = (initialTab || searchParams.get('tab') || 'general').toLowerCase();
   const sectionKey = SECTIONS[requested] ? requested : 'general';
   const section = SECTIONS[sectionKey];
   const isGeneral = sectionKey === 'general';
+
+  const panels = {
+    general: <GeneralSettingsPanel />,
+    management: <ManagementSettingsPanel />,
+    notifications: <NotificationSettingsPanel />,
+    accounting: <AccountingSettingsPage embedded />,
+    backup: <BackupTab />,
+    updates: <UpdatePanel />,
+  };
+
+  if (embedded) {
+    return (
+      <Box sx={{ minWidth: 0, width: '100%' }}>
+        {panels[sectionKey]}
+      </Box>
+    );
+  }
 
   if (sectionKey === 'updates' && !canManageUpdates) {
     return (
@@ -154,15 +173,6 @@ const Settings = () => {
       </Box>
     );
   }
-
-  const panels = {
-    general: <GeneralSettingsPanel />,
-    management: <ManagementSettingsPanel />,
-    notifications: <NotificationSettingsPanel />,
-    accounting: <AccountingSettingsPage embedded />,
-    backup: <BackupTab />,
-    updates: <UpdatePanel />,
-  };
 
   const displayName = user?.full_name || user?.username || 'کاربر';
 
