@@ -661,7 +661,8 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   برای کاربر بدون پوشهٔ مجاز، منوی DMS حداقل یک آیتم «کتابخانه اسناد» (`dms-library-home`)
   دارد تا منوی اصلی خالی نشود.
   تست‌ها: `documents` + `core.tests_permissions` (**۵۹**) و فرانت
-  `documentPermissions` (۶) + `organizationalDocumentsSmoke` (۱) سبز.
+  `documentPermissions` (۶) + `organizationalDocumentsSmoke` (۱) +
+  `documentManagementSmoke` (۴) + `workspaceDock` (۱) سبز.
   **ناوبر پوشه‌های DMS برگشت:** `pages/documents/DocumentFolderNavigator.jsx` در صفحهٔ مدیریت
   اسناد بالای جدول، چیپ ماژول‌ها + درخت تودرتوی قابل جمع‌شدن + کارت ریشه‌های همان ماژول را
   با توکن‌های استودیو تم نشان می‌دهد و انتخاب هر پوشه فیلتر سروری فهرست را عوض می‌کند.
