@@ -207,8 +207,8 @@ test('document management page renders the library in a single standard table', 
   expect(container.textContent).toContain('کتابخانه اسناد');
   expect(container.querySelector('input[placeholder*="جست‌وجو"]')).toBeTruthy();
 
-  // بدون درخت‌وارهٔ پوشه‌ها و بدون کارت
-  expect(container.textContent).not.toContain('پوشه‌های اسناد');
+  // ناوبر پوشه‌های بازطراحی‌شده + بدون کارت
+  expect(container.textContent).toContain('پوشه‌های اسناد');
   expect(container.textContent).not.toContain('سیاست ذخیره‌سازی');
   expect(container.querySelector('[aria-label="نمای کارت"]')).toBeNull();
 

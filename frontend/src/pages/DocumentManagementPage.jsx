@@ -28,6 +28,7 @@ import {
   DocumentDetailDrawer, DocumentEditorDialog, FolderEditorDialog, WORKFLOW_STATUS,
 } from './contracts/DocumentManagementUI';
 import { buildPersonnelRows, normalizeText } from './contracts/personnelDocuments';
+import DocumentFolderNavigator from './documents/DocumentFolderNavigator';
 import {
   findDocumentModule, findModuleForFolder,
   moduleFolderIds, moduleRootFolders, scopedLibraryFolders,
@@ -887,6 +888,14 @@ const DocumentManagementPage = () => {
             <Button variant="contained" startIcon={<UploadFileOutlinedIcon />} disabled={!canManage} onClick={openNew}>آپلود سند</Button>
           </>
         )}
+      />
+
+      <DocumentFolderNavigator
+        folders={folders}
+        moduleKey={moduleFilter}
+        selectedFolderId={folderId}
+        onChangeModule={(key) => { setModuleFilter(key || ''); setFolderId(''); setPage(0); }}
+        onChangeFolder={(id) => { setFolderId(id || ''); setPage(0); }}
       />
 
       <ModuleToolbar

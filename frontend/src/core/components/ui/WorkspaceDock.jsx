@@ -8,11 +8,17 @@ import CloseIcon from '@mui/icons-material/Close';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
+import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { ChatPanel } from '../../../pages/chat/ChatPage';
 import { PlanningPanel } from '../../../pages/planning/PlanningPage';
 import OrganizationalDocumentsPanel from '../../../pages/documents/OrganizationalDocumentsPanel';
+import CorrespondenceWorkdeskPage from '../../../pages/correspondence/CorrespondenceWorkdeskPage';
+import SettingsWorkspacePanel from './SettingsWorkspacePanel';
+import NotificationsPanel from './NotificationsPanel';
 
 /**
  * «پنجرهٔ کاری» شناور: چت و برنامه‌ریزی روی هر صفحه‌ای بدون ترک آن صفحه باز می‌شوند.
@@ -33,6 +39,12 @@ export const useWorkspaceDock = () => useContext(WorkspaceDockContext) || {
   closePlanning: () => {},
   openDocuments: () => {},
   closeDocuments: () => {},
+  openWorkdesk: () => {},
+  closeWorkdesk: () => {},
+  openSettings: () => {},
+  closeSettings: () => {},
+  openNotifications: () => {},
+  closeNotifications: () => {},
 };
 
 const PANEL_META = {
@@ -57,6 +69,27 @@ const PANEL_META = {
     accent: '#2563eb',
     route: '/document-management/library?module=organization',
   },
+  workdesk: {
+    title: 'کارتابل من',
+    subtitle: 'ارجاعات و درخواست‌های در انتظار اقدام',
+    icon: MoveToInboxOutlinedIcon,
+    accent: '#0f766e',
+    route: '/my-workdesk',
+  },
+  settings: {
+    title: 'تنظیمات',
+    subtitle: 'تنظیمات عمومی و ماژول‌های در دسترس شما',
+    icon: SettingsOutlinedIcon,
+    accent: '#64748b',
+    route: '/settings',
+  },
+  notifications: {
+    title: 'اعلان‌ها',
+    subtitle: 'درخواست‌ها، پیام‌ها و هشدارهای سازمانی',
+    icon: NotificationsActiveIcon,
+    accent: '#6366f1',
+    route: null,
+  },
 };
 
 export const WorkspaceDockProvider = ({ children }) => {
@@ -65,6 +98,9 @@ export const WorkspaceDockProvider = ({ children }) => {
   const [chatState, setChatState] = useState({ open: false, conversation: '' });
   const [planningState, setPlanningState] = useState({ open: false, tab: 0 });
   const [documentsState, setDocumentsState] = useState({ open: false });
+  const [workdeskState, setWorkdeskState] = useState({ open: false });
+  const [settingsState, setSettingsState] = useState({ open: false });
+  const [notificationsState, setNotificationsState] = useState({ open: false });
 
   const openChat = useCallback((conversation = '') => {
     setChatState({ open: true, conversation: conversation ? String(conversation) : '' });
@@ -82,26 +118,52 @@ export const WorkspaceDockProvider = ({ children }) => {
     () => setDocumentsState((previous) => ({ ...previous, open: false })),
     [],
   );
+  const openWorkdesk = useCallback(() => setWorkdeskState({ open: true }), []);
+  const closeWorkdesk = useCallback(
+    () => setWorkdeskState((previous) => ({ ...previous, open: false })), [],
+  );
+  const openSettings = useCallback(() => setSettingsState({ open: true }), []);
+  const closeSettings = useCallback(
+    () => setSettingsState((previous) => ({ ...previous, open: false })), [],
+  );
+  const openNotifications = useCallback(() => setNotificationsState({ open: true }), []);
+  const closeNotifications = useCallback(
+    () => setNotificationsState((previous) => ({ ...previous, open: false })), [],
+  );
 
   const value = useMemo(() => ({
     chatOpen: chatState.open,
     planningOpen: planningState.open,
     documentsOpen: documentsState.open,
+    workdeskOpen: workdeskState.open,
+    settingsOpen: settingsState.open,
+    notificationsOpen: notificationsState.open,
     openChat,
     closeChat,
     openPlanning,
     closePlanning,
     openDocuments,
     closeDocuments,
+    openWorkdesk,
+    closeWorkdesk,
+    openSettings,
+    closeSettings,
+    openNotifications,
+    closeNotifications,
   }), [
-    chatState.open, planningState.open, documentsState.open,
+    chatState.open, planningState.open, documentsState.open, workdeskState.open,
+    settingsState.open, notificationsState.open,
     openChat, closeChat, openPlanning, closePlanning, openDocuments, closeDocuments,
+    openWorkdesk, closeWorkdesk, openSettings, closeSettings, openNotifications, closeNotifications,
   ]);
 
   const goFullPage = (kind) => {
     if (kind === 'chat') closeChat();
     else if (kind === 'planning') closePlanning();
-    else closeDocuments();
+    else if (kind === 'documents') closeDocuments();
+    else if (kind === 'workdesk') closeWorkdesk();
+    else if (kind === 'settings') closeSettings();
+    else closeNotifications();
     navigate(PANEL_META[kind].route);
   };
 
@@ -140,12 +202,14 @@ export const WorkspaceDockProvider = ({ children }) => {
             <Typography noWrap sx={{ fontSize: 13, fontWeight: 900 }}>{meta.title}</Typography>
             <Typography noWrap sx={{ fontSize: 10, color: 'text.secondary' }}>{meta.subtitle}</Typography>
           </Box>
-          <Tooltip title="باز کردن در صفحهٔ کامل">
-            <IconButton size="small" aria-label={`باز کردن ${meta.title} در صفحهٔ کامل`}
-              onClick={() => goFullPage(kind)}>
-              <OpenInNewIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
+          {meta.route ? (
+            <Tooltip title="باز کردن در صفحهٔ کامل">
+              <IconButton size="small" aria-label={`باز کردن ${meta.title} در صفحهٔ کامل`}
+                onClick={() => goFullPage(kind)}>
+                <OpenInNewIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          ) : null}
           <Tooltip title="بستن">
             <IconButton size="small" aria-label={`بستن ${meta.title}`} onClick={onClose}>
               <CloseIcon sx={{ fontSize: 18 }} />
@@ -180,6 +244,15 @@ export const WorkspaceDockProvider = ({ children }) => {
       ) : null)}
       {renderShell('documents', documentsState.open, closeDocuments, documentsState.open ? (
         <OrganizationalDocumentsPanel />
+      ) : null)}
+      {renderShell('workdesk', workdeskState.open, closeWorkdesk, workdeskState.open ? (
+        <CorrespondenceWorkdeskPage />
+      ) : null)}
+      {renderShell('settings', settingsState.open, closeSettings, settingsState.open ? (
+        <SettingsWorkspacePanel onNavigate={(path) => { closeSettings(); navigate(path); }} />
+      ) : null)}
+      {renderShell('notifications', notificationsState.open, closeNotifications, notificationsState.open ? (
+        <NotificationsPanel onClose={closeNotifications} onOpenChat={openChat} onOpenPlanning={openPlanning} />
       ) : null)}
     </WorkspaceDockContext.Provider>
   );

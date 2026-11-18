@@ -4,13 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Collapse, Menu, MenuItem, Badge,
+  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Collapse, Badge,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import BusinessIcon from '@mui/icons-material/Business';
 import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
 import { toPersianDigits } from '../../utils/numberUtils';
-import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -76,6 +75,7 @@ import WorkspaceTabs from './WorkspaceTabs';
 import CommandPalette from './CommandPalette';
 import UserAvatar from './UserAvatar';
 import ModuleLibraryDrawer from './ModuleLibraryDrawer';
+import UserAccountDialog from './UserAccountDialog';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
 import { libraryModuleForApplication, libraryModuleLabel } from '../../config/documentLibraryModules';
 import { useApplication } from '../../context/ApplicationContext';
@@ -244,7 +244,10 @@ const Layout = ({ children }) => {
   const workspaceBadges = workspaceQuery.data || {};
   const chatBadge = Number(workspaceBadges.chat) || 0;
   const planningBadge = Number(workspaceBadges.planning) || 0;
-  const { openChat, openPlanning, openDocuments, documentsOpen } = useWorkspaceDock();
+  const {
+    openChat, openPlanning, openDocuments, openWorkdesk, openSettings,
+    documentsOpen, workdeskOpen, settingsOpen,
+  } = useWorkspaceDock();
   const organizationDocsActive = documentsOpen
     || (location.pathname === '/document-management/library'
       && new URLSearchParams(location.search).get('module') === 'organization');
@@ -293,7 +296,7 @@ const Layout = ({ children }) => {
   });
   const effectiveSidebarWidth = panelCollapsed ? RAIL_WIDTH : SIDEBAR_WIDTH;
   const [libraryOpen, setLibraryOpen] = useState(false);
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [accountOpen, setAccountOpen] = useState(false);
   const openLibrary = () => {
     setMobileOpen(false);
     setLibraryOpen(true);
@@ -312,7 +315,8 @@ const Layout = ({ children }) => {
    * این میان‌بر مستقل از ماژول فعال است تا کاربرانی که به ماژول مکاتبات
    * دسترسی ندارند هم فقط ارجاعات خودشان را ببینند.
    */
-  const workdeskActive = location.pathname === '/my-workdesk'
+  const workdeskActive = workdeskOpen
+    || location.pathname === '/my-workdesk'
     || location.pathname.startsWith('/my-workdesk/');
   const { data: workdeskCounts } = useQuery({
     queryKey: ['workdesk-rail-counts'],
@@ -672,7 +676,7 @@ const Layout = ({ children }) => {
         >
           <IconButton
             size="small"
-            onClick={() => navigateTo('/my-workdesk')}
+            onClick={() => openWorkdesk()}
             aria-label={referralBadge ? `کارتابل من (${referralBadge} ارجاع باز)` : 'کارتابل من'}
             aria-current={workdeskActive ? 'page' : undefined}
             sx={{
@@ -775,11 +779,12 @@ const Layout = ({ children }) => {
         <Tooltip title="تنظیمات" placement="left" arrow>
           <IconButton
             size="small"
-            onClick={() => navigateTo('/settings')}
+            onClick={() => openSettings()}
             aria-label="تنظیمات"
+            aria-current={settingsOpen ? 'page' : undefined}
             sx={{
               color: ICON_COLOR,
-              bgcolor: location.pathname.startsWith('/settings') ? 'action.selected' : 'transparent',
+              bgcolor: settingsOpen || location.pathname.startsWith('/settings') ? 'action.selected' : 'transparent',
             }}
           >
             <SettingsIcon sx={{ fontSize: 20 }} />
@@ -840,7 +845,7 @@ const Layout = ({ children }) => {
           <UserAvatar
             user={user}
             size={34}
-            onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+            onClick={() => setAccountOpen(true)}
             sx={{
               mt: 1.2, flexShrink: 0, cursor: 'pointer',
               bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
@@ -955,45 +960,6 @@ const Layout = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-      <Menu
-        anchorEl={userMenuAnchor}
-        open={Boolean(userMenuAnchor)}
-        onClose={() => setUserMenuAnchor(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{
-          paper: {
-            sx: {
-              mt: 1, minWidth: 200, borderRadius: '14px',
-              border: '1px solid', borderColor: 'divider',
-              boxShadow: '0 18px 40px rgba(15,23,42,0.16)',
-            },
-          },
-        }}
-      >
-        <Box sx={{ px: 2, py: 1 }}>
-          <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{fullName}</Typography>
-          <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>
-            @{user?.username}
-          </Typography>
-        </Box>
-        <Divider />
-        <MenuItem
-          onClick={() => { setUserMenuAnchor(null); navigateTo('/settings'); }}
-          sx={{ fontSize: 12, gap: 1, py: 0.9 }}
-        >
-          <SettingsIcon sx={{ fontSize: 17, color: 'text.secondary' }} />
-          تنظیمات
-        </MenuItem>
-        <MenuItem
-          onClick={() => { setUserMenuAnchor(null); handleLogout(); }}
-          sx={{ fontSize: 12, gap: 1, py: 0.9, color: 'error.main' }}
-        >
-          <LogoutIcon sx={{ fontSize: 17 }} />
-          {t('nav.logout')}
-        </MenuItem>
-      </Menu>
-
       <Drawer
         variant="temporary"
         anchor="right"
@@ -1085,6 +1051,16 @@ const Layout = ({ children }) => {
         moduleKey={moduleLibraryKey}
         moduleTitle={moduleLibraryTitle}
         accent={moduleLibraryAccent}
+      />
+      <UserAccountDialog
+        open={accountOpen}
+        user={user}
+        onClose={() => setAccountOpen(false)}
+        onLogout={async () => { setAccountOpen(false); await handleLogout(); }}
+        onNavigate={(path) => { setAccountOpen(false); navigateTo(path); }}
+        onWorkdesk={() => { setAccountOpen(false); openWorkdesk(); }}
+        onDocuments={() => { setAccountOpen(false); openDocuments(); }}
+        onSettings={() => { setAccountOpen(false); openSettings(); }}
       />
     </Box>
   );
