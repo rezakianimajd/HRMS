@@ -182,6 +182,11 @@ class Signatory(BaseModel):
         verbose_name_plural = _('صاحبان امضا')
         ordering = ['signature_order', 'full_name']
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_default:
+            Signatory.objects.filter(company=self.company, is_default=True).exclude(pk=self.pk).update(is_default=False)
+
     def __str__(self):
         return self.full_name
 
