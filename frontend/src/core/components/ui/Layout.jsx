@@ -8,7 +8,9 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import BusinessIcon from '@mui/icons-material/Business';
-import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
+import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined';
+import ImportContactsOutlinedIcon from '@mui/icons-material/ImportContactsOutlined';
 import { toPersianDigits } from '../../utils/numberUtils';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
@@ -65,7 +67,6 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
-import ContactPhoneOutlinedIcon from '@mui/icons-material/ContactPhoneOutlined';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
@@ -656,7 +657,7 @@ const Layout = ({ children }) => {
               '&:hover': { bgcolor: alpha('#7c3aed', 0.08), color: '#7c3aed' },
             }}
           >
-            <ContactPhoneOutlinedIcon sx={{ fontSize: 20 }} />
+            <ImportContactsOutlinedIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
 
@@ -682,7 +683,7 @@ const Layout = ({ children }) => {
                 },
               }}
             >
-              <FolderSharedOutlinedIcon sx={{ fontSize: 20 }} />
+              <CorporateFareOutlinedIcon sx={{ fontSize: 20 }} />
             </IconButton>
           </Tooltip>
         )}
@@ -722,7 +723,7 @@ const Layout = ({ children }) => {
                 },
               }}
             >
-              <MoveToInboxOutlinedIcon sx={{ fontSize: 20 }} />
+              <PendingActionsOutlinedIcon sx={{ fontSize: 20 }} />
             </Badge>
           </IconButton>
         </Tooltip>

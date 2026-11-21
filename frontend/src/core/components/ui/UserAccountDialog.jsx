@@ -6,8 +6,8 @@ import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
-import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
+import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { employeePhotoPreview } from '../../utils/photoUrl';
 import UserAvatar from './UserAvatar';
@@ -103,8 +103,8 @@ const UserAccountDialog = ({
         ) : null}
         <Divider sx={{ mb: 1 }} />
         <Box sx={{ display: 'grid', gap: 0.65 }}>
-          <Action icon={MoveToInboxOutlinedIcon} title="کارتابل من" subtitle="ارجاعات و درخواست‌های در انتظار اقدام" color="#0f766e" onClick={onWorkdesk} />
-          <Action icon={FolderSharedOutlinedIcon} title="اسناد سازمانی" subtitle="مدارک و مستندات شرکت" color="#2563eb" onClick={onDocuments} />
+          <Action icon={PendingActionsOutlinedIcon} title="کارتابل من" subtitle="ارجاعات و درخواست‌های در انتظار اقدام" color="#0f766e" onClick={onWorkdesk} />
+          <Action icon={CorporateFareOutlinedIcon} title="اسناد سازمانی" subtitle="مدارک و مستندات شرکت" color="#2563eb" onClick={onDocuments} />
           {employeeId ? (
             <Action icon={BadgeOutlinedIcon} title="پروندهٔ پرسنلی" subtitle="مشاهدهٔ مشخصات و مدارک پرسنلی" color="#ec4899" onClick={() => onNavigate?.(`/employees/${employeeId}`)} />
           ) : null}

@@ -7,11 +7,11 @@ import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
-import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
-import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
+import CorporateFareOutlinedIcon from '@mui/icons-material/CorporateFareOutlined';
+import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import ContactPhoneOutlinedIcon from '@mui/icons-material/ContactPhoneOutlined';
+import ImportContactsOutlinedIcon from '@mui/icons-material/ImportContactsOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { ChatPanel } from '../../../pages/chat/ChatPage';
@@ -69,14 +69,14 @@ const PANEL_META = {
   documents: {
     title: 'اسناد سازمانی',
     subtitle: 'پوشه‌بندی مدارک و مستندات شرکت',
-    icon: FolderSharedOutlinedIcon,
+    icon: CorporateFareOutlinedIcon,
     accent: '#2563eb',
     route: '/document-management/library?module=organization',
   },
   workdesk: {
     title: 'کارتابل من',
     subtitle: 'ارجاعات و درخواست‌های در انتظار اقدام',
-    icon: MoveToInboxOutlinedIcon,
+    icon: PendingActionsOutlinedIcon,
     accent: '#0f766e',
     route: '/my-workdesk',
   },
@@ -97,7 +97,7 @@ const PANEL_META = {
   phonebook: {
     title: 'دفترچه تلفن',
     subtitle: 'شماره تماس طرف حساب‌های قرارداد و تأمین‌کنندگان خرید',
-    icon: ContactPhoneOutlinedIcon,
+    icon: ImportContactsOutlinedIcon,
     accent: '#7c3aed',
     route: null,
   },

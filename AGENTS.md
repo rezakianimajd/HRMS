@@ -642,7 +642,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   اعتبار/شرایط خرید و آدرس/توضیحات) و **بدون هیچ `Chip`** هستند. `phonebook.js` منطق خالص
   نرمال‌سازی/جست‌وجو/مرتب‌سازی را دارد. دادهٔ زندهٔ `kpsmi`: **۱۵۹ طرف حساب + ۳ تأمین‌کننده**
   (۱۷ طرف حساب شمارهٔ تماس دارند). تست‌های `phonebook` (۵) + `phonebookSmoke` (۲) +
-  `workspaceDock` (۱) سبز؛ باندل زنده: **`main.dc8a5301.js`**.
+  `workspaceDock` (۱) سبز. آیکن‌های ریل برای تفکیک بصری: دفترچه تلفن `ImportContactsOutlined`،
+  کارتابل من `PendingActionsOutlined`، اسناد سازمانی `CorporateFareOutlined`؛ باندل زنده:
+  **`main.9204359f.js`**.
 - **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
   اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
   دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد
