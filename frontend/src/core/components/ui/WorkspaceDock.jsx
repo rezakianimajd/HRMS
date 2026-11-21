@@ -11,6 +11,7 @@ import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
 import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import ContactPhoneOutlinedIcon from '@mui/icons-material/ContactPhoneOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { ChatPanel } from '../../../pages/chat/ChatPage';
@@ -19,6 +20,7 @@ import OrganizationalDocumentsPanel from '../../../pages/documents/Organizationa
 import CorrespondenceWorkdeskPage from '../../../pages/correspondence/CorrespondenceWorkdeskPage';
 import SettingsWorkspacePanel from './SettingsWorkspacePanel';
 import NotificationsPanel from './NotificationsPanel';
+import PhonebookPanel from '../../../pages/PhonebookPanel';
 
 /**
  * «پنجرهٔ کاری» شناور: چت و برنامه‌ریزی روی هر صفحه‌ای بدون ترک آن صفحه باز می‌شوند.
@@ -45,6 +47,8 @@ export const useWorkspaceDock = () => useContext(WorkspaceDockContext) || {
   closeSettings: () => {},
   openNotifications: () => {},
   closeNotifications: () => {},
+  openPhonebook: () => {},
+  closePhonebook: () => {},
 };
 
 const PANEL_META = {
@@ -90,6 +94,13 @@ const PANEL_META = {
     accent: '#6366f1',
     route: null,
   },
+  phonebook: {
+    title: 'دفترچه تلفن',
+    subtitle: 'شماره تماس طرف حساب‌های قرارداد و تأمین‌کنندگان خرید',
+    icon: ContactPhoneOutlinedIcon,
+    accent: '#7c3aed',
+    route: null,
+  },
 };
 
 export const WorkspaceDockProvider = ({ children }) => {
@@ -101,6 +112,7 @@ export const WorkspaceDockProvider = ({ children }) => {
   const [workdeskState, setWorkdeskState] = useState({ open: false });
   const [settingsState, setSettingsState] = useState({ open: false });
   const [notificationsState, setNotificationsState] = useState({ open: false });
+  const [phonebookState, setPhonebookState] = useState({ open: false });
 
   const openChat = useCallback((conversation = '') => {
     setChatState({ open: true, conversation: conversation ? String(conversation) : '' });
@@ -130,6 +142,10 @@ export const WorkspaceDockProvider = ({ children }) => {
   const closeNotifications = useCallback(
     () => setNotificationsState((previous) => ({ ...previous, open: false })), [],
   );
+  const openPhonebook = useCallback(() => setPhonebookState({ open: true }), []);
+  const closePhonebook = useCallback(
+    () => setPhonebookState((previous) => ({ ...previous, open: false })), [],
+  );
 
   const value = useMemo(() => ({
     chatOpen: chatState.open,
@@ -138,6 +154,7 @@ export const WorkspaceDockProvider = ({ children }) => {
     workdeskOpen: workdeskState.open,
     settingsOpen: settingsState.open,
     notificationsOpen: notificationsState.open,
+    phonebookOpen: phonebookState.open,
     openChat,
     closeChat,
     openPlanning,
@@ -150,11 +167,14 @@ export const WorkspaceDockProvider = ({ children }) => {
     closeSettings,
     openNotifications,
     closeNotifications,
+    openPhonebook,
+    closePhonebook,
   }), [
     chatState.open, planningState.open, documentsState.open, workdeskState.open,
-    settingsState.open, notificationsState.open,
+    settingsState.open, notificationsState.open, phonebookState.open,
     openChat, closeChat, openPlanning, closePlanning, openDocuments, closeDocuments,
     openWorkdesk, closeWorkdesk, openSettings, closeSettings, openNotifications, closeNotifications,
+    openPhonebook, closePhonebook,
   ]);
 
   const goFullPage = (kind) => {
@@ -253,6 +273,9 @@ export const WorkspaceDockProvider = ({ children }) => {
       ) : null)}
       {renderShell('notifications', notificationsState.open, closeNotifications, notificationsState.open ? (
         <NotificationsPanel onClose={closeNotifications} onOpenChat={openChat} onOpenPlanning={openPlanning} />
+      ) : null)}
+      {renderShell('phonebook', phonebookState.open, closePhonebook, phonebookState.open ? (
+        <PhonebookPanel />
       ) : null)}
     </WorkspaceDockContext.Provider>
   );

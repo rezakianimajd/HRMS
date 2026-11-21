@@ -65,6 +65,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import ContactPhoneOutlinedIcon from '@mui/icons-material/ContactPhoneOutlined';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
@@ -246,6 +247,7 @@ const Layout = ({ children }) => {
   const planningBadge = Number(workspaceBadges.planning) || 0;
   const {
     openChat, openPlanning, openDocuments, openWorkdesk, openSettings,
+    openPhonebook, phonebookOpen,
     documentsOpen, workdeskOpen, settingsOpen,
   } = useWorkspaceDock();
   const organizationDocsActive = documentsOpen
@@ -635,6 +637,26 @@ const Layout = ({ children }) => {
             sx={{ color: ICON_COLOR }}
           >
             <SearchIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="دفترچه تلفن" placement="left" arrow>
+          <IconButton
+            size="small"
+            data-testid="rail-phonebook"
+            onClick={() => openPhonebook()}
+            aria-label="دفترچه تلفن"
+            aria-current={phonebookOpen ? 'page' : undefined}
+            sx={{
+              mt: 0.35,
+              color: phonebookOpen ? '#7c3aed' : ICON_COLOR,
+              bgcolor: phonebookOpen ? alpha('#7c3aed', 0.12) : 'transparent',
+              border: '1px solid',
+              borderColor: phonebookOpen ? alpha('#7c3aed', 0.35) : 'transparent',
+              '&:hover': { bgcolor: alpha('#7c3aed', 0.08), color: '#7c3aed' },
+            }}
+          >
+            <ContactPhoneOutlinedIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
 

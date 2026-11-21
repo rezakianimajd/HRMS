@@ -25,11 +25,12 @@ jest.mock('../core/hooks/useAuth', () => ({
 }));
 
 const Probe = () => {
-  const { openChat, openPlanning } = useWorkspaceDock();
+  const { openChat, openPlanning, openPhonebook } = useWorkspaceDock();
   return (
     <>
       <Button onClick={() => openChat('7')}>باز کردن چت</Button>
       <Button onClick={() => openPlanning(1)}>باز کردن برنامه‌ریزی</Button>
+      <Button onClick={() => openPhonebook()}>باز کردن دفترچه تلفن</Button>
     </>
   );
 };
@@ -98,6 +99,16 @@ test('workspace dock opens chat and planning as dialogs without leaving the page
     .find((button) => button.textContent.includes('باز کردن برنامه‌ریزی'));
   await act(async () => { planningButton.click(); await wait(300); });
   expect(document.body.textContent).toContain('برنامه‌ریزی شخصی');
+
+  const planningClose = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.getAttribute('aria-label') === 'بستن برنامه‌ریزی شخصی');
+  await act(async () => { planningClose.click(); await wait(200); });
+
+  const phonebookButton = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('باز کردن دفترچه تلفن'));
+  await act(async () => { phonebookButton.click(); await wait(350); });
+  expect(document.body.textContent).toContain('دفترچه تلفن');
+  expect(document.body.textContent).toContain('کل مخاطبین');
 
   await act(async () => { root.unmount(); });
   container.remove();
