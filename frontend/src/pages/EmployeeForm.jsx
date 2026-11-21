@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, Grid, CircularProgress, Alert, Paper,
   FormControl, InputLabel, Select, MenuItem, TextField, Chip,
+  Autocomplete,
   IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Stack,
   FormControlLabel, Switch,
 } from '@mui/material';
@@ -81,6 +82,18 @@ const SectionCard = ({ title, icon, color, children }) => (
   </Paper>
 );
 
+const normalizeOptionText = (value) => String(value || '')
+  .replace(/\u200c/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
+
+const filterEmployeeOptions = (options, { inputValue }) => {
+  const term = normalizeOptionText(inputValue);
+  if (!term) return options;
+  return options.filter((option) => normalizeOptionText(option.label).includes(term));
+};
+
 const selectField = (label, field, value, onChange, options = []) => (
   <Grid item xs={12} sm={6} md={4}>
     <FormControl fullWidth size="small">
@@ -91,6 +104,33 @@ const selectField = (label, field, value, onChange, options = []) => (
     </FormControl>
   </Grid>
 );
+
+/**
+ * همان فیلدهای انتخابی فرم، اما با جست‌وجو — برای لیست‌های بلند پرسنلی
+ * (دپارتمان، عنوان شغلی، محل استقرار، بیمه و نوع قرارداد).
+ */
+const searchableSelectField = (label, field, value, onChange, options = []) => {
+  const selected = options.find((option) => String(option.value) === String(value)) || null;
+  return (
+    <Grid item xs={12} sm={6} md={4}>
+      <Autocomplete
+        size="small"
+        fullWidth
+        options={options}
+        value={selected}
+        onChange={(event, option) => onChange(field, option ? option.value : '')}
+        getOptionLabel={(option) => option?.label || ''}
+        isOptionEqualToValue={(option, selectedValue) => (
+          String(option.value) === String(selectedValue.value)
+        )}
+        filterOptions={filterEmployeeOptions}
+        noOptionsText="گزینه‌ای پیدا نشد"
+        openOnFocus
+        renderInput={(params) => <TextField {...params} label={label} />}
+      />
+    </Grid>
+  );
+};
 
 const textField = (label, field, value, onChange, required = false, type = 'text') => (
   <Grid item xs={12} sm={6} md={4}>
@@ -510,12 +550,12 @@ const EmployeeForm = () => {
           {dateField(`${t('employees.hire_date')} (اختیاری)`, 'hire_date', form.hire_date, handleChange)}
           {dateField(t('employees.probation_end_date'), 'probation_end_date', form.probation_end_date, handleChange)}
           {dateField(t('employees.official_date'), 'official_date', form.official_date, handleChange)}
-          {selectField(t('employees.department'), 'department', form.department, handleChange, mapOpts(departments))}
-          {selectField(t('employees.job_title'), 'job_title', form.job_title, handleChange, mapOpts(jobTitles))}
-          {selectField(t('employees.work_location'), 'work_location', form.work_location, handleChange, mapOpts(workLocations))}
-          {selectField(t('employees.insurance_list'), 'insurance_list', form.insurance_list, handleChange, mapOpts(insuranceLists))}
+          {searchableSelectField(t('employees.department'), 'department', form.department, handleChange, mapOpts(departments))}
+          {searchableSelectField(t('employees.job_title'), 'job_title', form.job_title, handleChange, mapOpts(jobTitles))}
+          {searchableSelectField(t('employees.work_location'), 'work_location', form.work_location, handleChange, mapOpts(workLocations))}
+          {searchableSelectField(t('employees.insurance_list'), 'insurance_list', form.insurance_list, handleChange, mapOpts(insuranceLists))}
           {textField('شماره بیمه', 'insurance_number', form.insurance_number, handleChange)}
-          {selectField(t('employees.contract_type'), 'contract_type', form.contract_type, handleChange, CONTRACT)}
+          {searchableSelectField(t('employees.contract_type'), 'contract_type', form.contract_type, handleChange, CONTRACT)}
           {dateField(t('employees.contract_start_date'), 'contract_start_date', form.contract_start_date, handleChange)}
           {dateField(t('employees.contract_end_date'), 'contract_end_date', form.contract_end_date, handleChange)}
           {selectField(t('employees.status'), 'status', form.status, handleChange, STATUSES)}
