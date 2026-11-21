@@ -306,6 +306,13 @@ class CompanyBankAccount(BaseModel):
         verbose_name_plural = _('حساب‌های بانکی شرکت')
         ordering = ['-is_official', 'sort_order', 'bank_name']
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_official:
+            CompanyBankAccount.objects.filter(
+                company=self.company, is_official=True,
+            ).exclude(pk=self.pk).update(is_official=False)
+
     def __str__(self):
         return f'{self.bank_name} — {self.account_number or self.iban or self.title}'
 
