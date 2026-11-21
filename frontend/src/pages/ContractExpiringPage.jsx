@@ -21,7 +21,7 @@ import {
 } from './contracts/ExpiringWorkspaceUI';
 import {
   ModulePager, ModuleTable, ModuleToolbar,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import { printElement } from '../core/print/printEngine';
 
@@ -91,6 +91,7 @@ const ContractExpiringPage = () => {
       return (a.days ?? 99999) - (b.days ?? 99999);
     });
   }, [monitoredRows, search, rangeFilter, sortBy]);
+  const { rows: sortedRows, sort: headerSort, onSort: onHeaderSort } = useLocalSort(filtered);
 
   const atRiskAmount = useMemo(
     () => monitoredRows
@@ -103,11 +104,11 @@ const ContractExpiringPage = () => {
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filtered.length, pageSize, [search, rangeFilter, sortBy, pageSize],
+    sortedRows.length, pageSize, [search, rangeFilter, sortBy, headerSort, pageSize],
   );
   const pagedRows = useMemo(
-    () => filtered.slice(page * pageSize, (page + 1) * pageSize),
-    [filtered, page, pageSize],
+    () => sortedRows.slice(page * pageSize, (page + 1) * pageSize),
+    [sortedRows, page, pageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
 
@@ -211,6 +212,8 @@ const ContractExpiringPage = () => {
           tableHeight={tableHeight}
           rowHeight={rowHeight}
           dimmed={isFetching}
+          sort={headerSort}
+          onSort={onHeaderSort}
           rows={pagedRows}
           rowKey={(row) => row.contract.id}
           onRowClick={(row) => navigate(`/external-contracts/${row.contract.id}`)}
@@ -232,6 +235,7 @@ const ContractExpiringPage = () => {
               label: 'شماره',
               width: '9%',
               align: 'center',
+              sortKey: 'contract.number',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {toPersianDigits(row.contract.number || row.contract.id)}
@@ -242,6 +246,7 @@ const ContractExpiringPage = () => {
               key: 'subject',
               label: 'موضوع قرارداد',
               width: '25%',
+              sortKey: 'contract.subject',
               render: (row) => (
                 <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
                   {row.contract.subject || '—'}
@@ -253,6 +258,7 @@ const ContractExpiringPage = () => {
               key: 'party',
               label: 'طرف قرارداد',
               width: '18%',
+              sortKey: 'contract.party_name',
               render: (row) => (
                 <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                   {row.contract.party_name || '—'}
@@ -264,6 +270,7 @@ const ContractExpiringPage = () => {
               label: 'پایان مؤثر',
               width: '10%',
               align: 'center',
+              sortKey: 'end',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {dateLabel(row.end)}
@@ -275,6 +282,7 @@ const ContractExpiringPage = () => {
               label: 'روز مانده',
               width: '11%',
               align: 'center',
+              sortKey: 'days',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: row.meta.color }}>
                   {daysLabel(row.days)}
@@ -286,6 +294,7 @@ const ContractExpiringPage = () => {
               label: 'مبلغ مؤثر',
               width: '12%',
               align: 'center',
+              sortKey: 'contract.amount',
               render: (row) => (
                 <Typography noWrap title={`${formatPersianNumber(effAmount(row.contract))} ${currency}`}
                   sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
@@ -298,6 +307,7 @@ const ContractExpiringPage = () => {
               label: 'بازه',
               width: '13%',
               align: 'center',
+              sortKey: 'meta.key',
               render: (row) => (
                 <Chip size="small" label={row.meta.label}
                   sx={{
@@ -333,7 +343,7 @@ const ContractExpiringPage = () => {
           onPage={setPage}
           totalPages={totalPages}
           pageNumbers={pageNumbers}
-          total={filtered.length}
+          total={sortedRows.length}
           pageSize={pageSize}
           unit="قرارداد"
         />

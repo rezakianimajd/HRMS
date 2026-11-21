@@ -640,12 +640,14 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   بک‌اند `GET /api/external-contracts/payment-report/` با چهار کوئری دسته‌ای (بدون N+1) و منطق خالص
   `contracts/payment_report.py`؛ پیش‌پرداخت از `Payment.payment_type='advance'` و پرداخت اسناد از
   تخصیص‌های `kind='net'` محاسبه می‌شود. تست `contracts.tests_payment_report` (۳) و
-  `contractPaymentReportSmoke` (۱) سبز؛ کاتالوگ مجوز ۳۰۵ آیتم. باندل زنده: **`main.35d9ce3f.js`**.
+  `contractPaymentReportSmoke` (۱) سبز؛ کاتالوگ مجوز ۳۰۵ آیتم. باندل زنده: **`main.2313bfe2.js`**.
 - **مرتب‌سازی با هدر جدول (۲۰۲۶-۱۱-۱۸):** `ModuleTable` پراپ‌های `sort`/`onSort` گرفت؛ کلیک روی
-  هدر هر ستون (با `sortKey`) بین صعودی/نزولی جابه‌جا می‌شود و فلش/`aria-sort` دارد. در گزارش
-  پرداخت قراردادها و فهرست پرسنل فعال است (در پرسنل به `ordering` سرور و در گزارش به مرتب‌سازی
-  کلاینتی کامل متصل می‌شود). تست `moduleTableSort` (۱) + `employeesListSmoke` (۳) سبز؛
-  باندل زنده: **`main.35d9ce3f.js`**.
+  هدر هر ستون بین صعودی/نزولی جابه‌جا می‌شود و فلش/`aria-sort` دارد. در همهٔ جداول اصلی ماژول
+  قراردادها فعال شد: گزارش پرداخت/مطالبات، الحاقیه‌ها، تمدید/انقضا، تضامین و پوشش تضامین، فاکتورها،
+  پرداخت‌ها، صورت‌وضعیت‌ها، نواقص قراردادها و انتخابگر قرارداد (ContractPickerLanding)؛
+  فهرست پرسنل هم به `ordering` سرور متصل است. `useLocalSort` برای داده‌های کامل کلاینتی و
+  `sortRows` مشترک اضافه شد. تست `moduleTableSort` (۱) + smokeهای قراردادها/پرسنل سبز؛
+  باندل زنده: **`main.2313bfe2.js`**.
 - **وضعیت‌های استخدامی کامل شد (۲۰۲۶-۱۱-۱۸):** به `Employee.EmploymentStatus` گزینه‌های
   **استعفا (`resigned`)، پایان قرارداد (`contract_ended`)، تعلیق (`suspended`)، انتقال به سازمان دیگر
   (`transferred`) و ترک خدمت (`abandoned`)** اضافه شد (مایگریشن `employees.0029`).
@@ -653,11 +655,11 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `frontend/src/core/constants/employeeStatuses.js` می‌خوانند؛ ترجمهٔ فارسی/انگلیسی هر وضعیت اضافه شد.
   نرخ ترک خدمت در داشبورد، دستیار، گزارش‌ها و مدیریت با `Employee.EXIT_STATUSES` همهٔ وضعیت‌های خروج را
   حساب می‌کند. تست‌های `employees` (**۳۶**) + `employeeStatuses` (۱) + `employeesListSmoke` (۳) سبز؛
-  مایگریشن روی همهٔ schemaها اعمال و gunicorn فعال است. باندل زنده: **`main.35d9ce3f.js`**.
+  مایگریشن روی همهٔ schemaها اعمال و gunicorn فعال است. باندل زنده: **`main.2313bfe2.js`**.
 - **جست‌وجو در فیلدهای پرسنلی (۲۰۲۶-۱۱-۱۸):** فیلدهای بلند فرم «ورود اطلاعات» پرسنل
   (دپارتمان، عنوان شغلی، محل استقرار، لیست بیمه و نوع قرارداد) با `Autocomplete` جست‌وجوپذیر شدند؛
   جست‌وجو نرمال‌شده (نیم‌فاصله/فاصلهٔ اضافه) است و ظاهر آن با فیلدهای فرم یکسان است.
-  باندل زنده: **`main.35d9ce3f.js`**.
+  باندل زنده: **`main.2313bfe2.js`**.
 - **حفظ وضعیت صفحه‌ها و عنوان فارسی تب‌ها (۲۰۲۶-۱۱-۱۸):** با تغییر مسیر، `Layout` دیگر
   از نو ساخته نمی‌شود؛ یک `Layout` پایدار در `AppRoutes` مانده و `WorkspacePageCache`
   هر صفحهٔ باز را با `Routes location=…` زنده نگه می‌دارد (صفحه‌های غیرفعال با `display:none`
@@ -670,7 +672,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   عنوان مسیرهای پارامتردار/تودرتو با `core/config/routeTitles.js` فارسی می‌شود
   (`/employees/:id`، `/external-contracts/:id`، `/treasury/*`، `/accounting/*` و …).
   تست‌های `workspacePageCache` (۱) + `routeTitles` (۲) + `workspaceTabs` (۲) سبز؛
-  باندل زنده: **`main.35d9ce3f.js`**.
+  باندل زنده: **`main.2313bfe2.js`**.
 - **نوار «صفحات باز» پایین برنامه بازطراحی شد (۲۰۲۶-۱۱-۱۸):** `WorkspaceTabs.jsx` از
   `Chip`های ساده به یک **dock** شیشه‌ای/تم‌محور تبدیل شد: آیکن هر صفحه از منو داخل قاب
   رنگی کوچک، **تب‌های سفید با خط دور و سایهٔ ملایم** برای تمایز از پس‌زمینه، تب فعال با خط و هالهٔ رنگ ماژول،
@@ -678,7 +680,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   («بستن این صفحه / سایر صفحات / همه»)، دکمهٔ «همهٔ صفحات باز» با جست‌وجو، اسکرول افقی
   با دکمه‌های قبلی/بعدی، `ResizeObserver` برای تشخیص سرریز و اسکرول خودکار تب فعال.
   `WorkspaceTabsContext` تابع `closeOthers` گرفت و `Layout.findMenuMeta` آیکن تب را هم
-  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.35d9ce3f.js`**.
+  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.2313bfe2.js`**.
 - **دفترچه تلفن سازمانی در ریل سایدبار (۲۰۲۶-۱۱-۱۸):** آیکن `rail-phonebook` زیر جست‌وجوی سریع،
   دیالوگ بزرگ `WorkspaceDock` را باز می‌کند (`PhonebookPanel`). داده از
   `GET /api/contract-parties/` و `GET /api/procurement/suppliers/` با `fetchAllPages` خوانده می‌شود
@@ -691,7 +693,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (۱۷ طرف حساب شمارهٔ تماس دارند). تست‌های `phonebook` (۵) + `phonebookSmoke` (۲) +
   `workspaceDock` (۱) سبز. آیکن‌های ریل برای تفکیک بصری: دفترچه تلفن `ImportContactsOutlined`،
   کارتابل من `PendingActionsOutlined`، اسناد سازمانی `CorporateFareOutlined`؛ باندل زنده:
-  **`main.35d9ce3f.js`**.
+  **`main.2313bfe2.js`**.
 - **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
   اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
   دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد

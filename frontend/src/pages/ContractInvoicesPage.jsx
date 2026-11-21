@@ -31,7 +31,7 @@ import { INVOICE_ACCENT, InvoiceDetailDrawer, InvoiceEditorDialog, invoiceMetric
 import { invalidateContractFinanceQueries } from './contracts/contractPaymentsSummary';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -158,13 +158,15 @@ const ContractInvoicesPage = () => {
     return result;
   }, [scopedList, search, statusFilter, sortBy, paidByInvoice]);
 
+  const { rows: sortedInvoices, sort: invoiceHeaderSort, onSort: onInvoiceHeaderSort } = useLocalSort(filtered);
+
   const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filtered.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize],
+    sortedInvoices.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize, invoiceHeaderSort],
   );
   const pagedInvoices = useMemo(
-    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
-    [filtered, page, scopedPageSize],
+    () => sortedInvoices.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [sortedInvoices, page, scopedPageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedInvoices.length);
   const statusOptions = [
@@ -397,6 +399,7 @@ const ContractInvoicesPage = () => {
               label: 'شماره قرارداد',
               width: '10%',
               align: 'center',
+              sortKey: 'contract.number',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {toPersianDigits(row.contract.number || '—')}
@@ -407,6 +410,7 @@ const ContractInvoicesPage = () => {
               key: 'party',
               label: 'طرف قرارداد',
               width: '19%',
+              sortKey: 'contract.party_name',
               render: (row) => (
                 <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                   {row.contract.party_name || '—'}
@@ -417,6 +421,7 @@ const ContractInvoicesPage = () => {
               key: 'subject',
               label: 'موضوع قرارداد',
               width: '25%',
+              sortKey: 'contract.subject',
               render: (row) => (
                 <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
                   {row.contract.subject || '—'}
@@ -475,6 +480,8 @@ const ContractInvoicesPage = () => {
               tableHeight={tableHeight}
               rowHeight={rowHeight}
               dimmed={isFetching || paymentsLoading}
+              sort={invoiceHeaderSort}
+              onSort={onInvoiceHeaderSort}
               rows={pagedInvoices}
               rowKey={(row) => row.id}
               onRowClick={(row) => setDetail(row)}
@@ -620,7 +627,7 @@ const ContractInvoicesPage = () => {
               onPage={setPage}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              total={filtered.length}
+              total={sortedInvoices.length}
               pageSize={scopedPageSize}
               unit="فاکتور"
             />

@@ -39,7 +39,7 @@ import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import axiosInstance from '../core/api/axiosConfig';
@@ -416,12 +416,13 @@ const ContractAddendumsPage = () => {
     [contractId, list],
   );
   const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { rows: sortedAddendums, sort: addendumHeaderSort, onSort: onAddendumHeaderSort } = useLocalSort(filtered);
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filtered.length, scopedPageSize, [search, groupFilter, sortBy, contractId, scopedPageSize],
+    sortedAddendums.length, scopedPageSize, [search, groupFilter, sortBy, contractId, scopedPageSize, addendumHeaderSort],
   );
   const pagedAddendums = useMemo(
-    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
-    [filtered, page, scopedPageSize],
+    () => sortedAddendums.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [sortedAddendums, page, scopedPageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedAddendums.length);
   const groupOptions = [
@@ -763,6 +764,7 @@ const ContractAddendumsPage = () => {
               label: 'شماره قرارداد',
               width: '10%',
               align: 'center',
+              sortKey: 'contract.number',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {toPersianDigits(row.contract.number || '—')}
@@ -773,6 +775,7 @@ const ContractAddendumsPage = () => {
               key: 'party',
               label: 'طرف قرارداد',
               width: '19%',
+              sortKey: 'contract.party_name',
               render: (row) => (
                 <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                   {row.contract.party_name || '—'}
@@ -783,6 +786,7 @@ const ContractAddendumsPage = () => {
               key: 'subject',
               label: 'موضوع قرارداد',
               width: '25%',
+              sortKey: 'contract.subject',
               render: (row) => (
                 <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
                   {row.contract.subject || '—'}
@@ -861,6 +865,8 @@ const ContractAddendumsPage = () => {
               tableHeight={tableHeight}
               rowHeight={rowHeight}
               dimmed={isFetching}
+              sort={addendumHeaderSort}
+              onSort={onAddendumHeaderSort}
               rows={pagedAddendums}
               rowKey={(row) => row.id}
               onRowClick={(row) => setDetail(row)}
@@ -882,6 +888,7 @@ const ContractAddendumsPage = () => {
                   label: 'شماره',
                   width: '8%',
                   align: 'center',
+                  sortKey: 'number',
                   render: (row) => (
                     <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                       {toPersianDigits(row.number || row.id)}
@@ -893,6 +900,7 @@ const ContractAddendumsPage = () => {
                   label: 'تاریخ',
                   width: '9%',
                   align: 'center',
+                  sortKey: 'date',
                   render: (row) => (
                     <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                       {dateLabel(row.date)}
@@ -903,6 +911,7 @@ const ContractAddendumsPage = () => {
                   key: 'subjects',
                   label: 'موضوع‌ها',
                   width: '30%',
+                  sortKey: 'subjects_display',
                   render: (row) => (
                     <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ alignItems: 'center' }}>
                       {getRowGroups(row).slice(0, 3).map((key) => (
@@ -928,6 +937,7 @@ const ContractAddendumsPage = () => {
                   label: 'تغییر مبلغ',
                   width: '14%',
                   align: 'center',
+                  sortKey: 'amount',
                   render: (row) => {
                     const delta = toNumber(effectDelta(row, 'amount'));
                     return (
@@ -1001,7 +1011,7 @@ const ContractAddendumsPage = () => {
               onPage={setPage}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              total={filtered.length}
+              total={sortedAddendums.length}
               pageSize={scopedPageSize}
               unit="الحاقیه"
             />

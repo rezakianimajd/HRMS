@@ -238,6 +238,7 @@ const EmployeeListPage = () => {
       label: 'وضعیت پرونده',
       align: 'center',
       width: 150,
+      sortable: false,
       render: (row) => (row.is_record_complete ? (
         <Chip size="small" label="پرونده کامل"
           sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${accent}1c`, color: accent }} />

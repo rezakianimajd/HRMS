@@ -28,7 +28,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import { MUTED } from './accounting/AccountingDashboardUI';
 import {
   ModulePager, ModuleTable, ModuleToolbar,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import { printElement } from '../core/print/printEngine';
 import { guaranteeValidity, guaranteeDueDate, guaranteeIsExpiring } from '../core/utils/guaranteeValidity';
@@ -282,20 +282,22 @@ const ContractGuaranteesMonitorPage = () => {
   );
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { rows: sortedRows, sort: guaranteeHeaderSort, onSort: onGuaranteeHeaderSort } = useLocalSort(filteredRows);
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filteredRows.length, pageSize,
-    [search, instrumentFilter, typeFilter, statusFilter, rangeFilter, sortBy, pageSize],
+    sortedRows.length, pageSize,
+    [search, instrumentFilter, typeFilter, statusFilter, rangeFilter, sortBy, pageSize, guaranteeHeaderSort],
   );
   const pagedRows = useMemo(
-    () => filteredRows.slice(page * pageSize, (page + 1) * pageSize),
-    [filteredRows, page, pageSize],
+    () => sortedRows.slice(page * pageSize, (page + 1) * pageSize),
+    [sortedRows, page, pageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
 
-  const coverageState = useModuleTableState(coverageRows.length, pageSize, [search, pageSize]);
+  const { rows: sortedCoverage, sort: coverageHeaderSort, onSort: onCoverageHeaderSort } = useLocalSort(coverageRows);
+  const coverageState = useModuleTableState(sortedCoverage.length, pageSize, [search, pageSize, coverageHeaderSort]);
   const pagedCoverage = useMemo(
-    () => coverageRows.slice(coverageState.page * pageSize, (coverageState.page + 1) * pageSize),
-    [coverageRows, coverageState.page, pageSize],
+    () => sortedCoverage.slice(coverageState.page * pageSize, (coverageState.page + 1) * pageSize),
+    [sortedCoverage, coverageState.page, pageSize],
   );
   const {
     ref: coverageRef, rowHeight: coverageRowHeight, tableHeight: coverageTableHeight,
@@ -636,6 +638,8 @@ const ContractGuaranteesMonitorPage = () => {
               tableHeight={tableHeight}
               rowHeight={rowHeight}
               dimmed={isFetching}
+              sort={guaranteeHeaderSort}
+              onSort={onGuaranteeHeaderSort}
               rows={pagedRows}
               rowKey={(row) => row.g.id}
               onRowClick={(row) => navigate(`/external-contracts/${row.g.contract}`)}
@@ -659,7 +663,7 @@ const ContractGuaranteesMonitorPage = () => {
                   ),
                 },
                 {
-                  key: 'contract', label: 'قرارداد', width: '18%',
+                  key: 'contract', label: 'قرارداد', width: '18%', sortKey: 'g.contract_subject',
                   render: (row) => (
                     <Box sx={{ minWidth: 0 }}>
                       <Typography noWrap title={row.g.contract_subject} sx={{ fontSize: 11.5, fontWeight: 800 }}>
@@ -673,7 +677,7 @@ const ContractGuaranteesMonitorPage = () => {
                   ),
                 },
                 {
-                  key: 'party', label: 'طرف قرارداد', width: '11%',
+                  key: 'party', label: 'طرف قرارداد', width: '11%', sortKey: 'g.contract_party',
                   render: (row) => (
                     <Typography noWrap title={row.g.contract_party} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                       {row.g.contract_party || '—'}
@@ -682,6 +686,7 @@ const ContractGuaranteesMonitorPage = () => {
                 },
                 {
                   key: 'instrument', label: 'ابزار / نوع', width: '10%', align: 'center',
+                  sortKey: 'g.instrument_type_display',
                   render: (row) => {
                     const meta = INSTRUMENT_META[row.g.instrument_type]
                       || { label: row.g.instrument_type_display || '—', color: SLATE };
@@ -713,7 +718,7 @@ const ContractGuaranteesMonitorPage = () => {
                   ),
                 },
                 {
-                  key: 'expiry', label: 'سررسید', width: '9%', align: 'center',
+                  key: 'expiry', label: 'سررسید', width: '9%', align: 'center', sortKey: 'due',
                   render: (row) => (
                     <Stack spacing={0.1} alignItems="center">
                       <Typography noWrap sx={{ fontSize: 11, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
@@ -740,7 +745,7 @@ const ContractGuaranteesMonitorPage = () => {
                   ),
                 },
                 {
-                  key: 'history', label: 'سابقه', width: '8%', align: 'center',
+                  key: 'history', label: 'سابقه', width: '8%', align: 'center', sortKey: 'g.extension_count',
                   render: (row) => {
                     const extensions = row.g.extension_count || 0;
                     const reductions = row.g.reduction_count || 0;
@@ -776,7 +781,7 @@ const ContractGuaranteesMonitorPage = () => {
                   },
                 },
                 {
-                  key: 'status', label: 'وضعیت', width: '8.5%', align: 'center',
+                  key: 'status', label: 'وضعیت', width: '8.5%', align: 'center', sortKey: 'status.label',
                   render: (row) => (
                     <Chip size="small" label={row.status.label} sx={chipSx(row.status.color, row.status.bg)} />
                   ),
@@ -803,7 +808,7 @@ const ContractGuaranteesMonitorPage = () => {
               onPage={setPage}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              total={filteredRows.length}
+              total={sortedRows.length}
               pageSize={pageSize}
               unit="سند"
             />
@@ -848,6 +853,8 @@ const ContractGuaranteesMonitorPage = () => {
               tableHeight={coverageTableHeight}
               rowHeight={coverageRowHeight}
               dimmed={overviewFetching}
+              sort={coverageHeaderSort}
+              onSort={onCoverageHeaderSort}
               rows={pagedCoverage}
               rowKey={(row) => row.contract}
               onRowClick={(row) => navigate(`/external-contracts/${row.contract}`)}
@@ -862,7 +869,7 @@ const ContractGuaranteesMonitorPage = () => {
                   ),
                 },
                 {
-                  key: 'contract', label: 'قرارداد', width: '22%',
+                  key: 'contract', label: 'قرارداد', width: '22%', sortKey: 'contract_subject',
                   render: (row) => (
                     <Box sx={{ minWidth: 0 }}>
                       <Typography noWrap title={row.contract_subject} sx={{ fontSize: 11.5, fontWeight: 800 }}>
@@ -875,7 +882,7 @@ const ContractGuaranteesMonitorPage = () => {
                   ),
                 },
                 {
-                  key: 'party', label: 'طرف قرارداد', width: '12%',
+                  key: 'party', label: 'طرف قرارداد', width: '12%', sortKey: 'party_name',
                   render: (row) => (
                     <Typography noWrap title={row.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                       {row.party_name || '—'}
@@ -942,7 +949,7 @@ const ContractGuaranteesMonitorPage = () => {
                   },
                 },
                 {
-                  key: 'items', label: 'اقلام', width: '6%', align: 'center',
+                  key: 'items', label: 'اقلام', width: '6%', align: 'center', sortKey: 'missing_count',
                   render: (row) => (
                     <Tooltip title={`تأمین‌شده ${row.provided_count} · آزادشده ${row.released_count} · ناقص ${row.partial_count} · تأمین‌نشده ${row.missing_count}`}>
                       <Stack spacing={0.25} alignItems="center">
@@ -982,7 +989,7 @@ const ContractGuaranteesMonitorPage = () => {
               onPage={coverageState.setPage}
               totalPages={coverageState.totalPages}
               pageNumbers={coverageState.pageNumbers}
-              total={coverageRows.length}
+              total={sortedCoverage.length}
               pageSize={pageSize}
               unit="قرارداد"
             />

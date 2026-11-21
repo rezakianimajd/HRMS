@@ -23,7 +23,7 @@ import { formatPersianNumber, formatPersianPercent, toPersianDigits } from '../c
 import { toJalali } from '../core/utils/dateUtils';
 import { printElement } from '../core/print/printEngine';
 import {
-  ModulePager, ModuleTable, useModuleTableState, useModuleTheme, useRowHeight,
+  ModulePager, ModuleTable, useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import {
   AMBER, EmptyNote, MetricTile, Panel, RED, SLATE, StatRow, Track, VIOLET, money, num,
@@ -109,12 +109,13 @@ const ContractsCompletenessPage = () => {
   const severityCounts = summary.severity || {};
   const rules = summary.by_code || [];
   const rows = payload.contracts || [];
+  const { rows: sortedRows, sort: headerSort, onSort: onHeaderSort } = useLocalSort(rows);
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    rows.length, pageSize, [severity, group, code, search],
+    sortedRows.length, pageSize, [severity, group, code, search, headerSort],
   );
-  const pagedRows = rows.slice(page * pageSize, (page + 1) * pageSize);
+  const pagedRows = sortedRows.slice(page * pageSize, (page + 1) * pageSize);
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
 
   const resetFilters = () => {
@@ -276,10 +277,10 @@ const ContractsCompletenessPage = () => {
 
       {/* ---- فهرست قراردادها با نواقص ---- */}
       <Panel theme={moduleTheme} icon={FactCheckIcon} color={RED}
-        title="قراردادهای نیازمند تکمیل" hint={`${formatPersianNumber(rows.length)} ردیف`}
+        title="قراردادهای نیازمند تکمیل" hint={`${formatPersianNumber(sortedRows.length)} ردیف`}
         ariaLabel="فهرست نواقص قراردادها"
         sx={{ mb: 1 }}>
-        {rows.length ? (
+        {sortedRows.length ? (
           <>
             <ModuleTable
               tableTheme={{ ...moduleTheme.tableTheme, singleLine: true }}
@@ -288,6 +289,8 @@ const ContractsCompletenessPage = () => {
               tableHeight={tableHeight}
               rowHeight={rowHeight}
               dimmed={isFetching}
+              sort={headerSort}
+              onSort={onHeaderSort}
               rows={pagedRows}
               rowKey={(row) => row.id}
               onRowClick={(row) => setDetail(row)}
@@ -307,7 +310,7 @@ const ContractsCompletenessPage = () => {
                   ),
                 },
                 {
-                  key: 'party', label: 'طرف حساب', width: '24%',
+                  key: 'party', label: 'طرف حساب', width: '24%', sortKey: 'party_name',
                   render: (row) => (
                     <Typography noWrap title={row.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                       {row.party_name || '—'}
@@ -348,7 +351,7 @@ const ContractsCompletenessPage = () => {
               onPage={setPage}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              total={rows.length}
+              total={sortedRows.length}
               pageSize={pageSize}
               unit="قرارداد"
             />

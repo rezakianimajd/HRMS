@@ -50,7 +50,7 @@ import {
 } from './StatementWorkspaceUI';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contractModuleUi';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -695,12 +695,13 @@ const StatementEditorPage = () => {
 
   /* صفحه‌سطحی و اندازه‌گیری جدول تک‌ردیفه (الگوی تضامین) */
   const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { rows: sortedStatements, sort: statementHeaderSort, onSort: onStatementHeaderSort } = useLocalSort(filtered);
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filtered.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize],
+    sortedStatements.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize, statementHeaderSort],
   );
   const pagedStatements = useMemo(
-    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
-    [filtered, page, scopedPageSize],
+    () => sortedStatements.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [sortedStatements, page, scopedPageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedStatements.length);
   const statusOptions = [
@@ -1899,6 +1900,7 @@ const StatementEditorPage = () => {
               label: 'شماره قرارداد',
               width: '10%',
               align: 'center',
+              sortKey: 'contract.number',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {toPersianDigits(row.contract.number || '—')}
@@ -1909,6 +1911,7 @@ const StatementEditorPage = () => {
               key: 'party',
               label: 'طرف قرارداد',
               width: '18%',
+              sortKey: 'contract.party_name',
               render: (row) => (
                 <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                   {row.contract.party_name || '—'}
@@ -1919,6 +1922,7 @@ const StatementEditorPage = () => {
               key: 'subject',
               label: 'موضوع قرارداد',
               width: '24%',
+              sortKey: 'contract.subject',
               render: (row) => (
                 <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
                   {row.contract.subject || '—'}
@@ -1976,6 +1980,8 @@ const StatementEditorPage = () => {
               tableHeight={tableHeight}
               rowHeight={rowHeight}
               dimmed={isFetching || paymentsLoading}
+              sort={statementHeaderSort}
+              onSort={onStatementHeaderSort}
               rows={pagedStatements}
               rowKey={(row) => row.id}
               onRowClick={(row) => setDetail(row)}
@@ -2146,7 +2152,7 @@ const StatementEditorPage = () => {
               onPage={setPage}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              total={filtered.length}
+              total={sortedStatements.length}
               pageSize={scopedPageSize}
               unit="صورت‌وضعیت"
             />

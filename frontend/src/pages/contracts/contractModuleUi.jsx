@@ -28,6 +28,34 @@ import { INK, MUTED } from './ContractProfileUI';
  */
 
 /* توکن‌های تم + اندازه‌های کارت */
+export const sortRows = (rows, sort) => {
+  if (!sort?.key) return rows;
+  const factor = sort.direction === 'desc' ? -1 : 1;
+  const read = (row) => String(sort.key)
+    .split('.')
+    .reduce((value, part) => (value == null ? value : value[part]), row);
+  return [...rows].sort((a, b) => {
+    const left = read(a);
+    const right = read(b);
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    const leftNumber = Number(left);
+    const rightNumber = Number(right);
+    if (String(left).trim() !== '' && String(right).trim() !== ''
+      && Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+      return (leftNumber - rightNumber) * factor;
+    }
+    return String(left).localeCompare(String(right), 'fa') * factor;
+  });
+};
+
+export const useLocalSort = (rows, initialSort = null) => {
+  const [sort, setSort] = useState(initialSort);
+  const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
+  return { rows: sortedRows, sort, onSort: setSort };
+};
+
 export const useModuleTheme = () => {
   const theme = useTheme();
   const { tokens } = useDesignTokens();
@@ -267,7 +295,10 @@ export const ModuleTable = ({
           <TableRow>
             {columns.map((column) => {
               const sortKey = column.sortKey || column.key;
-              const sortable = Boolean(onSort && (column.sortable || column.sortKey));
+              const sortable = Boolean(onSort
+                && column.sortable !== false
+                && column.key !== 'row'
+                && column.key !== 'actions');
               const activeSort = sortable && sort?.key === sortKey;
               const direction = activeSort ? sort.direction : '';
               const headerContent = column.renderHeader ? column.renderHeader() : column.label;
@@ -363,6 +394,7 @@ export const ContractPickerLanding = ({
 }) => {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState(sortOptions[0]?.value || '');
+  const [headerSort, setHeaderSort] = useState(null);
   const [onlyWithRecords, setOnlyWithRecords] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { tableTheme, toolbar } = theme;
@@ -407,8 +439,14 @@ export const ContractPickerLanding = ({
   }, [contracts, aggregates, search, onlyWithRecords, sort]);
 
   const pageSize = tableTheme.rowsPerPage;
-  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(rows.length, pageSize, [search, onlyWithRecords, sort, pageSize]);
-  const paged = useMemo(() => rows.slice(page * pageSize, (page + 1) * pageSize), [rows, page, pageSize]);
+  const tableRows = useMemo(() => sortRows(rows, headerSort), [rows, headerSort]);
+  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
+    tableRows.length, pageSize, [search, onlyWithRecords, sort, headerSort, pageSize],
+  );
+  const paged = useMemo(
+    () => tableRows.slice(page * pageSize, (page + 1) * pageSize),
+    [tableRows, page, pageSize],
+  );
   const { ref, rowHeight, tableHeight } = useRowHeight(tableTheme, paged.length);
   const view = columns.map((column) => ({
     ...column,
@@ -448,6 +486,8 @@ export const ContractPickerLanding = ({
           tableTheme={tableTheme}
           columns={view}
           rows={paged}
+          sort={headerSort}
+          onSort={setHeaderSort}
           rowKey={(row) => row.contract.id}
           onRowClick={(row) => onSelect(row.contract)}
           containerRef={ref}
@@ -462,7 +502,7 @@ export const ContractPickerLanding = ({
           onPage={setPage}
           totalPages={totalPages}
           pageNumbers={pageNumbers}
-          total={rows.length}
+          total={tableRows.length}
           pageSize={pageSize}
           unit="قرارداد"
         />

@@ -38,7 +38,7 @@ import { allocationsFromPayment, allocationsPayload, bucketMeta, numOf } from '.
 import { invalidateContractFinanceQueries } from './contracts/contractPaymentsSummary';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
-  useModuleTableState, useModuleTheme, useRowHeight,
+  useLocalSort, useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { printElement } from '../core/print/printEngine';
@@ -434,12 +434,13 @@ const ContractPaymentsPage = () => {
 
   /* صفحه‌بندی و اندازه‌گیری جدول تک‌ردیفه (الگوی تضامین) */
   const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { rows: sortedPayments, sort: paymentHeaderSort, onSort: onPaymentHeaderSort } = useLocalSort(filtered);
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filtered.length, scopedPageSize, [search, methodFilter, typeFilter, sortBy, contractId, scopedPageSize],
+    sortedPayments.length, scopedPageSize, [search, methodFilter, typeFilter, sortBy, contractId, scopedPageSize, paymentHeaderSort],
   );
   const pagedPayments = useMemo(
-    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
-    [filtered, page, scopedPageSize],
+    () => sortedPayments.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [sortedPayments, page, scopedPageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedPayments.length);
   const methodOptions = [
@@ -753,6 +754,7 @@ const ContractPaymentsPage = () => {
               label: 'شماره قرارداد',
               width: '10%',
               align: 'center',
+              sortKey: 'contract.number',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {toPersianDigits(row.contract.number || '—')}
@@ -763,6 +765,7 @@ const ContractPaymentsPage = () => {
               key: 'party',
               label: 'طرف قرارداد',
               width: '19%',
+              sortKey: 'contract.party_name',
               render: (row) => (
                 <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
                   {row.contract.party_name || '—'}
@@ -773,6 +776,7 @@ const ContractPaymentsPage = () => {
               key: 'subject',
               label: 'موضوع قرارداد',
               width: '25%',
+              sortKey: 'contract.subject',
               render: (row) => (
                 <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
                   {row.contract.subject || '—'}
@@ -837,6 +841,8 @@ const ContractPaymentsPage = () => {
               tableHeight={tableHeight}
               rowHeight={rowHeight}
               dimmed={paymentsQuery.isFetching}
+              sort={paymentHeaderSort}
+              onSort={onPaymentHeaderSort}
               rows={pagedPayments}
               rowKey={(row) => row.id}
               onRowClick={(row) => setDetail(row)}
@@ -965,7 +971,7 @@ const ContractPaymentsPage = () => {
               onPage={setPage}
               totalPages={totalPages}
               pageNumbers={pageNumbers}
-              total={filtered.length}
+              total={sortedPayments.length}
               pageSize={scopedPageSize}
               unit="پرداخت"
             />
