@@ -50,6 +50,7 @@ class LetterRequestViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
 
     serializer_class = LetterRequestSerializer
     queryset = LetterRequest.objects.all()
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
     search_fields = ['number', 'subject', 'description', 'requester_name',
                      'request_type__name', 'current_assignee_employee__first_name',
                      'current_assignee_employee__last_name', 'current_assignee__first_name',

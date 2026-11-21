@@ -1113,7 +1113,7 @@ class WorkdeskSchemaTests(SimpleTestCase):
 
         referral_fields = LetterReferralSerializer().fields
         for name in ('purpose', 'purpose_display', 'to_employee', 'to_employee_name',
-                     'target_label', 'margin_note', 'seen_at'):
+                     'target_label', 'margin_note', 'seen_at', 'attachment_url', 'attachment_name'):
             self.assertIn(name, referral_fields)
 
         request_fields = LetterRequestSerializer().fields

@@ -1,4 +1,5 @@
 """Serializers for the Correspondences module."""
+import json
 from functools import lru_cache
 from urllib.parse import quote
 
@@ -878,6 +879,8 @@ class LetterRequestSerializer(serializers.ModelSerializer):
     )
     requester_display = serializers.SerializerMethodField()
     assignee_name = serializers.SerializerMethodField()
+    attachment_url = serializers.SerializerMethodField()
+    attachment_name = serializers.SerializerMethodField()
     is_open = serializers.BooleanField(read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
     events = LetterRequestEventSerializer(many=True, read_only=True)
@@ -893,7 +896,8 @@ class LetterRequestSerializer(serializers.ModelSerializer):
             'requester_display', 'status', 'status_display', 'priority', 'priority_display',
             'requested_on', 'due_date', 'payload', 'current_step', 'total_steps',
             'current_assignee', 'current_assignee_employee', 'assignee_name',
-            'decided_on', 'decision_note', 'attachment', 'closed_at',
+            'decided_on', 'decision_note', 'attachment', 'attachment_url', 'attachment_name',
+            'closed_at',
             'is_open', 'is_overdue', 'events', 'is_active', 'created_at', 'updated_at',
         ]
         read_only_fields = [
@@ -917,8 +921,33 @@ class LetterRequestSerializer(serializers.ModelSerializer):
     def get_assignee_name(self, obj):
         return _employee_label(obj.current_assignee_employee) or self._user_name(obj.current_assignee)
 
+    def get_attachment_url(self, obj):
+        if not obj.attachment:
+            return ''
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.attachment.url)
+        return obj.attachment.url
+
+    def get_attachment_name(self, obj):
+        return obj.attachment.name.rsplit('/', 1)[-1] if obj.attachment else ''
+
+    def validate_attachment(self, value):
+        if not value:
+            return value
+        from correspondences.uploads import validate_attachment
+        validate_attachment(value, 'attachment')
+        return value
+
     def to_internal_value(self, data):
-        return super().to_internal_value(_clean(data))
+        cleaned = _clean(data)
+        payload = cleaned.get('payload')
+        if isinstance(payload, str):
+            try:
+                cleaned['payload'] = json.loads(payload)
+            except (TypeError, ValueError):
+                pass
+        return super().to_internal_value(cleaned)
 
     def validate(self, attrs):
         request_type = attrs.get('request_type', getattr(self.instance, 'request_type', None))

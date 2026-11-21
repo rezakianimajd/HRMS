@@ -11,6 +11,7 @@ import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
@@ -89,6 +90,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
     letter_body: '',
     letter_addressee: '',
     letter_delivery: 'post',
+    attachment: null,
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -108,6 +110,7 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
       letter_body: '',
       letter_addressee: '',
       letter_delivery: 'post',
+      attachment: null,
     });
     setError('');
   }, [open]);
@@ -137,7 +140,19 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
           letter_delivery: form.letter_delivery,
         };
       }
-      const response = await axiosInstance.post('/letter-requests/', payload);
+      let body = payload;
+      let config = {};
+      if (form.attachment) {
+        body = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value === null || value === undefined) return;
+          if (key === 'payload') body.append('payload', JSON.stringify(value));
+          else body.append(key, String(value));
+        });
+        body.append('attachment', form.attachment);
+        config = { headers: { 'Content-Type': 'multipart/form-data' } };
+      }
+      const response = await axiosInstance.post('/letter-requests/', body, config);
       qc.invalidateQueries({ queryKey: REQUESTS_KEY });
       onSaved?.(response.data);
       onClose();
@@ -201,6 +216,35 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
                 <MenuItem value="email">ایمیل</MenuItem>
                 <MenuItem value="in_person">تحویل حضوری</MenuItem>
               </TextField>
+              <Box sx={{ gridColumn: { sm: 'span 2' } }}>
+                <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 0.6 }}>
+                  فایل نامه (Word یا PDF)
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                  <Button size="small" variant="outlined" component="label" startIcon={<AttachFileOutlinedIcon />}>
+                    انتخاب فایل
+                    <input
+                      hidden type="file" accept=".doc,.docx,.pdf,.rtf,.odt"
+                      onChange={(event) => setForm((previous) => ({
+                        ...previous,
+                        attachment: event.target.files?.[0] || null,
+                      }))}
+                    />
+                  </Button>
+                  {form.attachment ? (
+                    <Chip
+                      size="small"
+                      label={form.attachment.name}
+                      onDelete={() => setForm((previous) => ({ ...previous, attachment: null }))}
+                      sx={{ maxWidth: 280 }}
+                    />
+                  ) : (
+                    <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+                      می‌توانید فایل Word نامه را همراه درخواست ارسال کنید.
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
             </>
           ) : null}
           <Box sx={{ gridColumn: { sm: 'span 2' } }}>
@@ -236,7 +280,8 @@ const RequestFormDialog = ({ open, types, onClose, onSaved }) => {
           disabled={saving || !form.subject.trim() || !form.receiver
             || (selectedType?.code === 'letter_issue' && (
               !form.letter_subject.trim() || !form.letter_body.trim() || !form.letter_addressee.trim()
-            ))}
+            ))
+            || (selectedType?.requires_attachment && !form.attachment)}
           onClick={submit} sx={{ bgcolor: INTERNAL, '&:hover': { bgcolor: '#5b21b6' } }}>
           {saving ? 'در حال ثبت…' : 'ثبت درخواست'}
         </Button>
@@ -415,6 +460,18 @@ const RequestDetailDialog = ({ open, request, onClose }) => (
                 </Box>
               </Box>
             </>
+          ) : null}
+          {request.attachment_url ? (
+            <Box>
+              <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 0.4 }}>فایل پیوست</Typography>
+              <Button
+                size="small" variant="outlined" component="a"
+                href={request.attachment_url} target="_blank" rel="noopener noreferrer"
+                startIcon={<AttachFileOutlinedIcon />}
+              >
+                {request.attachment_name || 'دریافت فایل'}
+              </Button>
+            </Box>
           ) : null}
           {request.decision_note ? (
             <Box>
