@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle,
+  Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   Grid, MenuItem, TextField, Typography,
 } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
 import axiosInstance from '../../core/api/axiosConfig';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
 import { GUARANTEE_TYPES } from '../../core/constants/guaranteeTypes';
@@ -78,6 +79,22 @@ const GuaranteeInlineDialog = ({ open, onClose, contractId, guarantee, requireme
   });
 
   const set = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+  const remove = useMutation({
+    mutationFn: () => axiosInstance.delete(`/contract-guarantees/${guarantee.id}/`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['external-contract', String(contractId)] });
+      qc.invalidateQueries({ queryKey: ['contract-guarantees-status', String(contractId)] });
+      qc.invalidateQueries({ queryKey: ['contract-guarantees-monitor'] });
+      qc.invalidateQueries({ queryKey: ['external-contracts'] });
+      onClose();
+    },
+    onError: (event) => setError(event.response?.data?.detail || 'خطا در حذف تضمین'),
+  });
+  const confirmRemove = () => {
+    if (window.confirm('این تضمین از قرارداد حذف شود؟ این اقدام قابل بازگشت نیست.')) {
+      remove.mutate();
+    }
+  };
   const submit = () => {
     if (!form.amount || Number(toEnglishDigits(form.amount)) <= 0) {
       setError('مبلغ تضمین باید بزرگ‌تر از صفر باشد.');
@@ -148,9 +165,16 @@ const GuaranteeInlineDialog = ({ open, onClose, contractId, guarantee, requireme
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions sx={{ px: 2, py: 1.25 }}>
-        <Button size="small" onClick={onClose} disabled={save.isPending}>انصراف</Button>
-        <Button size="small" variant="contained" onClick={submit} disabled={save.isPending}
+      <DialogActions sx={{ px: 2, py: 1.25, gap: 0.5 }}>
+        {guarantee?.id ? (
+          <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={confirmRemove}
+            disabled={save.isPending || remove.isPending} sx={{ ml: 0 }}>
+            حذف تضمین
+          </Button>
+        ) : null}
+        <Box sx={{ flex: 1 }} />
+        <Button size="small" onClick={onClose} disabled={save.isPending || remove.isPending}>انصراف</Button>
+        <Button size="small" variant="contained" onClick={submit} disabled={save.isPending || remove.isPending}
           sx={{ px: 2.4, borderRadius: '8px', fontWeight: 800, boxShadow: 'none' }}>
           {save.isPending ? 'در حال ذخیره…' : 'ذخیره و به‌روزرسانی پرونده'}
         </Button>

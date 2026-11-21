@@ -1137,6 +1137,9 @@ export const GuaranteesTab = ({ ctx }) => {
                   </Typography>
                   <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>{money(item.amount, 'ریال')}</Typography>
                   <Typography noWrap sx={{ fontSize: 10, color: state.color, minWidth: 62, textAlign: 'left' }}>{state.label}</Typography>
+                  <IconButton size="small" aria-label="ویرایش تضمین" onClick={() => setEditor({ guarantee: item })}>
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
                 </Stack>
               );
             })}

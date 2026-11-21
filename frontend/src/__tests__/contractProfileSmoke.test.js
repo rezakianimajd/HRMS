@@ -249,6 +249,14 @@ test('contract profile shows the compact card, single-row quick access and the a
   expect(Array.from(guaranteeTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
     .toEqual(['ردیف', 'شماره', 'نوع تضمین', 'ابزار', 'بانک / صادرکننده', 'مبلغ', 'پوشش از قلم', 'سررسید', 'وضعیت', '']);
   expect(container.textContent).toContain('ثبت / تکمیل تضمین');
+  const editGuarantee = guaranteeTable.querySelector('tbody tr button[aria-label="ویرایش تضمین"]');
+  expect(editGuarantee).toBeTruthy();
+  await act(async () => { editGuarantee.click(); await wait(250); });
+  expect(document.body.textContent).toContain('ویرایش تضمین');
+  expect(document.body.textContent).toContain('حذف تضمین');
+  const closeGuaranteeDialog = Array.from(document.querySelectorAll('[role="dialog"] button'))
+    .find((button) => button.textContent.trim() === 'انصراف');
+  await act(async () => { closeGuaranteeDialog.click(); await wait(150); });
 
   await openTab('صورت‌وضعیت');
   expect(container.textContent).toContain('فهرست صورت‌وضعیت‌ها');

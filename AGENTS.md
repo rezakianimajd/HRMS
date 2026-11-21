@@ -636,9 +636,9 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   برای هر «قلم تضمین» (مثل قرارداد `C-KPSMI-05-078` توران) دکمهٔ «ثبت / تکمیل تضمین» و برای هر
   تضمین ثبت‌شده آیکن ویرایش اضافه شد. دیالوگ `GuaranteeInlineDialog` نوع/ابزار/شماره/مبلغ/تاریخ‌ها/
   بانک را با مبلغ کمبود همان قلم پیش‌پر می‌کند و با `contract_guarantee_index` تضمین را به همان
-  ردیف `guarantee_items` وصل می‌کند. پس از ذخیره، کوئری‌های `external-contract` و
+  ردیف `guarantee_items` وصل می‌کند. پس از ذخیره یا حذف، کوئری‌های `external-contract` و
   `contract-guarantees-status` باطل می‌شوند تا پوشش، مبلغ تأمین‌شده و هشدارها **بلافاصله** در
-  پرونده به‌روز شوند. تست `contractProfileSmoke` سبز؛ باندل زنده: **`main.1b6e2661.js`**.
+  پرونده به‌روز شوند. تست `contractProfileSmoke` سبز؛ باندل زنده: **`main.932e200e.js`**.
 
 - **پروندهٔ جامع مشخصات شرکت و حاکمیت شرکتی (۲۰۲۶-۱۱-۲۱):** صفحهٔ `/company-profile` از یک فرم سادهٔ چندفیلدی به پروندهٔ حرفه‌ای و تب‌بندی‌شده تبدیل شد:
   **مشخصات حقوقی، تماس و نشانی، سرمایه و سهام، نماینده و مشاوران، حساب‌های بانکی، صاحبان امضا،
@@ -651,7 +651,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `/api/company-board-members/`، `/api/company-bank-accounts/`، `/api/signatories/` و
   `/api/settings/company-profile/seal/`؛ خواندن برای کاربران واردشده و نوشتن با `can_edit_settings`.
   تست: `settings_app.tests_company_profile` (**۶**) و `companyProfileSmoke` (**۱**) سبز؛
-  باندل زنده: **`main.1b6e2661.js`**.
+  باندل زنده: **`main.932e200e.js`**.
 
 - **گزارش پرداخت و مطالبات قراردادها (۲۰۲۶-۱۱-۱۸):** صفحهٔ `/contracts-payment-report` در گروه
   «پایش قراردادها» اضافه شد. ستون‌ها: ردیف، نام، شماره قرارداد، پروژه‌ها، موضوع، پیش‌پرداخت قرارداد،
