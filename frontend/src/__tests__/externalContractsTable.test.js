@@ -250,6 +250,43 @@ test('sort sits between search and filters, orders the request, and stays out of
   container.remove();
 });
 
+test('clicking a table header sends server ordering and toggles direction', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/external-contracts']}>
+          <ExternalContractsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(700);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
+  }
+
+  const partyHeader = Array.from(container.querySelectorAll('thead th'))
+    .find((th) => th.textContent.includes('طرف حساب'));
+  expect(partyHeader).toBeTruthy();
+
+  await act(async () => { partyHeader.querySelector('.MuiTableSortLabel-root').click(); await wait(500); });
+  let calls = axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
+  expect(calls.at(-1)[1].params.ordering).toBe('party__name');
+
+  await act(async () => { partyHeader.querySelector('.MuiTableSortLabel-root').click(); await wait(500); });
+  calls = axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
+  expect(calls.at(-1)[1].params.ordering).toBe('-party__name');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
 test('contracts list is paginated twenty rows at a time with Persian digits', async () => {
   axiosInstance.get.mockImplementation((url, config) => {
     if (url === '/external-contracts/') {

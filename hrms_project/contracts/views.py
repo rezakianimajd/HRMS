@@ -111,6 +111,10 @@ class ContractViewSet(BaseContractViewSet):
     queryset = Contract.objects.all()
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'subject', 'party__name']
+    ordering_fields = [
+        'number', 'subject', 'party__name', 'contract_type', 'status',
+        'start_date', 'end_date', 'amount', 'created_at',
+    ]
     ordering = ['-created_at']
 
     def get_serializer_class(self):

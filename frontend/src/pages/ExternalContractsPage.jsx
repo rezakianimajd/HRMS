@@ -6,7 +6,7 @@ import {
   Box, Typography, Paper, Button, Chip, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
   InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Collapse,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -60,11 +60,21 @@ const SORT_OPTIONS = [
   { value: '-created_at', label: 'جدیدترین' },
   { value: 'created_at', label: 'قدیمی‌ترین' },
   { value: '-start_date', label: 'شروع: جدیدترین' },
+  { value: 'start_date', label: 'شروع: قدیمی‌ترین' },
   { value: 'end_date', label: 'پایان: نزدیک‌ترین' },
+  { value: '-end_date', label: 'پایان: دورترین' },
   { value: '-amount', label: 'مبلغ: بیشترین' },
   { value: 'amount', label: 'مبلغ: کمترین' },
   { value: 'number', label: 'شماره: صعودی' },
   { value: '-number', label: 'شماره: نزولی' },
+  { value: 'party__name', label: 'طرف حساب: الف↔ی' },
+  { value: '-party__name', label: 'طرف حساب: ی↔الف' },
+  { value: 'subject', label: 'موضوع: الف↔ی' },
+  { value: '-subject', label: 'موضوع: ی↔الف' },
+  { value: 'contract_type', label: 'نوع: صعودی' },
+  { value: '-contract_type', label: 'نوع: نزولی' },
+  { value: 'status', label: 'وضعیت: صعودی' },
+  { value: '-status', label: 'وضعیت: نزولی' },
 ];
 const DEFAULT_SORT = SORT_OPTIONS[0].value;
 
@@ -94,6 +104,38 @@ const bodyCellSx = {
 // تراز صریح (inline) تا قاعدهٔ سراسری «[dir=rtl] .MuiTableCell-root» بازنویسی نکند
 const CENTER = { textAlign: 'center' };
 const RIGHT = { textAlign: 'right' };
+
+const HEADER_SORT_FIELDS = {
+  number: 'number',
+  party: 'party__name',
+  subject: 'subject',
+  type: 'contract_type',
+  status: 'status',
+  start: 'start_date',
+  end: 'end_date',
+  remaining: 'end_date',
+  amount: 'amount',
+};
+
+const SortHeadCell = ({
+  label, field, sortOrder, onSort, width,
+}) => {
+  const activeField = String(sortOrder || '').replace(/^-/, '');
+  const active = activeField === field;
+  const direction = String(sortOrder || '').startsWith('-') ? 'desc' : 'asc';
+  return (
+    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width }}>
+      <TableSortLabel
+        active={active}
+        direction={active ? direction : 'asc'}
+        onClick={() => onSort(field)}
+        sx={{ fontWeight: 800, fontSize: 12, color: '#334155' }}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  );
+};
 
 /** سلکت فیلتر با تراز برچسب توکن‌محور (بالای فیلد / درون فیلد / مخفی). */
 const FilterSelect = ({ label, value, options, onChange, labelsPosition, radius = 8 }) => (
@@ -172,6 +214,17 @@ const ExternalContractsPage = () => {
   const [msg, setMsg] = useState('');
   const [msgOk, setMsgOk] = useState(true);
   const [exporting, setExporting] = useState(false);
+
+  const toggleHeaderSort = (key) => {
+    const field = HEADER_SORT_FIELDS[key];
+    if (!field) return;
+    setSortOrder((previous) => {
+      const current = String(previous || '').replace(/^-/, '');
+      const descending = String(previous || '').startsWith('-');
+      if (current === field) return descending ? field : `-${field}`;
+      return field;
+    });
+  };
 
   /* ---- توکن‌های جدول از استودیوی تم (تایپوگرافی، رنگ، خط جداکننده، قاب) ---- */
   const { tokens } = useDesignTokens();
@@ -575,15 +628,15 @@ const ExternalContractsPage = () => {
               >
                 <TableHead>
                   <TableRow>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7%' }}>شماره قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '12%' }}>طرف حساب</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '17%' }}>موضوع قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '10%' }}>نوع قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7%' }}>وضعیت</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7.5%' }}>تاریخ شروع</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7.5%' }}>تاریخ پایان</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '10%' }}>روز تا پایان</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '13%' }}>مبلغ قرارداد</TableCell>
+                    <SortHeadCell label="شماره قرارداد" field="number" sortOrder={sortOrder} onSort={toggleHeaderSort} width="7%" />
+                    <SortHeadCell label="طرف حساب" field="party" sortOrder={sortOrder} onSort={toggleHeaderSort} width="12%" />
+                    <SortHeadCell label="موضوع قرارداد" field="subject" sortOrder={sortOrder} onSort={toggleHeaderSort} width="17%" />
+                    <SortHeadCell label="نوع قرارداد" field="type" sortOrder={sortOrder} onSort={toggleHeaderSort} width="10%" />
+                    <SortHeadCell label="وضعیت" field="status" sortOrder={sortOrder} onSort={toggleHeaderSort} width="7%" />
+                    <SortHeadCell label="تاریخ شروع" field="start" sortOrder={sortOrder} onSort={toggleHeaderSort} width="7.5%" />
+                    <SortHeadCell label="تاریخ پایان" field="end" sortOrder={sortOrder} onSort={toggleHeaderSort} width="7.5%" />
+                    <SortHeadCell label="روز تا پایان" field="remaining" sortOrder={sortOrder} onSort={toggleHeaderSort} width="10%" />
+                    <SortHeadCell label="مبلغ قرارداد" field="amount" sortOrder={sortOrder} onSort={toggleHeaderSort} width="13%" />
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '9%' }}>عملیات</TableCell>
                   </TableRow>
                 </TableHead>
