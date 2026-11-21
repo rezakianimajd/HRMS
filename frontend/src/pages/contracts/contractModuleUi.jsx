@@ -5,6 +5,8 @@ import {
   TextField, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -13,6 +15,7 @@ import FirstPageIcon from '@mui/icons-material/FirstPage';
 import LastPageIcon from '@mui/icons-material/LastPage';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { useDesignTokens } from '../../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../../core/theme/tableStyles';
@@ -181,7 +184,7 @@ const spacerRow = (height, colSpan) => (
 export const ModuleTable = ({
   tableTheme, columns, rows, rowKey, onRowClick, containerRef, tableHeight, rowHeight,
   dimmed, emptyText, ariaLabel, virtualize = false, overscan = 6, rowAttributes,
-  minWidth = 860, tableLayout = 'fixed',
+  minWidth = 860, tableLayout = 'fixed', sort = null, onSort = null,
 }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const rafRef = useRef(0);
@@ -262,16 +265,64 @@ export const ModuleTable = ({
       >
         <TableHead>
           <TableRow>
-            {columns.map((column) => (
-              <TableCell
-                key={column.key}
-                align={column.align || 'center'}
-                className={column.align === 'center' ? 'hrms-cell-center' : undefined}
-                sx={{ width: column.width }}
-              >
-                {column.renderHeader ? column.renderHeader() : column.label}
-              </TableCell>
-            ))}
+            {columns.map((column) => {
+              const sortKey = column.sortKey || column.key;
+              const sortable = Boolean(onSort && (column.sortable || column.sortKey));
+              const activeSort = sortable && sort?.key === sortKey;
+              const direction = activeSort ? sort.direction : '';
+              const headerContent = column.renderHeader ? column.renderHeader() : column.label;
+              const handleSort = () => {
+                if (!sortable) return;
+                const nextDirection = activeSort && direction === 'asc'
+                  ? 'desc'
+                  : (column.defaultSortDirection || 'asc');
+                onSort({ key: sortKey, direction: nextDirection, column });
+              };
+              return (
+                <TableCell
+                  key={column.key}
+                  align={column.align || 'center'}
+                  className={column.align === 'center' ? 'hrms-cell-center' : undefined}
+                  sx={{
+                    width: column.width,
+                    cursor: sortable ? 'pointer' : 'default',
+                    userSelect: sortable ? 'none' : 'auto',
+                    '&:hover': sortable ? { backgroundColor: 'action.hover' } : undefined,
+                  }}
+                  aria-sort={activeSort
+                    ? (direction === 'asc' ? 'ascending' : 'descending')
+                    : (sortable ? 'none' : undefined)}
+                  aria-label={sortable ? `مرتب‌سازی بر اساس ${column.label || sortKey}` : undefined}
+                  tabIndex={sortable ? 0 : undefined}
+                  onClick={sortable ? handleSort : undefined}
+                  onKeyDown={sortable ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleSort();
+                    }
+                  } : undefined}
+                >
+                  <Box sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.3,
+                    justifyContent: column.align === 'center' ? 'center' : 'flex-start',
+                    minWidth: 0,
+                  }}>
+                    <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {headerContent}
+                    </Box>
+                    {sortable ? (
+                      activeSort ? (
+                        direction === 'asc'
+                          ? <ArrowUpwardIcon sx={{ fontSize: 13, color: 'primary.main', flexShrink: 0 }} />
+                          : <ArrowDownwardIcon sx={{ fontSize: 13, color: 'primary.main', flexShrink: 0 }} />
+                      ) : (
+                        <UnfoldMoreIcon sx={{ fontSize: 13, opacity: 0.35, flexShrink: 0 }} />
+                      )
+                    ) : null}
+                  </Box>
+                </TableCell>
+              );
+            })}
           </TableRow>
         </TableHead>
         <TableBody>

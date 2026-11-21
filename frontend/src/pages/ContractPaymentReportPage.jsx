@@ -57,6 +57,23 @@ const rowSort = (rows, sortBy) => {
   return sorted;
 };
 
+const headerSort = (rows, sort) => {
+  if (!sort?.key) return rows;
+  const factor = sort.direction === 'desc' ? -1 : 1;
+  const read = (row) => {
+    if (sort.type === 'number') return valueOf(row, sort.key);
+    return String(row[sort.key] ?? '');
+  };
+  return [...rows].sort((a, b) => {
+    const left = read(a);
+    const right = read(b);
+    if (typeof left === 'number' && typeof right === 'number') {
+      return (left - right) * factor;
+    }
+    return left.localeCompare(right, 'fa') * factor;
+  });
+};
+
 const MoneyText = ({ value, color, strong = false }) => (
   <Typography sx={{ fontSize: 10.5, fontWeight: strong ? 900 : 700, color: color || 'text.primary' }}>
     {money(value)}
@@ -72,6 +89,7 @@ const ContractPaymentReportPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [claimFilter, setClaimFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
+  const [headerSortState, setHeaderSortState] = useState(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -93,11 +111,14 @@ const ContractPaymentReportPage = () => {
   });
 
   const serverRows = Array.isArray(reportQuery.data?.results) ? reportQuery.data.results : [];
-  const rows = useMemo(() => rowSort(serverRows, sortBy), [serverRows, sortBy]);
+  const rows = useMemo(() => {
+    if (sortBy !== 'default') return rowSort(serverRows, sortBy);
+    return headerSort(serverRows, headerSortState);
+  }, [serverRows, sortBy, headerSortState]);
   const summary = reportQuery.data?.summary || {};
 
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    rows.length, pageSize, [debouncedSearch, claimFilter, sortBy, pageSize],
+    rows.length, pageSize, [debouncedSearch, claimFilter, sortBy, headerSortState, pageSize],
   );
   const pagedRows = useMemo(
     () => rows.slice(page * pageSize, (page + 1) * pageSize),
@@ -128,7 +149,7 @@ const ContractPaymentReportPage = () => {
       ),
     },
     {
-      key: 'party_name', label: 'نام', width: '12%',
+      key: 'party_name', label: 'نام', width: '12%', sortKey: 'party_name', sortType: 'text',
       render: (row) => (
         <Typography noWrap title={row.party_name} sx={{ fontSize: 11, fontWeight: 800 }}>
           {row.party_name || '—'}
@@ -137,6 +158,7 @@ const ContractPaymentReportPage = () => {
     },
     {
       key: 'contract_number', label: 'شماره قرارداد', width: '9%', align: 'center',
+      sortKey: 'contract_number', sortType: 'text',
       render: (row) => (
         <Typography noWrap title={row.contract_number} sx={{ fontSize: 10.5, fontWeight: 800 }}>
           {row.contract_number ? toPersianDigits(row.contract_number) : '—'}
@@ -144,7 +166,7 @@ const ContractPaymentReportPage = () => {
       ),
     },
     {
-      key: 'projects', label: 'پروژه‌ها', width: '14%',
+      key: 'projects', label: 'پروژه‌ها', width: '14%', sortKey: 'projects_display', sortType: 'text',
       render: (row) => (
         <Typography noWrap title={(row.projects || []).join('، ')} sx={{ fontSize: 10.5 }}>
           {row.projects_display || '—'}
@@ -152,7 +174,7 @@ const ContractPaymentReportPage = () => {
       ),
     },
     {
-      key: 'subject', label: 'موضوع قرارداد', width: '15%',
+      key: 'subject', label: 'موضوع قرارداد', width: '15%', sortKey: 'subject', sortType: 'text',
       render: (row) => (
         <Typography noWrap title={row.subject} sx={{ fontSize: 10.5 }}>
           {row.subject || '—'}
@@ -161,14 +183,17 @@ const ContractPaymentReportPage = () => {
     },
     {
       key: 'advance_contract', label: 'پیش‌پرداخت (مطابق قرارداد)', width: '9%', align: 'center',
+      sortKey: 'advance_contract', sortType: 'number', defaultSortDirection: 'desc',
       render: (row) => <MoneyText value={row.advance_contract} />,
     },
     {
       key: 'advance_paid', label: 'پیش‌پرداخت پرداخت‌شده', width: '9%', align: 'center',
+      sortKey: 'advance_paid', sortType: 'number', defaultSortDirection: 'desc',
       render: (row) => <MoneyText value={row.advance_paid} color={GREEN} />,
     },
     {
       key: 'advance_balance', label: 'مانده پیش‌پرداخت', width: '9%', align: 'center',
+      sortKey: 'advance_balance', sortType: 'number', defaultSortDirection: 'desc',
       render: (row) => (
         <MoneyText value={row.advance_balance}
           color={valueOf(row, 'advance_balance') < 0 ? RED : AMBER} strong />
@@ -176,6 +201,7 @@ const ContractPaymentReportPage = () => {
     },
     {
       key: 'payable_claims', label: 'مطالبات قابل پرداخت', width: '10%', align: 'center',
+      sortKey: 'payable_claims', sortType: 'number', defaultSortDirection: 'desc',
       render: (row) => (
         <MoneyText value={row.payable_claims}
           color={valueOf(row, 'payable_claims') > 0 ? RED : GREEN} strong />
@@ -183,10 +209,12 @@ const ContractPaymentReportPage = () => {
     },
     {
       key: 'paid_total', label: 'مبالغ پرداخت‌شده', width: '10%', align: 'center',
+      sortKey: 'paid_total', sortType: 'number', defaultSortDirection: 'desc',
       render: (row) => <MoneyText value={row.paid_total} color={BLUE} />,
     },
     {
       key: 'last_payment_date', label: 'تاریخ آخرین پرداخت', width: '9%', align: 'center',
+      sortKey: 'last_payment_date', sortType: 'date', defaultSortDirection: 'desc',
       render: (row) => (
         <Typography sx={{ fontSize: 10.5, fontWeight: 700 }}>
           {row.last_payment_date ? toJalali(row.last_payment_date) : '—'}
@@ -318,7 +346,7 @@ const ContractPaymentReportPage = () => {
         searchPlaceholder="جست‌وجو در نام، شماره قرارداد، موضوع یا پروژه…"
         sort={sortBy}
         sortOptions={SORT_OPTIONS}
-        onSort={setSortBy}
+        onSort={(value) => { setSortBy(value); setHeaderSortState(null); }}
         filters={[{
           label: 'مطالبات',
           value: claimFilter,
@@ -358,6 +386,11 @@ const ContractPaymentReportPage = () => {
               rowHeight={rowHeight}
               tableHeight={tableHeight}
               dimmed={reportQuery.isFetching}
+              sort={headerSortState}
+              onSort={({ key, direction, column }) => {
+                setSortBy('default');
+                setHeaderSortState({ key, direction, type: column.sortType || 'text' });
+              }}
               minWidth={1680}
               emptyText="قراردادی با این شرایط پیدا نشد."
             />

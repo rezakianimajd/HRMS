@@ -53,6 +53,9 @@ def project_names_of(contract, project_names=None):
             if isinstance(item, dict)
         }:
             result.append(name)
+    fallback_name = getattr(contract, 'project_name', '') or ''
+    if fallback_name:
+        result.append(fallback_name)
     unique = []
     for name in result:
         if name and name not in unique:

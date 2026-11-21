@@ -63,6 +63,19 @@ const EmployeeListPage = () => {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
 
+  const headerSortKey = (value) => String(value || '')
+    .split(',')
+    .map((part) => part.replace(/^-/, ''))
+    .join(',');
+  const headerSortDirection = String(sort || '').startsWith('-') ? 'desc' : 'asc';
+  const handleHeaderSort = ({ key, direction }) => {
+    const ordering = String(key || '')
+      .split(',')
+      .map((part) => `${direction === 'desc' ? '-' : ''}${part}`)
+      .join(',');
+    setSort(ordering);
+  };
+
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 350);
     return () => clearTimeout(timer);
@@ -204,6 +217,8 @@ const EmployeeListPage = () => {
       key: 'person',
       label: t('employees.full_name'),
       align: 'right',
+      sortKey: 'last_name,first_name',
+      defaultSortDirection: 'asc',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, minWidth: 0 }}>
           <EmployeeAvatar employee={row} size={32} />
@@ -245,6 +260,8 @@ const EmployeeListPage = () => {
       label: t('employees.employee_id'),
       align: 'center',
       width: 110,
+      sortKey: 'employee_id',
+      defaultSortDirection: 'asc',
       render: (row) => (
         <Typography sx={{ fontSize: 11.5 }}>{toPersianDigits(row.employee_id || '')}</Typography>
       ),
@@ -253,6 +270,7 @@ const EmployeeListPage = () => {
       key: 'department',
       label: t('employees.department'),
       align: 'right',
+      sortKey: 'department__name',
       render: (row) => (
         <Typography noWrap sx={{ fontSize: 11.5 }}>{row.department_name || '—'}</Typography>
       ),
@@ -261,6 +279,7 @@ const EmployeeListPage = () => {
       key: 'job_title',
       label: t('employees.job_title'),
       align: 'right',
+      sortKey: 'job_title__name',
       render: (row) => (
         <Typography noWrap sx={{ fontSize: 11.5 }}>{row.job_title_name || '—'}</Typography>
       ),
@@ -269,6 +288,7 @@ const EmployeeListPage = () => {
       key: 'work_location',
       label: t('employees.work_location'),
       align: 'right',
+      sortKey: 'work_location__name',
       render: (row) => (
         <Typography noWrap sx={{ fontSize: 11.5 }}>{row.work_location_name || '—'}</Typography>
       ),
@@ -277,6 +297,7 @@ const EmployeeListPage = () => {
       key: 'insurance_list',
       label: t('employees.insurance_list'),
       align: 'right',
+      sortKey: 'insurance_list__name',
       render: (row) => (
         <Typography noWrap sx={{ fontSize: 11.5 }}>{row.insurance_list_name || '—'}</Typography>
       ),
@@ -286,6 +307,7 @@ const EmployeeListPage = () => {
       label: t('employees.status'),
       align: 'center',
       width: 110,
+      sortKey: 'status',
       render: (row) => <StatusBadge status={row.status} />,
     },
     {
@@ -374,6 +396,8 @@ const EmployeeListPage = () => {
             tableHeight={tableHeight}
             rowHeight={rowHeight}
             dimmed={isFetching}
+            sort={{ key: headerSortKey(sort), direction: headerSortDirection }}
+            onSort={handleHeaderSort}
             rows={employees}
             rowKey={(row) => row.id}
             onRowClick={(row) => navigate(`/employees/${row.id}`)}
