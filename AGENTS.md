@@ -634,20 +634,22 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ## 12) Current snapshot — وضعیت فعلی
 - **حفظ وضعیت صفحه‌ها و عنوان فارسی تب‌ها (۲۰۲۶-۱۱-۱۸):** با تغییر مسیر، `Layout` دیگر
   از نو ساخته نمی‌شود؛ یک `Layout` پایدار در `AppRoutes` مانده و `WorkspacePageCache`
-  هر صفحهٔ باز را با `Routes location=…` زنده نگه می‌دارد (صفحه‌های غیرفعال با `display:none`).
+  هر صفحهٔ باز را با `Routes location=…` زنده نگه می‌دارد (صفحه‌های غیرفعال با `display:none`
+  و `React.memo` بدون رندر مجدد). برای کنترل منابع، حداکثر ۸ صفحه در کش می‌مانند و
+  صفحات قدیمی غیرفعال (LRU) unmount می‌شوند؛ تب آن‌ها باقی می‌ماند و در صورت نیاز از نو mount می‌شود.
   بنابراین فیلترها، فرم نیمه‌کاره، تب‌های داخلی و اسکرول هر صفحه هنگام رفت‌وبرگشت حفظ می‌شوند
   (اسکرول در `Layout` برای هر مسیر ذخیره/برگردانده می‌شود). تب‌های redirect وارد کش نمی‌شوند.
   عنوان مسیرهای پارامتردار/تودرتو با `core/config/routeTitles.js` فارسی می‌شود
   (`/employees/:id`، `/external-contracts/:id`، `/treasury/*`، `/accounting/*` و …).
   تست‌های `workspacePageCache` (۱) + `routeTitles` (۲) + `workspaceTabs` (۲) سبز؛
-  باندل زنده: **`main.f4b59857.js`**.
+  باندل زنده: **`main.621c0895.js`**.
 - **نوار «صفحات باز» پایین برنامه بازطراحی شد (۲۰۲۶-۱۱-۱۸):** `WorkspaceTabs.jsx` از
-  `Chip`های ساده به یک **dock** شیشه‌ای/تم‌محور تبدیل شد: آیکن هر صفحه از منو، تب فعال با
-  خط و هالهٔ رنگ ماژول، بستن با کلیک/میان‌کلیک/کلید Delete، منوی راست‌کلیک
+  `Chip`های ساده به یک **dock** شیشه‌ای/تم‌محور تبدیل شد: آیکن هر صفحه از منو داخل قاب
+  رنگی کوچک، تب فعال با خط و هالهٔ رنگ ماژول، بستن هنگام hover/کلیک/میان‌کلیک/کلید Delete، منوی راست‌کلیک
   («بستن این صفحه / سایر صفحات / همه»)، دکمهٔ «همهٔ صفحات باز» با جست‌وجو، اسکرول افقی
   با دکمه‌های قبلی/بعدی، `ResizeObserver` برای تشخیص سرریز و اسکرول خودکار تب فعال.
   `WorkspaceTabsContext` تابع `closeOthers` گرفت و `Layout.findMenuMeta` آیکن تب را هم
-  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.f4b59857.js`**.
+  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.621c0895.js`**.
 - **دفترچه تلفن سازمانی در ریل سایدبار (۲۰۲۶-۱۱-۱۸):** آیکن `rail-phonebook` زیر جست‌وجوی سریع،
   دیالوگ بزرگ `WorkspaceDock` را باز می‌کند (`PhonebookPanel`). داده از
   `GET /api/contract-parties/` و `GET /api/procurement/suppliers/` با `fetchAllPages` خوانده می‌شود
@@ -660,7 +662,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (۱۷ طرف حساب شمارهٔ تماس دارند). تست‌های `phonebook` (۵) + `phonebookSmoke` (۲) +
   `workspaceDock` (۱) سبز. آیکن‌های ریل برای تفکیک بصری: دفترچه تلفن `ImportContactsOutlined`،
   کارتابل من `PendingActionsOutlined`، اسناد سازمانی `CorporateFareOutlined`؛ باندل زنده:
-  **`main.f4b59857.js`**.
+  **`main.621c0895.js`**.
 - **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
   اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
   دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد

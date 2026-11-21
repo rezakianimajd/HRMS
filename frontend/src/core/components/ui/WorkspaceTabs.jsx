@@ -32,6 +32,7 @@ const TabItem = ({
     role="tab"
     aria-selected={active}
     aria-label={tab.title}
+    title={tab.title}
     data-testid="workspace-tab"
     data-active={active ? 'true' : 'false'}
     tabIndex={active ? 0 : -1}
@@ -54,16 +55,17 @@ const TabItem = ({
     }}
     sx={{
       position: 'relative',
-      display: 'flex', alignItems: 'center', gap: 0.55,
-      minWidth: 106, maxWidth: 224, height: 34, flexShrink: 0,
-      px: 1.05, pb: active ? 0.28 : 0, borderRadius: '10px',
+      display: 'flex', alignItems: 'center', gap: 0.6,
+      minWidth: 104, maxWidth: 214, height: 34, flexShrink: 0,
+      px: 0.9, pb: active ? 0.28 : 0, borderRadius: '10px',
       cursor: 'pointer', userSelect: 'none', outline: 'none',
       color: active ? 'text.primary' : 'text.secondary',
       border: '1px solid',
       borderColor: active ? alpha(color, 0.38) : 'transparent',
       background: active
-        ? `linear-gradient(135deg, ${alpha(color, 0.16)}, ${alpha(color, 0.045)})`
+        ? `linear-gradient(135deg, ${alpha(color, 0.17)}, ${alpha(color, 0.045)})`
         : 'transparent',
+      backdropFilter: active ? 'blur(10px)' : 'none',
       boxShadow: active ? `0 5px 16px ${alpha(color, 0.12)}` : 'none',
       transition: 'background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease',
       '&:hover': {
@@ -72,25 +74,33 @@ const TabItem = ({
           ? `linear-gradient(135deg, ${alpha(color, 0.19)}, ${alpha(color, 0.06)})`
           : alpha(color, 0.07),
         color: 'text.primary',
+        '& .workspace-tab-close': { opacity: 0.9 },
       },
       '&:focus-visible': { boxShadow: `0 0 0 2px ${alpha(color, 0.3)}` },
       '&:active': { transform: 'scale(.985)' },
     }}
   >
-    <Box sx={{ display: 'grid', placeItems: 'center', color: active ? color : 'text.secondary', flexShrink: 0 }}>
+    <Box sx={{
+      width: 23, height: 23, borderRadius: '7px', flexShrink: 0,
+      display: 'grid', placeItems: 'center',
+      color: active ? color : 'text.secondary',
+      bgcolor: alpha(color, active ? 0.13 : 0.065),
+    }}>
       <TabIcon tab={tab} />
     </Box>
-    <Typography noWrap sx={{ flex: 1, fontSize: 11.5, fontWeight: active ? 900 : 700 }}>
+    <Typography noWrap sx={{ flex: 1, fontSize: 11.3, fontWeight: active ? 900 : 700 }}>
       {tab.title}
     </Typography>
     <IconButton
       component="span"
       size="small"
+      className="workspace-tab-close"
       aria-label={`بستن ${tab.title}`}
       onClick={(event) => { event.stopPropagation(); onClose(tab.path); }}
       sx={{
         width: 19, height: 19, p: 0, flexShrink: 0, color: 'inherit',
-        opacity: active ? 0.9 : 0.55,
+        opacity: active ? 0.9 : 0,
+        transition: 'opacity .16s ease, background .16s ease',
         '&:hover': { opacity: 1, bgcolor: alpha(color, 0.14), color },
       }}
     >
