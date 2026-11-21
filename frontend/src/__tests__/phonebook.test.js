@@ -9,10 +9,15 @@ const parties = [{
   national_id: '10101010101',
   party_type_display: 'پیمانکار',
   person_type_display: 'شخص حقوقی',
+  company_type_display: 'سهامی خاص',
+  establishment_date: '2015-03-21',
+  registered_capital: 1000000000,
   phone: '021-88776655',
   mobile: '09121234567',
   email: 'info@pars.example',
   contact_person: 'رضا احمدی',
+  ceo_name: 'علی پارس',
+  bank_name: 'بانک ملی',
   contracts_count: 4,
 }];
 
@@ -49,6 +54,16 @@ test('phonebook search, source and availability filters work together', () => {
   expect(filterPhonebookContacts(rows, { search: 'تجهیزات' })).toHaveLength(1);
   expect(filterPhonebookContacts(rows, { source: 'procurement' })).toHaveLength(1);
   expect(filterPhonebookContacts(rows, { availability: 'email' })).toHaveLength(1);
+});
+
+test('phonebook keeps legal, representative and bank details for the detail dialog', () => {
+  const [row] = buildPhonebookContacts(parties, []);
+  expect(row.companyType).toBe('سهامی خاص');
+  expect(row.registeredCapital).toBe(1000000000);
+  expect(row.ceoName).toBe('علی پارس');
+  expect(row.contactPerson).toBe('رضا احمدی');
+  expect(row.bankName).toBe('بانک ملی');
+  expect(filterPhonebookContacts([row], { search: 'بانک ملی' })).toHaveLength(1);
 });
 
 test('phonebook sorting prioritizes contract count when requested', () => {

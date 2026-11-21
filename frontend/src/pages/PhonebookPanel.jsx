@@ -6,12 +6,14 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { useQuery } from '@tanstack/react-query';
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import ClearAllOutlinedIcon from '@mui/icons-material/ClearAllOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import ContactPhoneOutlinedIcon from '@mui/icons-material/ContactPhoneOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import FilterAltOutlinedIcon from '@mui/icons-material/FilterAltOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -19,12 +21,14 @@ import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import SmartphoneOutlinedIcon from '@mui/icons-material/SmartphoneOutlined';
 import StarOutlinedIcon from '@mui/icons-material/StarOutlined';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import fetchAllPages from '../core/api/fetchAllPages';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { toJalali } from '../core/utils/dateUtils';
 import {
   PHONEBOOK_ACCENT, buildPhonebookContacts, filterPhonebookContacts, phoneHref,
   phonebookInitial, phonebookTone, phonebookTypeOptions, sortPhonebookContacts,
@@ -208,12 +212,33 @@ const ContactCard = ({ contact, onOpen, onCopy, copiedValue }) => {
 const detailText = (contact) => [
   contact.name,
   contact.typeLabel,
-  contact.contactPerson && `شخص رابط: ${contact.contactPerson}`,
+  contact.personLabel,
+  contact.companyType && `نوع شرکت: ${contact.companyType}`,
+  contact.contactPerson && `نماینده / شخص رابط: ${contact.contactPerson}`,
   contact.phone && `تلفن: ${contact.phone}`,
   contact.mobile && `موبایل: ${contact.mobile}`,
   contact.email && `ایمیل: ${contact.email}`,
   contact.address && `آدرس: ${contact.address}`,
   contact.code && `${contact.codeLabel}: ${contact.code}`,
+  contact.nationalId && `شناسه ملی: ${contact.nationalId}`,
+  contact.economicCode && `کد اقتصادی: ${contact.economicCode}`,
+  contact.registrationNumber && `شماره ثبت: ${contact.registrationNumber}`,
+  contact.establishmentDate && `تاریخ تأسیس: ${toJalali(contact.establishmentDate)}`,
+  contact.registeredCapital != null && `سرمایه ثبتی: ${formatPersianNumber(contact.registeredCapital)} ریال`,
+  contact.ceoName && `مدیر عامل: ${contact.ceoName}`,
+  contact.ceoPhone && `تلفن مدیر عامل: ${contact.ceoPhone}`,
+  contact.financeManagerName && `مدیر مالی: ${contact.financeManagerName}`,
+  contact.financeManagerPhone && `تلفن مدیر مالی: ${contact.financeManagerPhone}`,
+  contact.technicalContactName && `رابط فنی: ${contact.technicalContactName}`,
+  contact.technicalContactPhone && `تلفن رابط فنی: ${contact.technicalContactPhone}`,
+  contact.bankName && `بانک: ${contact.bankName}`,
+  contact.accountNumber && `شماره حساب: ${contact.accountNumber}`,
+  contact.shebaNumber && `شبا: ${contact.shebaNumber}`,
+  contact.creditLimit != null && `سقف اعتبار: ${formatPersianNumber(contact.creditLimit)} ریال`,
+  contact.paymentTerms && `شرایط پرداخت: ${contact.paymentTerms}`,
+  contact.postalCode && `کد پستی: ${contact.postalCode}`,
+  contact.taxId && `شناسه مالیاتی: ${contact.taxId}`,
+  contact.description && `توضیحات: ${contact.description}`,
 ].filter(Boolean).join('\n');
 
 const DetailLine = ({ label, value, icon: Icon }) => {
@@ -229,20 +254,48 @@ const DetailLine = ({ label, value, icon: Icon }) => {
   );
 };
 
+const DetailSection = ({ title, icon: Icon, children }) => (
+  <Paper elevation={0} sx={{ ...cardSurface, p: 1.2, mt: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, mb: 0.8 }}>
+      <Box sx={{
+        width: 24, height: 24, borderRadius: '7px', display: 'grid', placeItems: 'center',
+        color: PHONEBOOK_ACCENT, bgcolor: alpha(PHONEBOOK_ACCENT, 0.09),
+      }}>
+        <Icon sx={{ fontSize: 14 }} />
+      </Box>
+      <Typography sx={{ fontSize: 11, fontWeight: 900 }}>{title}</Typography>
+    </Box>
+    <Box sx={{
+      display: 'grid', gap: 0.7, columnGap: 1.6,
+      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+    }}>
+      {children}
+    </Box>
+  </Paper>
+);
+
 const PhonebookDetailDialog = ({ contact, open, onClose, onCopy, copiedValue }) => {
   if (!contact) return null;
   const tone = phonebookTone(contact.name);
   const keyPeople = [
+    { label: 'نماینده / شخص رابط', name: contact.contactPerson, phone: '' },
     { label: 'مدیر عامل', name: contact.ceoName, phone: contact.ceoPhone },
     { label: 'مدیر مالی', name: contact.financeManagerName, phone: contact.financeManagerPhone },
     { label: 'رابط فنی', name: contact.technicalContactName, phone: contact.technicalContactPhone },
   ].filter((person) => person.name || person.phone);
+  const hasLegalIdentity = Boolean(
+    contact.nationalId || contact.economicCode || contact.registrationNumber
+      || contact.establishmentDate || contact.registeredCapital != null
+      || contact.postalCode || contact.taxId,
+  );
+  const hasBankInfo = Boolean(contact.bankName || contact.accountNumber || contact.shebaNumber);
+  const hasPurchaseInfo = Boolean(contact.creditLimit != null || contact.paymentTerms);
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{ style: { borderRadius: 12 } }}
       data-testid="phonebook-detail"
@@ -300,7 +353,7 @@ const PhonebookDetailDialog = ({ contact, open, onClose, onCopy, copiedValue }) 
 
         {keyPeople.length ? (
           <Paper elevation={0} sx={{ ...cardSurface, p: 1.2, mt: 1 }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 900, mb: 0.8 }}>افراد کلیدی</Typography>
+            <Typography sx={{ fontSize: 11, fontWeight: 900, mb: 0.8 }}>افراد و نمایندگان</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.65 }}>
               {keyPeople.map((person) => (
                 <Box key={person.label} sx={{
@@ -308,7 +361,7 @@ const PhonebookDetailDialog = ({ contact, open, onClose, onCopy, copiedValue }) 
                   pb: 0.55, borderBottom: '1px dashed', borderColor: 'divider',
                   '&:last-of-type': { pb: 0, borderBottom: 0 },
                 }}>
-                  <Typography sx={{ fontSize: 10.5, color: 'text.secondary', minWidth: 68 }}>
+                  <Typography sx={{ fontSize: 10.5, color: 'text.secondary', minWidth: 96 }}>
                     {person.label}
                   </Typography>
                   <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, flex: 1 }}>
@@ -326,22 +379,90 @@ const PhonebookDetailDialog = ({ contact, open, onClose, onCopy, copiedValue }) 
           </Paper>
         ) : null}
 
-        <Paper elevation={0} sx={{ ...cardSurface, p: 1.2, mt: 1 }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 900, mb: 0.8 }}>مشخصات</Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6 }}>
-            <DetailLine icon={BusinessOutlinedIcon} label="نوع" value={contact.typeLabel} />
-            <DetailLine icon={PersonOutlineIcon} label="شخص رابط" value={contact.contactPerson} />
-            <DetailLine icon={BadgeOutlinedIcon} label={contact.codeLabel || 'کد'} value={contact.code} />
-            {contact.contractsCount ? (
-              <DetailLine icon={ContactPhoneOutlinedIcon} label="قراردادها" value={formatPersianNumber(contact.contractsCount)} />
+        <DetailSection title="اطلاعات پایه" icon={BusinessOutlinedIcon}>
+          <DetailLine
+            icon={BusinessOutlinedIcon}
+            label={contact.source === 'procurement' ? 'دسته' : 'نوع طرف'}
+            value={contact.partyType || contact.typeLabel}
+          />
+          {contact.source === 'contracts' ? (
+            <DetailLine icon={PersonOutlineIcon} label="نوع شخص" value={contact.personLabel} />
+          ) : null}
+          <DetailLine icon={BusinessOutlinedIcon} label="نوع شرکت" value={contact.companyType} />
+          <DetailLine icon={BadgeOutlinedIcon} label={contact.codeLabel || 'کد'} value={contact.code} />
+          <DetailLine icon={FilterAltOutlinedIcon} label="وضعیت" value={contact.statusLabel} />
+          {contact.rating != null ? (
+            <DetailLine icon={StarOutlinedIcon} label="امتیاز خرید" value={formatPersianNumber(contact.rating)} />
+          ) : null}
+          {contact.contractsCount ? (
+            <DetailLine
+              icon={ContactPhoneOutlinedIcon}
+              label="تعداد قرارداد"
+              value={formatPersianNumber(contact.contractsCount)}
+            />
+          ) : null}
+        </DetailSection>
+
+        {hasLegalIdentity ? (
+          <DetailSection title="هویت حقوقی" icon={BadgeOutlinedIcon}>
+            <DetailLine icon={BadgeOutlinedIcon} label="شناسه ملی" value={contact.nationalId} />
+            <DetailLine icon={BadgeOutlinedIcon} label="کد اقتصادی" value={contact.economicCode} />
+            <DetailLine icon={ReceiptLongOutlinedIcon} label="شماره ثبت" value={contact.registrationNumber} />
+            <DetailLine
+              icon={DescriptionOutlinedIcon}
+              label="تاریخ تأسیس"
+              value={contact.establishmentDate ? toJalali(contact.establishmentDate) : ''}
+            />
+            {contact.registeredCapital != null ? (
+              <DetailLine
+                icon={AccountBalanceOutlinedIcon}
+                label="سرمایه ثبتی"
+                value={`${formatPersianNumber(contact.registeredCapital)} ریال`}
+              />
             ) : null}
-            {contact.rating != null ? (
-              <DetailLine icon={StarOutlinedIcon} label="امتیاز خرید" value={formatPersianNumber(contact.rating)} />
+            <DetailLine icon={LocationOnOutlinedIcon} label="کد پستی" value={contact.postalCode} />
+            <DetailLine icon={ReceiptLongOutlinedIcon} label="شناسه مالیاتی" value={contact.taxId} />
+          </DetailSection>
+        ) : null}
+
+        {hasBankInfo ? (
+          <DetailSection title="اطلاعات بانکی" icon={AccountBalanceOutlinedIcon}>
+            <DetailLine icon={AccountBalanceOutlinedIcon} label="بانک" value={contact.bankName} />
+            <DetailLine icon={BadgeOutlinedIcon} label="شماره حساب" value={contact.accountNumber} />
+            <DetailLine icon={BadgeOutlinedIcon} label="شماره شبا" value={contact.shebaNumber} />
+          </DetailSection>
+        ) : null}
+
+        {hasPurchaseInfo ? (
+          <DetailSection title="اعتبار و شرایط خرید" icon={StorefrontOutlinedIcon}>
+            {contact.creditLimit != null ? (
+              <DetailLine
+                icon={AccountBalanceOutlinedIcon}
+                label="سقف اعتبار"
+                value={`${formatPersianNumber(contact.creditLimit)} ریال`}
+              />
             ) : null}
-            <DetailLine icon={FilterAltOutlinedIcon} label="وضعیت" value={contact.statusLabel} />
-            <DetailLine icon={LocationOnOutlinedIcon} label="آدرس" value={contact.address} />
-          </Box>
-        </Paper>
+            <DetailLine icon={DescriptionOutlinedIcon} label="شرایط پرداخت" value={contact.paymentTerms} />
+          </DetailSection>
+        ) : null}
+
+        {contact.address || contact.description ? (
+          <DetailSection title="آدرس و توضیحات" icon={LocationOnOutlinedIcon}>
+            {contact.address ? (
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <DetailLine icon={LocationOnOutlinedIcon} label="آدرس" value={contact.address} />
+              </Box>
+            ) : null}
+            {contact.description ? (
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <Typography sx={{ fontSize: 10.5, color: 'text.secondary', mb: 0.3 }}>توضیحات</Typography>
+                <Typography sx={{ fontSize: 11, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+                  {contact.description}
+                </Typography>
+              </Box>
+            ) : null}
+          </DetailSection>
+        ) : null}
       </DialogContent>
       <DialogActions sx={{ px: 1.5, pb: 1.4, pt: 0.4, gap: 0.6 }}>
         <Button

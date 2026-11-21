@@ -18,12 +18,24 @@ const party = {
   national_id: '10101010101',
   party_type_display: 'پیمانکار',
   person_type_display: 'شخص حقوقی',
+  company_type_display: 'سهامی خاص',
+  establishment_date: '2015-03-21',
+  registered_capital: 1000000000,
   phone: '021-88776655',
   mobile: '09121234567',
   email: 'info@pars.example',
+  address: 'تهران، خیابان ولیعصر',
   contact_person: 'رضا احمدی',
   ceo_name: 'علی پارس',
   ceo_phone: '021-88776600',
+  finance_manager_name: 'مریم مالی',
+  finance_manager_phone: '021-88776611',
+  technical_contact_name: 'حسین فنی',
+  technical_contact_phone: '021-88776622',
+  bank_name: 'بانک ملی',
+  account_number: '123456789',
+  sheba_number: 'IR123456789012345678901234',
+  description: 'پیمانکار نمونه برای تست دفترچه تلفن',
   contracts_count: 4,
 };
 
@@ -113,8 +125,12 @@ test('phonebook card opens the full contact details dialog', async () => {
   });
 
   expect(document.body.textContent).toContain('اطلاعات تماس');
-  expect(document.body.textContent).toContain('افراد کلیدی');
+  expect(document.body.textContent).toContain('افراد و نمایندگان');
   expect(document.body.textContent).toContain('مدیر عامل');
+  expect(document.body.textContent).toContain('نماینده / شخص رابط');
+  expect(document.body.textContent).toContain('هویت حقوقی');
+  expect(document.body.textContent).toContain('بانک ملی');
+  expect(document.body.textContent).toContain('سرمایه ثبتی');
 
   await act(async () => { root.unmount(); });
   container.remove();
