@@ -275,11 +275,11 @@ test('clicking a table header sends server ordering and toggles direction', asyn
     .find((th) => th.textContent.includes('طرف حساب'));
   expect(partyHeader).toBeTruthy();
 
-  await act(async () => { partyHeader.querySelector('.MuiTableSortLabel-root').click(); await wait(500); });
+  await act(async () => { partyHeader.click(); await wait(500); });
   let calls = axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
   expect(calls.at(-1)[1].params.ordering).toBe('party__name');
 
-  await act(async () => { partyHeader.querySelector('.MuiTableSortLabel-root').click(); await wait(500); });
+  await act(async () => { partyHeader.click(); await wait(500); });
   calls = axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
   expect(calls.at(-1)[1].params.ordering).toBe('-party__name');
 

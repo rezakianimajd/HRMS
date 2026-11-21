@@ -6,7 +6,7 @@ import {
   Box, Typography, Paper, Button, Chip, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
   InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Collapse,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -22,6 +22,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
@@ -122,17 +125,45 @@ const SortHeadCell = ({
 }) => {
   const activeField = String(sortOrder || '').replace(/^-/, '');
   const active = activeField === field;
-  const direction = String(sortOrder || '').startsWith('-') ? 'desc' : 'asc';
+  const direction = active && String(sortOrder || '').startsWith('-') ? 'desc' : 'asc';
+  const handleSort = () => onSort(field);
   return (
-    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width }}>
-      <TableSortLabel
-        active={active}
-        direction={active ? direction : 'asc'}
-        onClick={() => onSort(field)}
-        sx={{ fontWeight: 800, fontSize: 12, color: '#334155' }}
-      >
-        {label}
-      </TableSortLabel>
+    <TableCell
+      align="center"
+      style={CENTER}
+      sx={{
+        ...headCellSx,
+        width,
+        cursor: 'pointer',
+        userSelect: 'none',
+        '&:hover': { backgroundColor: 'action.hover' },
+      }}
+      aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+      aria-label={`مرتب‌سازی بر اساس ${label}`}
+      tabIndex={0}
+      onClick={handleSort}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleSort();
+        }
+      }}
+    >
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 0.3,
+        justifyContent: 'center', minWidth: 0,
+      }}>
+        <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {label}
+        </Box>
+        {active ? (
+          direction === 'asc'
+            ? <ArrowUpwardIcon sx={{ fontSize: 13, color: 'primary.main', flexShrink: 0 }} />
+            : <ArrowDownwardIcon sx={{ fontSize: 13, color: 'primary.main', flexShrink: 0 }} />
+        ) : (
+          <UnfoldMoreIcon sx={{ fontSize: 13, opacity: 0.35, flexShrink: 0 }} />
+        )}
+      </Box>
     </TableCell>
   );
 };
