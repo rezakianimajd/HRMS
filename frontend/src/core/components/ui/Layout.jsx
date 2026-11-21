@@ -461,7 +461,7 @@ const Layout = ({ children }) => {
     }
     const routeMeta = routeTitleMeta(path);
     if (routeMeta) return { ...routeMeta, icon: null };
-    return { title: path, color: '#6366f1', icon: null };
+    return { title: 'صفحهٔ جدید', color: '#6366f1', icon: null };
   };
 
   const goTo = (path) => {
