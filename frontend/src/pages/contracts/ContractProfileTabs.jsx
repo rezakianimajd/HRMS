@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box, Button, Divider, Grid, IconButton, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Tooltip, Typography,
@@ -13,6 +13,7 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { useDesignTokens } from '../../core/context/DesignTokenContext';
@@ -27,6 +28,7 @@ import {
 import { statementDisplayTitle } from './statementKinds';
 import { bucketMeta } from './paymentAllocations';
 import { paidByBucket, paidTotalsByKind, paymentAllocationRows } from './contractPaymentLinks';
+import GuaranteeInlineDialog from './GuaranteeInlineDialog';
 
 const money = (value, currency = 'ریال') => `${formatPersianNumber(Number(value) || 0)} ${currency}`;
 const compactMoney = (value) => {
@@ -847,7 +849,7 @@ const guaranteeState = (item) => {
   }
   return { label: 'فعال', color: '#047857' };
 };
-const RequirementCoverage = ({ requirement, currencyLabel }) => {
+const RequirementCoverage = ({ requirement, currencyLabel, onAdd, onEdit }) => {
   const theme = useTheme();
   const percent = Number(requirement.coverage_percent || 0);
   const color = requirement.status === 'provided' ? theme.palette.success.main
@@ -917,6 +919,10 @@ const RequirementCoverage = ({ requirement, currencyLabel }) => {
                 <Typography noWrap sx={{ fontSize: 10, color: state.color, minWidth: 62, textAlign: 'left' }}>
                   {state.label}
                 </Typography>
+                <IconButton size="small" aria-label="ویرایش تضمین" onClick={() => onEdit?.(item)}
+                  sx={{ p: 0.15 }}>
+                  <EditIcon sx={{ fontSize: 14 }} />
+                </IconButton>
               </Stack>
             );
           })}
@@ -926,11 +932,16 @@ const RequirementCoverage = ({ requirement, currencyLabel }) => {
           {requirement.status === 'missing' ? 'برای این قلم هنوز تضمینی ثبت نشده است.' : 'تضمینی به این قلم وصل نشده است.'}
         </Typography>
       )}
+      <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={() => onAdd?.(requirement)}
+        sx={{ mt: 'auto', alignSelf: 'flex-start', fontSize: 11, borderRadius: '8px' }}>
+        {requirement.balance > 0 ? 'ثبت / تکمیل تضمین' : 'ثبت تضمین'}
+      </Button>
     </Box>
   );
 };
 export const GuaranteesTab = ({ ctx }) => {
   const theme = useTheme();
+  const [editor, setEditor] = useState(null);
   const report = ctx.guaranteeReport;
   const requirements = report?.requirements || [];
   const unrequired = report?.unrequired || [];
@@ -1009,7 +1020,9 @@ export const GuaranteesTab = ({ ctx }) => {
               <Grid container spacing={1.5}>
                 {requirements.map((requirement, index) => (
                   <Grid item xs={12} md={6} key={`${requirement.type}-${requirement.index ?? index}`}>
-                    <RequirementCoverage requirement={requirement} currencyLabel={contractCurrency} />
+                    <RequirementCoverage requirement={requirement} currencyLabel={contractCurrency}
+                      onAdd={(item) => setEditor({ requirement: item })}
+                      onEdit={(item) => setEditor({ guarantee: item })} />
                   </Grid>
                 ))}
               </Grid>
@@ -1094,6 +1107,14 @@ export const GuaranteesTab = ({ ctx }) => {
                 );
               },
             },
+            {
+              key: 'actions', label: '', width: '5%', align: 'center',
+              render: (row) => (
+                <IconButton size="small" aria-label="ویرایش تضمین" onClick={() => setEditor({ guarantee: row })}>
+                  <EditIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              ),
+            },
           ]}
         />
       </SectionCard>
@@ -1132,6 +1153,14 @@ export const GuaranteesTab = ({ ctx }) => {
           </Stack>
         </SectionCard>
       ) : null}
+
+      <GuaranteeInlineDialog
+        open={Boolean(editor)}
+        onClose={() => setEditor(null)}
+        contractId={ctx.contract?.id}
+        guarantee={editor?.guarantee || null}
+        requirement={editor?.requirement || null}
+      />
     </Stack>
   );
 };

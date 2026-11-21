@@ -247,7 +247,8 @@ test('contract profile shows the compact card, single-row quick access and the a
   const guaranteeTable = container.querySelector('table[aria-label="فهرست تضامین ثبت‌شده"]');
   expect(guaranteeTable).toBeTruthy();
   expect(Array.from(guaranteeTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
-    .toEqual(['ردیف', 'شماره', 'نوع تضمین', 'ابزار', 'بانک / صادرکننده', 'مبلغ', 'پوشش از قلم', 'سررسید', 'وضعیت']);
+    .toEqual(['ردیف', 'شماره', 'نوع تضمین', 'ابزار', 'بانک / صادرکننده', 'مبلغ', 'پوشش از قلم', 'سررسید', 'وضعیت', '']);
+  expect(container.textContent).toContain('ثبت / تکمیل تضمین');
 
   await openTab('صورت‌وضعیت');
   expect(container.textContent).toContain('فهرست صورت‌وضعیت‌ها');
