@@ -519,6 +519,7 @@ class LetterReferralSerializer(serializers.ModelSerializer):
     letter_direction = serializers.CharField(source='letter.direction', read_only=True)
     letter_priority = serializers.CharField(source='letter.priority', read_only=True)
     letter_status = serializers.CharField(source='letter.status', read_only=True)
+    letter_party = serializers.SerializerMethodField()
     to_employee_name = serializers.CharField(source='to_employee.full_name', read_only=True)
     to_employee_code = serializers.CharField(source='to_employee.employee_id', read_only=True)
     to_employees_names = serializers.SerializerMethodField()
@@ -531,7 +532,7 @@ class LetterReferralSerializer(serializers.ModelSerializer):
         model = LetterReferral
         fields = [
             'id', 'letter', 'letter_number', 'letter_subject', 'letter_direction',
-            'letter_priority', 'letter_status', 'seq', 'parent', 'purpose', 'purpose_display',
+            'letter_priority', 'letter_status', 'letter_party', 'seq', 'parent', 'purpose', 'purpose_display',
             'from_user', 'from_user_name', 'from_employee', 'from_employee_name',
             'to_user', 'to_user_name', 'to_employee', 'to_employee_name', 'to_employee_code',
             'to_employees', 'to_employees_names',
@@ -545,12 +546,15 @@ class LetterReferralSerializer(serializers.ModelSerializer):
             'from_user', 'from_user_name', 'from_employee', 'from_employee_name',
             'answered_by_name', 'to_user_name', 'status_display', 'purpose_display',
             'is_overdue', 'letter_number', 'letter_subject', 'letter_direction',
-            'letter_priority', 'letter_status', 'to_employee_name', 'to_employee_code',
+            'letter_priority', 'letter_status', 'letter_party', 'to_employee_name', 'to_employee_code',
             'target_label', 'to_employees_names',
         ]
 
     def get_to_employees_names(self, obj):
         return [employee.full_name for employee in obj.to_employees.all()]
+
+    def get_letter_party(self, obj):
+        return obj.letter.party_display if obj.letter_id else ''
 
     @staticmethod
     def _name(user):

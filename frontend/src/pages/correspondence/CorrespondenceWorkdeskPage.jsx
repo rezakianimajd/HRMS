@@ -22,7 +22,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import {
-  ModulePager, ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
+  ModulePager, ModuleTable, ModuleToolbar, useLocalSort, useModuleTheme, useRowHeight,
 } from '../contracts/contractModuleUi';
 import {
   ACCENT, DANGER, INCOMING, INTERNAL, KpiTile, OK, REFERRAL_STATUS_META, SLATE, WARN,
@@ -514,10 +514,11 @@ const CorrespondenceWorkdeskPage = () => {
     }
     return list;
   }, [rows, sortBy]);
+  const { rows: headerSortedRows, sort: headerSort, onSort: onHeaderSort } = useLocalSort(sortedRows);
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(headerSortedRows.length / pageSize));
   const [page, setPage] = useState(0);
-  useEffect(() => { setPage(0); }, [listParams, sortBy, pageSize]);
+  useEffect(() => { setPage(0); }, [listParams, sortBy, headerSort, pageSize]);
   useEffect(() => {
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
   }, [page, totalPages]);
@@ -528,8 +529,8 @@ const CorrespondenceWorkdeskPage = () => {
     return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
   }, [page, totalPages]);
   const paged = useMemo(
-    () => sortedRows.slice(page * pageSize, (page + 1) * pageSize),
-    [sortedRows, page, pageSize],
+    () => headerSortedRows.slice(page * pageSize, (page + 1) * pageSize),
+    [headerSortedRows, page, pageSize],
   );
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, paged.length);
 
@@ -594,7 +595,8 @@ const CorrespondenceWorkdeskPage = () => {
       ),
     },
     {
-      key: 'letter', label: 'نامه', width: '22%',
+      key: 'letter', label: 'نامه', width: '20%',
+      sortKey: 'letter_number',
       render: (row) => (
         <Stack spacing={0} sx={{ minWidth: 0 }}>
           <CellText mono weight={800} title={row.letter_subject || ''}>
@@ -613,7 +615,17 @@ const CorrespondenceWorkdeskPage = () => {
       ),
     },
     {
-      key: 'instruction', label: 'دستور / توضیح', width: '24%',
+      key: 'party', label: 'طرف حساب', width: '14%',
+      sortKey: 'letter_party',
+      render: (row) => (
+        <CellText weight={700} title={row.letter_party || ''}>
+          {row.letter_party || '—'}
+        </CellText>
+      ),
+    },
+    {
+      key: 'instruction', label: 'دستور / توضیح', width: '20%',
+      sortKey: 'instruction',
       render: (row) => (
         <CellText weight={700} title={joinParts(row.instruction, row.note, row.margin_note)}>
           {joinParts(row.instruction, row.note) || '—'}
@@ -622,6 +634,7 @@ const CorrespondenceWorkdeskPage = () => {
     },
     {
       key: 'from', label: 'ارجاع‌دهنده', width: '12%',
+      sortKey: 'from_employee_name',
       render: (row) => (
         <CellText weight={700}>
           {row.from_employee_name || row.from_user_name || '—'}
@@ -630,10 +643,12 @@ const CorrespondenceWorkdeskPage = () => {
     },
     {
       key: 'referred_on', label: 'تاریخ ارجاع', width: '9%', align: 'center',
+      sortKey: 'referred_on',
       render: (row) => <CellText mono weight={700}>{dateLabel(row.referred_on)}</CellText>,
     },
     {
       key: 'due', label: 'مهلت', width: '8%', align: 'center',
+      sortKey: 'due_date',
       render: (row) => (row.due_date ? (
         <Chip size="small" label={daysLabel(daysBetween(row.due_date))}
           sx={chipSx(daysColor(daysBetween(row.due_date)))} />
@@ -641,6 +656,7 @@ const CorrespondenceWorkdeskPage = () => {
     },
     {
       key: 'status', label: 'وضعیت', width: '8%', align: 'center',
+      sortKey: 'status',
       render: (row) => {
         const meta = REFERRAL_STATUS_META[row.status] || REFERRAL_STATUS_META.pending;
         return <Chip size="small" label={meta.label} sx={chipSx(meta.color, meta.bg)} />;
@@ -648,6 +664,7 @@ const CorrespondenceWorkdeskPage = () => {
     },
     {
       key: 'seen', label: 'مشاهده', width: '5%', align: 'center',
+      sortKey: 'seen_at',
       render: (row) => (row.seen_at ? (
         <Tooltip title={dateTimeLabel(row.seen_at)}>
           <MarkEmailReadIcon sx={{ fontSize: 16, color: OK }} />
@@ -850,11 +867,13 @@ const CorrespondenceWorkdeskPage = () => {
                 tableHeight={tableHeight}
                 rowHeight={rowHeight}
                 dimmed={isFetching}
+                sort={headerSort}
+                onSort={onHeaderSort}
                 rows={paged}
                 rowKey={(row) => row.id}
                 onRowClick={openDetail}
                 emptyText="ارجاعی با این شرایط در کارتابل شما نیست."
-                minWidth={1180}
+                minWidth={1320}
                 tableLayout="auto"
                 columns={columns}
               />

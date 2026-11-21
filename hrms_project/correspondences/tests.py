@@ -635,7 +635,7 @@ class IncomingLetterSpecializationTests(SimpleTestCase):
 
         fields = LetterReferralSerializer().fields
         for name in ('instruction', 'response', 'result', 'result_note', 'answered_on',
-                     'answered_by', 'answered_by_name'):
+                     'answered_by', 'answered_by_name', 'letter_party'):
             self.assertIn(name, fields, f'فیلد {name} در سریالایزر ارجاع نیست')
 
     def test_referral_viewset_has_complete_action(self):

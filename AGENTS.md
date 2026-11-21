@@ -632,6 +632,12 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **طرف حساب و مرتب‌سازی در کارتابل من (۲۰۲۶-۱۱-۲۱):** جدول ارجاعات کارتابل (`/my-workdesk`)
+  ستون **«طرف حساب»** گرفت (از `letter.party_display` در `LetterReferralSerializer` با
+  `select_related('letter__party_account','letter__organization','letter__correspondent')` و بدون N+1).
+  همچنین همهٔ ستون‌های جدول با `ModuleTable`/`useLocalSort` قابل مرتب‌سازی شدند و جست‌وجوی سروری
+  روی نام طرف حساب/سازمان/مخاطب هم اضافه شد. باندل زنده: **`main.feb0aad0.js`**.
+
 - **رفع قلم اضافی و تکراری «تضمین اصلی» در پروندهٔ قرارداد (۲۰۲۶-۱۱-۲۱):** در قراردادهایی مثل
   `C-KPSMI-05-078` که هم `guarantee_items` دارند و هم فیلدهای قدیمی `guarantee_type`/`guarantee_amount`،
   گزارش «پوشش تضامین» یک قلم سوم (حسن انجام کار) می‌ساخت که در فرم قرارداد و صفحهٔ تضامین وجود نداشت.
@@ -651,7 +657,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   بانک را با مبلغ کمبود همان قلم پیش‌پر می‌کند و با `contract_guarantee_index` تضمین را به همان
   ردیف `guarantee_items` وصل می‌کند. پس از ذخیره یا حذف، کوئری‌های `external-contract` و
   `contract-guarantees-status` باطل می‌شوند تا پوشش، مبلغ تأمین‌شده و هشدارها **بلافاصله** در
-  پرونده به‌روز شوند. تست `contractProfileSmoke` سبز؛ باندل زنده: **`main.932e200e.js`**.
+  پرونده به‌روز شوند. تست `contractProfileSmoke` سبز؛ باندل زنده: **`main.feb0aad0.js`**.
 
 - **پروندهٔ جامع مشخصات شرکت و حاکمیت شرکتی (۲۰۲۶-۱۱-۲۱):** صفحهٔ `/company-profile` از یک فرم سادهٔ چندفیلدی به پروندهٔ حرفه‌ای و تب‌بندی‌شده تبدیل شد:
   **مشخصات حقوقی، تماس و نشانی، سرمایه و سهام، نماینده و مشاوران، حساب‌های بانکی، صاحبان امضا،
@@ -664,7 +670,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `/api/company-board-members/`، `/api/company-bank-accounts/`، `/api/signatories/` و
   `/api/settings/company-profile/seal/`؛ خواندن برای کاربران واردشده و نوشتن با `can_edit_settings`.
   تست: `settings_app.tests_company_profile` (**۶**) و `companyProfileSmoke` (**۱**) سبز؛
-  باندل زنده: **`main.932e200e.js`**.
+  باندل زنده: **`main.feb0aad0.js`**.
 
 - **گزارش پرداخت و مطالبات قراردادها (۲۰۲۶-۱۱-۱۸):** صفحهٔ `/contracts-payment-report` در گروه
   «پایش قراردادها» اضافه شد. ستون‌ها: ردیف، نام، شماره قرارداد، پروژه‌ها، موضوع، پیش‌پرداخت قرارداد،

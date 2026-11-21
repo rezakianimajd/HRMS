@@ -113,6 +113,8 @@ class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         'instruction', 'note', 'margin_note', 'result_note', 'result',
         'to_employee__first_name', 'to_employee__last_name',
         'to_employees__first_name', 'to_employees__last_name',
+        'letter__party_account__name', 'letter__party_name',
+        'letter__organization__name', 'letter__correspondent__name',
     ]
     ordering_fields = ['referred_on', 'due_date', 'status', 'seq']
     ordering = ['-referred_on', '-id']
@@ -121,6 +123,7 @@ class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
         qs = super().get_queryset().select_related(
             'letter', 'from_user', 'to_user', 'answered_by',
             'to_employee', 'from_employee', 'letter__category', 'letter__organization',
+            'letter__party_account', 'letter__correspondent',
         ).prefetch_related('to_employees').distinct()
         qs = qs.filter(confidential_letter_filter(self.request.user, prefix='letter__'))
         params = self.request.query_params
@@ -166,7 +169,8 @@ class LetterReferralViewSet(CorrespondencePermissionMixin, BaseLetterViewSet):
             confidential_letter_filter(user, prefix='letter__'),
         ).select_related(
             'letter', 'from_user', 'to_user', 'to_employee', 'from_employee',
-            'letter__category',
+            'letter__category', 'letter__organization', 'letter__party_account',
+            'letter__correspondent',
         ).prefetch_related('to_employees')
         target = _my_referral_filter(user, employee, company)
         base = base.filter(target).distinct()

@@ -118,6 +118,7 @@ const cartable = {
   results: [{
     id: 11, letter: 1, letter_number: '1404-100-135',
     letter_subject: 'معرفی شرکت جهت اخذ ردیف پیمان', letter_direction: 'incoming',
+    letter_party: 'شرکت ساز و کار',
     letter_priority: 'urgent', letter_status: 'in_progress', seq: 1, parent: null,
     purpose: 'action', purpose_display: 'اقدام / انجام کار',
     from_user_name: 'مدیر مکاتبات', from_employee_name: 'مدیر مکاتبات',
@@ -620,6 +621,8 @@ test('workdesk page renders cartable counters, referrals and actions', async () 
   expect(container.textContent).toContain('معرفی شرکت جهت اخذ ردیف پیمان');
   expect(container.textContent).toContain('بررسی و اعلام نظر');
   expect(container.textContent).toContain('در انتظار اقدام');
+  expect(container.textContent).toContain('طرف حساب');
+  expect(container.textContent).toContain('شرکت ساز و کار');
   expect(container.querySelector('[aria-label="مشاهدهٔ ارجاع"]')).toBeTruthy();
   expect(container.querySelector('[aria-label="ثبت نتیجه"]')).toBeTruthy();
 
