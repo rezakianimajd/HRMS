@@ -643,7 +643,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   `/api/company-board-members/`، `/api/company-bank-accounts/`، `/api/signatories/` و
   `/api/settings/company-profile/seal/`؛ خواندن برای کاربران واردشده و نوشتن با `can_edit_settings`.
   تست: `settings_app.tests_company_profile` (**۶**) و `companyProfileSmoke` (**۱**) سبز؛
-  باندل زنده: **`main.4e62f30d.js`**.
+  باندل زنده: **`main.62f9bb3b.js`**.
 
 - **گزارش پرداخت و مطالبات قراردادها (۲۰۲۶-۱۱-۱۸):** صفحهٔ `/contracts-payment-report` در گروه
   «پایش قراردادها» اضافه شد. ستون‌ها: ردیف، نام، شماره قرارداد، پروژه‌ها، موضوع، پیش‌پرداخت قرارداد،

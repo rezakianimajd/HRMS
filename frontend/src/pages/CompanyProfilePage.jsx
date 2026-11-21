@@ -148,6 +148,27 @@ const CompanyProfilePage = () => {
           </Box>
         </Box>
       </Paper>
+      <Grid container spacing={1.25} sx={{ mb: 1.75 }}>
+        <Grid item xs={12} sm={6} lg={3}>
+          <OverviewTile label="سهام‌داران" value={toPersianDigits((profile?.shareholders || form.shareholders || []).length)}
+            hint={`جمع درصد: ${toPersianDigits((profile?.shareholders || form.shareholders || []).reduce((sum, row) => sum + Number(row.share_percent || 0), 0).toLocaleString('en-US'))}٪`}
+            color={SOFT.violet} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <OverviewTile label="اعضای هیئت مدیره" value={toPersianDigits((profile?.board_members || form.board_members || []).length)}
+            hint="شامل اعضای اجرایی و غیراجرایی" color={SOFT.blue} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <OverviewTile label="صاحبان امضا" value={toPersianDigits((profile?.signatories || form.signatories || []).length)}
+            hint="امضای قرارداد و اسناد مالی" color={SOFT.amber} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <OverviewTile label="حساب رسمی شرکت"
+            value={(profile?.bank_accounts || form.bank_accounts || []).find((row) => row.is_official)?.bank_name || 'ثبت نشده'}
+            hint={(profile?.bank_accounts || form.bank_accounts || []).find((row) => row.is_official)?.iban || 'برای اسناد رسمی حساب تعیین کنید.'}
+            color={SOFT.green} small />
+        </Grid>
+      </Grid>
       {saved && <Alert icon={<CheckCircleIcon fontSize="inherit" />} severity="success" sx={{ mb: 2, borderRadius: '12px' }}>مشخصات شرکت با موفقیت ذخیره شد.</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setError('')}>{error}</Alert>}
       <TabsCard tabs={TABS} value={tab} onChange={setTab} activeColor={SOFT.indigo} />
@@ -165,6 +186,23 @@ const CompanyProfilePage = () => {
     </Box>
   );
 };
+
+const OverviewTile = ({ label, value, hint, color, small }) => (
+  <Paper sx={{
+    ...glassCard, p: 1.25, height: '100%', display: 'flex', gap: 1,
+    alignItems: 'flex-start', borderTop: `3px solid ${color}`,
+  }}>
+    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: color, mt: 0.5, flexShrink: 0 }} />
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontSize: 10.5, color: 'text.secondary', fontWeight: 700 }}>{label}</Typography>
+      <Typography noWrap title={String(value)} sx={{ fontSize: small ? 13 : 17, fontWeight: 900, color }}>
+        {value}
+      </Typography>
+      <Typography noWrap title={hint} sx={{ fontSize: 10, color: 'text.secondary' }}>{hint}</Typography>
+    </Box>
+  </Paper>
+);
+
 
 const LegalTab = ({ form, set }) => (
   <SectionCard icon={<GavelIcon />} title="مشخصات حقوقی و ثبتی" color={SOFT.indigo}
