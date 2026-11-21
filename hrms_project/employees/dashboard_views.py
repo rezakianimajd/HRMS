@@ -27,7 +27,7 @@ def dashboard_stats(request):
 
     total_active = qs.filter(is_active=True, status='active').count()
     on_leave = qs.filter(is_active=True, status='leave').count()
-    retired_this_year = qs.filter(status__in=['retired', 'terminated'], status_change_date__year=today.year).count()
+    retired_this_year = qs.filter(status__in=Employee.EXIT_STATUSES, status_change_date__year=today.year).count()
     new_this_month = qs.filter(hire_date__gte=month_start, hire_date__lte=today).count()
 
     doc_qs = Document.objects.filter(is_active=True)

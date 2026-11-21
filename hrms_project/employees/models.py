@@ -258,7 +258,15 @@ class Employee(BaseModel):
         LEAVE = 'leave', _('مرخصی طولانی‌مدت')
         RETIRED = 'retired', _('بازنشسته')
         TERMINATED = 'terminated', _('اخراج')
+        RESIGNED = 'resigned', _('استعفا')
+        CONTRACT_ENDED = 'contract_ended', _('پایان قرارداد')
+        SUSPENDED = 'suspended', _('تعلیق')
+        TRANSFERRED = 'transferred', _('انتقال به سازمان دیگر')
+        ABANDONED = 'abandoned', _('ترک خدمت')
         DECEASED = 'deceased', _('فوت')
+
+    # وضعیت‌هایی که خروج از سازمان/کاهش نیرو محسوب می‌شوند (برای نرخ ترک خدمت)
+    EXIT_STATUSES = ('retired', 'terminated', 'resigned', 'contract_ended', 'abandoned', 'transferred')
 
     class WorkShift(models.TextChoices):
         MORNING = 'morning', _('صبح')

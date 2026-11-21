@@ -149,7 +149,7 @@ def assistant_data(request):
     # Turnover
     today = date.today()
     terminated = emp_qs.filter(
-        status__in=['terminated', 'retired'],
+        status__in=Employee.EXIT_STATUSES,
         status_change_date__year=today.year,
     ).count()
     total = emp_qs.count()

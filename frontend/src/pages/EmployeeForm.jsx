@@ -33,6 +33,7 @@ import {
   useEmployee, useCreateEmployee, useUpdateEmployee,
   useDepartments, useJobTitles, useWorkLocations, useInsuranceLists, useContractTypes,
 } from '../core/hooks/useEmployees';
+import { EMPLOYEE_STATUS_OPTIONS } from '../core/constants/employeeStatuses';
 import { useDocumentTypes, useUploadDocument, useDocuments, useDeleteDocument } from '../core/hooks/useDocuments';
 
 const EMPTY_FORM = {
@@ -372,7 +373,10 @@ const EmployeeForm = () => {
   const GENDERS = [{ value: 'male', label: t('employees.male') }, { value: 'female', label: t('employees.female') }];
   const MARITAL = [{ value: 'single', label: t('employees.single') }, { value: 'married', label: t('employees.married') }, { value: 'divorced', label: t('employees.divorced') }, { value: 'widowed', label: t('employees.widowed') }];
   const CONTRACT = (Array.isArray(contractTypes) ? contractTypes : []).map(ct => ({ value: ct.id, label: ct.name }));
-  const STATUSES = [{ value: 'active', label: t('employees.active') }, { value: 'leave', label: t('employees.on_leave') }, { value: 'retired', label: t('employees.retired') }, { value: 'terminated', label: t('employees.terminated') }, { value: 'deceased', label: t('employees.deceased') }];
+  const STATUSES = EMPLOYEE_STATUS_OPTIONS.map((option) => ({
+    value: option.value,
+    label: t(option.labelKey),
+  }));
   const SHIFTS = [{ value: 'morning', label: t('employees.morning') }, { value: 'evening', label: t('employees.evening') }, { value: 'rotating', label: t('employees.rotating') }, { value: 'irregular', label: t('employees.irregular') }];
   const mapOpts = (data) => Array.isArray(data) ? data.map(d => ({ value: d.id, label: d.name })) : [];
 

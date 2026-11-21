@@ -62,7 +62,7 @@ def turnover_rate(request):
     year = int(request.query_params.get('year', date.today().year))
     qs = Employee.objects
     if company: qs = qs.filter(company=company)
-    terminated = qs.filter(status__in=['terminated','retired'], status_change_date__year=year).count()
+    terminated = qs.filter(status__in=Employee.EXIT_STATUSES, status_change_date__year=year).count()
     avg_employees = qs.count()
     rate = round(terminated/avg_employees*100, 2) if avg_employees else 0
     return Response({'year': year, 'terminated_count': terminated, 'avg_employees': avg_employees, 'rate': rate})

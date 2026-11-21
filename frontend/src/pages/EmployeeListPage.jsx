@@ -15,6 +15,7 @@ import {
 import StatusBadge from '../core/components/ui/StatusBadge';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import PageHeader from '../core/components/ui/PageHeader';
+import { EMPLOYEE_STATUS_OPTIONS } from '../core/constants/employeeStatuses';
 import downloadFile from '../core/utils/downloadUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
 import {
@@ -120,12 +121,10 @@ const EmployeeListPage = () => {
     job_title: toOptions(jobTitles),
     work_location: toOptions(workLocations),
     insurance_list: toOptions(insuranceLists),
-    status: [
-      { value: 'active', label: t('employees.active') },
-      { value: 'leave', label: t('employees.on_leave') },
-      { value: 'retired', label: t('employees.retired') },
-      { value: 'terminated', label: t('employees.terminated') },
-    ],
+    status: EMPLOYEE_STATUS_OPTIONS.map((option) => ({
+      value: option.value,
+      label: t(option.labelKey),
+    })),
     gender: [
       { value: 'male', label: t('employees.male') },
       { value: 'female', label: t('employees.female') },

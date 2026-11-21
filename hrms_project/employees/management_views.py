@@ -85,7 +85,7 @@ def management_kpis(request):
 
     # Turnover YTD: employees with termination/retirement status_change_date this year
     terminated = Employee.objects.filter(
-        status__in=['terminated', 'retired'],
+        status__in=Employee.EXIT_STATUSES,
         status_change_date__year=today.year,
     )
     if company:

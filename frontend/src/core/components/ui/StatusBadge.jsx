@@ -1,22 +1,14 @@
 import React from 'react';
 import { Chip } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-
-const statusConfig = {
-  active: { color: 'success', label: 'employees.active' },
-  leave: { color: 'warning', label: 'employees.on_leave' },
-  retired: { color: 'default', label: 'employees.retired' },
-  terminated: { color: 'error', label: 'employees.terminated' },
-  deceased: { color: 'error', label: 'employees.deceased' },
-};
+import { EMPLOYEE_STATUS_MAP } from '../../constants/employeeStatuses';
 
 const StatusBadge = ({ status, size = 'small' }) => {
   const { t } = useTranslation();
-  const config = statusConfig[status] || { color: 'default', label: status };
-
+  const config = EMPLOYEE_STATUS_MAP[status] || { color: 'default', labelKey: status };
   return (
     <Chip
-      label={t(config.label)}
+      label={t(config.labelKey)}
       color={config.color}
       size={size}
       variant="filled"
