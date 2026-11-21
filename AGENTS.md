@@ -644,14 +644,15 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   عنوان مسیرهای پارامتردار/تودرتو با `core/config/routeTitles.js` فارسی می‌شود
   (`/employees/:id`، `/external-contracts/:id`، `/treasury/*`، `/accounting/*` و …).
   تست‌های `workspacePageCache` (۱) + `routeTitles` (۲) + `workspaceTabs` (۲) سبز؛
-  باندل زنده: **`main.d7da74ff.js`**.
+  باندل زنده: **`main.4f32b015.js`**.
 - **نوار «صفحات باز» پایین برنامه بازطراحی شد (۲۰۲۶-۱۱-۱۸):** `WorkspaceTabs.jsx` از
   `Chip`های ساده به یک **dock** شیشه‌ای/تم‌محور تبدیل شد: آیکن هر صفحه از منو داخل قاب
-  رنگی کوچک، تب فعال با خط و هالهٔ رنگ ماژول، بستن هنگام hover/کلیک/میان‌کلیک/کلید Delete، منوی راست‌کلیک
+  رنگی کوچک، **تب‌های سفید با خط دور و سایهٔ ملایم** برای تمایز از پس‌زمینه، تب فعال با خط و هالهٔ رنگ ماژول،
+  بستن هنگام hover/کلیک/میان‌کلیک/کلید Delete، منوی راست‌کلیک
   («بستن این صفحه / سایر صفحات / همه»)، دکمهٔ «همهٔ صفحات باز» با جست‌وجو، اسکرول افقی
   با دکمه‌های قبلی/بعدی، `ResizeObserver` برای تشخیص سرریز و اسکرول خودکار تب فعال.
   `WorkspaceTabsContext` تابع `closeOthers` گرفت و `Layout.findMenuMeta` آیکن تب را هم
-  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.d7da74ff.js`**.
+  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.4f32b015.js`**.
 - **دفترچه تلفن سازمانی در ریل سایدبار (۲۰۲۶-۱۱-۱۸):** آیکن `rail-phonebook` زیر جست‌وجوی سریع،
   دیالوگ بزرگ `WorkspaceDock` را باز می‌کند (`PhonebookPanel`). داده از
   `GET /api/contract-parties/` و `GET /api/procurement/suppliers/` با `fetchAllPages` خوانده می‌شود
@@ -664,7 +665,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (۱۷ طرف حساب شمارهٔ تماس دارند). تست‌های `phonebook` (۵) + `phonebookSmoke` (۲) +
   `workspaceDock` (۱) سبز. آیکن‌های ریل برای تفکیک بصری: دفترچه تلفن `ImportContactsOutlined`،
   کارتابل من `PendingActionsOutlined`، اسناد سازمانی `CorporateFareOutlined`؛ باندل زنده:
-  **`main.d7da74ff.js`**.
+  **`main.4f32b015.js`**.
 - **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
   اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
   دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد

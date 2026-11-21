@@ -61,18 +61,20 @@ const TabItem = ({
       cursor: 'pointer', userSelect: 'none', outline: 'none',
       color: active ? 'text.primary' : 'text.secondary',
       border: '1px solid',
-      borderColor: active ? alpha(color, 0.38) : 'transparent',
-      background: active
-        ? `linear-gradient(135deg, ${alpha(color, 0.17)}, ${alpha(color, 0.045)})`
-        : 'transparent',
-      backdropFilter: active ? 'blur(10px)' : 'none',
-      boxShadow: active ? `0 5px 16px ${alpha(color, 0.12)}` : 'none',
+      borderColor: active ? alpha(color, 0.55) : 'divider',
+      backgroundColor: 'background.paper',
+      backgroundImage: active
+        ? `linear-gradient(135deg, ${alpha(color, 0.08)}, ${alpha(color, 0.02)})`
+        : 'none',
+      backdropFilter: 'blur(10px)',
+      boxShadow: active
+        ? `0 4px 14px ${alpha(color, 0.16)}, inset 0 1px 0 ${alpha('#ffffff', 0.85)}`
+        : 'var(--hrms-shadow-card, 0 1px 2px rgba(15,23,42,0.05))',
       transition: 'background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease',
       '&:hover': {
-        borderColor: active ? alpha(color, 0.48) : alpha(color, 0.2),
-        background: active
-          ? `linear-gradient(135deg, ${alpha(color, 0.19)}, ${alpha(color, 0.06)})`
-          : alpha(color, 0.07),
+        borderColor: active ? alpha(color, 0.65) : alpha(color, 0.35),
+        backgroundColor: 'background.paper',
+        backgroundImage: `linear-gradient(135deg, ${alpha(color, 0.1)}, ${alpha(color, 0.025)})`,
         color: 'text.primary',
         '& .workspace-tab-close': { opacity: 0.9 },
       },
@@ -223,7 +225,10 @@ const WorkspaceTabs = () => {
           position: 'relative', zIndex: 2, flexShrink: 0,
           display: 'flex', alignItems: 'center', gap: 0.7,
           minHeight: 48, px: { xs: 0.75, sm: 1.25 }, py: 0.55,
-          bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.86),
+          bgcolor: alpha(theme.palette.background.default, theme.palette.mode === 'dark' ? 0.88 : 0.76),
+          backgroundImage: theme.palette.mode === 'dark'
+            ? 'none'
+            : `linear-gradient(180deg, ${alpha('#ffffff', 0.35)}, ${alpha('#ffffff', 0.08)})`,
           backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
           borderTop: '1px solid', borderColor: 'divider',
           boxShadow: '0 -8px 26px rgba(15,23,42,0.06)',
