@@ -194,7 +194,7 @@ def company_profile_view(request):
     if not company:
         return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
     profile = SettingsEngine.get_company_profile(company)
-    return Response(CompanyProfileSerializer(profile).data)
+    return Response(CompanyProfileSerializer(profile, context={'request': request}).data)
 
 
 @api_view(['PUT'])
@@ -209,7 +209,7 @@ def company_profile_update(request):
         return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
 
     profile = SettingsEngine.update_company_profile(company, request.data)
-    return Response(CompanyProfileSerializer(profile).data)
+    return Response(CompanyProfileSerializer(profile, context={'request': request}).data)
 
 
 @api_view(['POST'])
@@ -228,7 +228,26 @@ def company_logo_upload(request):
         return Response({'error': 'فایل لوگو الزامی است'}, status=400)
 
     profile = SettingsEngine.update_company_profile(company, {'logo': logo})
-    return Response(CompanyProfileSerializer(profile).data)
+    return Response(CompanyProfileSerializer(profile, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def company_seal_upload(request):
+    """Upload the official company seal image."""
+    if not _can_edit_settings(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    company = _get_company(request)
+    if not company:
+        return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
+
+    seal = request.FILES.get('seal_image')
+    if not seal:
+        return Response({'error': 'فایل مهر شرکت الزامی است'}, status=400)
+
+    profile = SettingsEngine.update_company_profile(company, {'seal_image': seal})
+    return Response(CompanyProfileSerializer(profile, context={'request': request}).data)
 
 
 @api_view(['GET', 'PUT'])

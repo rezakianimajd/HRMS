@@ -100,9 +100,16 @@ class SettingsEngine:
         """Update company profile fields."""
         profile, _ = CompanyProfile.objects.get_or_create(company=company)
         updatable = [
-            'legal_name', 'registration_number', 'national_id', 'economic_code',
-            'phone', 'email', 'address', 'postal_code', 'website',
-            'tax_id', 'established_date', 'description',
+            'legal_name', 'brand_name', 'legal_form',
+            'registration_number', 'registration_office', 'registration_date',
+            'national_id', 'economic_code', 'tax_id', 'tax_office',
+            'insurance_code', 'duns_number', 'stock_symbol',
+            'phone', 'secondary_phone', 'fax', 'mobile', 'email',
+            'address', 'address_line2', 'postal_code',
+            'country', 'province', 'city', 'coordinates', 'website',
+            'established_date', 'fiscal_year_end',
+            'registered_capital', 'paid_capital', 'total_shares', 'share_nominal_value',
+            'legal_auditor', 'financial_advisor', 'description',
             'employer_rep_name', 'employer_rep_title', 'employer_rep_national_id',
             'notify_email_enabled', 'notify_bale_enabled', 'bale_token', 'bale_chat_id',
             'base_storage_path', 'storage_path_employees',
@@ -113,6 +120,8 @@ class SettingsEngine:
                 setattr(profile, field, data[field])
         if 'logo' in data:
             profile.logo = data['logo']
+        if 'seal_image' in data:
+            profile.seal_image = data['seal_image']
         profile.save()
 
         # Keep the Company.name (shown in the sidebar as company_name) in sync

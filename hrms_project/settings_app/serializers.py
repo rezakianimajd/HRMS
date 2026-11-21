@@ -3,6 +3,7 @@ from rest_framework import serializers
 from settings_app.models import (
     SystemSetting, CompanyProfile, BaleContact, Signatory,
     Addition, Deduction, Currency, StorageProfile, ArchiveFolder,
+    CompanyShareholder, CompanyBoardMember, CompanyBankAccount,
 )
 
 
@@ -28,8 +29,10 @@ class SignatorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Signatory
         fields = [
-            'id', 'full_name', 'position', 'national_id',
-            'signature_image', 'signature_image_url', 'is_active', 'created_at',
+            'id', 'full_name', 'position', 'national_id', 'mobile', 'email',
+            'signature_image', 'signature_image_url', 'signature_order',
+            'is_default', 'can_sign_contracts', 'can_sign_financial',
+            'note', 'is_active', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'created_at', 'updated_at']
 
@@ -40,6 +43,59 @@ class SignatorySerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.signature_image.url)
             return obj.signature_image.url
         return None
+
+
+class CompanyShareholderSerializer(serializers.ModelSerializer):
+    shareholder_type_display = serializers.CharField(source='get_shareholder_type_display', read_only=True)
+
+    class Meta:
+        model = CompanyShareholder
+        fields = [
+            'id', 'profile', 'shareholder_type', 'shareholder_type_display', 'name',
+            'national_id', 'registration_number', 'economic_code',
+            'representative_name', 'representative_national_id',
+            'share_percent', 'shares_count', 'investment_amount',
+            'start_date', 'end_date', 'sort_order', 'note',
+            'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'profile', 'created_at', 'updated_at']
+
+
+class CompanyBoardMemberSerializer(serializers.ModelSerializer):
+    membership_type_display = serializers.CharField(source='get_membership_type_display', read_only=True)
+
+    class Meta:
+        model = CompanyBoardMember
+        fields = [
+            'id', 'profile', 'full_name', 'position', 'membership_type',
+            'membership_type_display', 'national_id', 'appointment_date', 'end_date',
+            'share_percent', 'has_signature_authority', 'sort_order', 'note',
+            'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'profile', 'created_at', 'updated_at']
+
+
+class CompanyBankAccountSerializer(serializers.ModelSerializer):
+    account_type_display = serializers.CharField(source='get_account_type_display', read_only=True)
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_code = serializers.CharField(source='currency.code', read_only=True)
+
+    class Meta:
+        model = CompanyBankAccount
+        fields = [
+            'id', 'profile', 'title', 'bank_name', 'branch_name', 'branch_code',
+            'account_number', 'iban', 'card_number', 'account_type', 'account_type_display',
+            'currency', 'currency_name', 'currency_code', 'swift_code', 'holder_name',
+            'opening_date', 'is_official', 'sort_order', 'note',
+            'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'profile', 'created_at', 'updated_at']
+
+    def validate_iban(self, value):
+        value = (value or '').replace(' ', '').upper()
+        if value and (not value.startswith('IR') or len(value) != 26):
+            raise serializers.ValidationError('شماره شبا باید با IR شروع شود و ۲۶ کاراکتر باشد.')
+        return value
 
 
 class AdditionSerializer(serializers.ModelSerializer):
@@ -66,20 +122,34 @@ class CurrencySerializer(serializers.ModelSerializer):
 class CompanyProfileSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     logo_url = serializers.SerializerMethodField()
+    seal_image_url = serializers.SerializerMethodField()
+    legal_form_display = serializers.CharField(source='get_legal_form_display', read_only=True)
+    shareholders = CompanyShareholderSerializer(many=True, read_only=True)
+    board_members = CompanyBoardMemberSerializer(many=True, read_only=True)
+    bank_accounts = CompanyBankAccountSerializer(many=True, read_only=True)
+    signatories = serializers.SerializerMethodField()
 
     class Meta:
         model = CompanyProfile
         fields = [
             'id', 'company', 'company_name',
-            'legal_name', 'registration_number', 'national_id',
-            'economic_code', 'phone', 'email', 'address', 'postal_code',
-            'website', 'logo', 'logo_url', 'tax_id',
-            'established_date', 'description',
+            'legal_name', 'brand_name', 'legal_form', 'legal_form_display',
+            'registration_number', 'registration_office', 'registration_date',
+            'national_id', 'economic_code', 'tax_id', 'tax_office',
+            'insurance_code', 'duns_number', 'stock_symbol',
+            'phone', 'secondary_phone', 'fax', 'mobile', 'email',
+            'address', 'address_line2', 'postal_code',
+            'country', 'province', 'city', 'coordinates',
+            'website', 'logo', 'logo_url', 'seal_image', 'seal_image_url',
+            'established_date', 'fiscal_year_end',
+            'registered_capital', 'paid_capital', 'total_shares', 'share_nominal_value',
+            'legal_auditor', 'financial_advisor', 'description',
             'employer_rep_name', 'employer_rep_title', 'employer_rep_national_id',
             'notify_email_enabled', 'notify_bale_enabled',
             'bale_token', 'bale_chat_id',
             'base_storage_path', 'storage_path_employees',
             'storage_path_correspondences', 'storage_path_documents',
+            'shareholders', 'board_members', 'bank_accounts', 'signatories',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -88,6 +158,17 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         if obj.logo and hasattr(obj.logo, 'url'):
             return obj.logo.url
         return None
+
+    def get_seal_image_url(self, obj):
+        if obj.seal_image and hasattr(obj.seal_image, 'url'):
+            return obj.seal_image.url
+        return None
+
+    def get_signatories(self, obj):
+        queryset = Signatory.objects.filter(company=obj.company, is_active=True).order_by(
+            'signature_order', 'full_name',
+        )
+        return SignatorySerializer(queryset, many=True, context=self.context).data
 
 
 class StorageProfileSerializer(serializers.ModelSerializer):

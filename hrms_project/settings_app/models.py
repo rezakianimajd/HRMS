@@ -67,17 +67,54 @@ class CompanyProfile(models.Model):
         verbose_name=_('شرکت'),
     )
     legal_name = models.CharField(max_length=200, blank=True, null=True, verbose_name=_('نام کامل حقوقی'))
+    brand_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام تجاری / برند'))
+    legal_form = models.CharField(
+        max_length=30, blank=True,
+        choices=[
+            ('private_joint_stock', _('سهامی خاص')),
+            ('public_joint_stock', _('سهامی عام')),
+            ('limited_liability', _('با مسئولیت محدود')),
+            ('general_partnership', _('تضامنی')),
+            ('cooperative', _('تعاونی')),
+            ('sole_proprietorship', _('مالکیت فردی')),
+            ('public_institution', _('مؤسسه/نهاد عمومی')),
+            ('other', _('سایر')),
+        ],
+        verbose_name=_('شکل حقوقی'),
+    )
     registration_number = models.CharField(max_length=50, blank=True, null=True, verbose_name=_('شماره ثبت'))
+    registration_office = models.CharField(max_length=200, blank=True, verbose_name=_('اداره ثبت'))
+    registration_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ ثبت'))
     national_id = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('شناسه ملی'))
     economic_code = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('کد اقتصادی'))
+    tax_id = models.CharField(max_length=50, blank=True, null=True, verbose_name=_('شناسه مالیاتی'))
+    tax_office = models.CharField(max_length=200, blank=True, verbose_name=_('حوزه مالیاتی'))
+    insurance_code = models.CharField(max_length=50, blank=True, verbose_name=_('کد بیمه‌ای کارفرما'))
+    duns_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره DUNS / کد بین‌المللی'))
+    stock_symbol = models.CharField(max_length=50, blank=True, verbose_name=_('نماد بورسی'))
     phone = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('تلفن'))
+    secondary_phone = models.CharField(max_length=20, blank=True, verbose_name=_('تلفن دوم'))
+    fax = models.CharField(max_length=20, blank=True, verbose_name=_('فکس'))
+    mobile = models.CharField(max_length=20, blank=True, verbose_name=_('موبایل'))
     email = models.EmailField(blank=True, null=True, verbose_name=_('ایمیل'))
     address = models.TextField(blank=True, null=True, verbose_name=_('آدرس'))
+    address_line2 = models.CharField(max_length=300, blank=True, verbose_name=_('ادامهٔ آدرس'))
     postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('کد پستی'))
+    country = models.CharField(max_length=100, blank=True, default='ایران', verbose_name=_('کشور'))
+    province = models.CharField(max_length=100, blank=True, verbose_name=_('استان'))
+    city = models.CharField(max_length=100, blank=True, verbose_name=_('شهر'))
+    coordinates = models.CharField(max_length=80, blank=True, verbose_name=_('مختصات جغرافیایی'))
     website = models.URLField(blank=True, null=True, verbose_name=_('وب‌سایت'))
     logo = models.ImageField(upload_to='company_logos/', blank=True, null=True, verbose_name=_('لوگو'))
-    tax_id = models.CharField(max_length=50, blank=True, null=True, verbose_name=_('شناسه مالیاتی'))
+    seal_image = models.ImageField(upload_to='company_seals/', blank=True, null=True, verbose_name=_('تصویر مهر شرکت'))
     established_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ تأسیس'))
+    fiscal_year_end = models.DateField(blank=True, null=True, verbose_name=_('پایان سال مالی'))
+    registered_capital = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('سرمایهٔ ثبت‌شده (ریال)'))
+    paid_capital = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('سرمایهٔ پرداخت‌شده (ریال)'))
+    total_shares = models.BigIntegerField(null=True, blank=True, verbose_name=_('تعداد کل سهام'))
+    share_nominal_value = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('ارزش اسمی هر سهم (ریال)'))
+    legal_auditor = models.CharField(max_length=200, blank=True, verbose_name=_('بازرس قانونی'))
+    financial_advisor = models.CharField(max_length=200, blank=True, verbose_name=_('مشاور مالی'))
     description = models.TextField(blank=True, null=True, verbose_name=_('توضیحات'))
 
     # Legal representative / CEO (used in contracts).
@@ -121,24 +158,151 @@ class CompanyProfile(models.Model):
 
 
 class Signatory(BaseModel):
-    """A named signatory (صاحب امضا) — at least 3 can be configured in the UI."""
+    """A named signatory (صاحب امضا) — multiple signatories are supported."""
+
     full_name = models.CharField(max_length=200, verbose_name=_('نام و نام خانوادگی'))
     position = models.CharField(max_length=200, blank=True, verbose_name=_('سمت / عنوان'))
     national_id = models.CharField(max_length=20, blank=True, verbose_name=_('کد ملی'))
+    mobile = models.CharField(max_length=20, blank=True, verbose_name=_('موبایل'))
+    email = models.EmailField(blank=True, verbose_name=_('ایمیل'))
     signature_image = models.ImageField(
         upload_to='signatory_samples/',
         null=True, blank=True,
         verbose_name=_('نمونه امضا'),
     )
+    signature_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب امضا'))
+    is_default = models.BooleanField(default=False, verbose_name=_('امضای پیش‌فرض'))
+    can_sign_contracts = models.BooleanField(default=True, verbose_name=_('مجاز به امضای قرارداد'))
+    can_sign_financial = models.BooleanField(default=True, verbose_name=_('مجاز به امضای اسناد مالی'))
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
         verbose_name = _('صاحب امضا')
         verbose_name_plural = _('صاحبان امضا')
-        ordering = ['full_name']
+        ordering = ['signature_order', 'full_name']
 
     def __str__(self):
         return self.full_name
+
+
+class CompanyShareholder(BaseModel):
+    """سهام‌دار شرکت — حقیقی یا حقوقی، با درصد و تعداد سهام."""
+
+    class ShareholderType(models.TextChoices):
+        NATURAL = 'natural', _('شخص حقیقی')
+        LEGAL = 'legal', _('شخص حقوقی')
+        INSTITUTIONAL = 'institutional', _('نهاد / سرمایه‌گذار')
+
+    profile = models.ForeignKey(
+        CompanyProfile, on_delete=models.CASCADE, related_name='shareholders',
+        verbose_name=_('مشخصات شرکت'),
+    )
+    shareholder_type = models.CharField(
+        max_length=20, choices=ShareholderType.choices, default=ShareholderType.NATURAL,
+        verbose_name=_('نوع سهام‌دار'),
+    )
+    name = models.CharField(max_length=200, verbose_name=_('نام سهام‌دار'))
+    national_id = models.CharField(max_length=20, blank=True, verbose_name=_('کد ملی / شناسه ملی'))
+    registration_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره ثبت'))
+    economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('کد اقتصادی'))
+    representative_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام نماینده'))
+    representative_national_id = models.CharField(max_length=20, blank=True, verbose_name=_('کد ملی نماینده'))
+    share_percent = models.DecimalField(max_digits=6, decimal_places=3, default=0, verbose_name=_('درصد سهام'))
+    shares_count = models.BigIntegerField(default=0, verbose_name=_('تعداد سهام'))
+    investment_amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ سرمایه‌گذاری (ریال)'))
+    start_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ شروع سهامداری'))
+    end_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ پایان سهامداری'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب'))
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
+
+    class Meta:
+        verbose_name = _('سهام‌دار')
+        verbose_name_plural = _('سهام‌داران')
+        ordering = ['sort_order', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.share_percent}%)'
+
+
+class CompanyBoardMember(BaseModel):
+    """عضو هیئت مدیره / بازرس."""
+
+    class MembershipType(models.TextChoices):
+        EXECUTIVE = 'executive', _('اجرایی')
+        NON_EXECUTIVE = 'non_executive', _('غیراجرایی')
+        INDEPENDENT = 'independent', _('مستقل')
+
+    profile = models.ForeignKey(
+        CompanyProfile, on_delete=models.CASCADE, related_name='board_members',
+        verbose_name=_('مشخصات شرکت'),
+    )
+    full_name = models.CharField(max_length=200, verbose_name=_('نام و نام خانوادگی'))
+    position = models.CharField(max_length=200, verbose_name=_('سمت در هیئت مدیره'))
+    membership_type = models.CharField(
+        max_length=20, choices=MembershipType.choices, default=MembershipType.NON_EXECUTIVE,
+        verbose_name=_('نوع عضویت'),
+    )
+    national_id = models.CharField(max_length=20, blank=True, verbose_name=_('کد ملی'))
+    appointment_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ انتصاب'))
+    end_date = models.DateField(blank=True, null=True, verbose_name=_('پایان دوره'))
+    share_percent = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, verbose_name=_('درصد سهام (اختیاری)'))
+    has_signature_authority = models.BooleanField(default=False, verbose_name=_('حق امضا'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب'))
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
+
+    class Meta:
+        verbose_name = _('عضو هیئت مدیره')
+        verbose_name_plural = _('اعضای هیئت مدیره')
+        ordering = ['sort_order', 'full_name']
+
+    def __str__(self):
+        return f'{self.full_name} — {self.position}'
+
+
+class CompanyBankAccount(BaseModel):
+    """حساب بانکی رسمی/عملیاتی شرکت."""
+
+    class AccountType(models.TextChoices):
+        CURRENT = 'current', _('جاری')
+        SAVINGS = 'savings', _('پس‌انداز')
+        FOREIGN_CURRENCY = 'foreign_currency', _('ارزی')
+        DEPOSIT = 'deposit', _('سپرده')
+        OTHER = 'other', _('سایر')
+
+    profile = models.ForeignKey(
+        CompanyProfile, on_delete=models.CASCADE, related_name='bank_accounts',
+        verbose_name=_('مشخصات شرکت'),
+    )
+    title = models.CharField(max_length=200, blank=True, verbose_name=_('عنوان حساب'))
+    bank_name = models.CharField(max_length=200, verbose_name=_('نام بانک'))
+    branch_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام شعبه'))
+    branch_code = models.CharField(max_length=30, blank=True, verbose_name=_('کد شعبه'))
+    account_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره حساب'))
+    iban = models.CharField(max_length=34, blank=True, verbose_name=_('شماره شبا (IBAN)'))
+    card_number = models.CharField(max_length=30, blank=True, verbose_name=_('شماره کارت'))
+    account_type = models.CharField(
+        max_length=30, choices=AccountType.choices, default=AccountType.CURRENT,
+        verbose_name=_('نوع حساب'),
+    )
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='company_bank_accounts', verbose_name=_('ارز'),
+    )
+    swift_code = models.CharField(max_length=30, blank=True, verbose_name=_('کد SWIFT'))
+    holder_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام صاحب حساب'))
+    opening_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ افتتاح'))
+    is_official = models.BooleanField(default=False, verbose_name=_('حساب رسمی شرکت'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب'))
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
+
+    class Meta:
+        verbose_name = _('حساب بانکی شرکت')
+        verbose_name_plural = _('حساب‌های بانکی شرکت')
+        ordering = ['-is_official', 'sort_order', 'bank_name']
+
+    def __str__(self):
+        return f'{self.bank_name} — {self.account_number or self.iban or self.title}'
 
 
 class BaleContact(BaseModel):

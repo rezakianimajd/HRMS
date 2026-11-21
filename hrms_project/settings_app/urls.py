@@ -6,12 +6,18 @@ from settings_app import import_views
 from settings_app import backup_views
 from settings_app.bale_views import BaleContactViewSet
 from settings_app.signatory_views import SignatoryViewSet
+from settings_app.company_views import (
+    CompanyShareholderViewSet, CompanyBoardMemberViewSet, CompanyBankAccountViewSet,
+)
 from settings_app.definition_views import AdditionViewSet, DeductionViewSet, CurrencyViewSet
 from settings_app import archive_views
 
 router = DefaultRouter()
 router.register(r'bale-contacts', BaleContactViewSet, basename='bale-contact')
 router.register(r'signatories', SignatoryViewSet, basename='signatory')
+router.register(r'company-shareholders', CompanyShareholderViewSet, basename='company-shareholder')
+router.register(r'company-board-members', CompanyBoardMemberViewSet, basename='company-board-member')
+router.register(r'company-bank-accounts', CompanyBankAccountViewSet, basename='company-bank-account')
 router.register(r'additions', AdditionViewSet, basename='addition')
 router.register(r'deductions', DeductionViewSet, basename='deduction')
 router.register(r'currencies', CurrencyViewSet, basename='currency')
@@ -22,6 +28,7 @@ urlpatterns = [
     path('settings/company-profile/', views.company_profile_view, name='api-company-profile'),
     path('settings/company-profile/update/', views.company_profile_update, name='api-company-profile-update'),
     path('settings/company-profile/logo/', views.company_logo_upload, name='api-company-logo-upload'),
+    path('settings/company-profile/seal/', views.company_seal_upload, name='api-company-seal-upload'),
     # ظاهر صفحهٔ ورود (تصویر پس‌زمینه + رنگ پوشش + رنگ متن)
     path('settings/login-branding/', views.login_branding_view, name='api-login-branding'),
     path('settings/login-branding/background/', views.login_branding_background, name='api-login-branding-background'),
