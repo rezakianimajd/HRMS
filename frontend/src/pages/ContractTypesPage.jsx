@@ -16,6 +16,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import InfoCard from '../core/components/ui/InfoCard';
+import { SortableHeadCell, useLocalSort } from './contracts/contractModuleUi';
 
 const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
@@ -45,6 +46,7 @@ const ContractTypesPage = () => {
       (t.code || '').toLowerCase().includes(q) ||
       (t.description || '').toLowerCase().includes(q));
   }, [list, search]);
+  const { rows: sortedTypes, sort: headerSort, onSort: onHeaderSort } = useLocalSort(filtered);
 
   const save = useMutation({
     mutationFn: (p) => p.id
@@ -112,11 +114,11 @@ const ContractTypesPage = () => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ '& th': { fontWeight: 800, color: '#475569' } }}>
-                <TableCell>کد</TableCell>
-                <TableCell>عنوان</TableCell>
-                <TableCell>توضیحات</TableCell>
-                <TableCell align="center">قراردادها</TableCell>
-                <TableCell align="center">وضعیت</TableCell>
+                <SortableHeadCell label="کد" sortKey="code" sort={headerSort} onSort={onHeaderSort} />
+                <SortableHeadCell label="عنوان" sortKey="name" sort={headerSort} onSort={onHeaderSort} />
+                <SortableHeadCell label="توضیحات" sortKey="description" sort={headerSort} onSort={onHeaderSort} />
+                <SortableHeadCell label="قراردادها" sortKey="contracts_count" sort={headerSort} onSort={onHeaderSort} align="center" />
+                <SortableHeadCell label="وضعیت" sortKey="is_active" sort={headerSort} onSort={onHeaderSort} align="center" />
                 <TableCell align="left">عملیات</TableCell>
               </TableRow>
             </TableHead>
@@ -124,7 +126,7 @@ const ContractTypesPage = () => {
               {filtered.length === 0 && (
                 <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>نوعی ثبت نشده است</TableCell></TableRow>
               )}
-              {filtered.map(t => (
+              {sortedTypes.map(t => (
                 <TableRow key={t.id} hover>
                   <TableCell><Chip size="small" label={t.code} sx={{ fontWeight: 700, bgcolor: '#e0f2fe', color: '#0369a1' }} /></TableCell>
                   <TableCell><Typography variant="body2" fontWeight={700}>{t.name}</Typography></TableCell>

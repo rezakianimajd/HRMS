@@ -2,7 +2,7 @@
 import {
   Box, Button, Chip, Collapse, FormControl, IconButton, InputAdornment, InputLabel, MenuItem,
   Paper, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Typography,
+  TableSortLabel, TextField, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -54,6 +54,27 @@ export const useLocalSort = (rows, initialSort = null) => {
   const [sort, setSort] = useState(initialSort);
   const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
   return { rows: sortedRows, sort, onSort: setSort };
+};
+
+export const SortableHeadCell = ({
+  label, sortKey, sort, onSort, align = 'inherit', sx, ...rest
+}) => {
+  const active = Boolean(sort?.key === sortKey);
+  const direction = active ? sort.direction : 'asc';
+  return (
+    <TableCell align={align} sortDirection={active ? direction : false} sx={sx} {...rest}>
+      <TableSortLabel
+        active={active}
+        direction={direction}
+        onClick={() => onSort?.({
+          key: sortKey,
+          direction: active && sort.direction === 'asc' ? 'desc' : 'asc',
+        })}
+      >
+        {label}
+      </TableSortLabel>
+    </TableCell>
+  );
 };
 
 export const useModuleTheme = () => {

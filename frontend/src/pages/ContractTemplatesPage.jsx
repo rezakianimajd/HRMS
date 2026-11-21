@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { SortableHeadCell, useLocalSort } from './contracts/contractModuleUi';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
@@ -32,6 +33,7 @@ const ContractTemplatesPage = () => {
 
   const { data, isLoading } = useQuery({ queryKey: ['contract-templates'], queryFn: () => axiosInstance.get('/contract-templates/').then(r => r.data) });
   const list = Array.isArray(data) ? data : data?.results || [];
+  const { rows: sortedList, sort: headerSort, onSort: onHeaderSort } = useLocalSort(list);
 
   const { data: typeMasters } = useQuery({ queryKey: ['contract-types-master'], queryFn: () => axiosInstance.get('/contract-types-master/').then(r => r.data) });
   const typeList = Array.isArray(typeMasters) ? typeMasters : typeMasters?.results || [];
@@ -87,14 +89,14 @@ const ContractTemplatesPage = () => {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: 'rgba(99,102,241,0.06)' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>عنوان قالب</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>نوع قرارداد</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>توضیحات</TableCell>
+                  <SortableHeadCell label="عنوان قالب" sortKey="name" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
+                  <SortableHeadCell label="نوع قرارداد" sortKey="contract_type_name" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
+                  <SortableHeadCell label="توضیحات" sortKey="description" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
                   <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {list.map(t => (
+                {sortedList.map(t => (
                   <TableRow key={t.id} hover>
                     <TableCell><Typography variant="body2" fontWeight={700}>{t.name}</Typography></TableCell>
                     <TableCell>

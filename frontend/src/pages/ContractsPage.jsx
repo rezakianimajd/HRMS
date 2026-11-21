@@ -24,6 +24,7 @@ import { buildContractPrintHtml } from '../core/utils/contractPrintHtml';
 import { printHtml } from '../core/print/printEngine';
 import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import { SortableHeadCell, useLocalSort } from './contracts/contractModuleUi';
 
 const EMPTY_FORM = {
   employee: '', version: 1, year: 1404, contract_type: '',
@@ -67,6 +68,7 @@ const ContractsPage = () => {
       axiosInstance.get('/contract-versions/', { params: employeeFilter ? { employee_id: employeeFilter } : {} }).then(r => r.data),
   });
   const items = Array.isArray(data) ? data : data?.results || [];
+  const { rows: sortedItems, sort: headerSort, onSort: onHeaderSort } = useLocalSort(items);
 
   const createMutation = useMutation({
     mutationFn: (payload) => axiosInstance.post('/contract-versions/', payload),
@@ -231,19 +233,19 @@ const ContractsPage = () => {
             <Table dir="rtl" size="small">
               <TableHead>
                 <TableRow sx={{ '& th': { fontWeight: 700, color: '#475569', background: 'rgba(245,158,11,0.06)' } }}>
-                  <TableCell>نسخه</TableCell>
-                  <TableCell>سال</TableCell>
-                  <TableCell>پرسنل</TableCell>
-                  <TableCell>نوع</TableCell>
-                  <TableCell>شروع</TableCell>
-                  <TableCell>پایان</TableCell>
-                  <TableCell>حقوق پایه</TableCell>
-                  <TableCell>امضاء</TableCell>
+                  <SortableHeadCell label="نسخه" sortKey="version" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="سال" sortKey="year" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="پرسنل" sortKey="employee_name" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="نوع" sortKey="contract_type_display" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="شروع" sortKey="start_date" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="پایان" sortKey="end_date" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="حقوق پایه" sortKey="base_salary" sort={headerSort} onSort={onHeaderSort} />
+                  <SortableHeadCell label="امضاء" sortKey="signed_by" sort={headerSort} onSort={onHeaderSort} />
                   <TableCell>اقدامات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {items.map((c) => (
+                {sortedItems.map((c) => (
                   <TableRow key={c.id} hover>
                     <TableCell>{toPersianDigits(c.version)}</TableCell>
                     <TableCell>{toPersianDigits(c.year)}</TableCell>

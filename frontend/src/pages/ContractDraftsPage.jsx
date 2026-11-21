@@ -13,6 +13,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SendIcon from '@mui/icons-material/Send';
 import { toJalali } from '../core/utils/dateUtils';
+import { SortableHeadCell, useLocalSort } from './contracts/contractModuleUi';
 
 const STATUS_META = {
   draft: { label: 'پیش‌نویس', color: '#64748b' },
@@ -60,6 +61,7 @@ const ContractDraftsPage = () => {
   });
 
   const filtered = list.filter(d => !statusFilter || d.status === statusFilter);
+  const { rows: sortedDrafts, sort: headerSort, onSort: onHeaderSort } = useLocalSort(filtered);
 
   const onTemplateSelect = (templateId) => {
     const t = templateList.find(x => x.id === templateId);
@@ -110,16 +112,16 @@ const ContractDraftsPage = () => {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: 'rgba(100,116,139,0.06)' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>عنوان</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>قالب مبدأ</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>ثبت‌کننده</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>به‌روزرسانی</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>وضعیت</TableCell>
+                  <SortableHeadCell label="عنوان" sortKey="title" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
+                  <SortableHeadCell label="قالب مبدأ" sortKey="template_name" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
+                  <SortableHeadCell label="ثبت‌کننده" sortKey="submitted_by" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
+                  <SortableHeadCell label="به‌روزرسانی" sortKey="updated_at" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
+                  <SortableHeadCell label="وضعیت" sortKey="status" sort={headerSort} onSort={onHeaderSort} sx={{ fontWeight: 700 }} />
                   <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filtered.map(d => {
+                {sortedDrafts.map(d => {
                   const sm = STATUS_META[d.status] || STATUS_META.draft;
                   return (
                     <TableRow key={d.id} hover>
