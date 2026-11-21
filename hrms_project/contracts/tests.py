@@ -424,7 +424,7 @@ class ContractGuaranteeStatusTests(TestCase):
         self.assertEqual(by_type['advance']['status'], 'partial')
         self.assertEqual(by_type['advance']['balance'], 80_000_000.0)
         self.assertEqual(by_type['bid']['status'], 'missing')
-        self.assertEqual(result['summary']['required_count'], 4)  # + تضمین اصلی قرارداد
+        self.assertEqual(result['summary']['required_count'], 3)  # فقط اقلام تعریف‌شده
         self.assertTrue(any('کامل تأمین نشده' in w for w in result['warnings']))
         self.assertTrue(any('هنوز اورده/ثبت نشده' in w for w in result['warnings']))
 

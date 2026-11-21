@@ -75,6 +75,23 @@ class GuaranteeAmountTests(SimpleTestCase):
         self.assertEqual(requirement['balance'], 0.0)
         self.assertEqual(report['summary']['coverage_percent'], 120.0)
 
+    def test_primary_guarantee_is_ignored_when_items_exist(self):
+        from types import SimpleNamespace as NS
+
+        from contracts.guarantee_status import guarantee_compliance
+
+        contract = NS(
+            guarantee_items=[
+                {'type': 'advance', 'amount': 1000, 'note': ''},
+                {'type': 'execution', 'amount': 200, 'note': ''},
+            ],
+            guarantee_type='performance', guarantee_amount=200,
+            amount=10000, guarantees=[],
+        )
+        report = guarantee_compliance(contract, guarantees=[], effective_amount=10000)
+        self.assertEqual([row['type'] for row in report['requirements']], ['advance', 'execution'])
+        self.assertEqual(report['summary']['required_count'], 2)
+
     def test_guarantee_payload_exposes_currency_and_rial_equivalent(self):
         from types import SimpleNamespace as NS
 

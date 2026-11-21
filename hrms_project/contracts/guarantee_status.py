@@ -133,7 +133,10 @@ def _requirements(contract, effective_amount):
 
     primary_type = getattr(contract, 'guarantee_type', '') or ''
     primary_amount = _num(getattr(contract, 'guarantee_amount', None))
-    if primary_type and primary_amount and primary_type not in seen_types:
+    # اگر «اقلام تضمین» تعریف شده‌اند، فیلدهای قدیمی guarantee_type/guarantee_amount
+    # نباید یک قلم اضافه و تکراری بسازند؛ آن‌ها فقط برای قراردادهای قدیمی بدون اقلام
+    # استفاده می‌شوند.
+    if not rows and primary_type and primary_amount and primary_type not in seen_types:
         rows.append({
             'index': None,
             'type': primary_type,
