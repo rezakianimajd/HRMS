@@ -35,8 +35,15 @@ export const WorkspaceTabsProvider = ({ children }) => {
     setActive(null);
   }, []);
 
+  const closeOthers = useCallback((path) => {
+    setTabs((prev) => prev.filter((tab) => tab.path === path));
+    setActive(path || null);
+  }, []);
+
   return (
-    <WorkspaceTabsContext.Provider value={{ tabs, active, openTab, closeTab, closeAll, setActive }}>
+    <WorkspaceTabsContext.Provider value={{
+      tabs, active, openTab, closeTab, closeAll, closeOthers, setActive,
+    }}>
       {children}
     </WorkspaceTabsContext.Provider>
   );

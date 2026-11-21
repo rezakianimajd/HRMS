@@ -416,7 +416,11 @@ const Layout = ({ children }) => {
 
   // مسیرهای شخصی که در منوی ماژول‌ها نیستند ولی باید عنوان/رنگ داشته باشند.
   const EXTRA_ROUTE_META = {
-    '/my-workdesk': { title: 'کارتابل من', color: WORKDESK_ACCENT },
+    '/my-workdesk': {
+      title: 'کارتابل من',
+      color: WORKDESK_ACCENT,
+      icon: <PendingActionsOutlinedIcon />,
+    },
   };
 
   const findMenuMeta = (path) => {
@@ -425,16 +429,16 @@ const Layout = ({ children }) => {
     for (const m of allMenus) {
       for (const g of m) {
         for (const it of flatMenuItems(g.items)) {
-          if (it.path === path) return { title: it.title, color: it.color };
+          if (it.path === path) return { title: it.title, color: it.color, icon: it.icon };
         }
       }
     }
-    return { title: path, color: '#6366f1' };
+    return { title: path, color: '#6366f1', icon: null };
   };
 
   const goTo = (path) => {
     const meta = findMenuMeta(path);
-    openTab({ path, title: meta.title, color: meta.color });
+    openTab({ path, title: meta.title, color: meta.color, icon: meta.icon });
     navigate(path);
   };
 
@@ -533,7 +537,7 @@ const Layout = ({ children }) => {
   useEffect(() => {
     if (!location.pathname || location.pathname === '/coming-soon') return;
     const meta = findMenuMeta(location.pathname);
-    openTab({ path: location.pathname, title: meta.title, color: meta.color });
+    openTab({ path: location.pathname, title: meta.title, color: meta.color, icon: meta.icon });
   }, [location.pathname]);
 
   const renderSidebarContent = (compact) => (
