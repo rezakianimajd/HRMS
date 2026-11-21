@@ -1491,6 +1491,11 @@
       "path": "/contracts-completeness"
      },
      {
+      "id": "contracts-payment-report",
+      "title": "گزارش پرداخت و مطالبات",
+      "path": "/contracts-payment-report"
+     },
+     {
       "id": "contracts-guarantees-monitor",
       "title": "پایش تضامین",
       "path": "/contracts-guarantees-monitor"

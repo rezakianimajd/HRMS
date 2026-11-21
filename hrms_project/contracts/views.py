@@ -278,6 +278,104 @@ class ContractViewSet(BaseContractViewSet):
         return Response({'results': rows, 'summary': summarize(rows)})
 
 
+    @action(detail=False, methods=['get'], url_path='payment-report')
+    def payment_report(self, request):
+        """گزارش پرداخت‌ها، پیش‌پرداخت و مطالبات قراردادها.
+
+        همهٔ قراردادها در چند کوئری دسته‌ای خوانده می‌شوند (بدون N+1) و
+        محاسبات خالص در ``contracts.payment_report`` انجام می‌شود.
+        پارامتر ``search`` روی نام طرف، شماره/موضوع قرارداد و پروژه‌ها اعمال می‌شود.
+        """
+        from collections import defaultdict
+        from types import SimpleNamespace
+
+        from projects.models import Project
+
+        from contracts.payment_report import matches_search, payment_report_row, report_summary
+
+        contracts = list(
+            super().get_queryset()
+            .select_related('party', 'project')
+            .order_by('number', 'id')
+        )
+        contract_ids = [contract.id for contract in contracts]
+        if not contract_ids:
+            return Response({
+                'results': [],
+                'summary': report_summary([]),
+            })
+
+        payments = Payment.objects.filter(contract_id__in=contract_ids).values(
+            'contract_id', 'payment_type', 'amount', 'date',
+        )
+        allocations = PaymentAllocation.objects.filter(
+            payment__contract_id__in=contract_ids,
+        ).values('payment__contract_id', 'statement_id', 'invoice_id', 'kind', 'amount')
+        statements = Statement.objects.filter(contract_id__in=contract_ids).values(
+            'id', 'contract_id', 'amount', 'net_amount', 'work_done',
+            'cumulative_previous_amount', 'deductions_total', 'additions_total',
+            'adjustment_amount', 'adjustment_work_done', 'deductions', 'additions', 'levels',
+        )
+        invoices = Invoice.objects.filter(contract_id__in=contract_ids).values(
+            'id', 'contract_id', 'amount', 'total',
+        )
+
+        project_ids = set()
+        for contract in contracts:
+            if contract.project_id:
+                project_ids.add(contract.project_id)
+            for item in (contract.project_allocations or []):
+                if not isinstance(item, dict):
+                    continue
+                project_id = item.get('project') or item.get('project_id')
+                if project_id is not None:
+                    try:
+                        project_ids.add(int(project_id))
+                    except (TypeError, ValueError):
+                        pass
+        project_names = dict(
+            Project.objects.filter(id__in=project_ids).values_list('id', 'name')
+        )
+
+        payments_by_contract = defaultdict(list)
+        for row in payments:
+            payments_by_contract[row['contract_id']].append(SimpleNamespace(**row))
+        allocations_by_contract = defaultdict(list)
+        for row in allocations:
+            allocations_by_contract[row['payment__contract_id']].append(SimpleNamespace(**row))
+        statements_by_contract = defaultdict(list)
+        for row in statements:
+            statements_by_contract[row['contract_id']].append(SimpleNamespace(**row))
+        invoices_by_contract = defaultdict(list)
+        for row in invoices:
+            invoices_by_contract[row['contract_id']].append(SimpleNamespace(**row))
+
+        search = request.query_params.get('search') or request.query_params.get('q') or ''
+        rows = []
+        for contract in contracts:
+            row = payment_report_row(
+                contract,
+                payments=payments_by_contract[contract.id],
+                allocations=allocations_by_contract[contract.id],
+                statements=statements_by_contract[contract.id],
+                invoices=invoices_by_contract[contract.id],
+                project_names=project_names,
+            )
+            rows.append(row)
+        if search:
+            rows = [row for row in rows if matches_search(row, search)]
+        only_claims = request.query_params.get('only_claims') in ('1', 'true', 'yes')
+        if only_claims:
+            rows = [
+                row for row in rows
+                if Decimal(str(row.get('payable_claims') or 0)) > 0
+            ]
+
+        return Response({
+            'results': rows,
+            'summary': report_summary(rows),
+        })
+
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
         """خروجی اکسل جامع قراردادها — تک‌شیت و **یک ردیف برای هر قرارداد**.

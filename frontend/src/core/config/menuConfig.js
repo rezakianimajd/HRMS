@@ -760,6 +760,7 @@ const contractsMenu = [
     items: [
       { id: 'contracts-expiring', title: 'قراردادهای رو به انقضا', icon: <NotificationsActiveIcon />, path: '/contracts-expiring', color: '#f59e0b', primary: false, ready: true },
       { id: 'contracts-completeness', title: 'نواقص قراردادها', icon: <FactCheckIcon />, path: '/contracts-completeness', color: '#be123c', primary: false, ready: true },
+      { id: 'contracts-payment-report', title: 'گزارش پرداخت و مطالبات', icon: <AccountBalanceWalletIcon />, path: '/contracts-payment-report', color: '#0ea5e9', primary: false, ready: true },
       { id: 'contracts-guarantees-monitor', title: 'پایش تضامین', icon: <VerifiedUserIcon />, path: '/contracts-guarantees-monitor', color: '#0f766e', primary: false, ready: true },
       { id: 'contracts-disputes', title: 'اختلافات و دعاوی', icon: <GavelIcon />, path: '/contracts-disputes', color: '#8b5cf6', primary: false, ready: true },
     ],

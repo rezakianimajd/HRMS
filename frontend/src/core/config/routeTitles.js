@@ -5,6 +5,7 @@
  */
 const EXACT = {
   '/coming-soon': { title: 'به‌زودی', color: '#64748b' },
+  '/contracts-payment-report': { title: 'گزارش پرداخت و مطالبات', color: '#0ea5e9' },
   '/reports': { title: 'گزارش‌ها', color: '#6366f1' },
   '/correspondences': { title: 'مکاتبات', color: '#0ea5e9' },
   '/management-analytics': { title: 'تحلیل مدیریتی', color: '#8b5cf6' },

@@ -89,6 +89,7 @@ import ContractDocumentsPage from './pages/ContractDocumentsPage';
 import ContractExpiringPage from './pages/ContractExpiringPage';
 import ContractGuaranteesMonitorPage from './pages/ContractGuaranteesMonitorPage';
 import ContractsCompletenessPage from './pages/ContractsCompletenessPage';
+import ContractPaymentReportPage from './pages/ContractPaymentReportPage';
 import ContractDisputesPage from './pages/ContractDisputesPage';
 import ContractCalendarPage from './pages/ContractCalendarPage';
 import ContractTypesPage from './pages/ContractTypesPage';
@@ -400,6 +401,7 @@ const PROTECTED_ROUTES = [
     <Route key="/contracts-expiring" path="/contracts-expiring" element={<ProtectedLayout><ContractExpiringPage /></ProtectedLayout>} />,
     <Route key="/contracts-guarantees-monitor" path="/contracts-guarantees-monitor" element={<ProtectedLayout><ContractGuaranteesMonitorPage /></ProtectedLayout>} />,
     <Route key="/contracts-completeness" path="/contracts-completeness" element={<ProtectedLayout><ContractsCompletenessPage /></ProtectedLayout>} />,
+    <Route key="/contracts-payment-report" path="/contracts-payment-report" element={<ProtectedLayout><ContractPaymentReportPage /></ProtectedLayout>} />,
     <Route key="/contracts-disputes" path="/contracts-disputes" element={<ProtectedLayout><ContractDisputesPage /></ProtectedLayout>} />,
     <Route key="/contracts-calendar" path="/contracts-calendar" element={<ProtectedLayout><ContractCalendarPage /></ProtectedLayout>} />,
     <Route key="/contracts-settings" path="/contracts-settings" element={<ProtectedLayout><ContractTypesPage /></ProtectedLayout>} />,

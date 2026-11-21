@@ -8,6 +8,7 @@ test('route titles cover the English fallback paths used by the open tabs', () =
   expect(routeTitleMeta('/treasury/received-checks').title).toBe('چک‌های دریافتی');
   expect(routeTitleMeta('/projects/12').title).toBe('پروندهٔ پروژه');
   expect(routeTitleMeta('/payroll/attendance-import').title).toBe('دریافت کارکرد');
+  expect(routeTitleMeta('/contracts-payment-report').title).toBe('گزارش پرداخت و مطالبات');
 });
 
 test('route titles use Persian names for query-stripped and trailing-slash paths', () => {
