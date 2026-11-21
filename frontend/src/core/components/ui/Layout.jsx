@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -79,6 +79,7 @@ import UserAvatar from './UserAvatar';
 import ModuleLibraryDrawer from './ModuleLibraryDrawer';
 import UserAccountDialog from './UserAccountDialog';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
+import { routeTitleMeta } from '../../config/routeTitles';
 import { libraryModuleForApplication, libraryModuleLabel } from '../../config/documentLibraryModules';
 import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
@@ -300,6 +301,31 @@ const Layout = ({ children }) => {
   const effectiveSidebarWidth = panelCollapsed ? RAIL_WIDTH : SIDEBAR_WIDTH;
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const pageScrollRef = useRef(null);
+  const pageScrollPositions = useRef({});
+  const previousPathRef = useRef(location.pathname);
+
+  useEffect(() => {
+    const element = pageScrollRef.current;
+    const previousPath = previousPathRef.current;
+    if (!element || previousPath === location.pathname) return;
+    pageScrollPositions.current[previousPath] = element.scrollTop;
+    previousPathRef.current = location.pathname;
+    const top = pageScrollPositions.current[location.pathname] || 0;
+    let frame = null;
+    if (typeof window.requestAnimationFrame === 'function') {
+      frame = window.requestAnimationFrame(() => {
+        if (pageScrollRef.current) pageScrollRef.current.scrollTop = top;
+      });
+    } else {
+      element.scrollTop = top;
+    }
+    return () => {
+      if (frame !== null && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [location.pathname]);
   const openLibrary = () => {
     setMobileOpen(false);
     setLibraryOpen(true);
@@ -433,6 +459,8 @@ const Layout = ({ children }) => {
         }
       }
     }
+    const routeMeta = routeTitleMeta(path);
+    if (routeMeta) return { ...routeMeta, icon: null };
     return { title: path, color: '#6366f1', icon: null };
   };
 
@@ -1063,10 +1091,14 @@ const Layout = ({ children }) => {
           <NotificationBell compact iconColor={ICON_COLOR} />
         </Box>
 
-        <Box className={`hrms-page${isAccounting ? ' accounting-page' : ''}`} sx={{
-          flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 },
-          '--module-accent': moduleAccent || '#2563eb',
-        }}>
+        <Box
+          ref={pageScrollRef}
+          className={`hrms-page${isAccounting ? ' accounting-page' : ''}`}
+          sx={{
+            flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 },
+            '--module-accent': moduleAccent || '#2563eb',
+          }}
+        >
           {children}
         </Box>
         <WorkspaceTabs />

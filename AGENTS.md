@@ -1,4 +1,4 @@
-# AGENTS.md — handoff brief for the next coding agent
+﻿# AGENTS.md — handoff brief for the next coding agent
 
 **Repo:** `C:\HRMS` (Kian ERP / HRMS) · **Remote:** `https://github.com/rezakianimajd/HRMS.git` (branch `main`)
 **Last updated:** 2026-11-15 · **Baseline commit:** `8514a1431`
@@ -632,13 +632,22 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
 ---
 
 ## 12) Current snapshot — وضعیت فعلی
+- **حفظ وضعیت صفحه‌ها و عنوان فارسی تب‌ها (۲۰۲۶-۱۱-۱۸):** با تغییر مسیر، `Layout` دیگر
+  از نو ساخته نمی‌شود؛ یک `Layout` پایدار در `AppRoutes` مانده و `WorkspacePageCache`
+  هر صفحهٔ باز را با `Routes location=…` زنده نگه می‌دارد (صفحه‌های غیرفعال با `display:none`).
+  بنابراین فیلترها، فرم نیمه‌کاره، تب‌های داخلی و اسکرول هر صفحه هنگام رفت‌وبرگشت حفظ می‌شوند
+  (اسکرول در `Layout` برای هر مسیر ذخیره/برگردانده می‌شود). تب‌های redirect وارد کش نمی‌شوند.
+  عنوان مسیرهای پارامتردار/تودرتو با `core/config/routeTitles.js` فارسی می‌شود
+  (`/employees/:id`، `/external-contracts/:id`، `/treasury/*`، `/accounting/*` و …).
+  تست‌های `workspacePageCache` (۱) + `routeTitles` (۲) + `workspaceTabs` (۲) سبز؛
+  باندل زنده: **`main.74272adf.js`**.
 - **نوار «صفحات باز» پایین برنامه بازطراحی شد (۲۰۲۶-۱۱-۱۸):** `WorkspaceTabs.jsx` از
   `Chip`های ساده به یک **dock** شیشه‌ای/تم‌محور تبدیل شد: آیکن هر صفحه از منو، تب فعال با
   خط و هالهٔ رنگ ماژول، بستن با کلیک/میان‌کلیک/کلید Delete، منوی راست‌کلیک
   («بستن این صفحه / سایر صفحات / همه»)، دکمهٔ «همهٔ صفحات باز» با جست‌وجو، اسکرول افقی
   با دکمه‌های قبلی/بعدی، `ResizeObserver` برای تشخیص سرریز و اسکرول خودکار تب فعال.
   `WorkspaceTabsContext` تابع `closeOthers` گرفت و `Layout.findMenuMeta` آیکن تب را هم
-  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.0e52b8bc.js`**.
+  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.74272adf.js`**.
 - **دفترچه تلفن سازمانی در ریل سایدبار (۲۰۲۶-۱۱-۱۸):** آیکن `rail-phonebook` زیر جست‌وجوی سریع،
   دیالوگ بزرگ `WorkspaceDock` را باز می‌کند (`PhonebookPanel`). داده از
   `GET /api/contract-parties/` و `GET /api/procurement/suppliers/` با `fetchAllPages` خوانده می‌شود
@@ -651,7 +660,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (۱۷ طرف حساب شمارهٔ تماس دارند). تست‌های `phonebook` (۵) + `phonebookSmoke` (۲) +
   `workspaceDock` (۱) سبز. آیکن‌های ریل برای تفکیک بصری: دفترچه تلفن `ImportContactsOutlined`،
   کارتابل من `PendingActionsOutlined`، اسناد سازمانی `CorporateFareOutlined`؛ باندل زنده:
-  **`main.0e52b8bc.js`**.
+  **`main.74272adf.js`**.
 - **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
   اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
   دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد

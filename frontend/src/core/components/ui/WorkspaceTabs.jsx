@@ -157,6 +157,19 @@ const WorkspaceTabs = () => {
     navigate(path);
   };
 
+  const closeTabAndNavigate = (path) => {
+    const index = tabs.findIndex((tab) => tab.path === path);
+    const fallback = tabs[index + 1] || tabs[index - 1] || null;
+    const wasActive = path === active;
+    closeTab(path);
+    if (wasActive) navigate(fallback?.path || '/');
+  };
+
+  const closeOthersAndNavigate = (path) => {
+    closeOthers(path);
+    if (path !== active) navigate(path);
+  };
+
   const scrollTabs = (direction) => {
     const element = scrollerRef.current;
     if (!element) return;
@@ -264,7 +277,7 @@ const WorkspaceTabs = () => {
               active={tab.path === active}
               color={tab.color || FALLBACK_COLOR}
               onActivate={activateTab}
-              onClose={closeTab}
+              onClose={closeTabAndNavigate}
               onContextMenu={openContextMenu}
               activeRef={activeTabRef}
             />
@@ -407,7 +420,7 @@ const WorkspaceTabs = () => {
                 <IconButton
                   size="small"
                   aria-label={`بستن ${tab.title}`}
-                  onClick={(event) => { event.stopPropagation(); closeTab(tab.path); }}
+                  onClick={(event) => { event.stopPropagation(); closeTabAndNavigate(tab.path); }}
                   sx={{ width: 22, height: 22, p: 0, color: 'text.secondary' }}
                 >
                   <CloseIcon sx={{ fontSize: 14 }} />
@@ -435,7 +448,7 @@ const WorkspaceTabs = () => {
           dense
           onClick={() => {
             if (!contextMenu?.tab) return;
-            closeTab(contextMenu.tab.path);
+            closeTabAndNavigate(contextMenu.tab.path);
             closeContextMenu();
           }}
           sx={{ fontSize: 11 }}
@@ -446,7 +459,7 @@ const WorkspaceTabs = () => {
           dense
           onClick={() => {
             if (!contextMenu?.tab) return;
-            closeOthers(contextMenu.tab.path);
+            closeOthersAndNavigate(contextMenu.tab.path);
             closeContextMenu();
           }}
           sx={{ fontSize: 11 }}
