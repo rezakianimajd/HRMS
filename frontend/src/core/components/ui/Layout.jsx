@@ -466,7 +466,8 @@ const Layout = ({ children }) => {
 
   const goTo = (path) => {
     const meta = findMenuMeta(path);
-    openTab({ path, title: meta.title, color: meta.color, icon: meta.icon });
+    const tabPath = String(path || '').split('?')[0].split('#')[0] || '/';
+    openTab({ path: tabPath, url: path, title: meta.title, color: meta.color, icon: meta.icon });
     navigate(path);
   };
 
@@ -564,9 +565,16 @@ const Layout = ({ children }) => {
 
   useEffect(() => {
     if (!location.pathname || location.pathname === '/coming-soon') return;
-    const meta = findMenuMeta(location.pathname);
-    openTab({ path: location.pathname, title: meta.title, color: meta.color, icon: meta.icon });
-  }, [location.pathname]);
+    const fullPath = `${location.pathname}${location.search}`;
+    const meta = findMenuMeta(fullPath);
+    openTab({
+      path: location.pathname,
+      url: `${fullPath}${location.hash}`,
+      title: meta.title,
+      color: meta.color,
+      icon: meta.icon,
+    });
+  }, [location.pathname, location.search, location.hash]);
 
   const renderSidebarContent = (compact) => (
     <Box sx={{

@@ -36,7 +36,7 @@ const TabItem = ({
     data-testid="workspace-tab"
     data-active={active ? 'true' : 'false'}
     tabIndex={active ? 0 : -1}
-    onClick={() => onActivate(tab.path)}
+    onClick={() => onActivate(tab)}
     onContextMenu={(event) => onContextMenu(event, tab)}
     onAuxClick={(event) => {
       if (event.button === 1) {
@@ -47,7 +47,7 @@ const TabItem = ({
     onKeyDown={(event) => {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        onActivate(tab.path);
+        onActivate(tab);
       } else if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
         onClose(tab.path);
@@ -162,9 +162,13 @@ const WorkspaceTabs = () => {
 
   if (!tabs.length) return null;
 
-  const activateTab = (path) => {
-    setActive(path);
-    navigate(path);
+  const activateTab = (tabOrPath) => {
+    const tab = typeof tabOrPath === 'string'
+      ? tabs.find((item) => item.path === tabOrPath)
+      : tabOrPath;
+    if (!tab) return;
+    setActive(tab.path);
+    navigate(tab.url || tab.path);
   };
 
   const closeTabAndNavigate = (path) => {
@@ -172,12 +176,13 @@ const WorkspaceTabs = () => {
     const fallback = tabs[index + 1] || tabs[index - 1] || null;
     const wasActive = path === active;
     closeTab(path);
-    if (wasActive) navigate(fallback?.path || '/');
+    if (wasActive) navigate(fallback?.url || fallback?.path || '/');
   };
 
   const closeOthersAndNavigate = (path) => {
+    const tab = tabs.find((item) => item.path === path);
     closeOthers(path);
-    if (path !== active) navigate(path);
+    if (path !== active) navigate(tab?.url || path);
   };
 
   const scrollTabs = (direction) => {
@@ -393,11 +398,11 @@ const WorkspaceTabs = () => {
                 key={tab.path}
                 role="menuitem"
                 tabIndex={0}
-                onClick={() => { activateTab(tab.path); closeSwitcher(); }}
+                onClick={() => { activateTab(tab); closeSwitcher(); }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    activateTab(tab.path);
+                    activateTab(tab);
                     closeSwitcher();
                   }
                 }}

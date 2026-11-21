@@ -2,20 +2,30 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const WorkspaceTabsContext = createContext(null);
 
+const normalizeTabPath = (path) => String(path || '').split('?')[0].split('#')[0] || '/';
+
 export const WorkspaceTabsProvider = ({ children }) => {
   const [tabs, setTabs] = useState([]);
   const [active, setActive] = useState(null);
 
   const openTab = useCallback((tab) => {
     if (!tab || !tab.path) return;
+    const path = normalizeTabPath(tab.path);
+    const url = tab.url || tab.path;
     setTabs((prev) => {
-      const found = prev.find((t) => t.path === tab.path);
+      const found = prev.find((t) => t.path === path);
       if (found) {
-        return prev.map((t) => (t.path === tab.path ? { ...t, title: tab.title || t.title } : t));
+        return prev.map((t) => (t.path === path ? {
+          ...t,
+          title: tab.title || t.title,
+          color: tab.color || t.color,
+          icon: tab.icon || t.icon,
+          url,
+        } : t));
       }
-      return [...prev, tab];
+      return [...prev, { ...tab, path, url }];
     });
-    setActive(tab.path);
+    setActive(path);
   }, []);
 
   const closeTab = useCallback((path) => {

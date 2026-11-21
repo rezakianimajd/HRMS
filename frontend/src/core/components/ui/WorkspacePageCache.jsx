@@ -18,6 +18,8 @@ const cachedLocation = (location) => ({
   key: location.key,
 });
 
+const normalizeTabPath = (path) => String(path || '').split('?')[0].split('#')[0] || '/';
+
 const CachedRouteView = memo(({ routes, location, visible }) => (
   <div style={viewStyle(visible)} aria-hidden={!visible}>
     <UNSAFE_LocationContext.Provider value={{ location, navigationType: 'POP' }}>
@@ -80,15 +82,15 @@ const WorkspacePageCache = ({ routes }) => {
 
   useEffect(() => {
     setViews((previous) => {
-      const allowed = new Set(tabs.map((tab) => tab.path));
-      allowed.add(location.pathname);
+      const allowed = new Set(tabs.map((tab) => normalizeTabPath(tab.path)));
+      allowed.add(normalizeTabPath(location.pathname));
       const next = previous.filter((view) => allowed.has(view.path));
       return next.length === previous.length ? previous : next;
     });
   }, [tabs, location.pathname]);
 
-  const allowedPaths = new Set(tabs.map((tab) => tab.path));
-  allowedPaths.add(location.pathname);
+  const allowedPaths = new Set(tabs.map((tab) => normalizeTabPath(tab.path)));
+  allowedPaths.add(normalizeTabPath(location.pathname));
   const availableViews = views.filter(
     (view) => allowedPaths.has(view.path) && !REDIRECT_PATHS.has(view.path),
   );

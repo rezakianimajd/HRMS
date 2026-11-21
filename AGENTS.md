@@ -639,17 +639,19 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   صفحات قدیمی غیرفعال (LRU) unmount می‌شوند؛ تب آن‌ها باقی می‌ماند و در صورت نیاز از نو mount می‌شود.
   بنابراین فیلترها، فرم نیمه‌کاره، تب‌های داخلی و اسکرول هر صفحه هنگام رفت‌وبرگشت حفظ می‌شوند
   (اسکرول در `Layout` برای هر مسیر ذخیره/برگردانده می‌شود). تب‌های redirect وارد کش نمی‌شوند.
+  مسیر کلید تب با `pathname` نرمال می‌شود و `?query` به‌صورت `url` جدا نگه داشته می‌شود تا
+  صفحه‌هایی مثل `/settings?tab=backup` هنگام رفت‌وبرگشت از کش خارج نشوند.
   عنوان مسیرهای پارامتردار/تودرتو با `core/config/routeTitles.js` فارسی می‌شود
   (`/employees/:id`، `/external-contracts/:id`، `/treasury/*`، `/accounting/*` و …).
   تست‌های `workspacePageCache` (۱) + `routeTitles` (۲) + `workspaceTabs` (۲) سبز؛
-  باندل زنده: **`main.621c0895.js`**.
+  باندل زنده: **`main.d7da74ff.js`**.
 - **نوار «صفحات باز» پایین برنامه بازطراحی شد (۲۰۲۶-۱۱-۱۸):** `WorkspaceTabs.jsx` از
   `Chip`های ساده به یک **dock** شیشه‌ای/تم‌محور تبدیل شد: آیکن هر صفحه از منو داخل قاب
   رنگی کوچک، تب فعال با خط و هالهٔ رنگ ماژول، بستن هنگام hover/کلیک/میان‌کلیک/کلید Delete، منوی راست‌کلیک
   («بستن این صفحه / سایر صفحات / همه»)، دکمهٔ «همهٔ صفحات باز» با جست‌وجو، اسکرول افقی
   با دکمه‌های قبلی/بعدی، `ResizeObserver` برای تشخیص سرریز و اسکرول خودکار تب فعال.
   `WorkspaceTabsContext` تابع `closeOthers` گرفت و `Layout.findMenuMeta` آیکن تب را هم
-  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.621c0895.js`**.
+  به context می‌دهد. تست `workspaceTabs` (۲) سبز؛ باندل زنده: **`main.d7da74ff.js`**.
 - **دفترچه تلفن سازمانی در ریل سایدبار (۲۰۲۶-۱۱-۱۸):** آیکن `rail-phonebook` زیر جست‌وجوی سریع،
   دیالوگ بزرگ `WorkspaceDock` را باز می‌کند (`PhonebookPanel`). داده از
   `GET /api/contract-parties/` و `GET /api/procurement/suppliers/` با `fetchAllPages` خوانده می‌شود
@@ -662,7 +664,7 @@ const renderPage = async (element, entry = '/x') => { /* QueryClientProvider(no 
   (۱۷ طرف حساب شمارهٔ تماس دارند). تست‌های `phonebook` (۵) + `phonebookSmoke` (۲) +
   `workspaceDock` (۱) سبز. آیکن‌های ریل برای تفکیک بصری: دفترچه تلفن `ImportContactsOutlined`،
   کارتابل من `PendingActionsOutlined`، اسناد سازمانی `CorporateFareOutlined`؛ باندل زنده:
-  **`main.621c0895.js`**.
+  **`main.d7da74ff.js`**.
 - **نمایش کامل تضامین (۲۰۲۶-۱۱-۱۸):** فهرست `/contracts-guarantees` فقط `page_size=500` می‌گرفت،
   اما دادهٔ زندهٔ `kpsmi` **۵۶۱ تضمین** دارد؛ ۶۱ تضمین (از جمله تضامین قراردادهای بعدی) در فهرست
   دیده نمی‌شدند. صفحه به `fetchAllPages('/contract-guarantees/', { page_size: 1000 })` تغییر کرد
